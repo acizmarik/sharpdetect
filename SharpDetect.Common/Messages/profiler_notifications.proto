@@ -1,0 +1,251 @@
+﻿/*
+ * Copyright (C) 2020, Andrej Čižmárik
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+package SharpDetect.Common.Messages;
+
+message NotifyMessage
+{
+	uint64										NotificationId = 1;
+	int32										ProcessId = 2;
+	uint64										ThreadId = 3;
+
+	oneof Payload
+	{
+		Response								Response = 4;
+		Notify_Heartbeat						Heartbeat = 5;
+		Notify_ProfilerLoaded					ProfilerLoaded = 6;
+		Notify_ProfilerInitialized				ProfilerInitialized = 7;
+		Notify_ProfilerDestroyed				ProfilerDestroyed = 8;
+		Notify_ModuleLoaded						ModuleLoaded = 9;
+		Notify_TypeLoaded						TypeLoaded = 10;
+		Notify_JITCompilationStarted			JITCompilationStarted = 11;
+		Notify_ThreadCreated					ThreadCreated = 12;
+		Notify_ThreadDestroyed					ThreadDestroyed = 13;
+		Notify_TypeInjected						TypeInjected = 14;
+		Notify_TypeReferenced					TypeReferenced = 15;
+		Notify_MethodInjected					MethodInjected = 16;
+		Notify_HelperMethodReferenced			HelperMethodReferenced = 17;
+		Notify_WrapperMethodReferenced			WrapperMethodReferenced = 18;
+		Notify_MethodCalled						MethodCalled = 19;
+		Notify_MethodReturned					MethodReturned = 20;
+		Notify_MethodWrapperInjected			MethodWrapperInjected = 21;
+		
+		Notify_GarbageCollectionStarted			GarbageCollectionStarted = 22;
+		Notify_GarbageCollectionFinished		GarbageCollectionFinished = 23;
+		Notify_RuntimeSuspendStarted			RuntimeSuspendStarted = 24;
+		Notify_RuntimeSuspendFinished			RuntimeSuspendFinished = 25;
+		Notify_RuntimeThreadSuspended			RuntimeThreadSuspended = 26;
+		Notify_RuntimeThreadResumed				RuntimeThreadResumed = 27;
+
+		Notify_SurvivingReferences				SurvivingReferences = 28;
+		Notify_MovedReferences					MovedReferences = 29;
+	}
+}
+
+enum MethodType
+{
+	UNKNOWN						= 0;
+	FIELD_ACCESS				= 1;
+	FIELD_INSTANCE_ACCESS		= 2;
+	ARRAY_ELEMENT_ACCESS		= 3;
+	ARRAY_INSTANCE_ACCESS		= 4;
+	ARRAY_INDEX_ACCESS			= 5;
+}
+
+enum SUSPEND_REASON
+{
+	OTHER						= 0;
+	GC							= 1;
+	APPDOMAIN_SHUTDOWN			= 2;
+	CODE_PITCHING				= 3;
+	SHUTDOWN					= 4;
+	/* UNUSED */
+	INPROC_DEBUGGER				= 6;
+	GC_PREPARATION				= 7;
+	REJIT						= 8;
+}
+
+message Response
+{
+	uint64		RequestId = 1;
+	bool		Result = 2;
+}
+
+message Notify_Heartbeat
+{
+	// No additional parameters
+}
+
+message Notify_ProfilerLoaded
+{
+	string		Version = 1;
+}
+
+message Notify_ProfilerInitialized
+{
+	// No additional parameters
+}
+
+message Notify_ProfilerDestroyed
+{
+	// No additional parameters
+}
+
+message Notify_ModuleLoaded
+{
+	uint64		ModuleId = 1;
+	string		ModulePath = 2;
+}
+
+message Notify_TypeLoaded
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+}
+
+message Notify_JITCompilationStarted
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+	uint32		FunctionToken = 3;
+}
+
+message Notify_ThreadCreated
+{
+	uint64		ThreadId = 1;
+}
+
+message Notify_ThreadDestroyed
+{
+	uint64		ThreadId = 1;
+}
+
+message Notify_TypeInjected
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+}
+
+message Notify_TypeReferenced
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+}
+
+message Notify_MethodInjected
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+	uint32		FunctionToken = 3;
+	MethodType  Type = 4;
+}
+
+message Notify_MethodWrapperInjected
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+	uint32		OriginalFunctionToken = 3;
+	uint32		WrapperFunctionToken = 4;
+}
+
+message Notify_HelperMethodReferenced
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+	uint32		FunctionToken = 3;
+	MethodType	Type = 4;
+}
+
+message Notify_WrapperMethodReferenced
+{
+	uint64		DefModuleId = 1;
+	uint32		DefTypeToken = 2;
+	uint32		DefFunctionToken = 3;
+
+	uint64		RefModuleId = 4;
+	uint32		RefTypeToken = 5;
+	uint32		RefFunctionToken = 6;
+}
+
+message Notify_MethodCalled
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+	uint32		FunctionToken = 3;
+
+	// For arguments capturing
+	bytes		ArgumentValues = 4;
+	bytes		ArgumentOffsets = 5;
+}
+
+message Notify_MethodReturned
+{
+	uint64		ModuleId = 1;
+	uint32		TypeToken = 2;
+	uint32		FunctionToken = 3;
+
+	// For return value capturing
+	bytes		ReturnValue = 4;
+
+	// For by-ref-like arguments capturing
+	bytes		ByRefArgumentValues = 5;
+	bytes		ByRefArgumentOffsets = 6;
+}
+
+message Notify_GarbageCollectionStarted
+{
+	bytes		GenerationsCollected = 1;
+	bytes		GenerationSegmentBounds = 2;
+}
+
+message Notify_GarbageCollectionFinished
+{
+	bytes		GenerationSegmentBounds = 1;
+}
+
+message Notify_RuntimeSuspendStarted
+{
+	SUSPEND_REASON Reason = 1;
+}
+
+message Notify_RuntimeSuspendFinished
+{
+	// No additional parameters
+}
+
+message Notify_RuntimeThreadSuspended
+{
+	uint64		ThreadId = 1;
+}
+
+message Notify_RuntimeThreadResumed
+{
+	uint64		ThreadId = 1;
+}
+
+message Notify_SurvivingReferences
+{
+	bytes		Blocks = 1;
+	bytes		Lengths = 2;
+}
+
+message Notify_MovedReferences
+{
+	bytes		OldBlocks = 1;
+	bytes		NewBlocks = 2;
+	bytes		Lengths = 3;
+}
