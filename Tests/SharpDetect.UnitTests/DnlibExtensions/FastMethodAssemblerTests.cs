@@ -9,15 +9,16 @@ namespace SharpDetect.UnitTests.DnlibExtensions
     public class FastMethodAssemblerTests
     {
         [Theory]
+        [InlineData(typeof(object))]
         [InlineData(typeof(Console))]
         [InlineData(typeof(Monitor))]
-        public void FastMethodAssemblerTests_TinyMethods(Type type)
+        public void FastMethodAssemblerTests_MethodsAreNotChanged(Type type)
         {
             var module = AssemblyDef.Load(type.Assembly.Location).ManifestModule;
             var typeDef = module.Find(type.FullName, isReflectionName: true);
 
             // Check all methods
-            foreach (var methodDef in typeDef.Methods.Where(m => m.HasBody && m.Body.IsSmallHeader))
+            foreach (var methodDef in typeDef.Methods.Where(m => m.HasBody && m.Body.IsBigHeader))
             {
                 var assembler = new FastMethodAssembler(methodDef, new Dictionary<Instruction, MDToken>(), new StringHeapCache());
                 var expected = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
@@ -37,10 +38,12 @@ namespace SharpDetect.UnitTests.DnlibExtensions
 
         private static void EnsureMethodBodyIsSame(MethodDef methodDef, Span<byte> reflectionResult, Span<byte> ourResult)
         {
-            var isTinyHeader = (ourResult[0] & 0x02) != 0;
+            var isTinyHeader = (ourResult[0] & 0x03) != 3;
             ourResult = (isTinyHeader) ? ourResult[1..] : ourResult[12..];
 
-            Assert.Equal(reflectionResult.Length, ourResult.Length);
+            if (!methodDef.Body.HasExceptionHandlers)
+                Assert.Equal(reflectionResult.Length, ourResult.Length);
+
             for (var i = 0; i < reflectionResult.Length; i++)
             {
                 var instruction = methodDef.Body.Instructions.Last(instr => instr.Offset <= i);

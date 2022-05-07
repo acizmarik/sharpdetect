@@ -1,4 +1,7 @@
-﻿using dnlib.DotNet;
+﻿// The following code is heavily inspired and partially copied from the dnlib code base
+// Copyright (C) 2012-2019 de4dot@gmail.com under MIT license
+
+using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using dnlib.DotNet.MD;
 using dnlib.DotNet.Writer;
@@ -18,6 +21,7 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
         private readonly IReadOnlyDictionary<Instruction, MDToken> stubs;
         private readonly IStringHeapCache stringHeapCache;
         private byte[] bytecode;
+        private byte[]? extraSections;
         private int position;
         private ushort maxStackSize;
         private uint codeSize;
@@ -68,7 +72,23 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
                 bytecode = new byte[codeSize + 12 /* header size */];
                 WriteFatHeader();
                 WriteInstructions();
-                WriteExceptionHandlers();
+
+                if (method.Body.ExceptionHandlers.Count > 0)
+                    WriteExceptionHandlers();
+            }
+
+            if (extraSections is not null)
+            {
+                // Align code to next 4 bytes mark
+                const uint align = 4;
+                var padding = (align - bytecode.Length % align) % align;
+                var result = new byte[bytecode.Length + padding + extraSections.Length];
+
+                // Generate method body
+                Buffer.BlockCopy(bytecode, 0, result, 0, bytecode.Length);
+                Buffer.BlockCopy(extraSections, 0, result, bytecode.Length + (int)padding, extraSections.Length);
+
+                return result;
             }
 
             return bytecode;
@@ -191,7 +211,10 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
                 bytecode.WriteUInt32(ref position, target.Offset - exitOffset);
             }
         }
-
+        
+        /// <summary>
+        /// Note this method is making a lot of assumptions
+        /// (i.e. tokens are not changing - if they are we supply them as stubs)
         private MDToken GetToken(Instruction instruction)
         {
             if (stubs.TryGetValue(instruction, out var token))
@@ -224,7 +247,116 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
 
         private void WriteExceptionHandlers()
         {
-            throw new NotImplementedException();
+            if (NeedFatExceptionClauses())
+                extraSections = WriteFatExceptionClauses(method.Body.ExceptionHandlers);
+            else
+                extraSections = WriteSmallExceptionClauses(method.Body.ExceptionHandlers);
+        }
+
+        bool NeedFatExceptionClauses()
+        {
+            // Size must fit in a byte, and since one small exception record is 12 bytes
+            // and header is 4 bytes: x*12+4 <= 255 ==> x <= 20
+            var exceptionHandlers = method.Body.ExceptionHandlers;
+            if (exceptionHandlers.Count > 20)
+                return true;
+
+            for (int i = 0; i < exceptionHandlers.Count; i++)
+            {
+                var eh = exceptionHandlers[i];
+                if (!FitsInSmallExceptionClause(eh.TryStart, eh.TryEnd))
+                    return true;
+                if (!FitsInSmallExceptionClause(eh.HandlerStart, eh.HandlerEnd))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool FitsInSmallExceptionClause(Instruction start, Instruction end)
+        {
+            if (start.Offset < end.Offset)
+                return false;
+            return start.Offset <= ushort.MaxValue && end.Offset - start.Offset <= byte.MaxValue;
+        }
+
+        private static byte[] WriteFatExceptionClauses(IList<ExceptionHandler> exceptionHandlers)
+        {
+            int numExceptionHandlers = exceptionHandlers.Count;
+
+            var data = new byte[numExceptionHandlers * 24 + 4];
+            var writer = new ArrayWriter(data);
+
+            // Write exception handlers size
+            writer.WriteUInt32((((uint)numExceptionHandlers * 24 + 4) << 8) | 0x41);
+            for (int i = 0; i < numExceptionHandlers; i++)
+            {
+                var eh = exceptionHandlers[i];
+
+                // Write handler type
+                writer.WriteUInt32((uint)eh.HandlerType);
+
+                // Write try block
+                Guard.True<InvalidProgramException>(eh.TryStart.Offset < eh.TryEnd.Offset);
+                writer.WriteUInt32(eh.TryStart.Offset);
+                writer.WriteUInt32(eh.TryEnd.Offset - eh.TryStart.Offset);
+
+                // Write handler block
+                Guard.True<InvalidProgramException>(eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
+                writer.WriteUInt32(eh.HandlerStart.Offset);
+                writer.WriteUInt32(eh.HandlerEnd.Offset - eh.HandlerStart.Offset);
+
+                // Write types for catch / filter blocks
+                if (eh.IsCatch)
+                    writer.WriteUInt32(eh.CatchType.MDToken.Raw);
+                else if (eh.IsFilter)
+                    writer.WriteUInt32(eh.FilterStart.Offset);
+                else
+                    writer.WriteInt32(0);
+            }
+
+            Guard.Equal<int, InvalidProgramException>(data.Length, writer.Position);
+            return data;
+        }
+
+        private static byte[] WriteSmallExceptionClauses(IList<ExceptionHandler> exceptionHandlers)
+        {
+            int numExceptionHandlers = exceptionHandlers.Count;
+
+            var data = new byte[numExceptionHandlers * 12 + 4];
+            var writer = new ArrayWriter(data);
+
+            // Write exception handlers size
+            writer.WriteUInt32((((uint)numExceptionHandlers * 12 + 4) << 8) | 1);
+            for (int i = 0; i < numExceptionHandlers; i++)
+            {
+                var eh = exceptionHandlers[i];
+
+                // Write handler type
+                writer.WriteUInt16((ushort)eh.HandlerType);
+
+                // Write try block
+                Guard.True<InvalidProgramException>(eh.TryStart.Offset < eh.TryEnd.Offset);
+                writer.WriteUInt16((ushort)eh.TryStart.Offset);
+                writer.WriteByte((byte)(eh.TryEnd.Offset - eh.TryStart.Offset));
+
+                // Write handler block
+                Guard.True<InvalidProgramException>(eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
+                writer.WriteUInt16((ushort)eh.HandlerStart.Offset);
+                writer.WriteByte((byte)(eh.HandlerEnd.Offset - eh.HandlerStart.Offset));
+
+                // Write types for catch / filter blocks
+                if (eh.IsCatch)
+                    writer.WriteUInt32(eh.CatchType.MDToken.Raw);
+                else if (eh.IsFilter)
+                    writer.WriteUInt32(eh.FilterStart.Offset);
+                else
+                    writer.WriteInt32(0);
+            }
+
+            if (writer.Position != data.Length)
+                throw new InvalidOperationException();
+            return data;
         }
     }
 }
