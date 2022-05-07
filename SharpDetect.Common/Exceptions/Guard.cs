@@ -14,7 +14,9 @@ namespace SharpDetect.Common.Exceptions
             {
                 { typeof(ArgumentException), m => new ArgumentException(m) },
                 { typeof(ArgumentNullException), m => new ArgumentNullException(m) },
-                { typeof(ShadowRuntimeStateException), m => new ShadowRuntimeStateException(m) }
+                { typeof(ShadowRuntimeStateException), m => new ShadowRuntimeStateException(m) },
+                { typeof(InvalidOperationException), m => new InvalidOperationException(m) },
+                { typeof(InvalidProgramException), m => new InvalidProgramException(m) }
             };
             lookup = builder.ToImmutableDictionary();
         }
@@ -32,10 +34,11 @@ namespace SharpDetect.Common.Exceptions
                 Throw<TException>($"Provided argument {expr} was evaluated to {actual}, which was equal to {invalid}.");
         }
 
-        public static void NotNull<TValue, TException>([NotNull] TValue? value, [CallerArgumentExpression("value")] string? expr = null)
+        public static TValue NotNull<TValue, TException>([NotNull] TValue? value, [CallerArgumentExpression("value")] string? expr = null)
         {
             if (value == null)
                 Throw<TException>($"Provided argument {expr} was evaluated to null.");
+            return value;
         }
 
         public static void True<TException>(bool expression, [CallerArgumentExpression("expression")] string? expr = null)

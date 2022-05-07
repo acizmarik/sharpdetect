@@ -10,7 +10,8 @@ namespace SharpDetect.UnitTests.DnlibExtensions
     {
         [Theory]
         [InlineData(typeof(Console))]
-        public void FastMethodAssemblerTests_TinyMethod(Type type)
+        [InlineData(typeof(Monitor))]
+        public void FastMethodAssemblerTests_TinyMethods(Type type)
         {
             var module = AssemblyDef.Load(type.Assembly.Location).ManifestModule;
             var typeDef = module.Find(type.FullName, isReflectionName: true);
@@ -18,16 +19,23 @@ namespace SharpDetect.UnitTests.DnlibExtensions
             // Check all methods
             foreach (var methodDef in typeDef.Methods.Where(m => m.HasBody && m.Body.IsSmallHeader))
             {
-                var assembler = new FastMethodAssembler(methodDef, new Dictionary<Instruction, MDToken>());
+                var assembler = new FastMethodAssembler(methodDef, new Dictionary<Instruction, MDToken>(), new StringHeapCache());
                 var expected = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-                    .Single(m => m.MetadataToken == methodDef.MDToken.Raw).GetMethodBody()!.GetILAsByteArray();
+                    .SingleOrDefault(m => m.MetadataToken == methodDef.MDToken.Raw)?.GetMethodBody()!.GetILAsByteArray();
+                if (expected is null)
+                {
+                    // For some reason we did not find the type using reflection
+                    // This happens for example for .cctors
+                    continue;
+                }
+
                 var actual = assembler.Assemble();
 
                 EnsureMethodBodyIsSame(methodDef, expected, actual);
             }
         }
 
-        private void EnsureMethodBodyIsSame(MethodDef methodDef, Span<byte> reflectionResult, Span<byte> ourResult)
+        private static void EnsureMethodBodyIsSame(MethodDef methodDef, Span<byte> reflectionResult, Span<byte> ourResult)
         {
             var isTinyHeader = (ourResult[0] & 0x02) != 0;
             ourResult = (isTinyHeader) ? ourResult[1..] : ourResult[12..];
