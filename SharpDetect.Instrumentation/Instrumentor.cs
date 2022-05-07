@@ -122,7 +122,12 @@ namespace SharpDetect.Instrumentation
 
         private (CodeInspector Inspector, CodeInjector Injector) Register(int processId)
         {
+            var newInspector = new CodeInspector();
+            var newInjector = new CodeInjector();
 
+            codeInspectors.Add(processId, newInspector);
+            codeInjectors.Add(processId, newInjector);
+            return (newInspector, newInjector);
         }
 
         private CodeInspector GetCodeInspector(int processId)

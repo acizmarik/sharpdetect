@@ -9,4 +9,8 @@
     <ProjectReference Include="..\SharpDetect.Common\SharpDetect.Common.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Configuration\" />
+  </ItemGroup>
+
 </Project>
