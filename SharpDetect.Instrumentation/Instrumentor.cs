@@ -1,4 +1,5 @@
 ﻿using dnlib.DotNet;
+using dnlib.DotNet.Emit;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.LibraryDescriptors;
@@ -7,6 +8,7 @@ using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
+using SharpDetect.Dnlib.Extensions;
 using System.Collections.Immutable;
 
 namespace SharpDetect.Instrumentation
@@ -16,7 +18,6 @@ namespace SharpDetect.Instrumentation
         private ImmutableDictionary<int, CodeInjector> codeInjectors;
         private ImmutableDictionary<int, CodeInspector> codeInspectors;
         private readonly IProfilingClient profilingClient;
-        private readonly IShadowExecutionObserver executionObserver;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
         private readonly IStringHeapCache stringHeapCache;
@@ -41,7 +42,6 @@ namespace SharpDetect.Instrumentation
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory)
         {
-            this.executionObserver = executionObserver;
             this.profilingClient = profilingClient;
             this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
@@ -88,7 +88,8 @@ namespace SharpDetect.Instrumentation
         {
             // Fetch method definition
             var resolver = metadataContext.GetResolver(args.Info.ProcessId);
-            if (!resolver.TryGetMethodDef(args.Function, new ModuleInfo(args.Function.ModuleId), out var method))
+            var moduleInfo = new ModuleInfo(args.Function.ModuleId);
+            if (!resolver.TryGetMethodDef(args.Function, moduleInfo, out var method))
             {
                 // If we were unable to resolve the method it was created dynamically:
                 // 1.) either is a profiler method TODO: recognize these
@@ -106,13 +107,13 @@ namespace SharpDetect.Instrumentation
             }
 
             // Check if we need to patch any calls to wrapped extern methods
-            // TODO:
+            var stubs = WrapAnalyzedExternMethodCalls(method, moduleInfo, args.Info);
 
             // Check if user requested instrumentation for this method
             if (methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data))
             {
-                // TODO: get new IL body
-                var bytecode = null as byte[];
+                var assembler = new FastMethodAssembler(method, stubs, stringHeapCache);
+                var bytecode = assembler.Assemble();
 
                 if (data.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks))
                     Interlocked.Increment(ref injectedMethodHooksCount);
@@ -121,6 +122,46 @@ namespace SharpDetect.Instrumentation
 
                 profilingClient.IssueRewriteMethodBodyAsync(null, data, args.Info).Wait();
             }
+        }
+
+        private Dictionary<Instruction, MDToken> WrapAnalyzedExternMethodCalls(MethodDef method, ModuleInfo moduleInfo, EventInfo info)
+        {
+            var stubs = new Dictionary<Instruction, MDToken>();
+            var resolver = metadataContext.GetResolver(info.ProcessId);
+
+            foreach (var instruction in method.Body.Instructions.Where(i => i.OpCode.Code == Code.Call && i.Operand is IMethodDefOrRef))
+            {
+                MDToken wrapperToken = default;
+
+                if (resolver.TryResolveMethodDef((instruction.Operand as IMethodDefOrRef)!, out var methodDef))
+                {
+                    if (methodDef.HasBody)
+                    {
+                        // This is not an extern method
+                        continue;
+                    }
+
+                    if (!resolver.TryGetWrapperMethodReference(methodDef, moduleInfo, out wrapperToken))
+                    {
+                        // No wrapper registered
+                        continue;
+                    }
+                }
+                else
+                {
+                    // We might need to resolve a method defined within a module that has not been loaded yet
+                    // Slow-path: try to match the method based on given reference
+                    if (!resolver.TryLookupWrapperMethodReference((instruction.Operand as IMethodDefOrRef)!, moduleInfo, out wrapperToken))
+                    {
+                        // No wrapper registered
+                        continue;
+                    }
+                }
+
+                stubs.Add(instruction, wrapperToken);
+            }
+
+            return stubs;
         }
 
         private (CodeInspector Inspector, CodeInjector Injector) Register(int processId)
