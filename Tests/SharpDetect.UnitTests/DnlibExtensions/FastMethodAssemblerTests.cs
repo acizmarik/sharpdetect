@@ -1,7 +1,9 @@
 ﻿using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using SharpDetect.Dnlib.Extensions.Assembler;
+using SharpDetect.UnitTests.Runtime.Scheduling;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace SharpDetect.UnitTests.DnlibExtensions
@@ -12,13 +14,17 @@ namespace SharpDetect.UnitTests.DnlibExtensions
         [InlineData(typeof(object))]
         [InlineData(typeof(Console))]
         [InlineData(typeof(Monitor))]
+        [InlineData(typeof(Unsafe))]
+        [InlineData(typeof(HappensBeforeScheduler_ProfilingEvents_Tests))]
+        [InlineData(typeof(HappensBeforeScheduler_RewritingEvents_Tests))]
+        [InlineData(typeof(HappensBeforeScheduler_ExecutingEvents_Tests))]
         public void FastMethodAssemblerTests_MethodsAreNotChanged(Type type)
         {
             var module = AssemblyDef.Load(type.Assembly.Location).ManifestModule;
             var typeDef = module.Find(type.FullName, isReflectionName: true);
 
             // Check all methods
-            foreach (var methodDef in typeDef.Methods.Where(m => m.HasBody && m.Body.IsBigHeader))
+            foreach (var methodDef in typeDef.Methods.Where(m => m.HasBody))
             {
                 var assembler = new FastMethodAssembler(methodDef, new Dictionary<Instruction, MDToken>(), new StringHeapCache());
                 var expected = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
