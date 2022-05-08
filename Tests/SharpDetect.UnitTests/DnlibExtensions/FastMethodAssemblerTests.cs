@@ -1,6 +1,7 @@
 ﻿using dnlib.DotNet;
 using dnlib.DotNet.Emit;
-using SharpDetect.Dnlib.Extensions.Assembler;
+using SharpDetect.Dnlib.Extensions;
+using SharpDetect.Dnlib.Extensions;
 using SharpDetect.UnitTests.Runtime.Scheduling;
 using System.Reflection;
 using System.Runtime.CompilerServices;

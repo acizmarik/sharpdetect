@@ -7,6 +7,7 @@ using SharpDetect.Core.Communication.Endpoints;
 using SharpDetect.Core.Models;
 using SharpDetect.Core.Runtime;
 using SharpDetect.Core.Runtime.Monitoring;
+using SharpDetect.Instrumentation.Configuration;
 using SharpDetect.Loader.Configuration;
 using SharpDetect.Metadata.Configuration;
 
@@ -19,6 +20,7 @@ namespace SharpDetect.Core.Configuration
             services.AddLoader();
             services.AddMetadata();
             services.AddBuiltinLibraryDescriptors();
+            services.AddInstrumentation();
 
             services.AddSingleton<IDateTimeProvider, UtcDateTimeProvider>();
             services.AddScoped<IAnalysis, Analysis>();
@@ -28,6 +30,7 @@ namespace SharpDetect.Core.Configuration
             services.AddScoped<IExecutingMessageHub, ExecutingMessageHub>();
             services.AddScoped<INotificationsConsumer, NotificationServer>();
             services.AddScoped<IRequestsProducer, RequestServer>();
+            services.AddScoped<IProfilingClient, ProfilingClient>();
             services.AddScoped<IHealthMonitor, HealthMonitor>();
 
             services.AddScoped<IShadowExecutionObserver, RuntimeEventsHub>(p => p.GetRequiredService<RuntimeEventsHub>());

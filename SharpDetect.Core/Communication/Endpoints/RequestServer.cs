@@ -35,9 +35,9 @@ namespace SharpDetect.Core.Communication.Endpoints
             this.inboundConnectionString = $"{inProtocol}://{inAddress}:{inPort}";
             
             // Build outbound connection string
-            var outProtocol = Configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Protocol).Value;
-            var outAddress = Configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Address).Value;
-            var outPort = Configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Port).Value;
+            var outProtocol = Configuration.GetRequiredSection(Constants.Communication.Requests.Outbound.Protocol).Value;
+            var outAddress = Configuration.GetRequiredSection(Constants.Communication.Requests.Outbound.Address).Value;
+            var outPort = Configuration.GetRequiredSection(Constants.Communication.Requests.Outbound.Port).Value;
             this.outboundConnectionString = $"{outProtocol}://{outAddress}:{outPort}";
             
             this.inboundWorkerThread = new Thread(InboundCommunicationLoop);
