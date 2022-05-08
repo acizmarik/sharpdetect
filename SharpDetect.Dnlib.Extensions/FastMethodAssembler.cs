@@ -22,6 +22,7 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
         private readonly IStringHeapCache stringHeapCache;
         private byte[] bytecode;
         private byte[]? extraSections;
+        private int firstInstructionOffset;
         private int position;
         private ushort maxStackSize;
         private uint codeSize;
@@ -64,6 +65,7 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
                 // Tiny method
                 bytecode = new byte[codeSize + 1 /* header size */];
                 bytecode.WriteByte(ref position, 0x02);
+                firstInstructionOffset = position;
                 WriteInstructions();
             }
             else
@@ -71,6 +73,7 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
                 // Fat method
                 bytecode = new byte[codeSize + 12 /* header size */];
                 WriteFatHeader();
+                firstInstructionOffset = position;
                 WriteInstructions();
 
                 if (method.Body.ExceptionHandlers.Count > 0)
@@ -142,8 +145,8 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
             }
             else
             {
-                bytecode.WriteByte(ref position, (byte)opcode.Code);
                 bytecode.WriteByte(ref position, (byte)((ushort)opcode.Code >> 8));
+                bytecode.WriteByte(ref position, (byte)opcode.Code);
             }
         }
 
@@ -162,8 +165,8 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
                 case OperandType.ShortInlineI: WriteShortInlineI(instruction); break;
 
                 // Inline offsets
-                case OperandType.InlineBrTarget: bytecode.WriteUInt32(ref position, (uint)((instruction.Operand as Instruction)!.Offset - position)); break;
-                case OperandType.ShortInlineBrTarget: bytecode.WriteSByte(ref position, (sbyte)((instruction.Operand as Instruction)!.Offset - position)); break;
+                case OperandType.InlineBrTarget: bytecode.WriteInt32(ref position, (int)((instruction.Operand as Instruction)!.Offset - (position - (firstInstructionOffset - 1)))); break;
+                case OperandType.ShortInlineBrTarget: bytecode.WriteSByte(ref position, (sbyte)((instruction.Operand as Instruction)!.Offset - (position - (firstInstructionOffset - 1)))); break;
                 case OperandType.InlineSwitch: WriteInlineSwitch(instruction); break;
 
                 // Inline tokens
