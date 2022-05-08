@@ -10,6 +10,8 @@ namespace SharpDetect.Loader
 {
     internal class ModuleBindContext : IModuleBindContext
     {
+        public IMetadataResolversProvider MetadataResolversProvider { get { return assemblyLoadContext; } }
+
         private readonly AssemblyLoadContext assemblyLoadContext;
         private readonly ConcurrentDictionary<(int ProcessId, ModuleInfo ModuleInfo), ModuleDef> modules;
         private readonly ILogger<ModuleBindContext> logger;

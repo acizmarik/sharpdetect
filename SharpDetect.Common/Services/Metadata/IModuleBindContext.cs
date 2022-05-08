@@ -5,6 +5,8 @@ namespace SharpDetect.Common.Services.Metadata
 {
     public interface IModuleBindContext
     {
+        IMetadataResolversProvider MetadataResolversProvider { get; }
+
         ModuleDef LoadModule(int processId, string path, ModuleInfo moduleInfo);
         ModuleDef LoadModule(int processId, Stream stream, string virtualPath, ModuleInfo moduleInfo);
 
