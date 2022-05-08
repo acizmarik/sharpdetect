@@ -6,7 +6,7 @@ using SharpDetect.Common.Services.Instrumentation;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 
-namespace SharpDetect.Dnlib.Extensions.Assembler
+namespace SharpDetect.Dnlib.Extensions
 {
     public class StringHeapCache : IStringHeapCache
     {
@@ -74,7 +74,6 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
                 var str = reader.ReadString((int)length, System.Text.Encoding.Unicode);
                 if (str != string.Empty)
                     cacheBuilder.Add(str, new MDToken((Table)0x70, offset - reader.StartOffset));
-                //reader.CurrentOffset++;
             }
 
             return cacheBuilder.ToImmutableDictionary();
@@ -82,24 +81,7 @@ namespace SharpDetect.Dnlib.Extensions.Assembler
 
         private static uint GetNextStringLength(ref DataReader reader)
         {
-            var size = reader.ReadCompressedUInt32();
-            //if (size < 127)
-            //{
-            //    // Compressed uint to 1 byte
-            //    reader.CurrentOffset++;
-            //}
-            //else if (size < 0x3FFF)
-            //{
-            //    // Compressed uint to 2 bytes
-            //    reader.CurrentOffset += 2;
-            //}
-            //else
-            //{
-            //    // Compressed uint to 4 bytes
-            //    reader.CurrentOffset += 4;
-            //}
-
-            return size & ~1u;
+            return reader.ReadCompressedUInt32() & ~1u;
         }
     }
 }

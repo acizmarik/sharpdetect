@@ -1,5 +1,5 @@
 ﻿using dnlib.DotNet;
-using SharpDetect.Dnlib.Extensions.Assembler;
+using SharpDetect.Dnlib.Extensions;
 using System.Runtime.CompilerServices;
 using Xunit;
 

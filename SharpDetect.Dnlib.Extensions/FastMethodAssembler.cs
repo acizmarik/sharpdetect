@@ -9,7 +9,7 @@ using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Dnlib.Extensions.Utilities;
 
-namespace SharpDetect.Dnlib.Extensions.Assembler
+namespace SharpDetect.Dnlib.Extensions
 {
     /// <summary>
     /// This is an assembler that performs almost no checks.

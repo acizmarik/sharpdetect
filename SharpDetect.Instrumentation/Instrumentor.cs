@@ -19,6 +19,7 @@ namespace SharpDetect.Instrumentation
         private readonly IShadowExecutionObserver executionObserver;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
+        private readonly IStringHeapCache stringHeapCache;
         private readonly IMethodDescriptorRegistry methodDescriptorRegistry;
         private readonly IServiceProvider serviceProvider;
         private readonly ILogger<Instrumentor> logger;
@@ -35,6 +36,7 @@ namespace SharpDetect.Instrumentation
             IProfilingClient profilingClient, 
             IModuleBindContext moduleBindContext,
             IMetadataContext metadataContext,
+            IStringHeapCache stringHeapCache,
             IMethodDescriptorRegistry methodDescriptorRegistry,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory)
@@ -43,6 +45,7 @@ namespace SharpDetect.Instrumentation
             this.profilingClient = profilingClient;
             this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
+            this.stringHeapCache = stringHeapCache;
             this.methodDescriptorRegistry = methodDescriptorRegistry;
             this.serviceProvider = serviceProvider;
             this.logger = loggerFactory.CreateLogger<Instrumentor>();

@@ -13,6 +13,7 @@ namespace SharpDetect.Core
         private readonly IConfiguration configuration;
         private readonly RuntimeEventsHub runtimeEventsHub;
         private readonly INotificationsConsumer notificationsConsumer;
+        private readonly IRequestsProducer requestsProducer;
         private readonly IProfilingMessageHub profilingMessageHub;
         private readonly IRewritingMessageHub rewritingMessageHub;
         private readonly IExecutingMessageHub executingMessageHub;
@@ -31,6 +32,7 @@ namespace SharpDetect.Core
             IExecutingMessageHub executingMessageHub,
             IMetadataContext metadataContext,
             INotificationsConsumer notificationsConsumer,
+            IRequestsProducer requestsProducer,
             IInstrumentor instrumentor,
             IDateTimeProvider dateTimeProvider,
             IServiceProvider serviceProvider,
@@ -43,6 +45,7 @@ namespace SharpDetect.Core
             this.executingMessageHub = executingMessageHub;
             this.metadataContext = metadataContext;
             this.notificationsConsumer = notificationsConsumer;
+            this.requestsProducer = requestsProducer;
             this.instrumentor = instrumentor;
             this.dateTimeProvider = dateTimeProvider;
             this.serviceProvider = serviceProvider;
@@ -67,6 +70,7 @@ namespace SharpDetect.Core
             try
             {
                 logger.LogDebug("[{class}] Analysis started.", nameof(Analysis));
+                requestsProducer.Start();
                 notificationsConsumer.Start();
                 start = dateTimeProvider.Now;
 
@@ -77,6 +81,7 @@ namespace SharpDetect.Core
             finally
             {
                 notificationsConsumer.Stop();
+                requestsProducer.Stop();
                 stop = dateTimeProvider.Now;
                 logger.LogDebug("[{class}] Analysis ended.", nameof(Analysis));
                 DumpStatistics(start, stop);

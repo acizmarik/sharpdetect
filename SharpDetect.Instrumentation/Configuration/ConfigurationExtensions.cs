@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Extensions.DependencyInjection;
+using SharpDetect.Common.Services.Instrumentation;
+using SharpDetect.Dnlib.Extensions.Configuration;
 
 namespace SharpDetect.Instrumentation.Configuration
 {
-    internal class ConfigurationExtensions
+    public static class ConfigurationExtensions
     {
+        public static void AddInstrumentation(this IServiceCollection services)
+        {
+            services.AddStringHeapCache();
+            services.AddScoped<IInstrumentor, Instrumentor>();
+        }
     }
 }
