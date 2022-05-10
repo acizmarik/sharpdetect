@@ -21,7 +21,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         typeof(bool).FullName!,
                         typeof(ulong).FullName!
-                    })
+                    }),
+                    IsInjected: true
                 ),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.FieldAccess,
@@ -45,7 +46,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(object).FullName!
-                    })
+                    }),
+                    IsInjected: true
                 ),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.FieldInstanceAccess,
@@ -69,7 +71,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         typeof(bool).FullName!,
                         typeof(ulong).FullName!,
-                    })
+                    }),
+                    IsInjected: true
                 ),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.ArrayElementAccess,
@@ -93,7 +96,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(object).FullName!,
-                    })
+                    }),
+                    IsInjected: true
                 ),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.ArrayInstanceAccess,
@@ -116,7 +120,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(int).FullName!,
-                    })
+                    }),
+                    IsInjected: true
                 ),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.ArrayIndexAccess,

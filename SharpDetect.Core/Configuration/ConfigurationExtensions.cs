@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Communication.Endpoints;

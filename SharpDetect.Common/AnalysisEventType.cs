@@ -3,8 +3,10 @@
     public enum AnalysisEventType
     {
         Unknown,
-        ArrayAccess,
-        FieldAccess,
+        ArrayElementRead,
+        ArrayElementWrite,
+        FieldRead,
+        FieldWrite,
         ObjectCreation
     }
 }

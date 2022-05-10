@@ -20,7 +20,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(object).FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.LockBlockingAcquire,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |
@@ -45,7 +46,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         typeof(object).FullName!,
                         typeof(bool).MakeByRefType().FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.LockBlockingAcquire,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |
@@ -72,7 +74,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                         typeof(object).FullName!,
                         typeof(int).FullName!,
                         typeof(bool).MakeByRefType().FullName!,
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.LockTryAcquire,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |
@@ -98,7 +101,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(object).FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.LockRelease,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |

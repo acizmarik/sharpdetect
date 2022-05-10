@@ -2,25 +2,33 @@
 using dnlib.DotNet.Emit;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
+using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Dnlib.Extensions;
+using SharpDetect.Instrumentation.Injectors;
+using SharpDetect.Instrumentation.Stubs;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 
 namespace SharpDetect.Instrumentation
 {
     internal class Instrumentor : IInstrumentor
     {
+        private readonly ConcurrentDictionary<MethodDef, (bool IsDirty, UnresolvedMethodStubs? Stubs)> instrumentationCache;
+        private readonly InjectorBase[] registeredInjectors;
+        private readonly ResolvedMethodStubs emptyResolvedMethodStubs;
         private ImmutableDictionary<int, CodeInjector> codeInjectors;
-        private ImmutableDictionary<int, CodeInspector> codeInspectors;
         private readonly IProfilingClient profilingClient;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
         private readonly IStringHeapCache stringHeapCache;
+        private readonly IEventDescriptorRegistry eventDescriptorRegistry;
         private readonly IMethodDescriptorRegistry methodDescriptorRegistry;
         private readonly IServiceProvider serviceProvider;
         private readonly ILogger<Instrumentor> logger;
@@ -33,12 +41,14 @@ namespace SharpDetect.Instrumentation
         public int InjectedMethodHooksCount { get => injectedMethodHooksCount; }
 
         public Instrumentor(
-            IShadowExecutionObserver executionObserver, 
-            IProfilingClient profilingClient, 
+            IShadowExecutionObserver executionObserver,
+            IProfilingClient profilingClient,
             IModuleBindContext moduleBindContext,
             IMetadataContext metadataContext,
             IStringHeapCache stringHeapCache,
+            IEventDescriptorRegistry eventDescriptorRegistry,
             IMethodDescriptorRegistry methodDescriptorRegistry,
+            IEnumerable<InjectorBase> registeredInjectors,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory)
         {
@@ -46,12 +56,15 @@ namespace SharpDetect.Instrumentation
             this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
             this.stringHeapCache = stringHeapCache;
+            this.eventDescriptorRegistry = eventDescriptorRegistry;
             this.methodDescriptorRegistry = methodDescriptorRegistry;
+            this.registeredInjectors = registeredInjectors.ToArray();
             this.serviceProvider = serviceProvider;
             this.logger = loggerFactory.CreateLogger<Instrumentor>();
 
+            instrumentationCache = new();
+            emptyResolvedMethodStubs = new();
             codeInjectors = ImmutableDictionary<int, CodeInjector>.Empty;
-            codeInspectors = ImmutableDictionary<int, CodeInspector>.Empty;
 
             executionObserver.ModuleLoaded += ExecutionObserver_ModuleLoaded;
             executionObserver.JITCompilationStarted += ExecutionObserver_JITCompilationStarted;
@@ -106,33 +119,59 @@ namespace SharpDetect.Instrumentation
                 return;
             }
 
-            // Check if we need to patch any calls to wrapped extern methods
-            var stubs = WrapAnalyzedExternMethodCalls(method, moduleInfo, args.Info);
-
-            // Check if user requested instrumentation for this method
-            if (methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data))
-            {
-                var assembler = new FastMethodAssembler(method, stubs, stringHeapCache);
-                var bytecode = assembler.Assemble();
-
-                if (data.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks))
-                    Interlocked.Increment(ref injectedMethodHooksCount);
-                if (bytecode is not null)
-                    Interlocked.Increment(ref instrumentedMethodsCount);
-
-                profilingClient.IssueRewriteMethodBodyAsync(null, data, args.Info).Wait();
-            }
+            // Make sure the method is instrumented if necessary
+            var (isDirty, unresolvedStubs) = PreprocessMethod(method, moduleInfo, args.Info);
+            // Resolve method stubs if necessary
+            var resolvedStubs = ResolveStubs(method, moduleInfo, unresolvedStubs, args.Info);
+            // Generate new method body if necessary
+            var bytecode = GenerateMethodBody(method, isDirty, resolvedStubs);
+            // Issue response
+            IssueJITCompilationResponse(method, bytecode, args.Info);
         }
 
-        private Dictionary<Instruction, MDToken> WrapAnalyzedExternMethodCalls(MethodDef method, ModuleInfo moduleInfo, EventInfo info)
+        private (bool IsDirty, UnresolvedMethodStubs? Stubs) PreprocessMethod(MethodDef method, ModuleInfo moduleInfo, EventInfo info)
         {
-            var stubs = new Dictionary<Instruction, MDToken>();
-            var resolver = metadataContext.GetResolver(info.ProcessId);
+            // Ensure we do not instrument the same method multiple times
+            // Also we need to make sure we always return the same bytecode (JITCompilationStarted might be called multiple times for a single method)
+            if (!instrumentationCache.TryGetValue(method, out var item))
+            {
+                lock (method)
+                {
+                    // Make sure we are the only thread that will be performing the instrumentation
+                    if (!instrumentationCache.TryGetValue(method, out item))
+                    {
+                        // Check if we need to patch any calls to wrapped extern methods
+                        var stubs = new UnresolvedMethodStubs();
+                        WrapAnalyzedExternMethodCalls(method, moduleInfo, stubs, info);
 
+                        // Check if user requested instrumentation for this method
+                        var methodInstrumented = default(bool);
+                        if (methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data))
+                        {
+                            // Statistics
+                            if (data.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks))
+                                Interlocked.Increment(ref injectedMethodHooksCount);
+
+                            // Perform instrumenation
+                            methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
+                        }
+
+                        // Cache 
+                        Guard.True<ArgumentException>(instrumentationCache.TryAdd(method, (methodInstrumented, (stubs.Count != 0) ? stubs : null)));
+                        return (methodInstrumented, stubs);
+                    }
+                }
+            }
+
+            return item;
+        }
+
+
+        private void WrapAnalyzedExternMethodCalls(MethodDef method, ModuleInfo moduleInfo, UnresolvedMethodStubs stubs, EventInfo info)
+        {
+            var resolver = metadataContext.GetResolver(info.ProcessId);
             foreach (var instruction in method.Body.Instructions.Where(i => i.OpCode.Code == Code.Call && i.Operand is IMethodDefOrRef))
             {
-                MDToken wrapperToken = default;
-
                 if (resolver.TryResolveMethodDef((instruction.Operand as IMethodDefOrRef)!, out var methodDef))
                 {
                     if (methodDef.HasBody)
@@ -141,7 +180,7 @@ namespace SharpDetect.Instrumentation
                         continue;
                     }
 
-                    if (!resolver.TryGetWrapperMethodReference(methodDef, moduleInfo, out wrapperToken))
+                    if (!resolver.TryGetWrapperMethodReference(methodDef, moduleInfo, out _))
                     {
                         // No wrapper registered
                         continue;
@@ -151,53 +190,107 @@ namespace SharpDetect.Instrumentation
                 {
                     // We might need to resolve a method defined within a module that has not been loaded yet
                     // Slow-path: try to match the method based on given reference
-                    if (!resolver.TryLookupWrapperMethodReference((instruction.Operand as IMethodDefOrRef)!, moduleInfo, out wrapperToken))
+                    if (!resolver.TryLookupWrapperMethodReference((instruction.Operand as IMethodDefOrRef)!, moduleInfo, out _))
                     {
                         // No wrapper registered
                         continue;
                     }
                 }
 
-                stubs.Add(instruction, wrapperToken);
+                stubs.Add(instruction, HelperOrWrapperReferenceStub.CreateWrapperMethodReferenceStub((instruction.Operand as IMethodDefOrRef)!));
             }
-
-            return stubs;
         }
 
-        private (CodeInspector Inspector, CodeInjector Injector) Register(int processId)
+        private ResolvedMethodStubs ResolveStubs(MethodDef methodDef, ModuleInfo moduleInfo, UnresolvedMethodStubs? unresolvedStubs, EventInfo info)
         {
-            var newInspector = new CodeInspector();
-            var newInjector = new CodeInjector();
-
-            codeInspectors.Add(processId, newInspector);
-            codeInjectors.Add(processId, newInjector);
-            return (newInspector, newInjector);
-        }
-
-        private CodeInspector GetCodeInspector(int processId)
-        {
-            if (!codeInspectors.TryGetValue(processId, out var inspector))
+            if (unresolvedStubs is null || unresolvedStubs.Count == 0)
             {
-                lock (codeInspectors)
-                {
-                    // Make sure each process gets initialized only once
-                    if (!codeInspectors.TryGetValue(processId, out inspector))
-                        return Register(processId).Inspector;
-                }
+                // Nothing to resolve
+                return emptyResolvedMethodStubs;
             }
 
-            return inspector;
+            var resolver = metadataContext.GetResolver(info.ProcessId);
+            var resolvedStubs = new ResolvedMethodStubs();
+
+            foreach (var (instruction, unresolvedStub) in unresolvedStubs)
+            {
+                MDToken mdToken;
+
+                // Resolve wrapper token
+                if (unresolvedStub.IsWrapperMethodReferenceStub())
+                {
+                    if (resolver.TryResolveMethodDef(unresolvedStub.GetExternMethod(), out var _))
+                    {
+                        // This must be resolvable
+                        resolver.TryGetWrapperMethodReference(methodDef, moduleInfo, out mdToken);
+                    }
+                    else
+                    {
+                        // This must be resolvable
+                        resolver.TryLookupWrapperMethodReference(unresolvedStub.GetExternMethod(), moduleInfo, out mdToken);
+                    }
+                }
+                // Resolve helper token
+                else
+                {
+                    // This must be resolvable
+                    resolver.TryGetHelperMethodReference(unresolvedStub.GetHelperMethodType(), moduleInfo, out mdToken);
+                }
+
+                resolvedStubs.Add(instruction, mdToken);
+            }
+
+            return resolvedStubs;
+        }
+
+        private byte[]? GenerateMethodBody(MethodDef method, bool isDirty, ResolvedMethodStubs stubs)
+        {
+            // Assemble method body
+            var bytecode = default(byte[]);
+            if (isDirty || stubs.Count > 0)
+            {
+                // Statistics
+                Interlocked.Increment(ref instrumentedMethodsCount);
+
+                // Instrument method
+                var assembler = new FastMethodAssembler(method, stubs, stringHeapCache);
+                bytecode = assembler.Assemble();
+            }
+
+            return bytecode;
+        }
+
+        private void IssueJITCompilationResponse(MethodDef method, byte[]? bytecode, EventInfo info)
+        {
+            methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
+
+            if (bytecode is not null || data is not null)
+            {
+                profilingClient.IssueRewriteMethodBodyAsync(bytecode, data, info);
+            }
+            else
+            {
+                profilingClient.IssueNoChangesRequestAsync(info);
+            }
+        }
+
+        private CodeInjector Register(int processId)
+        {
+            var newInjector = new CodeInjector(processId, registeredInjectors, eventDescriptorRegistry);
+
+            codeInjectors = codeInjectors.Add(processId, newInjector);
+            return newInjector;
         }
 
         private CodeInjector GetCodeInjector(int processId)
         {
             if (!codeInjectors.TryGetValue(processId, out var injector))
             {
-                lock (codeInspectors)
+                lock (codeInjectors)
                 {
                     // Make sure each process gets initialized only once
                     if (!codeInjectors.TryGetValue(processId, out injector))
-                        return Register(processId).Injector;
+                        return Register(processId);
                 }
             }
 

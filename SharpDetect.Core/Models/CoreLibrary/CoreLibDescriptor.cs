@@ -4,6 +4,7 @@ namespace SharpDetect.Core.Models.CoreLibrary
 {
     internal partial class CoreLibDescriptor : ILibraryDescriptor
     {
+        public bool IsCoreLibrary => true;
         public string AssemblyName => "System.Private.CoreLib";
 
         public IEnumerable<string> GetAssemblyDependencies()

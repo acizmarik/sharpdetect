@@ -1,5 +1,6 @@
 ﻿using dnlib.DotNet;
 using SharpDetect.Common.LibraryDescriptors;
+using SharpDetect.Common.Services.Descriptors;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
@@ -9,11 +10,13 @@ namespace SharpDetect.Core.Models
     {
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<MethodIdentifier, MethodInterpretationData>> unresolvedLookup;
         private readonly ConcurrentDictionary<MethodDef, MethodInterpretationData> resolvedLookup;
+        private ILibraryDescriptor coreLibraryDescriptor;
 
         public MethodDescriptorRegistry()
         {
             unresolvedLookup = new();
             resolvedLookup = new();
+            coreLibraryDescriptor = null!;
         }
 
         public void Register(ILibraryDescriptor library)
@@ -23,12 +26,21 @@ namespace SharpDetect.Core.Models
                 unresolvedLibraryRecords.TryAdd(identifier, interpretationData);
 
             unresolvedLookup.TryAdd(library.AssemblyName, unresolvedLibraryRecords);
+
+            // Check if the library is CoreLib
+            if (library.IsCoreLibrary)
+                coreLibraryDescriptor = library;
         }
 
         public void Register((MethodIdentifier Identifier, MethodInterpretationData Interpretation) method, string assemblyName)
         {
             unresolvedLookup.TryAdd(assemblyName, new());
             unresolvedLookup[assemblyName].TryAdd(method.Identifier, method.Interpretation);
+        }
+
+        public ILibraryDescriptor GetCoreLibraryDescriptor()
+        {
+            return coreLibraryDescriptor;
         }
 
         public IEnumerable<string> GetSupportedLibraries()
@@ -58,7 +70,8 @@ namespace SharpDetect.Core.Models
                 method.DeclaringType.FullName,
                 method.IsStatic,
                 (ushort)method.Parameters.Count,
-                new(method.Parameters.Select(p => p.Type.FullName).ToList()));
+                new(method.Parameters.Select(p => p.Type.FullName).ToList()),
+                method is MethodDefUser);
             if (!unresolvedAssemblyRecords.TryGetValue(identifier, out data))
             {
                 // There are no records for the given assembly

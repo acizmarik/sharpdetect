@@ -27,14 +27,6 @@ namespace SharpDetect.Metadata
             state.AddMethodDef(owner, definition, token);
         }
 
-        public void Instrument(MethodDef definition, MethodBody newBody)
-        {
-            lock (definition)
-            {
-
-            }
-        }
-
         public void Bind(TypeDef defintion, TypeInfo reference)
         {
             // Note: there is currently a single type being always injected
