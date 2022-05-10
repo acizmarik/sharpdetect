@@ -20,7 +20,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(object).FullName!
-                    })
+                    }),
+                    IsInjected: false
                 ),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.SignalBlockingWait,
@@ -46,7 +47,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         typeof(object).FullName!,
                         typeof(TimeSpan).FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.SignalTryWait,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |
@@ -71,7 +73,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         typeof(object).FullName!,
                         typeof(int).FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.SignalTryWait,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |
@@ -97,7 +100,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                         typeof(object).FullName!,
                         typeof(int).FullName!,
                         typeof(bool).FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.SignalTryWait,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |
@@ -121,7 +125,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(object).FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.SignalPulseOne,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |
@@ -144,7 +149,8 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     ArgumentTypes: new(new List<string>
                     {
                         typeof(object).FullName!
-                    })),
+                    }),
+                    IsInjected: false),
                 new MethodInterpretationData(
                     Interpretation: MethodInterpretation.SignalPulseAll,
                     Flags: MethodRewritingFlags.InjectEntryExitHooks |

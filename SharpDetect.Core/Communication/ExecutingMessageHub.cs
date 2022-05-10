@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
-using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
-using SharpDetect.Core.Models;
 using SharpDetect.Core.Utilities;
 
 namespace SharpDetect.Core.Communication

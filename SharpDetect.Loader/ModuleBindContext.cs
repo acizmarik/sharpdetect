@@ -14,13 +14,16 @@ namespace SharpDetect.Loader
 
         private readonly AssemblyLoadContext assemblyLoadContext;
         private readonly ConcurrentDictionary<(int ProcessId, ModuleInfo ModuleInfo), ModuleDef> modules;
+        private readonly ConcurrentDictionary<int, ModuleDef> coreLibraries;
         private readonly ILogger<ModuleBindContext> logger;
+        private const string coreLibraryModuleName = "System.Private.CoreLib";
 
         public ModuleBindContext(AssemblyLoadContext assemblyLoadContext, ILoggerFactory loggerFactory)
         {
             this.assemblyLoadContext = assemblyLoadContext;
             this.logger = loggerFactory.CreateLogger<ModuleBindContext>();
             modules = new();
+            coreLibraries = new();
         }
 
         public ModuleDef LoadModule(int processId, string path, ModuleInfo moduleInfo)
@@ -30,6 +33,9 @@ namespace SharpDetect.Loader
 
             if (!assemblyLoadContext.TryLoadFromAssemblyPath(path, out var assembly))
                 throw new ArgumentException("Could not bind module to provided path: {path}.", nameof(path));
+
+            if (assembly.Name == coreLibraryModuleName)
+                coreLibraries.TryAdd(processId, assembly.ManifestModule);
 
             return AddModuleToCache(processId, assembly, moduleInfo);
         }
@@ -60,8 +66,18 @@ namespace SharpDetect.Loader
             return module;
         }
 
+        public ModuleDef GetCoreLibModule(int processId)
+        {
+            if (!TryGetCoreLibModule(processId, out var module))
+                throw new ArgumentException($"Core library module for PID: {processId} was not loaded.");
+            return module;
+        }
+
         public bool TryGetModule(int processId, ModuleInfo moduleInfo, [NotNullWhen(true)] out ModuleDef? module)
             => modules.TryGetValue((processId, moduleInfo), out module);
+
+        public bool TryGetCoreLibModule(int processId, [NotNullWhen(true)] out ModuleDef? module)
+            => coreLibraries.TryGetValue(processId, out module);
 
         public void UnloadAll()
         {

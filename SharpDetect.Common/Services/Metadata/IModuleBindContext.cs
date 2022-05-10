@@ -11,7 +11,9 @@ namespace SharpDetect.Common.Services.Metadata
         ModuleDef LoadModule(int processId, Stream stream, string virtualPath, ModuleInfo moduleInfo);
 
         ModuleDef GetModule(int processId, ModuleInfo moduleInfo);
+        ModuleDef GetCoreLibModule(int processId);
         bool TryGetModule(int processId, ModuleInfo moduleInfo, [NotNullWhen(returnValue: true)] out ModuleDef? module);
+        bool TryGetCoreLibModule(int processId, [NotNullWhen(returnValue: true)] out ModuleDef? module);
 
         void UnloadAll();
     }

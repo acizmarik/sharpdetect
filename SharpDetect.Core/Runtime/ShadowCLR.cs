@@ -1,5 +1,4 @@
 ﻿using dnlib.DotNet;
-using dnlib.DotNet.Emit;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Interop;
@@ -9,7 +8,7 @@ using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Memory;
 using SharpDetect.Core.Runtime.Threads;
-using SharpDetect.Core.Utilities;
+using SharpDetect.Instrumentation.Utilities;
 using System.Collections.Concurrent;
 
 namespace SharpDetect.Core.Runtime
