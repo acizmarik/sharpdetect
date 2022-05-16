@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Metadata", "Sha
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Dnlib.Extensions", "SharpDetect.Dnlib.Extensions\SharpDetect.Dnlib.Extensions.csproj", "{E9E05057-9920-4134-A5FF-178498C51FF2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.Plugins", "SharpDetect.Plugins\SharpDetect.Plugins.csproj", "{A57F32C0-AC75-4E83-8A61-442D98BA710B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,10 @@ Global
 		{E9E05057-9920-4134-A5FF-178498C51FF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E9E05057-9920-4134-A5FF-178498C51FF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E9E05057-9920-4134-A5FF-178498C51FF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A57F32C0-AC75-4E83-8A61-442D98BA710B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A57F32C0-AC75-4E83-8A61-442D98BA710B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A57F32C0-AC75-4E83-8A61-442D98BA710B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A57F32C0-AC75-4E83-8A61-442D98BA710B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

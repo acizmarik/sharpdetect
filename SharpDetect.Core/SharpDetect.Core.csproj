@@ -17,6 +17,7 @@
     <ProjectReference Include="..\SharpDetect.Instrumentation\SharpDetect.Instrumentation.csproj" />
     <ProjectReference Include="..\SharpDetect.Loader\SharpDetect.Loader.csproj" />
     <ProjectReference Include="..\SharpDetect.Metadata\SharpDetect.Metadata.csproj" />
+    <ProjectReference Include="..\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
   </ItemGroup>
 
 </Project>
