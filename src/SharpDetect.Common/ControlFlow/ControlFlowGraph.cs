@@ -1,4 +1,5 @@
-﻿// Copyright (c) 2014 yck1509. Project: ConfuserEx
+﻿#nullable disable
+// Copyright (c) 2014 yck1509. Project: ConfuserEx
 
 using dnlib.DotNet.Emit;
 using System.Collections;

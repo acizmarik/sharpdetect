@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
+using SharpDetect.Common.Exceptions;
+using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
@@ -203,6 +205,10 @@ namespace SharpDetect.Core.Communication
                     case MethodInterpretation.LockTryAcquire:
                     case MethodInterpretation.LockBlockingAcquire:
                         {
+                            // We need to have a value captured and a result checker available
+                            Guard.NotNull<ResultChecker, ArgumentException>(interpretationData.Checker);
+                            Guard.NotNull<IValueOrPointer, ArgumentException>(returnValue);
+
                             var isSuccess = interpretationData.Checker(returnValue, byRefArguments);
                             LockAcquireReturned?.Invoke((functionInfo, isSuccess, info));
                             break;
@@ -217,6 +223,10 @@ namespace SharpDetect.Core.Communication
                     case MethodInterpretation.SignalTryWait:
                     case MethodInterpretation.SignalBlockingWait:
                         {
+                            // We need to have a value captured and a result checker available
+                            Guard.NotNull<ResultChecker, ArgumentException>(interpretationData.Checker);
+                            Guard.NotNull<IValueOrPointer, ArgumentException>(returnValue);
+
                             var isSuccess = interpretationData.Checker(returnValue, byRefArguments);
                             ObjectWaitReturned?.Invoke((functionInfo, isSuccess, info));
                             break;
