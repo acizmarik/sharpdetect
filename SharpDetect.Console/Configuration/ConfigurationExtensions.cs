@@ -37,7 +37,7 @@ namespace SharpDetect.Console.Configuration
                 {
                     var pluginsManager = provider.GetRequiredService<IPluginsManager>();
                     // Ensure plugins are loaded already
-                    await pluginsManager.LoadPluginsAsync();
+                    await pluginsManager.LoadPluginsAsync(CancellationToken.None);
 
                     System.Console.WriteLine("List of available plugins: ");
                     foreach (var plugin in pluginsManager.GetLoadedPluginInfos())

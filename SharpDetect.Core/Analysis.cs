@@ -4,6 +4,7 @@ using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
+using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Runtime;
 
 namespace SharpDetect.Core
@@ -21,6 +22,7 @@ namespace SharpDetect.Core
         private readonly IDateTimeProvider dateTimeProvider;
         private readonly IServiceProvider serviceProvider;
         private readonly IInstrumentor instrumentor;
+        private readonly IPluginsManager pluginsManager;
         private readonly ILoggerFactory loggerFactory;
         private readonly ILogger<Analysis> logger;
 
@@ -34,6 +36,7 @@ namespace SharpDetect.Core
             INotificationsConsumer notificationsConsumer,
             IRequestsProducer requestsProducer,
             IInstrumentor instrumentor,
+            IPluginsManager pluginsManager,
             IDateTimeProvider dateTimeProvider,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory)
@@ -47,6 +50,7 @@ namespace SharpDetect.Core
             this.notificationsConsumer = notificationsConsumer;
             this.requestsProducer = requestsProducer;
             this.instrumentor = instrumentor;
+            this.pluginsManager = pluginsManager;
             this.dateTimeProvider = dateTimeProvider;
             this.serviceProvider = serviceProvider;
             this.loggerFactory = loggerFactory;
@@ -69,13 +73,16 @@ namespace SharpDetect.Core
 
             try
             {
+                await pluginsManager.LoadPluginsAsync(ct).ConfigureAwait(false);
+                using var pluginsProxy = new PluginsProxy(configuration, pluginsManager, runtimeEventsHub);
+                pluginsProxy.Initialize();
                 logger.LogDebug("[{class}] Analysis started.", nameof(Analysis));
                 requestsProducer.Start();
                 notificationsConsumer.Start();
                 start = dateTimeProvider.Now;
 
                 // Wait until execution completes
-                await execution.GetAwaitableTaskAsync();
+                await execution.GetAwaitableTaskAsync().ConfigureAwait(false);
                 return true;
             }
             finally
