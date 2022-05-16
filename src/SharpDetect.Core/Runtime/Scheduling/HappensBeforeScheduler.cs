@@ -433,6 +433,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 thread.PopCallStack();
 
                 // Notify listeners
+                Guard.NotNull<ShadowObject, ArgumentException>(instance);
                 RuntimeEventsHub.RaiseLockAcquireReturned(ShadowCLR, function, instance, isSuccess, info);
             }));
         }
