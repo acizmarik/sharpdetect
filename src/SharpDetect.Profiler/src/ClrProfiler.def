@@ -1,0 +1,5 @@
+LIBRARY "SharpDetect.Profiler.dll"
+
+EXPORTS
+    DllCanUnloadNow PRIVATE
+    DllGetClassObject PRIVATE
