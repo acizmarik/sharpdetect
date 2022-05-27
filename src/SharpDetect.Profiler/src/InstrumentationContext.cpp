@@ -51,12 +51,12 @@ HRESULT InstrumentationContext::CreateHelperMethods(ModuleMetadata& coreLibMetad
 	LOG_ERROR_AND_RET_IF(FAILED(hr), (&logger), "Could not inject helper method");
 	
 	std::vector<COR_SIGNATURE> instanceAccessSignature = { IMAGE_CEE_CS_CALLCONV_DEFAULT, 1, ELEMENT_TYPE_VOID, ELEMENT_TYPE_OBJECT };
-	hr = CreateHelperMethod(coreLibMetadata, "FieldInstanceRefAccess"_W, SharpDetect::Common::Messages::MethodType::FIELD_INSTANCE_REF_ACCESS, 
+	hr = CreateHelperMethod(coreLibMetadata, "FieldInstanceRefAccess"_W, SharpDetect::Common::Messages::MethodType::FIELD_INSTANCE_ACCESS, 
 		instanceAccessSignature, sizeof(instanceAccessSignature), mdTokenFieldInstanceRefAccessMethod);
 	LOG_ERROR_AND_RET_IF(FAILED(hr), (&logger), "Could not inject helper method");
 
 	std::vector<COR_SIGNATURE> arrayAccessSignature = { IMAGE_CEE_CS_CALLCONV_DEFAULT, 1, ELEMENT_TYPE_VOID, ELEMENT_TYPE_OBJECT };
-	hr = CreateHelperMethod(coreLibMetadata, "ArrayInstanceRefAccess"_W, SharpDetect::Common::Messages::MethodType::ARRAY_INSTANCE_REF_ACCESS,
+	hr = CreateHelperMethod(coreLibMetadata, "ArrayInstanceRefAccess"_W, SharpDetect::Common::Messages::MethodType::ARRAY_INSTANCE_ACCESS,
 		arrayAccessSignature, sizeof(arrayAccessSignature), mdTokenArrayInstanceRefAccessMethod);
 	LOG_ERROR_AND_RET_IF(FAILED(hr), (&logger), "Could not inject helper method");
 

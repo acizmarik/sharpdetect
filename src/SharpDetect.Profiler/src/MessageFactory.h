@@ -30,8 +30,8 @@ public:
 	static SharpDetect::Common::Messages::NotifyMessage ProfilerInitialized(ThreadID thread);
 	static SharpDetect::Common::Messages::NotifyMessage ProfilerDestroyed(ThreadID thread);
 	static SharpDetect::Common::Messages::NotifyMessage ModuleLoaded(ThreadID thread, ModuleID moduleId, const WSTRING& path);
-	static SharpDetect::Common::Messages::NotifyMessage ClassLoaded(ThreadID thread, ModuleID moduleId, mdTypeDef classToken);
-	static SharpDetect::Common::Messages::NotifyMessage FunctionJITCompilationStarted(ThreadID thread, ModuleID moduleId, mdTypeDef classToken, mdMethodDef functionToken);
+	static SharpDetect::Common::Messages::NotifyMessage TypeLoaded(ThreadID thread, ModuleID moduleId, mdTypeDef classToken);
+	static SharpDetect::Common::Messages::NotifyMessage JITCompilationStarted(ThreadID thread, ModuleID moduleId, mdTypeDef classToken, mdMethodDef functionToken);
 	static SharpDetect::Common::Messages::NotifyMessage ThreadCreated(ThreadID thread, ThreadID newThreadId);
 	static SharpDetect::Common::Messages::NotifyMessage ThreadDestroyed(ThreadID thread, ThreadID newThreadId);
 	static SharpDetect::Common::Messages::NotifyMessage TypeInjected(ThreadID thread, ModuleID moduleId, mdTypeDef classToken);

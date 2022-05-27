@@ -17,6 +17,13 @@
 syntax = "proto3";
 package SharpDetect.Common.Messages;
 
+message RequestSetup
+{
+	int32						MonitoringFlags = 1;
+	bool						InstrumentationEnabled = 2;
+	bool						EnterLeaveHooksEnabled = 3;
+}
+
 message RequestMessage
 {
 	bool                        NoChanges = 1;
