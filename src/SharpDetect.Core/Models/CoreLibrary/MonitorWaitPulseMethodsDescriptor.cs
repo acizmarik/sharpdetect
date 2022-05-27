@@ -32,7 +32,7 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         new(0, (ushort)UIntPtr.Size, false)
                     },
-                    Checker: static (retValue, _) => (bool)retValue.BoxedValue)
+                    Checker: static (retValue, _) => (bool)retValue!.BoxedValue)
             );
 
             // System.Boolean System.Threading.Monitor::Wait(System.Object,System.TimeSpan)
@@ -58,7 +58,7 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         new(0, (ushort)UIntPtr.Size, false)
                     },
-                    Checker: static (retValue, _) => (bool)retValue.BoxedValue)
+                    Checker: static (retValue, _) => (bool)retValue!.BoxedValue)
             );
 
             // System.Boolean System.Threading.Monitor::Wait(System.Object,System.Int32)
@@ -84,7 +84,7 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         new(0, (ushort)UIntPtr.Size, false)
                     },
-                    Checker: static (retValue, _) => (bool)retValue.BoxedValue)
+                    Checker: static (retValue, _) => (bool)retValue!.BoxedValue)
             );
 
             // System.Boolean System.Threading.Monitor::Wait(System.Object,System.Int32,System.Boolean)
@@ -111,7 +111,7 @@ namespace SharpDetect.Core.Models.CoreLibrary
                     {
                         new(0, (ushort)UIntPtr.Size, false)
                     },
-                    Checker: static (retValue, _) => (bool)retValue.BoxedValue)
+                    Checker: static (retValue, _) => (bool)retValue!.BoxedValue)
             );
 
             // System.Void System.Threading.Monitor::Pulse(System.Object)

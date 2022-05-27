@@ -447,7 +447,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 thread.PushCallStack(function, MethodInterpretation.LockRelease, instance);
 
                 // Notify listeners
-                RuntimeEventsHub.RaiseLockReleaseReturned(ShadowCLR, function, instance, info);
+                RuntimeEventsHub.RaiseLockReleaseCalled(ShadowCLR, function, instance, info);
             }));
         }
 
@@ -536,9 +536,6 @@ namespace SharpDetect.Core.Runtime.Scheduling
                     return;
                 }
 
-                // Release lock
-                instance.SyncBlock.Release(thread);
-
                 // Notify listeners
                 RuntimeEventsHub.RaiseObjectWaitAttempted(ShadowCLR, function, instance, info);
             }));
@@ -587,11 +584,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
             {
                 var thread = ThreadLookup[info.ThreadId];
                 var instance = thread.PeekCallstack().Arguments as ShadowObject;
-                instance!.SyncBlock.Release(thread);
                 thread.PopCallStack();
 
                 // Notify listeners
-                RuntimeEventsHub.RaiseObjectPulseReturned(ShadowCLR, function, isPulseAll, instance, info);
+                RuntimeEventsHub.RaiseObjectPulseReturned(ShadowCLR, function, isPulseAll, instance!, info);
             }));
         }
         #endregion

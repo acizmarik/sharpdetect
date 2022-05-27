@@ -58,7 +58,7 @@ namespace SharpDetect.Core.Models.CoreLibrary
                         new(0, (ushort)UIntPtr.Size, false),
                         new(1, sizeof(bool), true)
                     },
-                    Checker: (_, byRefArgs) => (bool)byRefArgs[0].Argument.BoxedValue!)
+                    Checker: (_, byRefArgs) => (bool)byRefArgs![0].Argument.BoxedValue!)
             );
 
             // System.Void System.Threading.Monitor::ReliableEnterTimeout(System.Object,System.Int32,System.Boolean&)
@@ -87,7 +87,7 @@ namespace SharpDetect.Core.Models.CoreLibrary
                         new(1, sizeof(int), false),
                         new(2, sizeof(bool), true)
                     },
-                    Checker: (_, byRefArgs) => (bool)byRefArgs[0].Argument.BoxedValue!)
+                    Checker: (_, byRefArgs) => (bool)byRefArgs![0].Argument.BoxedValue!)
             );
 
             // System.Void System.Threading.Monitor::Exit(System.Object)
