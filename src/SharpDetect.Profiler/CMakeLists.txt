@@ -4,6 +4,7 @@ project(SharpDetect.Profiler)
 # Common compilation options
 add_compile_options(-DBIT64 -DHOST_64BIT -DAMD64)
 add_compile_options(-DPAL_STDCPP_COMPAT -DUNICODE)
+set(CMAKE_CXX_STANDARD 20)
 
 # Include files built by conan
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
@@ -67,6 +68,7 @@ add_library(${PROJECT_NAME} SHARED
 	"src/ModuleMetadata.cpp"
 	"src/TinyMethodUser.cpp"
 	"src/wstring.cpp"
+	"src/PAL.cpp"
 
 	${PROTO_NTF_SRC}
 	${PROTO_REQ_SRC}
