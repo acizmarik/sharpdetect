@@ -60,7 +60,6 @@ namespace SharpDetect.Core.Runtime
             var module = moduleBindContext.LoadModule(ProcessId, path, moduleInfo);
 
             Modules.TryAdd(moduleInfo, module);
-            moduleBindContext.LoadModule(ProcessId, path, moduleInfo);
         }
 
         public void Process_TypeLoaded(TypeInfo typeInfo)
@@ -214,7 +213,6 @@ namespace SharpDetect.Core.Runtime
 
             // Emit and bind wrapper to the original method
             emitter.Emit(new(functionInfo.ModuleId), wrapper, wrapperToken);
-            emitter.Bind(wrappedMethod, new FunctionInfo(functionInfo.ModuleId, functionInfo.FunctionToken, wrapperToken));
         }
 
         public void Process_TypeReferenced(TypeInfo typeInfo)

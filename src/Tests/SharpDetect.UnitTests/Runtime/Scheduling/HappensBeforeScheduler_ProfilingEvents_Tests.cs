@@ -710,12 +710,17 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var eventsHub = new RuntimeEventsHub();
             using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
             var crashed = false;
-            scheduler.ProcessCrashed += () => crashed = true;
+            using var signaller = new ManualResetEvent(false);
+            scheduler.ProcessCrashed += () =>
+            {
+                crashed = true;
+                signaller.Set();
+            };
 
             // Act
             var heartBeatRaised = false;
             eventsHub.Heartbeat += _ => heartBeatRaised = true;
-            await Task.Delay(SchedulerBase.MaximumDelayBetweenHeartbeats + TimeSpan.FromMilliseconds(500));
+            await Task.WhenAny(Task.Delay(SchedulerBase.MaximumDelayBetweenHeartbeats * 2 + TimeSpan.FromMilliseconds(500)), Task.Run(() => signaller.WaitOne()));
 
             // Assert
             Assert.True(crashed);
