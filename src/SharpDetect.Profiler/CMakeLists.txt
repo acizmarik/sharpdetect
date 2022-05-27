@@ -7,8 +7,6 @@ add_compile_options(-DPAL_STDCPP_COMPAT -DUNICODE)
 
 # Include files built by conan
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-
-set(CONAN_DISABLE_CHECK_COMPILER "true")
 conan_basic_setup()
 
 if (WIN32)
@@ -28,7 +26,7 @@ if (UNIX)
 	set(ASM_SRC "src/GlobalHooks.Linux.x64.S")
 
 	# Additional compilation options
-	add_compile_options(-std=c++20 -fPIC -fms-extensions -Wno-pragmas)
+	add_compile_options(-fPIC -fms-extensions -Wno-pragmas)
 	add_compile_options(-DPLATFORM_UNIX -DUNIX)
 
 	# Additional includes
@@ -40,9 +38,15 @@ if (UNIX)
 	)
 endif(UNIX)
 
+# Regenerate protocol buffer definitions
+find_package(Protobuf REQUIRED)
+protobuf_generate_cpp(PROTO_NTF_SRC PROTO_NTF_HDR "../SharpDetect.Common/Messages/profiler_notifications.proto")
+protobuf_generate_cpp(PROTO_REQ_SRC PROTO_REQ_HDR "../SharpDetect.Common/Messages/profiler_requests.proto")
+
 # Common includes
 include_directories(
 	"src"
+	"build"
 )
 
 # Create a dynamically-linked library
@@ -64,9 +68,8 @@ add_library(${PROJECT_NAME} SHARED
 	"src/TinyMethodUser.cpp"
 	"src/wstring.cpp"
 
-	"src/profiler_notifications.pb.cc"
-	"src/profiler_requests.pb.cc"
-
+	${PROTO_NTF_SRC}
+	${PROTO_REQ_SRC}
 	${ASM_SRC}
 )
 
