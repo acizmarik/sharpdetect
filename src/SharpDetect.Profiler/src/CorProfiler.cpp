@@ -150,7 +150,7 @@ HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRE
 		// Inject wrappers
 		for (auto&& method : wrapping.methodstowrap())
 		{
-			hr = pInstrumentationContext->WrapExternMethod(moduleMetadata, method.classtoken(), method.functiontoken(), method.parameterscount());
+			hr = pInstrumentationContext->WrapExternMethod(moduleMetadata, method.typetoken(), method.functiontoken(), method.parameterscount());
 			LOG_ERROR_AND_RET_IF(FAILED(hr), pLogger, 
 				"Could not inject wrapper for external method " + std::to_string(method.functiontoken()) + 
 				" defined by module " + ToString(moduleMetadata.GetModulePath()));
@@ -177,7 +177,7 @@ HRESULT STDMETHODCALLTYPE CorProfiler::ClassLoadFinished(ClassID classId, HRESUL
 	LOG_ERROR_AND_RET_IF(FAILED(hr), pLogger, "Could not GetClassIdInfo2 about type " + std::to_string(classId));
 
 	// Pack information about class load
-	auto message = MessageFactory::ClassLoaded(pInstrumentationContext->GetCurrentThreadId(), moduleId, classToken);
+	auto message = MessageFactory::TypeLoaded(pInstrumentationContext->GetCurrentThreadId(), moduleId, classToken);
 	pMessagingClient->SendNotification(std::move(message));
 
 	return S_OK;
@@ -201,7 +201,7 @@ HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID function
 	LOG_ERROR_AND_RET_IF(FAILED(hr), pLogger, "Could not GetMethodProps for method " + std::to_string(functionId));
 	
 	// Make sure the client registers that we are waiting for a request
-	auto message = MessageFactory::FunctionJITCompilationStarted(pInstrumentationContext->GetCurrentThreadId(), moduleId, classToken, functionToken);
+	auto message = MessageFactory::JITCompilationStarted(pInstrumentationContext->GetCurrentThreadId(), moduleId, classToken, functionToken);
 	const auto notificationId = pMessagingClient->GetNewNotificationId();
 	auto requestFuture = pMessagingClient->ReceiveRequest(notificationId);
 	pMessagingClient->SendNotification(std::move(message), notificationId);

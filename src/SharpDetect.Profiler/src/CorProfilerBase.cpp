@@ -15,6 +15,7 @@
  */
 
 #include "CorProfilerBase.h"
+#include "PAL.h"
 
 CorProfilerBase::CorProfilerBase()
 	: pCorProfilerInfo(nullptr), pMessagingClient(nullptr), pLogger(nullptr), refCount(0)
@@ -54,16 +55,19 @@ void CorProfilerBase::PrepareMessagingClient()
 	auto requests = -1;
 
 	// Get notifications port
-	if (const auto notificationsPort = std::getenv("SHARPDETECT_PROFILER_NOTIFICATIONS_PORT"))
+	const auto notificationsPortStr = PAL::ReadEnvironmentVariable("Communication:Notifications:Port");
+	if (!notificationsPortStr.empty())
 	{
-		auto stringStream = std::stringstream(notificationsPort);
-		stringStream >> notifications;
+		// We were passed value in evironments
+		notifications = std::stoi(notificationsPortStr);
 	}
+
 	// Get requests port
-	if (const auto requestsPort = std::getenv("SHARPDETECT_PROFILER_REQUESTS_PORT"))
+	const auto requestsPortStr = PAL::ReadEnvironmentVariable("Communication:Requests:Port");
+	if (!requestsPortStr.empty())
 	{
-		auto stringStream = std::stringstream(requestsPort);
-		stringStream >> requests;
+		// We were passed value in evironments
+		requests = std::stoi(requestsPortStr);
 	}
 
 	// Initialize messaging client

@@ -16,6 +16,7 @@
 
 #include "Stdafx.h"
 #include "MessageFactory.h"
+#include "PAL.h"
 
 using namespace SharpDetect::Common::Messages;
 
@@ -26,7 +27,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::RequestProcessed(Th
 	response->set_requestid(requestId);
 	response->set_result(result);
 	message.set_allocated_response(response);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -35,7 +37,8 @@ NotifyMessage MessageFactory::ProfilerInitialized(ThreadID thread)
 	auto message = NotifyMessage();
 	auto profilerInitialized = new Notify_ProfilerInitialized();
 	message.set_allocated_profilerinitialized(profilerInitialized);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -44,7 +47,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::ProfilerDestroyed(T
 	auto message = NotifyMessage();
 	auto profilerDestroyed = new Notify_ProfilerDestroyed();
 	message.set_allocated_profilerdestroyed(profilerDestroyed);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -55,30 +59,33 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::ModuleLoaded(Thread
 	moduleLoadedMessage->set_moduleid(moduleId);
 	moduleLoadedMessage->set_modulepath(ToString(modulePath));
 	message.set_allocated_moduleloaded(moduleLoadedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
-SharpDetect::Common::Messages::NotifyMessage MessageFactory::ClassLoaded(ThreadID thread, ModuleID moduleId, mdTypeDef classToken)
+SharpDetect::Common::Messages::NotifyMessage MessageFactory::TypeLoaded(ThreadID thread, ModuleID moduleId, mdTypeDef classToken)
 {
 	auto message = NotifyMessage();
-	auto classLoadedMessage = new Notify_ClassLoaded();
+	auto classLoadedMessage = new Notify_TypeLoaded();
 	classLoadedMessage->set_moduleid(moduleId);
-	classLoadedMessage->set_classtoken(classToken);
-	message.set_allocated_classloaded(classLoadedMessage);
-	message.set_thread(thread);
+	classLoadedMessage->set_typetoken(classToken);
+	message.set_allocated_typeloaded(classLoadedMessage);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
-SharpDetect::Common::Messages::NotifyMessage MessageFactory::FunctionJITCompilationStarted(ThreadID thread, ModuleID moduleId, mdTypeDef classToken, mdMethodDef functionToken)
+SharpDetect::Common::Messages::NotifyMessage MessageFactory::JITCompilationStarted(ThreadID thread, ModuleID moduleId, mdTypeDef classToken, mdMethodDef functionToken)
 {
 	auto message = NotifyMessage();
-	auto functionCompilationStartedMessage = new Notify_FunctionJITCompilationStarted();
+	auto functionCompilationStartedMessage = new Notify_JITCompilationStarted();
 	functionCompilationStartedMessage->set_moduleid(moduleId);
-	functionCompilationStartedMessage->set_classtoken(classToken);
+	functionCompilationStartedMessage->set_typetoken(classToken);
 	functionCompilationStartedMessage->set_functiontoken(functionToken);
-	message.set_allocated_functionjitcompilationstarted(functionCompilationStartedMessage);
-	message.set_thread(thread);
+	message.set_allocated_jitcompilationstarted(functionCompilationStartedMessage);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -88,7 +95,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::ThreadCreated(Threa
 	auto threadCreatedMessage = new Notify_ThreadCreated();
 	threadCreatedMessage->set_threadid(newThreadId);
 	message.set_allocated_threadcreated(threadCreatedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -98,7 +106,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::ThreadDestroyed(Thr
 	auto threadCreatedMessage = new Notify_ThreadDestroyed();
 	threadCreatedMessage->set_threadid(newThreadId);
 	message.set_allocated_threaddestroyed(threadCreatedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -107,9 +116,10 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::TypeInjected(Thread
 	auto message = NotifyMessage();
 	auto typeInjectedMessage = new Notify_TypeInjected();
 	typeInjectedMessage->set_moduleid(moduleId);
-	typeInjectedMessage->set_classtoken(classToken);
+	typeInjectedMessage->set_typetoken(classToken);
 	message.set_allocated_typeinjected(typeInjectedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -118,9 +128,10 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::TypeReferenced(Thre
 	auto message = NotifyMessage();
 	auto typeReferencedMessage = new Notify_TypeReferenced();
 	typeReferencedMessage->set_moduleid(moduleId);
-	typeReferencedMessage->set_classtoken(classRefToken);
+	typeReferencedMessage->set_typetoken(classRefToken);
 	message.set_allocated_typereferenced(typeReferencedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -129,11 +140,12 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::MethodInjected(Thre
 	auto message = NotifyMessage();
 	auto methodInjectedMessage = new Notify_MethodInjected();
 	methodInjectedMessage->set_moduleid(moduleId);
-	methodInjectedMessage->set_classtoken(classToken);
+	methodInjectedMessage->set_typetoken(classToken);
 	methodInjectedMessage->set_functiontoken(functionToken);
 	methodInjectedMessage->set_type(type);
 	message.set_allocated_methodinjected(methodInjectedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -142,11 +154,12 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::HelperMethodReferen
 	auto message = NotifyMessage();
 	auto helperMethodReferencedMessage = new Notify_HelperMethodReferenced();
 	helperMethodReferencedMessage->set_moduleid(moduleId);
-	helperMethodReferencedMessage->set_classtoken(classRefToken);
+	helperMethodReferencedMessage->set_typetoken(classRefToken);
 	helperMethodReferencedMessage->set_functiontoken(functionRefToken);
 	helperMethodReferencedMessage->set_type(type);
 	message.set_allocated_helpermethodreferenced(helperMethodReferencedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -155,13 +168,14 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::WrapperMethodRefere
 	auto message = NotifyMessage();
 	auto wrapperMethodReferencedMessage = new Notify_WrapperMethodReferenced();
 	wrapperMethodReferencedMessage->set_defmoduleid(moduleId);
-	wrapperMethodReferencedMessage->set_defclasstoken(classToken);
+	wrapperMethodReferencedMessage->set_deftypetoken(classToken);
 	wrapperMethodReferencedMessage->set_deffunctiontoken(functionToken);
 	wrapperMethodReferencedMessage->set_refmoduleid(refModuleId);
-	wrapperMethodReferencedMessage->set_refclasstoken(classRefToken);
+	wrapperMethodReferencedMessage->set_reftypetoken(classRefToken);
 	wrapperMethodReferencedMessage->set_reffunctiontoken(functionRefToken);
 	message.set_allocated_wrappermethodreferenced(wrapperMethodReferencedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -170,11 +184,12 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::MethodWrapped(Threa
 	auto message = NotifyMessage();
 	auto methodWrappedMessage = new Notify_MethodWrapperInjected();
 	methodWrappedMessage->set_moduleid(moduleId);
-	methodWrappedMessage->set_classtoken(classToken);
+	methodWrappedMessage->set_typetoken(classToken);
 	methodWrappedMessage->set_originalfunctiontoken(nativeFunctionToken);
 	methodWrappedMessage->set_wrapperfunctiontoken(wrapperFunctionToken);
 	message.set_allocated_methodwrapperinjected(methodWrappedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -183,10 +198,11 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::MethodCalled(Thread
 	auto message = NotifyMessage();
 	auto methodCalledMessage = new Notify_MethodCalled();
 	methodCalledMessage->set_moduleid(moduleId);
-	methodCalledMessage->set_classtoken(classToken);
+	methodCalledMessage->set_typetoken(classToken);
 	methodCalledMessage->set_functiontoken(functionToken);
 	message.set_allocated_methodcalled(methodCalledMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -195,12 +211,13 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::MethodCalledWithArg
 	auto message = NotifyMessage();
 	auto methodCalledMessage = new Notify_MethodCalled();
 	methodCalledMessage->set_moduleid(moduleId);
-	methodCalledMessage->set_classtoken(classToken);
+	methodCalledMessage->set_typetoken(classToken);
 	methodCalledMessage->set_functiontoken(functionToken);
 	methodCalledMessage->set_argumentvalues(ToString(argValues, cbArgValues));
 	methodCalledMessage->set_argumentoffsets(ToString(argInfos, cbArgInfos));
 	message.set_allocated_methodcalled(methodCalledMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -209,10 +226,11 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::MethodReturned(Thre
 	auto message = NotifyMessage();
 	auto methodReturnedMessage = new Notify_MethodReturned();
 	methodReturnedMessage->set_moduleid(moduleId);
-	methodReturnedMessage->set_classtoken(classToken);
+	methodReturnedMessage->set_typetoken(classToken);
 	methodReturnedMessage->set_functiontoken(functionToken);
 	message.set_allocated_methodreturned(methodReturnedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -222,13 +240,14 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::MethodReturnedWithR
 	auto message = NotifyMessage();
 	auto methodReturnedMessage = new Notify_MethodReturned();
 	methodReturnedMessage->set_moduleid(moduleId);
-	methodReturnedMessage->set_classtoken(classToken);
+	methodReturnedMessage->set_typetoken(classToken);
 	methodReturnedMessage->set_functiontoken(functionToken);
 	methodReturnedMessage->set_returnvalue(ToString(returnValue, cbReturnValue));
 	methodReturnedMessage->set_byrefargumentvalues(ToString(argValues, cbArgValues));
 	methodReturnedMessage->set_byrefargumentoffsets(ToString(argInfos, cbArgInfos));
 	message.set_allocated_methodreturned(methodReturnedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -239,7 +258,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::GarbageCollectionSt
 	gcStartedMessage->set_generationscollected(ToString(generations, cbGenerations));
 	gcStartedMessage->set_generationsegmentbounds(ToString(bounds, cbBounds));
 	message.set_allocated_garbagecollectionstarted(gcStartedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -249,7 +269,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::GarbageCollectionFi
 	auto gcFinishedMessage = new Notify_GarbageCollectionFinished();
 	gcFinishedMessage->set_generationsegmentbounds(ToString(bounds, cbBounds));
 	message.set_allocated_garbagecollectionfinished(gcFinishedMessage);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -257,10 +278,11 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeSuspendStart
 {
 	auto message = NotifyMessage();
 	auto runtimeSuspendStarted = new Notify_RuntimeSuspendStarted();
-	auto suspensionReason = static_cast<SharpDetect::Common::Messages::RuntimeSuspensionReason>(reason);
+	auto suspensionReason = static_cast<SharpDetect::Common::Messages::SUSPEND_REASON>(reason);
 	runtimeSuspendStarted->set_reason(suspensionReason);
 	message.set_allocated_runtimesuspendstarted(runtimeSuspendStarted);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -269,7 +291,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeSuspendFinis
 	auto message = NotifyMessage();
 	auto runtimeSuspendFinished = new Notify_RuntimeSuspendFinished();
 	message.set_allocated_runtimesuspendfinished(runtimeSuspendFinished);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -279,7 +302,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeThreadSuspen
 	auto runtimeThreadSuspended = new Notify_RuntimeThreadSuspended();
 	runtimeThreadSuspended->set_threadid(suspendedThread);
 	message.set_allocated_runtimethreadsuspended(runtimeThreadSuspended);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -289,7 +313,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeThreadResume
 	auto runtimeThreadResumed = new Notify_RuntimeThreadResumed();
 	runtimeThreadResumed->set_threadid(resumedThread);
 	message.set_allocated_runtimethreadresumed(runtimeThreadResumed);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -300,7 +325,8 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::SurvivingReferences
 	survivingReferences->set_blocks(ToString(ranges, cbRanges));
 	survivingReferences->set_lengths(ToString(lengths, cbLengths));
 	message.set_allocated_survivingreferences(survivingReferences);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
 
@@ -312,6 +338,7 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::MovedReferences(Thr
 	movedReferences->set_newblocks(ToString(newRanges, cbNewRanges));
 	movedReferences->set_lengths(ToString(lengths, cbLengths));
 	message.set_allocated_movedreferences(movedReferences);
-	message.set_thread(thread);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
 	return message;
 }
