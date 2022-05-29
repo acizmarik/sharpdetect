@@ -50,3 +50,48 @@ jobs:
       run: dotnet build src/SharpDetect.sln --no-restore --no-incremental /property:WarningLevel=0
     - name: Test
       run: dotnet test src/SharpDetect.sln --no-build --verbosity normal --logger GitHubActions
+      
+  cpp-windows-build:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Python 3.x
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.x
+    - name: Setup Conan
+      run: |
+        pip install conan --upgrade
+        conan config init --force
+        conan profile update settings.os="Windows" default
+        conan profile update settings.arch="x86_64" default
+        conan profile update settings.compiler="Visual Studio" default
+        conan profile update settings.compiler.version=17 default
+        conan profile update settings.compiler.cppstd=20 default
+        conan profile update settings.build_type="Debug" default
+    - name: Create output folder
+      run: mkdir src/SharpDetect.Profiler/build
+    - name: Cache native dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.conan
+          C:/.conan
+        key: ${{ runner.os }}-build-${{ env.cache-name }}
+        restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+    - name: Prepare dependencies
+      run: |
+        cd src/SharpDetect.Profiler/build
+        conan install .. --build=missing
+    - name: Run CMake generators
+      run: |
+        cd src/SharpDetect.Profiler/build
+        cmake ..
+    - name: Build
+      run: |
+        cd src/SharpDetect.Profiler/build
+        cmake --build .
