@@ -6,6 +6,12 @@
         {
             public const string SharpDetectPluginsRootFolder = "SHARPDETECT_PLUGINS";
         }
+        
+        public static class ModuleDescriptors
+        {
+            public const string CoreModulesPaths = "ModuleDescriptors:Core";
+            public const string ExtensionModulePaths = "ModuleDescriptors:Extensions";
+        }
 
         public static class Serilog
         {
