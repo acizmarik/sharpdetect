@@ -22,7 +22,7 @@ namespace SharpDetect.Core.Models
         public void Register(ILibraryDescriptor library)
         {
             var unresolvedLibraryRecords = new ConcurrentDictionary<MethodIdentifier, MethodInterpretationData>();
-            foreach (var (identifier, interpretationData) in library.GetMethods())
+            foreach (var (identifier, interpretationData) in library.Methods)
                 unresolvedLibraryRecords.TryAdd(identifier, interpretationData);
 
             unresolvedLookup.TryAdd(library.AssemblyName, unresolvedLibraryRecords);

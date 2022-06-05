@@ -106,7 +106,7 @@ namespace SharpDetect.Instrumentation.Injectors
         {
             if (dummyFieldAccessRef is null)
             {
-                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().GetMethods()
+                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().Methods
                     .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == nameof(MethodType.FieldAccess)).Identifier;
                 var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
                 var coreLibTypes = coreLibModule.CorLibTypes;
@@ -120,7 +120,7 @@ namespace SharpDetect.Instrumentation.Injectors
         {
             if (dummyFieldInstanceAccessRef is null)
             {
-                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().GetMethods()
+                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().Methods
                     .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == nameof(MethodType.FieldInstanceAccess)).Identifier;
                 var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
                 var coreLibTypes = coreLibModule.CorLibTypes;

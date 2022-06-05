@@ -1,5 +1,6 @@
 ﻿using dnlib.DotNet;
 using dnlib.DotNet.MD;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
@@ -9,6 +10,7 @@ using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Models;
 using SharpDetect.Core.Runtime;
+using SharpDetect.Core.Scripts;
 using SharpDetect.Loader;
 using SharpDetect.Metadata;
 
@@ -26,11 +28,6 @@ namespace SharpDetect.UnitTests
             return new MetadataContext(
                 moduleBindContext,
                 profilingMessageHub);
-        }
-
-        public static MethodDescriptorRegistry CreateMethodDataRegistry()
-        {
-            return new MethodDescriptorRegistry();
         }
 
         public IModuleBindContext ModuleBindContext
@@ -59,6 +56,29 @@ namespace SharpDetect.UnitTests
             assemblyLoadContext = new AssemblyLoadContext(LoggerFactory);
         }
 
+        protected IConfiguration CreateModulesConfiguration()
+        {
+            return new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string> {
+                    { $"{Constants.ModuleDescriptors.CoreModulesPaths}:0", "Modules" },
+                })
+                .Build();
+        }
+
+        protected async Task<MethodDescriptorRegistry> CreateRegistryForModulesAsync(params string[] modules)
+        {
+            var registry = new MethodDescriptorRegistry();
+            var luaBridge = new LuaBridge(CreateModulesConfiguration());
+            foreach (var module in modules)
+            {
+                var descriptor = luaBridge.CreateAssemblyDescriptor(await luaBridge.LoadModuleAsync(module));
+                var methodDescriptors = new List<(MethodIdentifier, MethodInterpretationData)>();
+                descriptor.GetMethodDescriptors(methodDescriptors);
+                registry.Register(new LibraryDescriptor(descriptor.GetAssemblyName(), descriptor.IsCoreLibrary(), methodDescriptors));
+            }
+
+            return registry;
+        }
 
         protected static IDictionary<MethodType, FunctionInfo> MockInjectCoreLib(int processId, ModuleInfo coreLibInfo, ModuleDef coreLibDef, IMetadataContext context)
         {

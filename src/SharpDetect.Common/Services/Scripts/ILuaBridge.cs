@@ -5,7 +5,7 @@ namespace SharpDetect.Common.Services.Scripts
 {
     public interface ILuaBridge
     {
-        string[] ModulePaths { get; }
+        string[] ModuleDirectories { get; }
 
         Task<Script> LoadModuleAsync(string path);
 

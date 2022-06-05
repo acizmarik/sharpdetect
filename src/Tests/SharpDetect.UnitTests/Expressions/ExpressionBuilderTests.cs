@@ -2,7 +2,6 @@
 using SharpDetect.Common.Scripts.ExpressionBuilder;
 using SharpDetect.Core.Runtime.Arguments;
 using Xunit;
-using static SharpDetect.Common.Scripts.ExpressionBuilder.CSharpExpressionBuilder;
 
 namespace SharpDetect.UnitTests.Expressions
 {

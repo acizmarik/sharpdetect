@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Modules\sharpdetect.lua">
+    <None Update="Modules\Imports\sharpdetect.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Modules\system.private.corelib.lua">

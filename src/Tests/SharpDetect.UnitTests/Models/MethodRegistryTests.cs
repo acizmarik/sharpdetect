@@ -2,7 +2,7 @@
 using SharpDetect.Common;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Core.Models;
-using SharpDetect.Core.Models.CoreLibrary;
+using SharpDetect.Core.Scripts;
 using Xunit;
 
 namespace SharpDetect.UnitTests.Models
@@ -10,11 +10,10 @@ namespace SharpDetect.UnitTests.Models
     public class MethodRegistryTests : TestsBase
     {
         [Fact]
-        public void MethodRegistry_TryGetMethodInterpretationData_Match()
+        public async Task MethodRegistry_TryGetMethodInterpretationData_Match()
         {
             // Prepare
-            var registry = new MethodDescriptorRegistry();
-            registry.Register(new CoreLibDescriptor());
+            var registry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var moduleDef = AssemblyDef.Load(typeof(object).Assembly.Location).ManifestModule;
             var typeDef = moduleDef.Types.Single(t => t.ReflectionFullName == typeof(Monitor).FullName);
             var methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Exit));
@@ -32,11 +31,10 @@ namespace SharpDetect.UnitTests.Models
         }
 
         [Fact]
-        public void MethodRegistry_TryGetMethodInterpretationData_NoMatch()
+        public async Task MethodRegistry_TryGetMethodInterpretationData_NoMatch()
         {
             // Prepare
-            var registry = new MethodDescriptorRegistry();
-            registry.Register(new CoreLibDescriptor());
+            var registry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var moduleDef = AssemblyDef.Load(typeof(object).Assembly.Location).ManifestModule;
             var typeDef = moduleDef.Types.Single(t => t.ReflectionFullName == typeof(object).FullName);
             var methodDef = typeDef.Methods.Single(m => m.Name == nameof(object.GetHashCode));
