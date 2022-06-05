@@ -1,18 +1,15 @@
 ﻿using dnlib.DotNet;
-using SharpDetect.Core.Models;
-using SharpDetect.Core.Models.CoreLibrary;
 using Xunit;
 
 namespace SharpDetect.UnitTests.Models
 {
-    public class CoreLibDescriptorTests
+    public class CoreLibDescriptorTests : TestsBase
     {
         [Fact]
-        public void CoreLibDescriptor_ResolvesMonitorLockMethods()
+        public async Task CoreLibDescriptor_ResolvesMonitorLockMethods()
         {
             // Prepare
-            var registry = new MethodDescriptorRegistry();
-            registry.Register(new CoreLibDescriptor());
+            var registry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var moduleDef = AssemblyDef.Load(typeof(object).Assembly.Location).ManifestModule;
             var corTypes = moduleDef.CorLibTypes;
             var typeDef = moduleDef.Types.Single(t => t.ReflectionFullName == typeof(Monitor).FullName);
@@ -29,11 +26,10 @@ namespace SharpDetect.UnitTests.Models
         }
 
         [Fact]
-        public void CoreLibDescriptor_ResolvesMonitorSignalMethods()
+        public async Task CoreLibDescriptor_ResolvesMonitorSignalMethods()
         {
             // Prepare
-            var registry = new MethodDescriptorRegistry();
-            registry.Register(new CoreLibDescriptor());
+            var registry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var moduleDef = AssemblyDef.Load(typeof(object).Assembly.Location).ManifestModule;
             var corTypes = moduleDef.CorLibTypes;
             var typeDef = moduleDef.Types.Single(t => t.ReflectionFullName == typeof(Monitor).FullName);

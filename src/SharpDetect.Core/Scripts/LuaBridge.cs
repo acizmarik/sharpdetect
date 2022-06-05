@@ -20,7 +20,8 @@ namespace SharpDetect.Core.Scripts
 {
     internal class LuaBridge : ILuaBridge
     {
-        public string[] ModulePaths { get; }
+        public string[] ModuleDirectories { get; }
+        private string[] luaPaths { get; }
         private static readonly Action<Script> globalsInitializer;
         private readonly Func<string, string[], Script> scriptFactory;
 
@@ -64,14 +65,15 @@ namespace SharpDetect.Core.Scripts
         {
             var coreModules = configuration.GetSection(Constants.ModuleDescriptors.CoreModulesPaths).Get<string[]>() ?? Enumerable.Empty<string>();
             var extensionModules = configuration.GetSection(Constants.ModuleDescriptors.ExtensionModulePaths).Get<string[]>() ?? Enumerable.Empty<string>();
-            ModulePaths = coreModules.Concat(extensionModules).ToArray();
+            ModuleDirectories = coreModules.Concat(extensionModules).ToArray();
+            luaPaths = ModuleDirectories.SelectMany(dir => { return new[] { $"{dir}/?", $"{dir}/?.lua" }; }).ToArray();
 
             // Environment setup
             scriptFactory = (code, paths) =>
             {
                 var script = new Script();
                 // Set script loader paths
-                ((ScriptLoaderBase)script.Options.ScriptLoader).ModulePaths = ModulePaths;
+                ((ScriptLoaderBase)script.Options.ScriptLoader).ModulePaths = luaPaths;
                 // Setup globals
                 globalsInitializer(script);
                 // Execute script
@@ -85,7 +87,7 @@ namespace SharpDetect.Core.Scripts
             Guard.True<ArgumentException>(File.Exists(modulePath));
 
             var code = await File.ReadAllTextAsync(modulePath);
-            return scriptFactory(code, ModulePaths);
+            return scriptFactory(code, luaPaths);
         }
 
         public AssemblyDescriptorScript CreateAssemblyDescriptor(Script script)

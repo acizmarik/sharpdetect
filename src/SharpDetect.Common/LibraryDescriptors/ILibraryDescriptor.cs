@@ -4,8 +4,6 @@
     {
         bool IsCoreLibrary { get; }
         string AssemblyName { get; }
-
-        IEnumerable<string> GetAssemblyDependencies();
-        IEnumerable<(MethodIdentifier Identifier, MethodInterpretationData Data)> GetMethods();
+        IReadOnlyList<(MethodIdentifier Identifier, MethodInterpretationData Data)> Methods { get; }
     }
 }

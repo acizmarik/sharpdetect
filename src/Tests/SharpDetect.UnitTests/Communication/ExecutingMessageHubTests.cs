@@ -2,10 +2,8 @@
 using Google.Protobuf;
 using SharpDetect.Common;
 using SharpDetect.Common.Messages;
-using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Core.Communication;
-using SharpDetect.Core.Models.CoreLibrary;
 using Xunit;
 
 namespace SharpDetect.UnitTests.Communication
@@ -15,7 +13,7 @@ namespace SharpDetect.UnitTests.Communication
         [Theory]
         [InlineData(123, true)]
         [InlineData(132, false)]
-        public void ExecutingMessageHub_FieldAccessed(byte expectedIdentifier, bool expectedIsWrite)
+        public async Task ExecutingMessageHub_FieldAccessed(byte expectedIdentifier, bool expectedIsWrite)
         {
             // Prepare
             const ulong notificationId = 123;
@@ -28,8 +26,7 @@ namespace SharpDetect.UnitTests.Communication
             var moduleBindContext = ModuleBindContext;
             var coreLibModule = moduleBindContext.LoadModule(processId, modulePath, moduleInfo);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             byte[] argValues = new byte[]
             {
                 (expectedIsWrite) ? (byte)1 : (byte)0 /* Value (bool) */,
@@ -98,7 +95,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_FieldInstanceAccessed()
+        public async Task ExecutingMessageHub_FieldInstanceAccessed()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -111,8 +108,7 @@ namespace SharpDetect.UnitTests.Communication
             var moduleBindContext = ModuleBindContext;
             var coreLibModule = moduleBindContext.LoadModule(processId, modulePath, moduleInfo);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             byte[] argValues = new byte[] { 123, 0, 0, 0, 0, 0, 0, 0 /* Value (UIntPtr) */ };
             byte[] argOffsets = new byte[] { 8, 0 /* Value length (ushort) */, 0, 0 /* Index (ushort) */ };
 
@@ -172,7 +168,7 @@ namespace SharpDetect.UnitTests.Communication
         [Theory]
         [InlineData(123, true)]
         [InlineData(132, false)]
-        public void ExecutingMessageHub_ArrayElementAccessed(byte expectedIdentifier, bool expectedIsWrite)
+        public async Task ExecutingMessageHub_ArrayElementAccessed(byte expectedIdentifier, bool expectedIsWrite)
         {
             // Prepare
             const ulong notificationId = 123;
@@ -185,8 +181,7 @@ namespace SharpDetect.UnitTests.Communication
             var moduleBindContext = ModuleBindContext;
             var coreLibModule = moduleBindContext.LoadModule(processId, modulePath, moduleInfo);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             byte[] argValues = new byte[]
             {
                 (expectedIsWrite) ? (byte)1 : (byte)0 /* Value (bool) */,
@@ -255,7 +250,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_ArrayInstanceAccessed()
+        public async Task ExecutingMessageHub_ArrayInstanceAccessed()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -268,8 +263,7 @@ namespace SharpDetect.UnitTests.Communication
             var moduleBindContext = ModuleBindContext;
             var coreLibModule = moduleBindContext.LoadModule(processId, modulePath, moduleInfo);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             byte[] argValues = new byte[] { 123, 0, 0, 0, 0, 0, 0, 0 /* Value (UIntPtr) */ };
             byte[] argOffsets = new byte[] { 8, 0 /* Value length (ushort) */, 0, 0 /* Index (ushort) */ };
 
@@ -327,7 +321,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_ArrayIndexAccessed()
+        public async Task ExecutingMessageHub_ArrayIndexAccessed()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -340,8 +334,7 @@ namespace SharpDetect.UnitTests.Communication
             var moduleBindContext = ModuleBindContext;
             var coreLibModule = moduleBindContext.LoadModule(processId, modulePath, moduleInfo);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             byte[] argValues = new byte[] { 123, 0, 0, 0, /* Value (int) */ };
             byte[] argOffsets = new byte[] { 4, 0 /* Value length (ushort) */, 0, 0 /* Index (ushort) */ };
 
@@ -399,7 +392,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_MethodCalled()
+        public async Task ExecutingMessageHub_MethodCalled()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -410,7 +403,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
+            var methodDataRegistry = await CreateRegistryForModulesAsync();
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(ExecutingMessageHubTests));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(ExecutingMessageHub_MethodCalled));
@@ -460,7 +453,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_MethodCalled_Static_WithArguments()
+        public async Task ExecutingMessageHub_MethodCalled_Static_WithArguments()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -471,7 +464,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
+            var methodDataRegistry = await CreateRegistryForModulesAsync();
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(ExecutingMessageHubTests));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(StaticTestMethod));
@@ -529,7 +522,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_MethodCalled_Instance_WithArguments()
+        public async Task ExecutingMessageHub_MethodCalled_Instance_WithArguments()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -540,7 +533,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
+            var methodDataRegistry = await CreateRegistryForModulesAsync();
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(ExecutingMessageHubTests));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(InstanceTestMethod));
@@ -625,7 +618,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_MethodReturned()
+        public async Task ExecutingMessageHub_MethodReturned()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -636,7 +629,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
+            var methodDataRegistry = await CreateRegistryForModulesAsync();
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(ExecutingMessageHubTests));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(ExecutingMessageHub_MethodCalled));
@@ -703,7 +696,7 @@ namespace SharpDetect.UnitTests.Communication
         [Theory]
         [InlineData(nameof(StaticTestMethod))]
         [InlineData(nameof(InstanceTestMethod))]
-        public void ExecutingMessageHub_MethodReturned_WithRetValue(string methodName)
+        public async Task ExecutingMessageHub_MethodReturned_WithRetValue(string methodName)
         {
             // Prepare
             const ulong notificationId = 123;
@@ -714,7 +707,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
+            var methodDataRegistry = await CreateRegistryForModulesAsync();
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(ExecutingMessageHubTests));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == methodName);
@@ -787,7 +780,7 @@ namespace SharpDetect.UnitTests.Communication
         [InlineData(nameof(StaticTestMethodOutArg), true)]
         [InlineData(nameof(InstanceTestMethodRefArg), false)]
         [InlineData(nameof(InstanceTestMethodOutArg), false)]
-        public void ExecutingMessageHub_MethodReturned_WithByRefArguments(string methodName, bool isStaticMethod)
+        public async Task ExecutingMessageHub_MethodReturned_WithByRefArguments(string methodName, bool isStaticMethod)
         {
             // Prepare
             const ulong notificationId = 123;
@@ -798,7 +791,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
+            var methodDataRegistry = await CreateRegistryForModulesAsync();
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(ExecutingMessageHubTests));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == methodName);
@@ -871,7 +864,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_LockAcquireAttempted()
+        public async Task ExecutingMessageHub_LockAcquireAttempted()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -882,8 +875,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Enter) && m.Parameters.Count == 1);
@@ -947,7 +939,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_LockAcquireReturned()
+        public async Task ExecutingMessageHub_LockAcquireReturned()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -958,8 +950,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Enter) && m.Parameters.Count == 1);
@@ -1035,7 +1026,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_LockReleaseCalled()
+        public async Task ExecutingMessageHub_LockReleaseCalled()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -1046,8 +1037,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Exit));
@@ -1111,7 +1101,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_LockReleaseReturned()
+        public async Task ExecutingMessageHub_LockReleaseReturned()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -1122,8 +1112,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Exit) && m.Parameters.Count == 1);
@@ -1196,7 +1185,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_ObjectWaitAttempted()
+        public async Task ExecutingMessageHub_ObjectWaitAttempted()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -1207,8 +1196,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Wait) 
@@ -1273,7 +1261,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_ObjectWaitReturned()
+        public async Task ExecutingMessageHub_ObjectWaitReturned()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -1284,8 +1272,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Wait) && m.Parameters.Count == 1);
@@ -1363,7 +1350,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_ObjectPulseCalled()
+        public async Task ExecutingMessageHub_ObjectPulseCalled()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -1374,8 +1361,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.Pulse));
@@ -1442,7 +1428,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_ObjectPulseAllCalled()
+        public async Task ExecutingMessageHub_ObjectPulseAllCalled()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -1453,8 +1439,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.PulseAll));
@@ -1521,7 +1506,7 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ExecutingMessageHub_ObjectPulseReturned()
+        public async Task ExecutingMessageHub_ObjectPulseReturned()
         {
             // Prepare
             const ulong notificationId = 123;
@@ -1532,8 +1517,7 @@ namespace SharpDetect.UnitTests.Communication
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var moduleBindContext = ModuleBindContext;
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var methodDataRegistry = CreateMethodDataRegistry();
-            methodDataRegistry.Register(new CoreLibDescriptor());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             ModuleDef moduleDef = moduleBindContext.LoadModule(processId, modulePath, new(moduleId));
             TypeDef typeDef = moduleDef.Types.Single(t => t.Name == nameof(Monitor));
             MethodDef methodDef = typeDef.Methods.Single(m => m.Name == nameof(Monitor.PulseAll));

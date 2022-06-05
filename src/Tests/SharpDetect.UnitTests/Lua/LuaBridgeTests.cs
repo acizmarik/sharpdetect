@@ -1,14 +1,12 @@
-﻿using Microsoft.Extensions.Configuration;
-using SharpDetect.Common;
-using SharpDetect.Common.LibraryDescriptors;
+﻿using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Core.Scripts;
 using Xunit;
 
 namespace SharpDetect.UnitTests.Lua
 {
-    public class LuaBridgeTests
+    public class LuaBridgeTests : TestsBase
     {
-        private const string moduleDescriptorsDirectory = "../../../../../SharpDetect.Common/Modules";
+        private const string moduleDescriptorsDirectory = "Modules";
         private const string coreLibDescriptorPath = moduleDescriptorsDirectory + "/system.private.corelib.lua";
 
         [Fact]
@@ -18,7 +16,7 @@ namespace SharpDetect.UnitTests.Lua
             var luaBridge = new LuaBridge(CreateModulesConfiguration());
 
             // Assert
-            Assert.NotEmpty(luaBridge.ModulePaths);
+            Assert.NotEmpty(luaBridge.ModuleDirectories);
         }
 
         [Fact]
@@ -92,16 +90,6 @@ namespace SharpDetect.UnitTests.Lua
 
             // Assert
             Assert.NotEmpty(methods);
-        }
-
-        private IConfiguration CreateModulesConfiguration()
-        {
-            return new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string> {
-                    { $"{Constants.ModuleDescriptors.CoreModulesPaths}:0", moduleDescriptorsDirectory + "/?" },
-                    { $"{Constants.ModuleDescriptors.CoreModulesPaths}:1", moduleDescriptorsDirectory + "/?.lua" }
-                })
-                .Build();
         }
     }
 }
