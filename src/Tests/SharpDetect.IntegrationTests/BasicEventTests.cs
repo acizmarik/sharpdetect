@@ -115,9 +115,10 @@ namespace SharpDetect.IntegrationTests
             using var scope = environment.ServiceProvider.CreateScope();
             var provider = scope.ServiceProvider;
             var configuration = provider.GetRequiredService<IConfiguration>();
+
+            using var profiler = new MockProfiler(configuration);
             var analysis = provider.GetRequiredService<IAnalysis>();
             var sink = provider.GetRequiredService<BlockingCollection<string>>();
-            using var profiler = new MockProfiler(configuration);
 
             // Act
             profiler.Send(new NotifyMessage()
@@ -164,6 +165,79 @@ namespace SharpDetect.IntegrationTests
             Assert.Equal(nameof(IPlugin.ModuleLoaded), sink.Skip(1).First());
             Assert.Equal(nameof(IPlugin.TypeLoaded), sink.Skip(2).First());
             Assert.Equal(nameof(IPlugin.AnalysisEnded), sink.Skip(3).First());
+        }
+
+        [Fact]
+        public async Task BasicEventTests_JITCompilationStarted()
+        {
+            // Prepar
+            using var scope = environment.ServiceProvider.CreateScope();
+            var provider = scope.ServiceProvider;
+            var configuration = provider.GetRequiredService<IConfiguration>();
+
+            using var profiler = new MockProfiler(configuration);
+            var analysis = provider.GetRequiredService<IAnalysis>();
+            var sink = provider.GetRequiredService<BlockingCollection<string>>();
+
+            // Act
+            profiler.Send(new NotifyMessage()
+            {
+                ProfilerInitialized = new Notify_ProfilerInitialized(),
+                NotificationId = 1,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            profiler.Send(new NotifyMessage()
+            {
+                ModuleLoaded = new Notify_ModuleLoaded()
+                {
+                    ModuleId = 456,
+                    ModulePath = typeof(BasicEventTests).Assembly.Location
+                },
+                NotificationId = 2,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            profiler.Send(new NotifyMessage()
+            {
+                TypeLoaded = new Notify_TypeLoaded()
+                {
+                    ModuleId = 456,
+                    TypeToken = (uint)typeof(BasicEventTests).MetadataToken
+                },
+                NotificationId = 3,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            profiler.Send(new NotifyMessage()
+            {
+                JITCompilationStarted = new Notify_JITCompilationStarted()
+                {
+                    ModuleId = 456,
+                    TypeToken = (uint)typeof(BasicEventTests).MetadataToken,
+                    FunctionToken = (uint)typeof(BasicEventTests)
+                        .GetMethod(nameof(BasicEventTests_JITCompilationStarted))!.MetadataToken
+                },
+                NotificationId = 4,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            profiler.Send(new NotifyMessage()
+            {
+                ProfilerDestroyed = new Notify_ProfilerDestroyed(),
+                NotificationId = 5,
+                ProcessId = 123,
+                ThreadId = 0
+            });
+
+            // Assert
+            Assert.True(await analysis.ExecuteAsync(CancellationToken.None));
+            Assert.Equal(5, sink.Count);
+            Assert.Equal(nameof(IPlugin.AnalysisStarted), sink.First());
+            Assert.Equal(nameof(IPlugin.ModuleLoaded), sink.Skip(1).First());
+            Assert.Equal(nameof(IPlugin.TypeLoaded), sink.Skip(2).First());
+            Assert.Equal(nameof(IPlugin.JITCompilationStarted), sink.Skip(3).First());
+            Assert.Equal(nameof(IPlugin.AnalysisEnded), sink.Skip(4).First());
         }
     }
 }
