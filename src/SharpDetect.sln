@@ -23,6 +23,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Dnlib.Extension
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Plugins", "SharpDetect.Plugins\SharpDetect.Plugins.csproj", "{A57F32C0-AC75-4E83-8A61-442D98BA710B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.IntegrationTests", "Tests\SharpDetect.IntegrationTests\SharpDetect.IntegrationTests.csproj", "{D85A079C-5591-40C9-A10B-534E1970D24B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -179,12 +181,29 @@ Global
 		{A57F32C0-AC75-4E83-8A61-442D98BA710B}.RelWithDebInfo|Any CPU.Build.0 = Release|Any CPU
 		{A57F32C0-AC75-4E83-8A61-442D98BA710B}.RelWithDebInfo|x64.ActiveCfg = Release|Any CPU
 		{A57F32C0-AC75-4E83-8A61-442D98BA710B}.RelWithDebInfo|x64.Build.0 = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Debug|x64.Build.0 = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.MinSizeRel|Any CPU.ActiveCfg = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.MinSizeRel|Any CPU.Build.0 = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.MinSizeRel|x64.ActiveCfg = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.MinSizeRel|x64.Build.0 = Debug|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Release|x64.ActiveCfg = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.Release|x64.Build.0 = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.RelWithDebInfo|Any CPU.ActiveCfg = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.RelWithDebInfo|Any CPU.Build.0 = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.RelWithDebInfo|x64.ActiveCfg = Release|Any CPU
+		{D85A079C-5591-40C9-A10B-534E1970D24B}.RelWithDebInfo|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{16965B78-B852-4546-B32D-3CA7446E836A} = {37920ECD-3A0D-42BA-820E-FACBED7A79CE}
+		{D85A079C-5591-40C9-A10B-534E1970D24B} = {37920ECD-3A0D-42BA-820E-FACBED7A79CE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4EB9A7A9-81B2-4838-B3D1-60CCAEEBDBE6}

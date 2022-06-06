@@ -1,12 +1,7 @@
 ﻿namespace SharpDetect.Common
 {
     public static class Constants
-    {
-        public static class Environment
-        {
-            public const string SharpDetectPluginsRootFolder = "SHARPDETECT_PLUGINS";
-        }
-        
+    {        
         public static class ModuleDescriptors
         {
             public const string CoreModulesPaths = "ModuleDescriptors:Core";
@@ -22,6 +17,7 @@
         public static class Configuration
         {
             public const string TargetAssembly = "TargetAssembly";
+            public const string PluginsRootFolder = "PluginsPath";
             public const string PluginsChain = "PluginsChain";
         }
 
@@ -50,6 +46,13 @@
                     public const string Protocol = "Communication:Requests:Outbound:Protocol";
                 }
             }
+        }
+
+        public static class Tests
+        {
+            public const string Port = "Tests:Port";
+            public const string Address = "Tests.Address";
+            public const string Protocol = "Tests.Protocol";
         }
     }
 }

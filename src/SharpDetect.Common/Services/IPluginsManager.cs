@@ -9,6 +9,6 @@ namespace SharpDetect.Common.Services
         Task<int> LoadPluginsAsync(CancellationToken ct);
         IEnumerable<PluginInfo> GetLoadedPluginInfos();
 
-        bool TryConstructPlugins(string[] pluginDescriptions, [NotNullWhen(returnValue: true)] out IPlugin[] plugins);
+        bool TryConstructPlugins(string[] pluginDescriptions, IServiceProvider provider, [NotNullWhen(returnValue: true)] out IPlugin[] plugins);
     }
 }

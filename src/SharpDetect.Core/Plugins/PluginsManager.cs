@@ -23,7 +23,7 @@ namespace SharpDetect.Core.Plugins
         public PluginsManager(IConfiguration configuration, ILoggerFactory loggerFactory)
         {
             this.configuration = configuration;
-            this.pluginsRootDirectory = new(configuration.GetRequiredSection(Constants.Environment.SharpDetectPluginsRootFolder).Value);
+            this.pluginsRootDirectory = new(configuration.GetRequiredSection(Constants.Configuration.PluginsRootFolder).Value);
             this.logger = loggerFactory.CreateLogger<PluginsManager>();
             this.loadedAssemblies = new();
             this.loadedPluginInfos = new();
@@ -110,7 +110,7 @@ namespace SharpDetect.Core.Plugins
             return pluginActivators.Count;
         }
 
-        public bool TryConstructPlugins(string[] pluginDescriptions, [NotNullWhen(true)] out IPlugin[] plugins)
+        public bool TryConstructPlugins(string[] pluginDescriptions, IServiceProvider provider, [NotNullWhen(true)] out IPlugin[] plugins)
         {
             var index = 0;
             plugins = new IPlugin[pluginDescriptions.Length];
@@ -128,12 +128,13 @@ namespace SharpDetect.Core.Plugins
                 try
                 {
                     var plugin = pluginActivators[pluginInfo.First()]();
+                    plugin.Initialize(provider);
                     plugins[index++] = plugin;
                     result = true;
                 }
                 catch
                 {
-                    logger.LogError("[{class}] Could not instantiate plugin {plugin}.", nameof(PluginsManager), pluginInfo);
+                    logger.LogError("[{class}] Could not instantiate or initialize plugin {plugin}.", nameof(PluginsManager), pluginInfo);
                     result = false;
                 }
 
