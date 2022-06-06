@@ -13,7 +13,7 @@ namespace SharpDetect.Core.Communication.Endpoints
     {
         public readonly IConfiguration Configuration;
         private readonly string connectionString;
-        private readonly IRewritingMessageHub profilingMessageHub;
+        private readonly IProfilingMessageHub profilingMessageHub;
         private readonly IRewritingMessageHub rewritingMessageHub;
         private readonly IExecutingMessageHub executingMessageHub;
         private readonly ILogger<NotificationServer> logger;
@@ -21,7 +21,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         private readonly NetMQPoller poller;
         private bool isDisposed;
 
-        public NotificationServer(IConfiguration configuration, IRewritingMessageHub profilingHub, IRewritingMessageHub rewritingHub, IExecutingMessageHub executingHub, ILoggerFactory loggerFactory)
+        public NotificationServer(IConfiguration configuration, IProfilingMessageHub profilingHub, IRewritingMessageHub rewritingHub, IExecutingMessageHub executingHub, ILoggerFactory loggerFactory)
         {
             Configuration = configuration;
             this.profilingMessageHub = profilingHub;
@@ -37,9 +37,10 @@ namespace SharpDetect.Core.Communication.Endpoints
             this.poller = new NetMQPoller();
             this.socket = new PullSocket(connectionString);
             this.poller.Add(socket);
+            this.socket.ReceiveReady += ReceiveProfilerMessage;
         }
 
-        private void ReceiveProfilerMessage(object _, NetMQSocketEventArgs e)
+        private void ReceiveProfilerMessage(object? _, NetMQSocketEventArgs e)
         {
             while (socket.HasIn)
             {
@@ -82,6 +83,7 @@ namespace SharpDetect.Core.Communication.Endpoints
                 isDisposed = true;
                 poller.Stop();
                 poller.Dispose();
+                socket.Dispose();
                 GC.SuppressFinalize(this);
             }
         }
