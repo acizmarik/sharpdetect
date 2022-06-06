@@ -8,8 +8,8 @@ namespace SharpDetect.Loader.Configuration
         public static void AddLoader(this IServiceCollection services)
         {
             services.AddSingleton<AssemblyLoadContext>();
-            services.AddTransient<IModuleBindContext, ModuleBindContext>();
-            services.AddSingleton<IMetadataResolversProvider>(p => p.GetRequiredService<AssemblyLoadContext>());
+            services.AddScoped<IModuleBindContext, ModuleBindContext>();
+            services.AddScoped<IMetadataResolversProvider>(p => p.GetRequiredService<AssemblyLoadContext>());
         }
     }
 }

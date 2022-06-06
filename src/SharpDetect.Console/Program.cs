@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
 using SharpDetect.Common;
+using SharpDetect.Common.Services;
 using SharpDetect.Console.Configuration;
 using SharpDetect.Core.Configuration;
 using System.CommandLine;
@@ -17,7 +18,8 @@ namespace SharpDetect.Console
 
             // Setup dependency injection
             var services = new ServiceCollection();
-            ConfigureServices(services, configuration);
+            ConfigureCommonServices(services, configuration);
+            ConfigureCliSpecificServices(services);
             var servicesProvider = services.BuildServiceProvider();
 
             // Execute root command
@@ -25,7 +27,7 @@ namespace SharpDetect.Console
             await handler.InvokeAsync(args).ConfigureAwait(continueOnCapturedContext: false);
         }
 
-        private static IConfiguration CreateConfiguration()
+        internal static IConfiguration CreateConfiguration()
         {
             return new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -34,7 +36,7 @@ namespace SharpDetect.Console
                 .Build();
         }
 
-        private static void ConfigureServices(ServiceCollection services, IConfiguration configuration)
+        internal static void ConfigureCommonServices(ServiceCollection services, IConfiguration configuration)
         {
             // Register configuration provider as a service
             services.AddSingleton(configuration);
@@ -56,11 +58,17 @@ namespace SharpDetect.Console
                 builder.AddSerilog(dispose: true);
             });
 
+            // Add SharpDetect
+            services.AddSharpDetectCore();
+        }
+
+        internal static void ConfigureCliSpecificServices(ServiceCollection services)
+        {
             // Register command handlers
             services.AddCommandLineHandlers();
 
-            // Add SharpDetect
-            services.AddSharpDetectCore();
+            // Make application run based on real time
+            services.AddSingleton<IDateTimeProvider, UtcDateTimeProvider>();
         }
     }
 }
