@@ -4,11 +4,10 @@ using NetMQ;
 using NetMQ.Sockets;
 using SharpDetect.Common;
 using SharpDetect.Common.Messages;
-using System.Diagnostics;
 
 namespace SharpDetect.IntegrationTests.Mocks
 {
-    internal class MockProfiler : IDisposable
+    public class MockProfiler : IDisposable
     {
         private readonly PushSocket notificationsSenderSocket;
         private readonly SubscriberSocket requestsReceivingSocket;
