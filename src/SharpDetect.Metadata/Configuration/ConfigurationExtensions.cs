@@ -7,7 +7,7 @@ namespace SharpDetect.Metadata.Configuration
     {
         public static void AddMetadata(this IServiceCollection collection)
         {
-            collection.AddSingleton<IMetadataContext, MetadataContext>();
+            collection.AddScoped<IMetadataContext, MetadataContext>();
         }
     }
 }

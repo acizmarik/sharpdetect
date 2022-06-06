@@ -28,8 +28,8 @@ namespace SharpDetect.Core.Configuration
             services.AddInstrumentation();
             services.AddModuleDescriptors();
 
-            services.AddSingleton<IDateTimeProvider, UtcDateTimeProvider>();
             services.AddSingleton<ILuaBridge, LuaBridge>();
+            services.AddSingleton<IPluginsManager, PluginsManager>();
             services.AddScoped<IAnalysis, Analysis>();
             services.AddScoped<RuntimeEventsHub>();      
             services.AddScoped<IProfilingMessageHub, ProfilingMessageHub>();
@@ -39,8 +39,6 @@ namespace SharpDetect.Core.Configuration
             services.AddScoped<IRequestsProducer, RequestServer>();
             services.AddScoped<IProfilingClient, ProfilingClient>();
             services.AddScoped<IHealthMonitor, HealthMonitor>();
-            services.AddScoped<IPluginsManager, PluginsManager>();
-
             services.AddScoped<IShadowExecutionObserver, RuntimeEventsHub>(p => p.GetRequiredService<RuntimeEventsHub>());
         }
 
