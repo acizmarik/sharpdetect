@@ -35,7 +35,7 @@ jobs:
     - name: Build & Treat Warnings as Errors
       run: dotnet build src/SharpDetect.sln --no-restore --no-incremental /warnaserror
 
-  dotnet-unit-tests:
+  dotnet-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
