@@ -10,7 +10,7 @@ namespace SharpDetect.Plugins
     [PluginExport("Echo", "1.0.0")]
     public class EchoPlugin : IPlugin
     {
-        public void Initialize(IConfiguration configuration, IServiceProvider serviceProvider)
+        public void Initialize(IServiceProvider serviceProvider)
         {
             throw new NotImplementedException();
         }

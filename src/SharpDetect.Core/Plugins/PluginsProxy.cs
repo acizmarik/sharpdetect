@@ -14,13 +14,13 @@ namespace SharpDetect.Core.Plugins
         private readonly IPlugin[] plugins;
         private bool isDisposed;
 
-        public PluginsProxy(IConfiguration configuration, IPluginsManager pluginsManager, IShadowExecutionObserver runtimeEventsHub)
+        public PluginsProxy(IConfiguration configuration, IServiceProvider serviceProvider, IPluginsManager pluginsManager, IShadowExecutionObserver runtimeEventsHub)
         {
             this.pluginsManager = pluginsManager;
             this.runtimeEventsHub = runtimeEventsHub;
             var chain = configuration[Constants.Configuration.PluginsChain].Split('|');
 
-            Guard.True<ArgumentException>(pluginsManager.TryConstructPlugins(chain, out plugins));
+            Guard.True<ArgumentException>(pluginsManager.TryConstructPlugins(chain, serviceProvider, out plugins));
         }
 
         public void Initialize()

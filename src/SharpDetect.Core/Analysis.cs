@@ -18,6 +18,7 @@ namespace SharpDetect.Core
         private readonly IProfilingMessageHub profilingMessageHub;
         private readonly IRewritingMessageHub rewritingMessageHub;
         private readonly IExecutingMessageHub executingMessageHub;
+        private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
         private readonly IDateTimeProvider dateTimeProvider;
         private readonly IServiceProvider serviceProvider;
@@ -32,6 +33,7 @@ namespace SharpDetect.Core
             IProfilingMessageHub profilingMessageHub,
             IRewritingMessageHub rewritingMessageHub,
             IExecutingMessageHub executingMessageHub,
+            IModuleBindContext moduleBindContext,
             IMetadataContext metadataContext,
             INotificationsConsumer notificationsConsumer,
             IRequestsProducer requestsProducer,
@@ -46,6 +48,7 @@ namespace SharpDetect.Core
             this.profilingMessageHub = profilingMessageHub;
             this.rewritingMessageHub = rewritingMessageHub;
             this.executingMessageHub = executingMessageHub;
+            this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
             this.notificationsConsumer = notificationsConsumer;
             this.requestsProducer = requestsProducer;
@@ -67,14 +70,15 @@ namespace SharpDetect.Core
                 profilingMessageHub, 
                 rewritingMessageHub, 
                 executingMessageHub, 
-                metadataContext, 
-                loggerFactory, 
-                serviceProvider);
+                moduleBindContext,
+                metadataContext,
+                dateTimeProvider, 
+                loggerFactory);
 
             try
             {
                 await pluginsManager.LoadPluginsAsync(ct).ConfigureAwait(false);
-                using var pluginsProxy = new PluginsProxy(configuration, pluginsManager, runtimeEventsHub);
+                using var pluginsProxy = new PluginsProxy(configuration, serviceProvider, pluginsManager, runtimeEventsHub);
                 pluginsProxy.Initialize();
                 logger.LogDebug("[{class}] Analysis started.", nameof(Analysis));
                 requestsProducer.Start();
@@ -83,7 +87,7 @@ namespace SharpDetect.Core
 
                 // Wait until execution completes
                 await execution.GetAwaitableTaskAsync().ConfigureAwait(false);
-                return true;
+                return execution.ProcessesExitedWithErrorCodeCount == 0;
             }
             finally
             {

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
-using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Metadata;
@@ -14,29 +13,38 @@ using System.Collections.Immutable;
 namespace SharpDetect.Core.Runtime
 {
     internal class ShadowExecution : IDisposable
-    {        
+    {
+        public int ProcessCount { get => processCount; }
+        public int ProcessesExitedWithErrorCodeCount { get => processCrashedCount; }
+        public int ProcessesExitedSuccessfullyCount { get => processSuccessCount; }
+
         private ImmutableDictionary<int, HappensBeforeScheduler> schedulersLookup;
+        private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
-        private readonly IServiceProvider serviceProvider;
+        private readonly IDateTimeProvider dateTimeProvider;
         private readonly RuntimeEventsHub runtimeEventsHub;
         private readonly TaskCompletionSource executionFinishedCompletionSource;
         private readonly ILogger<ShadowExecution> logger;
-        private int processCount;
+        private volatile int processCount;
+        private volatile int processCrashedCount;
+        private volatile int processSuccessCount;
         private bool isDisposed;
 
         public ShadowExecution(
             RuntimeEventsHub runtimeEventsHub,
-            IProfilingMessageHub profilingMessageHub, 
-            IRewritingMessageHub rewritingMessageHub, 
+            IProfilingMessageHub profilingMessageHub,
+            IRewritingMessageHub rewritingMessageHub,
             IExecutingMessageHub executingMessageHub,
+            IModuleBindContext moduleBindContext,
             IMetadataContext metadataContext,
-            ILoggerFactory loggerFactory, 
-            IServiceProvider serviceProvider)
+            IDateTimeProvider dateTimeProvider,
+            ILoggerFactory loggerFactory)
         {
+            this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
+            this.dateTimeProvider = dateTimeProvider;
             this.logger = loggerFactory.CreateLogger<ShadowExecution>();
             this.runtimeEventsHub = runtimeEventsHub;
-            this.serviceProvider = serviceProvider;
             this.schedulersLookup = ImmutableDictionary.Create<int, HappensBeforeScheduler>();
             this.executionFinishedCompletionSource = new TaskCompletionSource();
 
@@ -95,19 +103,21 @@ namespace SharpDetect.Core.Runtime
         {
             var metadataResolver = metadataContext.GetResolver(processId);
             var metadataEmitter = metadataContext.GetEmitter(processId);
-            var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, serviceProvider.GetRequiredService<IModuleBindContext>());
-            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, new UtcDateTimeProvider());
+            var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, moduleBindContext);
+            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, dateTimeProvider);
             logger.LogInformation("[{class}] Process with PID={pid} started.", nameof(ShadowExecution), processId);
 
             scheduler.ProcessFinished += () =>
             {
                 // Process exited normally
+                processSuccessCount++;
                 logger.LogInformation("[{class}] Process with PID={pid} terminated.", nameof(ShadowExecution), processId);
                 Unregister(processId);
             };
             scheduler.ProcessCrashed += () =>
             {
                 // Process probably crashed
+                processCrashedCount++;
                 logger.LogError("[{class}] Process with PID={pid} stopped responding.", nameof(ShadowExecution), processId);
                 Unregister(processId);
             };

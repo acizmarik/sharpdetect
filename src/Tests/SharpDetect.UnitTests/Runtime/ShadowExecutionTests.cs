@@ -1,5 +1,5 @@
 ﻿using SharpDetect.Common.Messages;
-using SharpDetect.Common.Services.Metadata;
+using SharpDetect.Common.Services;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Models;
 using SharpDetect.Core.Runtime;
@@ -21,8 +21,7 @@ namespace SharpDetect.UnitTests.Runtime
             var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            var provider = BuildServiceProvider((typeof(IModuleBindContext), moduleContext));
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, metadataContext, LoggerFactory, provider);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
 
             // Act
             profilingHub.Process(new NotifyMessage()
@@ -49,8 +48,7 @@ namespace SharpDetect.UnitTests.Runtime
             var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            var provider = BuildServiceProvider((typeof(IModuleBindContext), moduleContext));
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, metadataContext, LoggerFactory, provider);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
             var executionFinished = execution.GetAwaitableTaskAsync();
 
             // Act
@@ -87,8 +85,7 @@ namespace SharpDetect.UnitTests.Runtime
             var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            var provider = BuildServiceProvider((typeof(IModuleBindContext), moduleContext));
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, metadataContext, LoggerFactory, provider);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
 
             // Act
             profilingHub.Process(new NotifyMessage()
@@ -123,8 +120,7 @@ namespace SharpDetect.UnitTests.Runtime
             var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            var provider = BuildServiceProvider((typeof(IModuleBindContext), moduleContext));
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, metadataContext, LoggerFactory, provider);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
             var executionFinished = execution.GetAwaitableTaskAsync();
 
             // Act

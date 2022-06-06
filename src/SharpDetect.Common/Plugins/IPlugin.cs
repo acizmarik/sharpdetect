@@ -6,7 +6,7 @@ namespace SharpDetect.Common.Plugins
 {
     public interface IPlugin : IDisposable
     {
-        void Initialize(IConfiguration configuration, IServiceProvider serviceProvider);
+        void Initialize(IServiceProvider serviceProvider);
 
         void AnalysisStarted(EventInfo info);
         void AnalysisEnded(EventInfo info);
