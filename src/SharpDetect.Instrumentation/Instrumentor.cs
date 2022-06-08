@@ -307,9 +307,23 @@ namespace SharpDetect.Instrumentation
                 // Resolve method signature
                 var externMethodSignature = MethodSig.CreateStatic(
                     retType: moduleDef.CorLibTypes.Void,
-                    argTypes: id.ArgumentTypes.Select(a => moduleDef.Find(a, isReflectionName: true).ToTypeSig()).ToArray());
+                    argTypes: id.ArgumentTypes.Select(a =>
+                    {
+                        if (a.EndsWith('&'))
+                        {
+                            // Support for by reference types
+                            return new ByRefSig(moduleDef.Find(a[0..^1], isReflectionName: true).ToTypeSig());
+                        }
+                        else
+                        {
+                            // Common types
+                            return moduleDef.Find(a, isReflectionName: true).ToTypeSig();
+                        }
+                    }).ToArray());
+
                 // Find extern method
                 var externMethodDef = declaringTypeDef.FindMethod(id.Name, externMethodSignature);
+                Guard.NotNull<MethodDef, ArgumentException>(externMethodDef);
 
                 Interlocked.Increment(ref injectedMethodWrappersCount);
                 yield return (new FunctionInfo(moduleId, declaringTypeDef.MDToken, externMethodDef.MDToken), id.ArgsCount);
