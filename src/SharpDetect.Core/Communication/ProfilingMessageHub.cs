@@ -44,6 +44,7 @@ namespace SharpDetect.Core.Communication
                 NotifyMessage.PayloadOneofCase.RuntimeThreadSuspended,
                 NotifyMessage.PayloadOneofCase.RuntimeThreadResumed,
                 NotifyMessage.PayloadOneofCase.GarbageCollectionStarted,
+                NotifyMessage.PayloadOneofCase.GarbageCollectionFinished,
                 NotifyMessage.PayloadOneofCase.RuntimeSuspendFinished,
                 NotifyMessage.PayloadOneofCase.SurvivingReferences,
                 NotifyMessage.PayloadOneofCase.MovedReferences
