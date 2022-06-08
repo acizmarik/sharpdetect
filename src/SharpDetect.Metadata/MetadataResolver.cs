@@ -21,6 +21,9 @@ namespace SharpDetect.Metadata
             this.state = state;
         }
 
+        public ModuleDef WaitForModuleLoaded(ModuleInfo moduleInfo)
+            => moduleBindContext.WaitForModuleLoaded(ProcessId, moduleInfo);
+
         public bool TryGetModuleDef(ModuleInfo moduleInfo, [NotNullWhen(true)] out ModuleDef? module)
             => moduleBindContext.TryGetModule(ProcessId, moduleInfo, out module);
 

@@ -68,6 +68,11 @@ namespace SharpDetect.Core.Communication
 
             // Resolve method definition
             var metadataResolver = metadataContext.GetResolver(info.ProcessId);
+
+            // Ensure that this module is already loaded
+            metadataResolver.WaitForModuleLoaded(moduleInfo);
+
+            // Ensure we can resolve the method
             if (!metadataResolver.TryGetMethodDef(functionInfo, moduleInfo, out var methodDef))
             {
                 Logger.LogWarning("[{class}] Could not resolve method with token: {token}!", nameof(ExecutingMessageHub), functionInfo.FunctionToken);

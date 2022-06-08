@@ -16,11 +16,13 @@ namespace SharpDetect.Loader
         private readonly ConcurrentDictionary<(int ProcessId, ModuleInfo ModuleInfo), ModuleDef> modules;
         private readonly ConcurrentDictionary<int, ModuleDef> coreLibraries;
         private readonly ILogger<ModuleBindContext> logger;
+        private readonly object moduleLoadedSignalizer;
         private const string coreLibraryModuleName = "System.Private.CoreLib";
 
         public ModuleBindContext(AssemblyLoadContext assemblyLoadContext, ILoggerFactory loggerFactory)
         {
             this.assemblyLoadContext = assemblyLoadContext;
+            this.moduleLoadedSignalizer = new object();
             this.logger = loggerFactory.CreateLogger<ModuleBindContext>();
             modules = new();
             coreLibraries = new();
@@ -54,7 +56,11 @@ namespace SharpDetect.Loader
         private ModuleDef AddModuleToCache(int processId, AssemblyDef assembly, ModuleInfo moduleInfo)
         {
             var module = assembly.ManifestModule;
-            modules.TryAdd((processId, moduleInfo), module);
+            lock (moduleLoadedSignalizer)
+            {
+                modules.TryAdd((processId, moduleInfo), module);
+                Monitor.PulseAll(moduleLoadedSignalizer);
+            }
             LogSuccessBind(moduleInfo, module);
             return module;
         }
@@ -64,6 +70,20 @@ namespace SharpDetect.Loader
             if (!TryGetModule(processId, moduleInfo, out var module))
                 throw new ArgumentException($"Module for handle: {moduleInfo.Id} was not loaded.");
             return module;
+        }
+
+        public ModuleDef WaitForModuleLoaded(int processId, ModuleInfo moduleInfo)
+        {
+            if (!TryGetModule(processId, moduleInfo, out var moduleDef))
+            {
+                lock (moduleLoadedSignalizer)
+                {
+                    while (!TryGetModule(processId, moduleInfo, out moduleDef))
+                        Monitor.Wait(moduleLoadedSignalizer);
+                }
+            }
+
+            return moduleDef;
         }
 
         public ModuleDef GetCoreLibModule(int processId)
