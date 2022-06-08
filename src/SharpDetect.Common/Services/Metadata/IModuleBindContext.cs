@@ -9,6 +9,7 @@ namespace SharpDetect.Common.Services.Metadata
 
         ModuleDef LoadModule(int processId, string path, ModuleInfo moduleInfo);
         ModuleDef LoadModule(int processId, Stream stream, string virtualPath, ModuleInfo moduleInfo);
+        ModuleDef WaitForModuleLoaded(int processId, ModuleInfo moduleInfo);
 
         ModuleDef GetModule(int processId, ModuleInfo moduleInfo);
         ModuleDef GetCoreLibModule(int processId);
