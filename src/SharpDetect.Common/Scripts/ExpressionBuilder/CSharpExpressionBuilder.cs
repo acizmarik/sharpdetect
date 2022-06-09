@@ -1,5 +1,4 @@
-﻿using MoonSharp.Interpreter.Interop;
-using SharpDetect.Common.Exceptions;
+﻿using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Runtime.Arguments;
 using System.Linq.Expressions;
@@ -39,15 +38,15 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
         public CSharpExpressionBuilder()
         {
             stack = new Stack<Expression>();
-            argumentsExpression = Expression.Parameter(typeof((ushort, IValueOrPointer)[]));
-            returnValueExpression = Expression.Parameter(typeof(IValueOrPointer));
+            argumentsExpression = Expression.Parameter(typeof((ushort, IValueOrObject)[]));
+            returnValueExpression = Expression.Parameter(typeof(IValueOrObject));
         }
 
         public ResultChecker Compile()
         {
             Guard.Equal<int, InvalidOperationException>(1, stack.Count);
             return new ResultChecker(
-                (Func<IValueOrPointer?, (ushort, IValueOrPointer)[]?, bool>)Expression.Lambda(stack.Pop(), returnValueExpression, argumentsExpression).Compile());
+                (Func<IValueOrObject?, (ushort, IValueOrObject)[]?, bool>)Expression.Lambda(stack.Pop(), returnValueExpression, argumentsExpression).Compile());
         }
 
         public CSharpExpressionBuilder Convert(string typeFullName)

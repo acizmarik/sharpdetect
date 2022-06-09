@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
@@ -24,6 +25,7 @@ namespace SharpDetect.Core
         private readonly IServiceProvider serviceProvider;
         private readonly IInstrumentor instrumentor;
         private readonly IPluginsManager pluginsManager;
+        private readonly IMethodDescriptorRegistry methodRegistry;
         private readonly ILoggerFactory loggerFactory;
         private readonly ILogger<Analysis> logger;
 
@@ -39,6 +41,7 @@ namespace SharpDetect.Core
             IRequestsProducer requestsProducer,
             IInstrumentor instrumentor,
             IPluginsManager pluginsManager,
+            IMethodDescriptorRegistry methodRegistry,
             IDateTimeProvider dateTimeProvider,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory)
@@ -54,6 +57,7 @@ namespace SharpDetect.Core
             this.requestsProducer = requestsProducer;
             this.instrumentor = instrumentor;
             this.pluginsManager = pluginsManager;
+            this.methodRegistry = methodRegistry;
             this.dateTimeProvider = dateTimeProvider;
             this.serviceProvider = serviceProvider;
             this.loggerFactory = loggerFactory;
@@ -72,6 +76,7 @@ namespace SharpDetect.Core
                 executingMessageHub, 
                 moduleBindContext,
                 metadataContext,
+                methodRegistry,
                 dateTimeProvider, 
                 loggerFactory);
 

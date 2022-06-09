@@ -12,6 +12,7 @@ namespace SharpDetect.Instrumentation.Utilities
                 MethodAttributes.SpecialName | MethodAttributes.RTSpecialName | externMethod.Attributes);
             wrapper.Body = new CilBody();
             wrapper.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
+            wrapper.DeclaringType = externMethod.DeclaringType;
             return wrapper;
         }
 

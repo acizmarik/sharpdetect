@@ -29,7 +29,7 @@ namespace SharpDetect.Core.Communication.Endpoints
             {
                 NotificationId = info.Id,
                 RequestId = Interlocked.Increment(ref requestCounter),
-                NoChanges = true
+                NoChanges = new Request_NoChanges()
             };
 
             return requestsProducer.SendAsync(info.ProcessId, request);
@@ -46,7 +46,7 @@ namespace SharpDetect.Core.Communication.Endpoints
             {
                 NotificationId = info.Id,
                 RequestId = Interlocked.Increment(ref requestCounter),
-                ContinueExecutionRequest = new Request_ContinueExecution()
+                ContinueExecution = new Request_ContinueExecution()
             };
 
             return requestsProducer.SendAsync(info.ProcessId, request);
@@ -63,13 +63,12 @@ namespace SharpDetect.Core.Communication.Endpoints
             {
                 NotificationId = info.Id,
                 RequestId = Interlocked.Increment(ref requestCounter),
-                NoChanges = false,
-                WrappingRequest = new Request_Wrapping()
+                Wrapping = new Request_Wrapping()
             };
 
             foreach (var (function, argc) in methods)
             {
-                request.WrappingRequest.MethodsToWrap.Add(new ExternalMethodInfo()
+                request.Wrapping.MethodsToWrap.Add(new ExternalMethodInfo()
                 {
                     TypeToken = function.TypeToken.Raw,
                     FunctionToken = function.TypeToken.Raw,
@@ -92,10 +91,9 @@ namespace SharpDetect.Core.Communication.Endpoints
             var request = new RequestMessage
             {
                 RequestId = Interlocked.Increment(ref requestCounter),
-                NoChanges = false,
                 NotificationId = info.Id,
 
-                InstrumentationRequest = new Request_Instrumentation()
+                Instrumentation = new Request_Instrumentation()
                 {
                     InjectHooks = (methodData?.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks) == true),
                     CaptureArguments = (methodData?.Flags.HasFlag(MethodRewritingFlags.CaptureArguments) == true),
@@ -105,7 +103,7 @@ namespace SharpDetect.Core.Communication.Endpoints
 
             // Set new bytecode if available
             if (bytecode != null)
-                request.InstrumentationRequest.Bytecode = ByteString.CopyFrom(bytecode);
+                request.Instrumentation.Bytecode = ByteString.CopyFrom(bytecode);
 
             // Set parameters information if available
             if (methodData?.CapturedParams != null)
@@ -130,8 +128,8 @@ namespace SharpDetect.Core.Communication.Endpoints
                 }
 
                 var byteArray = MemoryMarshal.Cast<ushort, byte>(argumentInfos);
-                request.InstrumentationRequest.ArgumentInfos = ByteString.CopyFrom(byteArray);
-                request.InstrumentationRequest.PassingByRefInfos = ByteString.CopyFrom(indirectInfos);
+                request.Instrumentation.ArgumentInfos = ByteString.CopyFrom(byteArray);
+                request.Instrumentation.PassingByRefInfos = ByteString.CopyFrom(indirectInfos);
             }
 
             return requestsProducer.SendAsync(info.ProcessId, request);

@@ -16,8 +16,10 @@ namespace SharpDetect.Core.Communication.Endpoints
         private readonly string outboundConnectionString;
         private readonly string inboundConnectionString;
         private readonly ILogger<RequestServer> logger;
-        private readonly BlockingCollection<(byte[] Topic, byte[] Data)> outboundQueue;
+        private readonly BlockingCollection<(int Topic, byte[] Data)> outboundQueue;
         private readonly ConcurrentDictionary<int, TaskCompletionSource<Response>> responsePromises;
+        private readonly ConcurrentDictionary<int, (bool State, TaskCompletionSource<Response>? Promise)> establishedConnections;
+        private readonly TimeSpan connectionDiscoveryRetryDelay;
         private readonly Thread outboundWorkerThread;
         private readonly Thread inboundWorkerThread;
         private volatile bool terminating;
@@ -42,12 +44,39 @@ namespace SharpDetect.Core.Communication.Endpoints
             
             this.inboundWorkerThread = new Thread(InboundCommunicationLoop);
             this.outboundWorkerThread = new Thread(OutboundCommunicationLoop);
-            this.outboundQueue = new BlockingCollection<(byte[] Topic, byte[] Data)>();
+            this.outboundQueue = new BlockingCollection<(int Topic, byte[] Data)>();
             this.responsePromises = new ConcurrentDictionary<int, TaskCompletionSource<Response>>();
+            this.establishedConnections = new ConcurrentDictionary<int, (bool State, TaskCompletionSource<Response>? Promise)>();
+            this.connectionDiscoveryRetryDelay = TimeSpan.FromMilliseconds(100);
         }
 
         private void OutboundCommunicationLoop()
         {
+            void EnsureConnectionEstablished(PublisherSocket socket, int topic)
+            {
+                if (!establishedConnections.TryGetValue(topic, out var info) || !info.State)
+                {
+                    var topicMarshaled = BitConverter.GetBytes(topic);
+                    var pingRequestMarshaled = new RequestMessage() { RequestId = 0, Ping = new Request_Ping() }.ToByteArray();
+                    var taskCompletionSource = new TaskCompletionSource<Response>();
+                    establishedConnections.TryAdd(topic, (false, taskCompletionSource));
+
+                    logger.LogDebug("[{class}] Waiting for reliable PUB-SUB connection.", nameof(RequestServer));
+                    while (!info.State)
+                    {
+                        socket
+                            .SendMoreFrame(topicMarshaled)
+                            .SendFrame(pingRequestMarshaled);
+                        if (taskCompletionSource.Task.Wait(connectionDiscoveryRetryDelay))
+                        {
+                            // The other side responded - the connection is established
+                            info.State = true;
+                            logger.LogDebug("[{class}] Reliable PUB-SUB connection established.", nameof(RequestServer));
+                        }
+                    }
+                }
+            }
+
             using (var socket = new PublisherSocket(outboundConnectionString))
             {
                 logger.LogDebug("[{class}] Opened connection for profiler requests on {connectionString}.", nameof(RequestServer), outboundConnectionString);
@@ -55,9 +84,13 @@ namespace SharpDetect.Core.Communication.Endpoints
                 // Send requests and wait for promises async
                 foreach (var (topic, data) in outboundQueue.GetConsumingEnumerable())
                 {
+                    /*  This is a work-around for a well-known ZMQ issue with establishing connections for PUB-SUB
+                     *  We just ping subscriber until it responds using the second channel */
+                    EnsureConnectionEstablished(socket, topic);
+
                     socket
                         // Topic: process identification
-                        .SendMoreFrame(topic)
+                        .SendMoreFrame(BitConverter.GetBytes(topic))
                         // Data: rewriting request
                         .SendFrame(data);
                 }
@@ -89,8 +122,26 @@ namespace SharpDetect.Core.Communication.Endpoints
                     var data = NotifyMessage.Parser.ParseFrom(socket.ReceiveFrameBytes());
 
                     // Mark request as finished
-                    responsePromises.Remove(topic, out var promise);
-                    promise!.SetResult(data.Response);                    
+                    establishedConnections.TryGetValue(topic, out var connectionInfo);
+                    if (data.Response.RequestId == 0)
+                    {
+                        if (connectionInfo.Promise != null)
+                        {
+                            // Connection established
+                            establishedConnections[topic] = (true, null);
+                            connectionInfo.Promise.SetResult(data.Response);
+                        }
+                        else
+                        {
+                            // Repeated message - do nothing
+                        }
+                    }
+                    else
+                    {
+                        // Regular notification
+                        responsePromises.Remove(topic, out var promise);
+                        promise!.SetResult(data.Response);
+                    }        
                 }
             }
 
@@ -105,7 +156,7 @@ namespace SharpDetect.Core.Communication.Endpoints
             // Create a promise about upcomming response
             responsePromises.TryAdd(processId, promise);
             // Enqueue marshalled message for sending
-            outboundQueue.Add((BitConverter.GetBytes(processId), marshalled));
+            outboundQueue.Add((processId, marshalled));
 
             return promise.Task;
         }

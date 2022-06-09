@@ -22,5 +22,5 @@ namespace SharpDetect.Common.LibraryDescriptors
     }
 
     public record struct CapturedParameterInfo(ushort Index, ushort Size, bool IndirectLoad);
-    public delegate bool ResultChecker(IValueOrPointer? returnValue, (ushort Index, IValueOrPointer Argument)[]? args);
+    public delegate bool ResultChecker(IValueOrObject? returnValue, (ushort Index, IValueOrObject Argument)[]? args);
 }

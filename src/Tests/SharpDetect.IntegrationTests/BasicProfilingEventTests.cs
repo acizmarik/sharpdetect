@@ -4,17 +4,18 @@ using Xunit;
 
 namespace SharpDetect.IntegrationTests
 {
-    public class BasicEventTests : IClassFixture<EnvironmentFixture>
+    [Collection("Sequential")]
+    public class BasicProfilingEventTests : IClassFixture<EnvironmentFixture>
     {
         private readonly EnvironmentFixture environment;
 
-        public BasicEventTests(EnvironmentFixture fixture)
+        public BasicProfilingEventTests(EnvironmentFixture fixture)
         {
             environment = fixture;
         }
 
         [Fact]
-        public async Task BasicEventTests_AnalysisBeginsAndTerminates()
+        public async Task BasicProfilingEventTests_AnalysisBeginsAndTerminates()
         {
             // Prepare
             using var session = environment.CreateAnalysisSession();
@@ -44,7 +45,7 @@ namespace SharpDetect.IntegrationTests
         }
 
         [Fact]
-        public async Task BasicEventTests_ThreadCreatedAndDestroyed()
+        public async Task BasicProfilingEventTests_ThreadCreatedAndDestroyed()
         {
             // Prepare
             using var session = environment.CreateAnalysisSession();
@@ -96,7 +97,7 @@ namespace SharpDetect.IntegrationTests
         }
 
         [Fact]
-        public async Task BasicEventTests_JITCompilationStarted()
+        public async Task BasicProfilingEventTests_JITCompilationStarted()
         {
             // Prepar
             using var session = environment.CreateAnalysisSession();
@@ -115,7 +116,7 @@ namespace SharpDetect.IntegrationTests
                 ModuleLoaded = new Notify_ModuleLoaded()
                 {
                     ModuleId = 456,
-                    ModulePath = typeof(BasicEventTests).Assembly.Location
+                    ModulePath = typeof(BasicProfilingEventTests).Assembly.Location
                 },
                 NotificationId = 2,
                 ProcessId = 123,
@@ -126,7 +127,7 @@ namespace SharpDetect.IntegrationTests
                 TypeLoaded = new Notify_TypeLoaded()
                 {
                     ModuleId = 456,
-                    TypeToken = (uint)typeof(BasicEventTests).MetadataToken
+                    TypeToken = (uint)typeof(BasicProfilingEventTests).MetadataToken
                 },
                 NotificationId = 3,
                 ProcessId = 123,
@@ -137,9 +138,9 @@ namespace SharpDetect.IntegrationTests
                 JITCompilationStarted = new Notify_JITCompilationStarted()
                 {
                     ModuleId = 456,
-                    TypeToken = (uint)typeof(BasicEventTests).MetadataToken,
-                    FunctionToken = (uint)typeof(BasicEventTests)
-                        .GetMethod(nameof(BasicEventTests_JITCompilationStarted))!.MetadataToken
+                    TypeToken = (uint)typeof(BasicProfilingEventTests).MetadataToken,
+                    FunctionToken = (uint)typeof(BasicProfilingEventTests)
+                        .GetMethod(nameof(BasicProfilingEventTests_JITCompilationStarted))!.MetadataToken
                 },
                 NotificationId = 4,
                 ProcessId = 123,
@@ -162,5 +163,77 @@ namespace SharpDetect.IntegrationTests
             Assert.Equal(nameof(IPlugin.JITCompilationStarted), session.Output.Skip(3).First());
             Assert.Equal(nameof(IPlugin.AnalysisEnded), session.Output.Skip(4).First());
         }
+
+        [Fact]
+        public async Task BasicProfilingEventTests_GarbageCollectionBeginsAndTerminates()
+        {
+            // Prepar
+            using var session = environment.CreateAnalysisSession();
+            var analysisTask = session.Start();
+
+            // Act
+            session.Profiler.Send(new NotifyMessage()
+            {
+                ProfilerInitialized = new Notify_ProfilerInitialized(),
+                NotificationId = 1,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            session.Profiler.Send(new NotifyMessage()
+            {
+                RuntimeSuspendStarted = new Notify_RuntimeSuspendStarted()
+                {
+                    Reason = SUSPEND_REASON.Gc
+                },
+                NotificationId = 2,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            session.Profiler.Send(new NotifyMessage()
+            {
+                GarbageCollectionStarted = new Notify_GarbageCollectionStarted()
+                {
+                    GenerationsCollected = Google.Protobuf.ByteString.Empty,
+                    GenerationSegmentBounds = Google.Protobuf.ByteString.Empty
+                },
+                NotificationId = 3,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            session.Profiler.Send(new NotifyMessage()
+            {
+                GarbageCollectionFinished = new Notify_GarbageCollectionFinished()
+                {
+                    GenerationSegmentBounds = Google.Protobuf.ByteString.Empty
+                },
+                NotificationId = 4,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            session.Profiler.Send(new NotifyMessage()
+            {
+                RuntimeSuspendFinished = new Notify_RuntimeSuspendFinished(),
+                NotificationId = 5,
+                ProcessId = 123,
+                ThreadId = 0,
+            });
+            session.Profiler.Send(new NotifyMessage()
+            {
+                ProfilerDestroyed = new Notify_ProfilerDestroyed(),
+                NotificationId = 6,
+                ProcessId = 123,
+                ThreadId = 0
+            });
+
+            // Assert
+            Assert.True(await analysisTask);
+            Assert.Equal(4, session.Output.Count);
+            Assert.Equal(nameof(IPlugin.AnalysisStarted), session.Output.First());
+            Assert.Equal(nameof(IPlugin.GarbageCollectionStarted), session.Output.Skip(1).First());
+            Assert.Equal(nameof(IPlugin.GarbageCollectionFinished), session.Output.Skip(2).First());
+            Assert.Equal(nameof(IPlugin.AnalysisEnded), session.Output.Skip(3).First());
+        }
+
+        
     }
 }
