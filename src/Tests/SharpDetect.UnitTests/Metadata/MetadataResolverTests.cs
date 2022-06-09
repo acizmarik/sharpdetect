@@ -14,7 +14,7 @@ namespace SharpDetect.UnitTests.Metadata
             // Prepare
             const int processId = 123;
             InjectedData state = new(processId);
-            IModuleBindContext modulesContext = GetCleanModuleBindContext();
+            IModuleBindContext modulesContext = CreateModuleBindContext(cleanAssemblyContext: true);
             MetadataResolver resolver = new(processId, modulesContext, state);
             string coreLibPath = typeof(object).Assembly.Location;
             ModuleInfo moduleInfo = new(new(456));
@@ -31,7 +31,7 @@ namespace SharpDetect.UnitTests.Metadata
             // Prepare
             const int processId = 123;
             InjectedData state = new(processId);
-            IModuleBindContext modulesContext = GetCleanModuleBindContext();
+            IModuleBindContext modulesContext = CreateModuleBindContext(cleanAssemblyContext: true);
             MetadataResolver resolver = new(processId, modulesContext, state);
             string coreLibPath = typeof(object).Assembly.Location;
             ModuleInfo moduleInfo = new(new(456));
@@ -50,7 +50,7 @@ namespace SharpDetect.UnitTests.Metadata
             // Prepare
             const int processId = 123;
             InjectedData state = new(processId);
-            IModuleBindContext modulesContext = GetCleanModuleBindContext();
+            IModuleBindContext modulesContext = CreateModuleBindContext(cleanAssemblyContext: true);
             MetadataResolver resolver = new(processId, modulesContext, state);
             string coreLibPath = typeof(object).Assembly.Location;
             ModuleInfo moduleInfo = new(new(456));
@@ -72,7 +72,7 @@ namespace SharpDetect.UnitTests.Metadata
             // Prepare
             const int processId = 123;
             InjectedData state = new(processId);
-            IModuleBindContext modulesContext = GetCleanModuleBindContext();
+            IModuleBindContext modulesContext = CreateModuleBindContext(cleanAssemblyContext: true);
             MetadataResolver resolver = new(processId, modulesContext, state);
             string coreLibPath = typeof(object).Assembly.Location;
             ModuleInfo moduleInfo = new(new(456));

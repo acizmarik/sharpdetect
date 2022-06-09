@@ -43,7 +43,14 @@ namespace SharpDetect.IntegrationTests.Mocks
                         var request = RequestMessage.Parser.ParseFrom(data);
 
                         // Send response
-                        var response = new Response() { RequestId = request.RequestId, Result = true };
+                        var response = new NotifyMessage()
+                        {
+                            Response = new Response() 
+                            { 
+                                RequestId = request.RequestId, 
+                                Result = true 
+                            }
+                        };
                         responseSendingSocket!.SendMoreFrame(topic!);
                         responseSendingSocket!.SendFrame(response.ToByteArray());
                     }

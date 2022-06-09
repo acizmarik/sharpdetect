@@ -1,11 +1,10 @@
 ﻿using dnlib.DotNet;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
-using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Scheduling;
 using System.Collections.Immutable;
@@ -21,6 +20,7 @@ namespace SharpDetect.Core.Runtime
         private ImmutableDictionary<int, HappensBeforeScheduler> schedulersLookup;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
+        private readonly IMethodDescriptorRegistry methodRegistry;
         private readonly IDateTimeProvider dateTimeProvider;
         private readonly RuntimeEventsHub runtimeEventsHub;
         private readonly TaskCompletionSource executionFinishedCompletionSource;
@@ -37,11 +37,13 @@ namespace SharpDetect.Core.Runtime
             IExecutingMessageHub executingMessageHub,
             IModuleBindContext moduleBindContext,
             IMetadataContext metadataContext,
+            IMethodDescriptorRegistry methodRegistry,
             IDateTimeProvider dateTimeProvider,
             ILoggerFactory loggerFactory)
         {
             this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
+            this.methodRegistry = methodRegistry;
             this.dateTimeProvider = dateTimeProvider;
             this.logger = loggerFactory.CreateLogger<ShadowExecution>();
             this.runtimeEventsHub = runtimeEventsHub;
@@ -72,21 +74,8 @@ namespace SharpDetect.Core.Runtime
             rewritingMessageHub.WrapperMethodReferenced += RewritingHub_WrapperReferenced;
             rewritingMessageHub.HelperMethodReferenced += RewritingHub_HelperReferenced;
 
-            executingMessageHub.ArrayElementAccessed += ExecutingHub_ArrayElementAccessed;
-            executingMessageHub.ArrayIndexAccessed += ExecutingHub_ArrayIndexAccessed;
-            executingMessageHub.ArrayInstanceAccessed += ExecutingHub_ArrayInstanceAccessed;
-            executingMessageHub.FieldAccessed += ExecutingHub_FieldAccessed;
-            executingMessageHub.FieldInstanceAccessed += ExecutingHub_FieldInstanceAccessed;
-            executingMessageHub.LockAcquireAttempted += ExecutingHub_LockAcquireAttempted;
-            executingMessageHub.LockAcquireReturned += ExecutingHub_LockAcquireReturned;
-            executingMessageHub.LockReleaseCalled += ExecutingHub_LockReleaseCalled;
-            executingMessageHub.LockReleaseReturned += ExecutingHub_LockReleaseReturned;
             executingMessageHub.MethodCalled += ExecutingHub_MethodCalled;
             executingMessageHub.MethodReturned += ExecutingHub_MethodReturned;
-            executingMessageHub.ObjectWaitAttempted += ExecutingHub_ObjectWaitAttempted;
-            executingMessageHub.ObjectWaitReturned += ExecutingHub_ObjectWaitReturned;
-            executingMessageHub.ObjectPulseCalled += ExecutingHub_ObjectPulseCalled;
-            executingMessageHub.ObjectPulseReturned += ExecutingHub_ObjectPulseReturned;
         }
 
         public Task GetAwaitableTaskAsync()
@@ -104,7 +93,7 @@ namespace SharpDetect.Core.Runtime
             var metadataResolver = metadataContext.GetResolver(processId);
             var metadataEmitter = metadataContext.GetEmitter(processId);
             var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, moduleBindContext);
-            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, dateTimeProvider);
+            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, methodRegistry, metadataContext, dateTimeProvider);
             logger.LogInformation("[{class}] Process with PID={pid} started.", nameof(ShadowExecution), processId);
 
             scheduler.ProcessFinished += () =>
@@ -305,94 +294,16 @@ namespace SharpDetect.Core.Runtime
         #endregion
 
         #region EXECUTING_NOTIFICATIONS
-        private void ExecutingHub_ArrayElementAccessed((ulong Identifier, bool IsWrite, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_ArrayElementAccessed(args.Identifier, args.IsWrite, args.Info);
-        }
-
-        private void ExecutingHub_ArrayInstanceAccessed((UIntPtr Instance, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_ArrayInstanceAccessed(args.Instance, args.Info);
-        }
-
-        private void ExecutingHub_ArrayIndexAccessed((int Index, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_ArrayIndexAccessed(args.Index, args.Info);
-        }
-
-        private void ExecutingHub_FieldAccessed((ulong Identifier, bool IsWrite, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_FieldAccessed(args.Identifier, args.IsWrite, args.Info);
-        }
-
-        private void ExecutingHub_FieldInstanceAccessed((UIntPtr Instance, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_FieldInstanceAccessed(args.Instance, args.Info);
-        }
-
-        private void ExecutingHub_LockAcquireAttempted((FunctionInfo Function, UIntPtr InstancePtr, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_LockAcquireAttempted(args.Function, args.InstancePtr, args.Info);
-        }
-
-        private void ExecutingHub_LockAcquireReturned((FunctionInfo Function, bool IsSuccess, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_LockAcquireReturned(args.Function, args.IsSuccess, args.Info);
-        }
-
-        private void ExecutingHub_LockReleaseCalled((FunctionInfo Function, UIntPtr InstancePtr, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_LockReleaseCalled(args.Function, args.InstancePtr, args.Info);
-        }
-
-        private void ExecutingHub_LockReleaseReturned((FunctionInfo Function, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_LockReleaseReturned(args.Function, args.Info);
-        }
-
-        private void ExecutingHub_MethodCalled((FunctionInfo Function, (ushort Index, IValueOrPointer Arg)[]? Arguments, EventInfo Info) args)
+        private void ExecutingHub_MethodCalled((FunctionInfo Function, RawArgumentsList? Arguments, EventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_MethodCalled(args.Function, args.Arguments, args.Info);
         }
 
-        private void ExecutingHub_MethodReturned((FunctionInfo Function, IValueOrPointer? ReturnValue, (ushort Index, IValueOrPointer Arg)[]? ByRefArguments, EventInfo Info) args)
+        private void ExecutingHub_MethodReturned((FunctionInfo Function, RawReturnValue? ReturnValue, RawArgumentsList? ByRefArguments, EventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_MethodReturned(args.Function, args.ReturnValue, args.ByRefArguments, args.Info);
-        }
-
-        private void ExecutingHub_ObjectWaitAttempted((FunctionInfo Function, UIntPtr InstancePtr, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_ObjectWaitAttempted(args.Function, args.InstancePtr, args.Info);
-        }
-
-        private void ExecutingHub_ObjectWaitReturned((FunctionInfo Function, bool IsSuccess, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_ObjectWaitReturned(args.Function, args.IsSuccess, args.Info);
-        }
-
-        private void ExecutingHub_ObjectPulseCalled((FunctionInfo Function, bool IsPulseAll, UIntPtr InstancePtr, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_ObjectPulseCalled(args.Function, args.IsPulseAll, args.InstancePtr, args.Info);
-        }
-
-        private void ExecutingHub_ObjectPulseReturned((FunctionInfo Function, bool IsPulseAll, EventInfo Info) args)
-        {
-            var scheduler = GetScheduler(args.Info.ProcessId);
-            scheduler.Schedule_ObjectPulseReturned(args.Function, args.IsPulseAll, args.Info);
         }
         #endregion
 

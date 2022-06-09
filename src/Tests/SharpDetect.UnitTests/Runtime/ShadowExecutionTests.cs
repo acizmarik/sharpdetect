@@ -17,11 +17,11 @@ namespace SharpDetect.UnitTests.Runtime
             UIntPtr threadId = new(456);
             var profilingHub = new ProfilingMessageHub(LoggerFactory);
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
-            var moduleContext = ModuleBindContext;
-            var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
+            var moduleContext = CreateModuleBindContext();
+            var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
-            var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
+            var executingHub = new ExecutingMessageHub(LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
 
             // Act
             profilingHub.Process(new NotifyMessage()
@@ -44,11 +44,11 @@ namespace SharpDetect.UnitTests.Runtime
             UIntPtr threadId = new(456);
             var profilingHub = new ProfilingMessageHub(LoggerFactory);
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
-            var moduleContext = ModuleBindContext;
-            var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
+            var moduleContext = CreateModuleBindContext();
+            var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
-            var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
+            var executingHub = new ExecutingMessageHub(LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
             var executionFinished = execution.GetAwaitableTaskAsync();
 
             // Act
@@ -81,11 +81,11 @@ namespace SharpDetect.UnitTests.Runtime
             UIntPtr threadId = new(789);
             var profilingHub = new ProfilingMessageHub(LoggerFactory);
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
-            var moduleContext = ModuleBindContext;
-            var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
+            var moduleContext = CreateModuleBindContext();
+            var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
-            var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
+            var executingHub = new ExecutingMessageHub(LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
 
             // Act
             profilingHub.Process(new NotifyMessage()
@@ -116,11 +116,11 @@ namespace SharpDetect.UnitTests.Runtime
             UIntPtr threadId = new(789);
             var profilingHub = new ProfilingMessageHub(LoggerFactory);
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
-            var moduleContext = ModuleBindContext;
-            var metadataContext = CreateMetadataContext(ModuleBindContext, profilingHub);
+            var moduleContext = CreateModuleBindContext();
+            var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
             var methodRegistry = new MethodDescriptorRegistry();
-            var executingHub = new ExecutingMessageHub(metadataContext, methodRegistry, LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, new UtcDateTimeProvider(), LoggerFactory);
+            var executingHub = new ExecutingMessageHub(LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
             var executionFinished = execution.GetAwaitableTaskAsync();
 
             // Act

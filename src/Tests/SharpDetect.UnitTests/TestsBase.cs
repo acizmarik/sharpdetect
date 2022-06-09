@@ -20,8 +20,7 @@ namespace SharpDetect.UnitTests
     {
         public readonly LoggerFactory LoggerFactory;
         public readonly ServiceCollection ServiceCollection;
-
-        private readonly AssemblyLoadContext assemblyLoadContext;
+        private readonly AssemblyLoadContext SharedAssemblyLoadContext;
 
         public static IMetadataContext CreateMetadataContext(IModuleBindContext moduleBindContext, IProfilingMessageHub profilingMessageHub)
         {
@@ -30,12 +29,7 @@ namespace SharpDetect.UnitTests
                 profilingMessageHub);
         }
 
-        public IModuleBindContext ModuleBindContext
-        {
-            get => new ModuleBindContext(assemblyLoadContext, LoggerFactory);
-        }
-
-        public IModuleBindContext GetCleanModuleBindContext()
+        public IModuleBindContext CreateModuleBindContext(bool cleanAssemblyContext = false)
         {
             var assemblyContext = new AssemblyLoadContext(LoggerFactory);
             return new ModuleBindContext(assemblyContext, LoggerFactory);
@@ -53,7 +47,7 @@ namespace SharpDetect.UnitTests
         {
             LoggerFactory = new LoggerFactory();
             ServiceCollection = new ServiceCollection();
-            assemblyLoadContext = new AssemblyLoadContext(LoggerFactory);
+            SharedAssemblyLoadContext = new AssemblyLoadContext(LoggerFactory);
         }
 
         protected IConfiguration CreateModulesConfiguration()

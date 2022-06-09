@@ -13,6 +13,10 @@ namespace SharpDetect.Core.Runtime.Arguments
             this.args = args;
         }
 
+        internal (ushort, IValueOrObject)[] Raw { get => args; }
+
+        public (ushort Index, IValueOrObject Argument) this[int index] { get => args[index]; }
+
         public IEnumerator<(ushort Index, IValueOrObject Argument)> GetEnumerator()
         {
             for (var i = 0; i < args.Length; i++)

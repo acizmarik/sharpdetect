@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using NetMQ;
 using SharpDetect.Common;
 using SharpDetect.Common.Services;
 using SharpDetect.Console;

@@ -1,10 +1,9 @@
 ﻿using dnlib.DotNet;
+using Google.Protobuf;
 using SharpDetect.Common;
-using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Runtime;
-using SharpDetect.Core.Runtime.Arguments;
 using SharpDetect.Core.Runtime.Scheduling;
 using SharpDetect.Core.Runtime.Threads;
 using Xunit;
@@ -22,16 +21,18 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             UIntPtr moduleId = new(789);
             var modulePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             var typeMDToken = new MDToken(typeof(HappensBeforeScheduler_ExecutingEvents_Tests).MetadataToken);
-            var functionMDToken = new MDToken(typeof(HappensBeforeScheduler_ExecutingEvents_Tests).GetMethod(nameof(TestMethod), 
+            var functionMDToken = new MDToken(typeof(HappensBeforeScheduler_ExecutingEvents_Tests).GetMethod(nameof(TestMethod),
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 4, 0, 0, 0 }));
 
             // Act
             var methodCalledRaised = false;
@@ -39,7 +40,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(123)) }, new EventInfo(2, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(2, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -59,13 +60,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var functionMDToken = new MDToken(typeof(HappensBeforeScheduler_ExecutingEvents_Tests).GetMethod(nameof(TestMethod),
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 4, 0, 0, 0 }));
 
             // Act
             var methodCalledRaised = false;
@@ -75,7 +78,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(123)) }, new EventInfo(2, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(2, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, null, new EventInfo(3, pid, threadId));
             mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
@@ -126,14 +129,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var typeMDToken = new MDToken(typeof(Monitor).MetadataToken);
             var functionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Enter) && m.GetParameters().Length == 1)!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
 
             // Act
             var methodCalledRaised = false;
@@ -143,8 +147,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_LockAcquireAttempted(new(moduleId, typeMDToken, functionMDToken), syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -164,14 +167,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var typeMDToken = new MDToken(typeof(Monitor).MetadataToken);
             var functionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Enter) && m.GetParameters().Length == 1)!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
 
             // Act
             var methodCalledRaised = false;
@@ -185,10 +189,8 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_LockAcquireAttempted(new(moduleId, typeMDToken, functionMDToken), syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_LockAcquireReturned(new(moduleId, typeMDToken, functionMDToken), true, new EventInfo(4, pid, threadId));
-            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(5, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, null, new EventInfo(5, pid, threadId));
             mainThread.Execute(6, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -210,14 +212,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var typeMDToken = new MDToken(typeof(Monitor).MetadataToken);
             var functionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Enter) && m.GetParameters().Length == 1)!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
 
             // Act
             var methodCalledRaised = false;
@@ -231,10 +234,8 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_LockAcquireAttempted(new(moduleId, typeMDToken, functionMDToken), syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_LockAcquireReturned(new(moduleId, typeMDToken, functionMDToken), true, new EventInfo(4, pid, threadId));
-            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(5, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, argslist, new EventInfo(5, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -257,14 +258,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var acquireFunctionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Enter) && m.GetParameters().Length == 1)!.MetadataToken);
             var releaseFunctionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Exit))!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
 
             // Act
             var methodLockAcquireAttemptedCalledRaised = false;
@@ -279,15 +281,11 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             // Lock acquire
-            scheduler.Schedule_LockAcquireAttempted(new(moduleId, typeMDToken, acquireFunctionMDToken), syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, acquireFunctionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_LockAcquireReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), true, new EventInfo(4, pid, threadId));
-            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), null, new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(5, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, acquireFunctionMDToken), argslist, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), null, null, new EventInfo(5, pid, threadId));
             // Lock release
-            scheduler.Schedule_LockReleaseCalled(new(moduleId, typeMDToken, releaseFunctionMDToken), syncObjPtr, new EventInfo(6, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, acquireFunctionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(7, pid, threadId));
-            scheduler.Schedule_LockReleaseReturned(new(moduleId, typeMDToken, releaseFunctionMDToken), new EventInfo(8, pid, threadId));
-            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, releaseFunctionMDToken), null, new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(9, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, releaseFunctionMDToken),argslist, new EventInfo(7, pid, threadId));
+            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, releaseFunctionMDToken), null, null, new EventInfo(9, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -310,14 +308,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var acquireFunctionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Enter) && m.GetParameters().Length == 1)!.MetadataToken);
             var waitFunctionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Wait) && m.GetParameters().Length == 1)!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
 
             // Act
             var methodLockAcquireAttemptedCalledRaised = false;
@@ -330,13 +329,10 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             // Acquire lock
-            scheduler.Schedule_LockAcquireAttempted(new(moduleId, typeMDToken, acquireFunctionMDToken), syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, acquireFunctionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_LockAcquireReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), true, new EventInfo(4, pid, threadId));
-            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), null, new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(5, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, acquireFunctionMDToken), argslist, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), null, null, new EventInfo(5, pid, threadId));
             // Object wait
-            scheduler.Schedule_ObjectWaitAttempted(new(moduleId, typeMDToken, waitFunctionMDToken), syncObjPtr, new EventInfo(6, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, waitFunctionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(7, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, waitFunctionMDToken), argslist, new EventInfo(7, pid, threadId));
             mainThread.Execute(8, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -358,14 +354,16 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var acquireFunctionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Enter) && m.GetParameters().Length == 1)!.MetadataToken);
             var waitFunctionMDToken = new MDToken(typeof(Monitor).GetMethods().Single(m => m.Name == nameof(Monitor.Wait) && m.GetParameters().Length == 1)!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
+            var returnValue = new RawReturnValue(ByteString.CopyFrom(new byte[] { 1 }));
 
             // Act
             var methodLockAcquireAttemptedCalledRaised = false;
@@ -380,15 +378,11 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             // Acquire lock
-            scheduler.Schedule_LockAcquireAttempted(new(moduleId, typeMDToken, acquireFunctionMDToken), syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, acquireFunctionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_LockAcquireReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), true, new EventInfo(4, pid, threadId));
-            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), null, new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(5, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, acquireFunctionMDToken), argslist, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), null, null, new EventInfo(5, pid, threadId));
             // Object wait
-            scheduler.Schedule_ObjectWaitAttempted(new(moduleId, typeMDToken, waitFunctionMDToken), syncObjPtr, new EventInfo(6, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, waitFunctionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(7, pid, threadId));
-            scheduler.Schedule_ObjectWaitReturned(new(moduleId, typeMDToken, waitFunctionMDToken), true, new EventInfo(8, pid, threadId));
-            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, waitFunctionMDToken), null, new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(9, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, waitFunctionMDToken), argslist, new EventInfo(7, pid, threadId));
+            scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, waitFunctionMDToken), returnValue, null, new EventInfo(9, pid, threadId));
             mainThread.Execute(10, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -399,10 +393,8 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(methodObjectWaitReturnedRaised);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task Scheduller_ExecutingEvent_ObjectPulseCalled(bool isPulseAll)
+        [Fact]
+        public async Task Scheduller_ExecutingEvent_ObjectPulseCalled()
         {
             // Prepare
             const int pid = 123;
@@ -412,14 +404,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var typeMDToken = new MDToken(typeof(Monitor).MetadataToken);
             var functionMDToken = new MDToken(typeof(Monitor).GetMethod(nameof(Monitor.Pulse))!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
 
             // Act
             var methodCalledRaised = false;
@@ -429,8 +422,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_ObjectPulseCalled(new(moduleId, typeMDToken, functionMDToken), isPulseAll, syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -439,10 +431,8 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(methodCalledRaised);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task Scheduller_ExecutingEvent_ObjectPulseReturned(bool isPulseAll)
+        [Fact]
+        public async Task Scheduller_ExecutingEvent_ObjectPulseReturned()
         {
             // Prepare
             const int pid = 123;
@@ -452,14 +442,15 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var typeMDToken = new MDToken(typeof(Monitor).MetadataToken);
             var functionMDToken = new MDToken(typeof(Monitor).GetMethod(nameof(Monitor.Pulse))!.MetadataToken);
             ShadowThread mainThread;
-            var moduleBindContext = ModuleBindContext;
+            var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, ModuleBindContext, metadataContext);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, new UtcDateTimeProvider());
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
-            var syncObjPtr = new UIntPtr(123321);
+            var argslist = new RawArgumentsList(ByteString.CopyFrom(new byte[] { 0, 0, 0, 0, 0, 0, 0, 123 }), ByteString.CopyFrom(new byte[] { 8, 0, 0, 0 }));
 
             // Act
             var methodCalledRaised = false;
@@ -471,9 +462,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_ObjectPulseCalled(new(moduleId, typeMDToken, functionMDToken), isPulseAll, syncObjPtr, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), new (ushort, IValueOrPointer)[] { (0, new ValueOrPointer(syncObjPtr)) }, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_ObjectPulseReturned(new(moduleId, typeMDToken, functionMDToken), isPulseAll, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, null, new EventInfo(4, pid, threadId));
             mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;

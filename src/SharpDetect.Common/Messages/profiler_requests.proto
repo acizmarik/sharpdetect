@@ -17,22 +17,29 @@
 syntax = "proto3";
 package SharpDetect.Common.Messages;
 
-message RequestSetup
-{
-	int32						MonitoringFlags = 1;
-	bool						InstrumentationEnabled = 2;
-	bool						EnterLeaveHooksEnabled = 3;
-}
-
 message RequestMessage
 {
-	bool                        NoChanges = 1;
-	uint64                      RequestId = 2;
-	uint64                      NotificationId = 3;
+	uint64                      RequestId = 1;
+	uint64                      NotificationId = 2;
 
-	Request_Instrumentation     InstrumentationRequest = 4;
-	Request_Wrapping            WrappingRequest = 5;
-	Request_ContinueExecution	ContinueExecutionRequest = 6;
+	oneof Payload
+	{
+		Request_Ping				Ping = 3;
+		Request_NoChanges			NoChanges = 4;
+		Request_Instrumentation		Instrumentation = 5;
+		Request_Wrapping			Wrapping = 6;
+		Request_ContinueExecution   ContinueExecution = 7;
+	}
+}
+
+message Request_NoChanges
+{
+	// No additional parameters
+}
+
+message Request_Ping
+{
+	// No additional parameters
 }
 
 message Request_Instrumentation
@@ -69,5 +76,5 @@ message Request_Wrapping
 
 message Request_ContinueExecution
 {
-
+	// No additional parameters
 }

@@ -40,7 +40,7 @@ namespace SharpDetect.UnitTests.Expressions
 
             // Assert
             var firstArgument = (object)true;
-            Assert.True(expr.Invoke(null! /* unused */, new[] { ((ushort)0, (IValueOrPointer)new ValueOrPointer(firstArgument)) }));
+            Assert.True(expr.Invoke(null! /* unused */, new[] { ((ushort)0, (IValueOrObject)new ValueOrObject(firstArgument)) }));
         }
 
         [Theory]
@@ -64,7 +64,7 @@ namespace SharpDetect.UnitTests.Expressions
                 .Compile();
 
             // Assert
-            Assert.Equal(result, expr.Invoke(null! /* unused */, new[] { ((ushort)0, (IValueOrPointer)new ValueOrPointer(first)), ((ushort)1, new ValueOrPointer(second)) }));
+            Assert.Equal(result, expr.Invoke(null! /* unused */, new[] { ((ushort)0, (IValueOrObject)new ValueOrObject(first)), ((ushort)1, new ValueOrObject(second)) }));
         }
     }
 }

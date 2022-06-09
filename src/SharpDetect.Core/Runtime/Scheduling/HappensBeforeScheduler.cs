@@ -2,10 +2,15 @@
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Interop;
+using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Messages;
+using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Descriptors;
+using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Arguments;
+using SharpDetect.Core.Utilities;
 
 namespace SharpDetect.Core.Runtime.Scheduling
 {
@@ -13,12 +18,22 @@ namespace SharpDetect.Core.Runtime.Scheduling
     {
         protected readonly ShadowCLR ShadowCLR;
         protected readonly RuntimeEventsHub RuntimeEventsHub;
+        protected readonly IMetadataContext MetadataContext;
+        protected readonly IMethodDescriptorRegistry MethodRegistry;
 
-        public HappensBeforeScheduler(int processId, ShadowCLR shadowCLR, RuntimeEventsHub runtimeEventsHub, IDateTimeProvider dateTimeProvider)
+        public HappensBeforeScheduler(
+            int processId, 
+            ShadowCLR shadowCLR, 
+            RuntimeEventsHub runtimeEventsHub, 
+            IMethodDescriptorRegistry methodRegistry, 
+            IMetadataContext metadataContext, 
+            IDateTimeProvider dateTimeProvider)
             : base(processId, dateTimeProvider)
         {
             this.ShadowCLR = shadowCLR;
             this.RuntimeEventsHub = runtimeEventsHub;
+            this.MetadataContext = metadataContext;
+            this.MethodRegistry = methodRegistry;
         }
 
         #region PROFILING_NOTIFICATIONS
@@ -343,251 +358,245 @@ namespace SharpDetect.Core.Runtime.Scheduling
         #endregion
 
         #region EXECUTING_NOTIFICATIONS
-        public void Schedule_ArrayElementAccessed(ulong identifier, bool isWrite, EventInfo info)
+        public void Schedule_MethodCalled(FunctionInfo function, RawArgumentsList? arguments, EventInfo info)
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
             {
                 var thread = ThreadLookup[info.ThreadId];
-                Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(thread.OperationContext.ArrayInstance);
-                Guard.NotNull<int?, ShadowRuntimeStateException>(thread.OperationContext.ArrayIndex);
-                var array = thread.OperationContext.ArrayInstance!;
-                var index = thread.OperationContext.ArrayIndex!.Value;
 
-                // Notify listeners
-                RuntimeEventsHub.RaiseArrayElementAccessed(ShadowCLR, identifier, isWrite, array, index, info);
-            }));
-        }
-
-        public void Schedule_ArrayInstanceAccessed(UIntPtr instancePtr, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var instance = ShadowCLR.ShadowGC.GetObject(instancePtr);
-                var thread = ThreadLookup[info.ThreadId];
-                thread.OperationContext.ArrayInstance = instance;
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseArrayInstanceAccessed(ShadowCLR, instance, info);
-            }));
-        }
-
-        public void Schedule_ArrayIndexAccessed(int index, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                thread.OperationContext.ArrayIndex = index;
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseArrayIndexAccessed(ShadowCLR, index, info);
-            }));
-        }
-
-        public void Schedule_FieldAccessed(ulong identifier, bool isWrite, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(thread.OperationContext.FieldInstance);
-                var instance = thread.OperationContext.FieldInstance!;
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseFieldAccessed(ShadowCLR, identifier, isWrite, instance, info);
-            }));
-        }
-
-        public void Schedule_FieldInstanceAccessed(UIntPtr instancePtr, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var instance = ShadowCLR.ShadowGC.GetObject(instancePtr);
-                var thread = ThreadLookup[info.ThreadId];
-                thread.OperationContext.FieldInstance = instance;
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseFieldInstanceAccessed(ShadowCLR, instance, info);
-            }));
-        }
-
-        public void Schedule_LockAcquireAttempted(FunctionInfo function, UIntPtr instancePtr, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.SynchronizedBlocking, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = ShadowCLR.ShadowGC.GetObject(instancePtr);
-                thread.PushCallStack(function, MethodInterpretation.LockTryAcquire, instance);
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseLockAcquireAttempted(ShadowCLR, function, instance, info);
-            }));
-        }
-
-        public void Schedule_LockAcquireReturned(FunctionInfo function, bool isSuccess, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.SynchronizedUnblocking, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = thread.PeekCallstack().Arguments as ShadowObject;
-                if (isSuccess)
-                    instance!.SyncBlock.Acquire(thread);
-                thread.PopCallStack();
-
-                // Notify listeners
-                Guard.NotNull<ShadowObject, ArgumentException>(instance);
-                RuntimeEventsHub.RaiseLockAcquireReturned(ShadowCLR, function, instance, isSuccess, info);
-            }));
-        }
-
-        public void Schedule_LockReleaseCalled(FunctionInfo function, UIntPtr instancePtr, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = ShadowCLR.ShadowGC.GetObject(instancePtr);
-                thread.PushCallStack(function, MethodInterpretation.LockRelease, instance);
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseLockReleaseCalled(ShadowCLR, function, instance, info);
-            }));
-        }
-
-        public void Schedule_LockReleaseReturned(FunctionInfo function, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = thread.PeekCallstack().Arguments as ShadowObject;
-                instance!.SyncBlock.Release(thread);
-                thread.PopCallStack();
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseLockReleaseReturned(ShadowCLR, function, instance, info);
-            }));
-        }
-
-        public void Schedule_MethodCalled(FunctionInfo function, (ushort Index, IValueOrPointer Arg)[]? arguments, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                // Resolve arguments
+                // Ensure we can resolve the method
                 var resolvedArgumentsList = default(ArgumentsList);
-                if (arguments is not null)
+                var resolver = MetadataContext.GetResolver(ProcessId);
+                if (resolver.TryGetMethodDef(function, new(function.ModuleId), out var methodDef))
                 {
-                    var resolvedArguments = new (ushort, IValueOrObject)[arguments.Length];
-                    for (var i = 0; i < arguments.Length; i++)
+                    // Parse method call arguments
+                    var parsedArguments = (arguments.HasValue && !arguments.Value.ArgValues.IsEmpty) ?
+                        ArgumentsHelper.ParseArguments(methodDef, arguments.Value.ArgValues.Span, arguments.Value.ArgOffsets.Span) : null;
+
+                    // Resolve arguments
+                    if (parsedArguments is not null)
                     {
-                        var argValue = (arguments[i].Arg.HasValue()) ? new ValueOrObject(arguments[i].Arg.BoxedValue!) : 
-                            new ValueOrObject(ShadowCLR.ShadowGC.GetObject(arguments[i].Arg.Pointer!.Value));
-                        resolvedArguments[i] = (arguments[i].Index, argValue);
+                        var resolvedArguments = new (ushort, IValueOrObject)[parsedArguments.Length];
+                        for (var i = 0; i < parsedArguments.Length; i++)
+                        {
+                            var argValue = (parsedArguments[i].Argument.HasValue()) ? new ValueOrObject(parsedArguments[i].Argument.BoxedValue!) :
+                                new ValueOrObject(ShadowCLR.ShadowGC.GetObject(parsedArguments[i].Argument.Pointer!.Value));
+                            resolvedArguments[i] = (parsedArguments[i].Index, argValue);
+                        }
+
+                        resolvedArgumentsList = new(resolvedArguments);
                     }
 
-                    resolvedArgumentsList = new(resolvedArguments);
+                    // Resolve method interpretation
+                    if (MethodRegistry.TryGetMethodInterpretationData(methodDef, out var interpretationData))
+                    {
+                        // Raise more specific events (based on the method interpretation)
+                        switch (interpretationData.Interpretation)
+                        {
+                            // Lock acquire calls
+                            case MethodInterpretation.LockTryAcquire:
+                            case MethodInterpretation.LockBlockingAcquire:
+                                {
+                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject;
+                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    thread.PushCallStack(function, interpretationData.Interpretation, instance);
+                                    RuntimeEventsHub.RaiseLockAcquireAttempted(ShadowCLR, function, instance, info);
+                                    break;
+                                }
+                            // Lock release calls
+                            case MethodInterpretation.LockRelease:
+                                {
+                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject;
+                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    thread.PushCallStack(function, interpretationData.Interpretation, instance);
+                                    RuntimeEventsHub.RaiseLockReleaseCalled(ShadowCLR, function, instance, info);
+                                    break;
+                                }
+                            // Signal wait calls
+                            case MethodInterpretation.SignalTryWait:
+                            case MethodInterpretation.SignalBlockingWait:
+                                {
+                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject;
+                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    var isAlreadyWaiting = (thread.GetCallstackDepth() != 0)
+                                        && (thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait ||
+                                            thread.PeekCallstack().Interpretation == MethodInterpretation.SignalBlockingWait);
+                                    thread.PushCallStack(function, interpretationData.Interpretation, instance);
+                                    RuntimeEventsHub.RaiseObjectWaitAttempted(ShadowCLR, function, instance, info);
+                                    break;
+                                }
+                            // Signal pulse calls
+                            case MethodInterpretation.SignalPulseOne:
+                            case MethodInterpretation.SignalPulseAll:
+                                {
+                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject;
+                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    thread.PushCallStack(function, interpretationData.Interpretation, instance);
+                                    var isPulseAll = interpretationData.Interpretation == MethodInterpretation.SignalPulseAll;
+                                    RuntimeEventsHub.RaiseObjectPulseCalled(ShadowCLR, function, isPulseAll, instance, info);
+                                    break;
+                                }
+                            // Fields
+                            case MethodInterpretation.FieldAccess:
+                                {
+                                    var isWrite = (bool)resolvedArgumentsList[0].Argument.BoxedValue!;
+                                    var identifier = (ulong)resolvedArgumentsList[1].Argument.BoxedValue!;
+                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(thread.OperationContext.FieldInstance);
+                                    RuntimeEventsHub.RaiseFieldAccessed(ShadowCLR, identifier, isWrite, thread.OperationContext.FieldInstance, info);
+                                    break;
+                                }
+                            case MethodInterpretation.FieldInstanceAccess:
+                                {
+                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject;
+                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    thread.OperationContext.FieldInstance = (instance as ShadowObject)!;
+                                    RuntimeEventsHub.RaiseFieldInstanceAccessed(ShadowCLR, instance, info);
+                                    break;
+                                }
+                            // Arrays
+                            case MethodInterpretation.ArrayElementAccess:
+                                {
+                                    var isWrite = (bool)resolvedArgumentsList[0].Argument.BoxedValue!;
+                                    var identifier = (ulong)resolvedArgumentsList[1].Argument.BoxedValue!;
+                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(thread.OperationContext.ArrayInstance);
+                                    Guard.NotNull<int?, ShadowRuntimeStateException>(thread.OperationContext.ArrayIndex);
+                                    var instance = thread.OperationContext.ArrayInstance;
+                                    var index = thread.OperationContext.ArrayIndex.Value;
+                                    RuntimeEventsHub.RaiseArrayElementAccessed(ShadowCLR, identifier, isWrite, instance, index, info);
+                                    break;
+                                }
+                            case MethodInterpretation.ArrayInstanceAccess:
+                                {
+                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject;
+                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    thread.OperationContext.ArrayInstance = (instance as ShadowObject)!;
+                                    RuntimeEventsHub.RaiseArrayInstanceAccessed(ShadowCLR, instance, info);
+                                    break;
+                                }
+                            case MethodInterpretation.ArrayIndexAccess:
+                                {
+                                    var index = (int)resolvedArgumentsList[0].Argument.BoxedValue!;
+                                    thread.OperationContext.ArrayIndex = index;
+                                    RuntimeEventsHub.RaiseArrayIndexAccessed(ShadowCLR, index, info);
+                                    break;
+                                }
+                        }
+                    }
                 }
 
-                // Notify listeners
                 RuntimeEventsHub.RaiseMethodCalled(ShadowCLR, function, resolvedArgumentsList, info);
             }));
         }
 
-        public void Schedule_MethodReturned(FunctionInfo function, IValueOrPointer? retValue, (ushort Index, IValueOrPointer Arg)[]? byRefArgs, EventInfo info)
+        public void Schedule_MethodReturned(FunctionInfo function, RawReturnValue? retValue, RawArgumentsList? byRefArgs, EventInfo info)
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
             {
-                // Resolve return value
-                var resolvedReturnValue = default(IValueOrObject);
-                if (retValue is not null)
-                {
-                    resolvedReturnValue = (retValue.HasValue()) ? new ValueOrObject(retValue.BoxedValue!) :
-                        new ValueOrObject(ShadowCLR.ShadowGC.GetObject(retValue.Pointer!.Value));
-                }
+                var thread = ThreadLookup[info.ThreadId];
 
-                // Resolve arguments
+                // Ensure we can resolve the method
                 var resolvedByRefArgumentsList = default(ArgumentsList);
-                if (byRefArgs is not null)
+                var resolvedReturnValue = default(IValueOrObject);
+                var resolver = MetadataContext.GetResolver(ProcessId);
+                if (resolver.TryGetMethodDef(function, new(function.ModuleId), out var methodDef))
                 {
-                    var resolvedByRefArguments = new (ushort, IValueOrObject)[byRefArgs.Length];
-                    for (var i = 0; i < byRefArgs.Length; i++)
+                    // Parse method call arguments
+                    var parsedByRefArguments = (byRefArgs.HasValue && !byRefArgs.Value.ArgValues.IsEmpty) ?
+                        ArgumentsHelper.ParseArguments(
+                            methodDef,
+                            byRefArgs.Value.ArgValues.Span,
+                            byRefArgs.Value.ArgOffsets.Span) :
+                        Array.Empty<(ushort Index, IValueOrPointer Argument)>();
+
+                    // Parse return value
+                    var parsedReturnValue = (retValue.HasValue && !retValue.Value.ReturnValue.IsEmpty) ?
+                        ArgumentsHelper.ParseArgument(methodDef.ReturnType, retValue.Value.ReturnValue.Span) : null as IValueOrPointer;
+
+                    // Resolve return value
+                    if (parsedReturnValue is not null)
                     {
-                        var argValue = (byRefArgs[i].Arg.HasValue()) ? new ValueOrObject(byRefArgs[i].Arg.BoxedValue!) :
-                            new ValueOrObject(ShadowCLR.ShadowGC.GetObject(byRefArgs[i].Arg.Pointer!.Value));
-                        resolvedByRefArguments[i] = (byRefArgs[i].Index, argValue);
+                        resolvedReturnValue = (parsedReturnValue.HasValue()) ? new ValueOrObject(parsedReturnValue.BoxedValue!) :
+                            new ValueOrObject(ShadowCLR.ShadowGC.GetObject(parsedReturnValue.Pointer!.Value));
                     }
 
-                    resolvedByRefArgumentsList = new(resolvedByRefArguments);
+                    // Resolve arguments
+                    if (parsedByRefArguments is not null)
+                    {
+                        var resolvedByRefArguments = new (ushort, IValueOrObject)[parsedByRefArguments.Length];
+                        for (var i = 0; i < parsedByRefArguments.Length; i++)
+                        {
+                            var argValue = (parsedByRefArguments[i].Argument.HasValue()) ? new ValueOrObject(parsedByRefArguments[i].Argument.BoxedValue!) :
+                                new ValueOrObject(ShadowCLR.ShadowGC.GetObject(parsedByRefArguments[i].Argument.Pointer!.Value));
+                            resolvedByRefArguments[i] = (parsedByRefArguments[i].Index, argValue);
+                        }
+
+                        resolvedByRefArgumentsList = new(resolvedByRefArguments);
+                    }
+
+                    // Resolve method interpretation
+                    if (MethodRegistry.TryGetMethodInterpretationData(methodDef, out var interpretationData))
+                    {
+                        switch (interpretationData.Interpretation)
+                        {
+                            // Lock acquire returns
+                            case MethodInterpretation.LockTryAcquire:
+                            case MethodInterpretation.LockBlockingAcquire:
+                                {
+                                    Guard.NotNull<ResultChecker, ArgumentException>(interpretationData.Checker);
+                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    var instance = thread.PopCallStack().Arguments as ShadowObject;
+                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(instance);
+                                    var isSuccess = interpretationData.Checker(resolvedReturnValue, resolvedByRefArgumentsList.Raw);
+                                    if (isSuccess)
+                                        instance.SyncBlock.Acquire(thread);
+                                    RuntimeEventsHub.RaiseLockAcquireReturned(ShadowCLR, function, instance, isSuccess, info);
+                                    break;
+                                }
+                            // Lock release returns
+                            case MethodInterpretation.LockRelease:
+                                {
+                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    var instance = thread.PopCallStack().Arguments as ShadowObject;
+                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(instance);
+                                    instance.SyncBlock.Release(thread);
+                                    RuntimeEventsHub.RaiseLockReleaseReturned(ShadowCLR, function, instance, info);
+                                    break;
+                                }
+                            // Signal wait returns
+                            case MethodInterpretation.SignalTryWait:
+                            case MethodInterpretation.SignalBlockingWait:
+                                {
+                                    Guard.NotNull<ResultChecker, ArgumentException>(interpretationData.Checker);
+                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    var instance = thread.PopCallStack().Arguments as ShadowObject;
+                                    var isStillWaiting = (thread.GetCallstackDepth() != 0) && thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait;
+                                    thread.PushCallStack(function, MethodInterpretation.SignalTryWait, instance);
+                                    if (isStillWaiting)
+                                    {
+                                        // This event will be processed for the first Wait overload
+                                        break;
+                                    }
+                                    instance!.SyncBlock.Acquire(thread);
+                                    var isSuccess = interpretationData.Checker(resolvedReturnValue, resolvedByRefArgumentsList.Raw);
+                                    RuntimeEventsHub.RaiseObjectWaitReturned(ShadowCLR, function, instance, isSuccess, info);
+                                    break;
+                                }
+                            // Signal pulse returns
+                            case MethodInterpretation.SignalPulseOne:
+                            case MethodInterpretation.SignalPulseAll:
+                                {
+                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    var instance = thread.PopCallStack().Arguments as ShadowObject;
+                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(instance);
+                                    var isPulseAll = interpretationData.Interpretation == MethodInterpretation.SignalPulseAll;
+                                    RuntimeEventsHub.RaiseObjectPulseReturned(ShadowCLR, function, isPulseAll, instance, info);
+                                    break;
+                                }
+                        }
+                    }
                 }
 
-                // Notify listeners
                 RuntimeEventsHub.RaiseMethodReturned(ShadowCLR, function, resolvedReturnValue, resolvedByRefArgumentsList, info);
-            }));
-        }
-
-        public void Schedule_ObjectWaitAttempted(FunctionInfo function, UIntPtr instancePtr, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.SynchronizedBlocking, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = ShadowCLR.ShadowGC.GetObject(instancePtr);
-                var isWaiting = (thread.GetCallstackDepth() != 0) && thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait;
-                thread.PushCallStack(function, MethodInterpretation.SignalTryWait, instance);
-
-                if (isWaiting)
-                {
-                    // We already processed this event
-                    return;
-                }
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseObjectWaitAttempted(ShadowCLR, function, instance, info);
-            }));
-        }
-
-        public void Schedule_ObjectWaitReturned(FunctionInfo function, bool isSuccess, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.SynchronizedUnblocking, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = thread.PopCallStack().Arguments as ShadowObject;
-                var isStillWaiting = (thread.GetCallstackDepth() != 0) && thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait;
-                thread.PushCallStack(function, MethodInterpretation.SignalTryWait, instance);
-
-                if (isStillWaiting)
-                {
-                    // This event will be processed for the first Wait overload
-                    return;
-                }
-
-                // Re-acquire lock
-                instance!.SyncBlock.Acquire(thread);
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseObjectWaitReturned(ShadowCLR, function, instance, isSuccess, info);
-            }));
-        }
-
-        public void Schedule_ObjectPulseCalled(FunctionInfo function, bool isPulseAll, UIntPtr instancePtr, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = ShadowCLR.ShadowGC.GetObject(instancePtr);
-                var interpretation = (isPulseAll) ? MethodInterpretation.SignalPulseAll : MethodInterpretation.SignalPulseOne;
-                thread.PushCallStack(function, interpretation, instance);
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseObjectPulseCalled(ShadowCLR, function, isPulseAll, instance, info);
-            }));
-        }
-
-        public void Schedule_ObjectPulseReturned(FunctionInfo function, bool isPulseAll, EventInfo info)
-        {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
-            {
-                var thread = ThreadLookup[info.ThreadId];
-                var instance = thread.PeekCallstack().Arguments as ShadowObject;
-                thread.PopCallStack();
-
-                // Notify listeners
-                RuntimeEventsHub.RaiseObjectPulseReturned(ShadowCLR, function, isPulseAll, instance!, info);
             }));
         }
         #endregion
