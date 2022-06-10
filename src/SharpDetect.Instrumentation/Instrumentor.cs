@@ -1,8 +1,10 @@
 ﻿using dnlib.DotNet;
 using dnlib.DotNet.Emit;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
+using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services;
@@ -30,8 +32,7 @@ namespace SharpDetect.Instrumentation
         private readonly IStringHeapCache stringHeapCache;
         private readonly IEventDescriptorRegistry eventDescriptorRegistry;
         private readonly IMethodDescriptorRegistry methodDescriptorRegistry;
-        private readonly IServiceProvider serviceProvider;
-        private readonly ILogger<Instrumentor> logger;
+        private InstrumentationOptions options;
         private volatile int instrumentedMethodsCount;
         private volatile int injectedMethodWrappersCount;
         private volatile int injectedMethodHooksCount;
@@ -41,6 +42,7 @@ namespace SharpDetect.Instrumentation
         public int InjectedMethodHooksCount { get => injectedMethodHooksCount; }
 
         public Instrumentor(
+            IConfiguration configuration,
             IShadowExecutionObserver executionObserver,
             IProfilingClient profilingClient,
             IModuleBindContext moduleBindContext,
@@ -48,9 +50,7 @@ namespace SharpDetect.Instrumentation
             IStringHeapCache stringHeapCache,
             IEventDescriptorRegistry eventDescriptorRegistry,
             IMethodDescriptorRegistry methodDescriptorRegistry,
-            IEnumerable<InjectorBase> registeredInjectors,
-            IServiceProvider serviceProvider,
-            ILoggerFactory loggerFactory)
+            IEnumerable<InjectorBase> registeredInjectors)
         {
             this.profilingClient = profilingClient;
             this.moduleBindContext = moduleBindContext;
@@ -59,8 +59,6 @@ namespace SharpDetect.Instrumentation
             this.eventDescriptorRegistry = eventDescriptorRegistry;
             this.methodDescriptorRegistry = methodDescriptorRegistry;
             this.registeredInjectors = registeredInjectors.ToArray();
-            this.serviceProvider = serviceProvider;
-            this.logger = loggerFactory.CreateLogger<Instrumentor>();
 
             instrumentationCache = new();
             emptyResolvedMethodStubs = new();
@@ -68,6 +66,11 @@ namespace SharpDetect.Instrumentation
 
             executionObserver.ModuleLoaded += ExecutionObserver_ModuleLoaded;
             executionObserver.JITCompilationStarted += ExecutionObserver_JITCompilationStarted;
+
+            options = new InstrumentationOptions(
+                configuration.GetSection(Constants.Instrumentation.Enabled).Get<bool>(),
+                configuration.GetSection(Constants.Instrumentation.Strategy).Get<InstrumentationStrategy>(),
+                configuration.GetSection(Constants.Instrumentation.Patterns).Get<string[]>());
         }
 
         /// <summary>
@@ -143,15 +146,18 @@ namespace SharpDetect.Instrumentation
                         // Check if we need to patch any calls to wrapped extern methods
                         var stubs = new UnresolvedMethodStubs();
                         WrapAnalyzedExternMethodCalls(method, moduleInfo, stubs, info);
-
-                        // Check if user requested instrumentation for this method
+                        
                         var methodInstrumented = default(bool);
+                        // Apply actions defined by method descriptors
                         if (methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data))
                         {
                             // Statistics
                             if (data.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks))
                                 Interlocked.Increment(ref injectedMethodHooksCount);
-
+                        }
+                        // Check if user requested instrumentation for this method
+                        else if (options.Patterns.Any(p => method.FullName.Contains(p)))
+                        {
                             // Perform instrumenation
                             methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
                         }
