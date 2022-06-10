@@ -48,6 +48,13 @@
             }
         }
 
+        public static class Instrumentation
+        {
+            public const string Enabled = "Instrumentation:Enabled";
+            public const string Strategy = "Instrumentation:Strategy";
+            public const string Patterns = "Instrumentation:Patterns";
+        }
+
         public static class Tests
         {
             public const string Port = "Tests:Port";
