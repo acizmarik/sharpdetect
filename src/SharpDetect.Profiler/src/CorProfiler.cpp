@@ -142,9 +142,9 @@ HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRE
 
 	// Check if we need to wrap extern methods
 	auto request = requestFuture.get();
-	if (request.has_wrappingrequest())
+	if (request.Payload_case() == RequestMessage::PayloadCase::kWrapping)
 	{
-		auto& wrapping = request.wrappingrequest();
+		auto& wrapping = request.wrapping();
 		auto identifier = std::array<WCHAR, 511>();
 
 		// Inject wrappers
@@ -209,9 +209,9 @@ HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID function
 	// Hold execution - SharpDetect.Analyser needs to respond whether we are changing the method or not
 	auto request = requestFuture.get();
 	// Requested instrumentation => edit bytecode before JIT compiles the method
-	if (request.has_instrumentationrequest())
+	if (request.Payload_case() == RequestMessage::PayloadCase::kInstrumentation)
 	{
-		auto& instrumentation = request.instrumentationrequest();
+		auto& instrumentation = request.instrumentation();
 
 		// Inject enter/leave hooks
 		if (instrumentation.injecthooks())
@@ -302,7 +302,7 @@ HRESULT STDMETHODCALLTYPE CorProfiler::GarbageCollectionFinished()
 
 	// Hold execution until we receive a response
 	auto request = requestFuture.get();
-	LOG_ERROR_IF(!request.has_continueexecutionrequest(), pLogger, "Unexpected request. Continuing execution...");
+	LOG_ERROR_IF(request.Payload_case() != RequestMessage::PayloadCase::kContinueExecution, pLogger, "Unexpected request. Continuing execution...");
 
 	return S_OK;
 }
