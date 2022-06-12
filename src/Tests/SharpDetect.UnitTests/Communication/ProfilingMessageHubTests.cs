@@ -45,43 +45,6 @@ namespace SharpDetect.UnitTests.Communication
         }
 
         [Fact]
-        public void ProfilingMessageHub_ProfilerLoaded()
-        {
-            // Prepare
-            const ulong notificationId = 123;
-            const int processId = 456;
-            UIntPtr threadId = new(789);
-            Version version = new(11, 22, 33);
-
-            var raised = false;
-            var versionInfo = default(Version);
-            var eventInfo = default(EventInfo);
-            var hub = new ProfilingMessageHub(LoggerFactory);
-            hub.ProfilerLoaded += args =>
-            {
-                versionInfo = args.Version;
-                eventInfo = args.Info;
-                raised = true;
-            };
-
-            // Act
-            hub.Process(new NotifyMessage() 
-            { 
-                ProfilerLoaded = new Notify_ProfilerLoaded() { Version = version.ToString(3) },
-                ProcessId = processId,
-                ThreadId = threadId.ToUInt64(),
-                NotificationId = notificationId
-            });
-
-            // Assert
-            Assert.True(raised);
-            Assert.Equal(version, versionInfo);
-            Assert.Equal(notificationId, eventInfo.Id);
-            Assert.Equal(processId, eventInfo.ProcessId);
-            Assert.Equal(threadId, eventInfo.ThreadId);
-        }
-
-        [Fact]
         public void ProfilingMessageHub_ProfilerInitialized()
         {
             // Prepare
@@ -90,11 +53,13 @@ namespace SharpDetect.UnitTests.Communication
             UIntPtr threadId = new(789);
 
             var raised = false;
+            var version = default(Version?);
             var eventInfo = default(EventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.ProfilerInitialized += args =>
             {
-                eventInfo = args;
+                version = args.Version;
+                eventInfo = args.Info;
                 raised = true;
             };
 

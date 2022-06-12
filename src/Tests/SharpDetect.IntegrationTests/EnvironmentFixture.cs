@@ -45,7 +45,7 @@ namespace SharpDetect.IntegrationTests
 
             public Task<bool> Start()
             {
-                return Analyzer.ExecuteAsync(CancellationToken.None);
+                return Analyzer.ExecuteOnlyAnalysisAsync(CancellationToken.None);
             }
 
             public void Dispose()
@@ -56,6 +56,7 @@ namespace SharpDetect.IntegrationTests
                     Output.CompleteAdding();
                     Profiler.Dispose();
                     Scope.Dispose();
+                    GC.SuppressFinalize(this);
                 }
             }
         }

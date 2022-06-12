@@ -37,7 +37,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var methodCalledRaised = false;
             eventsHub.MethodCalled += _ => methodCalledRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(2, pid, threadId));
@@ -75,7 +75,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var methodReturnedRaised = false;
             eventsHub.MethodCalled += _ => methodCalledRaised = true;
             eventsHub.MethodReturned += _ => methodReturnedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(2, pid, threadId));
@@ -144,7 +144,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var methodLockAcquireAttemptedCalledRaised = false;
             eventsHub.MethodCalled += _ => methodCalledRaised = true;
             eventsHub.LockAcquireAttempted += _ => methodLockAcquireAttemptedCalledRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
@@ -186,7 +186,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.LockAcquireAttempted += _ => methodLockAcquireAttemptedCalledRaised = true;
             eventsHub.LockAcquireReturned += _ => methodLockAcquireReturnedCalledRaised = true;
             eventsHub.MethodReturned += _ => methodReturnedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
@@ -231,7 +231,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.MethodReturned += _ => methodReturnedRaised = true;
             eventsHub.LockAcquireAttempted += _ => methodLockAcquireAttemptedCalledRaised = true;
             eventsHub.LockAcquireReturned += _ => methodLockAcquireReturnedCalledRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
@@ -277,7 +277,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.LockAcquireReturned += _ => methodLockAcquireReturnedCalledRaised = true;
             eventsHub.LockReleaseCalled += _ => methodLockReleaseCalledRaised = true;
             eventsHub.LockReleaseReturned += _ => methodLockReleaseReturnedCalledRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             // Lock acquire
@@ -325,7 +325,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.LockAcquireAttempted += _ => methodLockAcquireAttemptedCalledRaised = true;
             eventsHub.LockAcquireReturned += _ => methodLockAcquireReturnedRaised = true;
             eventsHub.ObjectWaitAttempted += _ => methodObjectWaitAttemptedCalledRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             // Acquire lock
@@ -374,7 +374,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.LockAcquireReturned += _ => methodLockAcquireReturnedRaised = true;
             eventsHub.ObjectWaitAttempted += _ => methodObjectWaitAttemptedCalledRaised = true;
             eventsHub.ObjectWaitReturned += _ => methodObjectWaitReturnedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             // Acquire lock
@@ -419,7 +419,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var methodObjectPulseCalledRaised = false;
             eventsHub.MethodCalled += _ => methodCalledRaised = true;
             eventsHub.ObjectPulseCalled += _ => methodObjectPulseCalledRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));
@@ -459,7 +459,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.MethodCalled += _ => methodCalledRaised = true;
             eventsHub.MethodReturned += _ => methodReturnedRaised = true;
             eventsHub.ObjectPulseReturned += _ => methodObjectPulseCalledReturned = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new EventInfo(3, pid, threadId));

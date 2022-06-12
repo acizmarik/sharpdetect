@@ -164,10 +164,10 @@ namespace SharpDetect.Core.Runtime
             scheduler.Schedule_Heartbeat(info);
         }
 
-        private void ProfilingMessageHub_ProfilerInitialized(EventInfo info)
+        private void ProfilingMessageHub_ProfilerInitialized((Version? Version, EventInfo Info) args)
         {
-            var scheduler = GetScheduler(info.ProcessId);
-            scheduler.Schedule_ProfilerInitialized(info);
+            var scheduler = GetScheduler(args.Info.ProcessId);
+            scheduler.Schedule_ProfilerInitialized(args.Version, args.Info);
         }
 
         private void ProfilingMessageHub_ProfilerDestroyed(EventInfo info)

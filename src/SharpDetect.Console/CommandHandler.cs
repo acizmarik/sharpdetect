@@ -32,7 +32,7 @@ namespace SharpDetect.Console
                 ParsePluginsConfiguration(pluginsConfiguration);
 
                 // Execute analysis
-                return await analysis.ExecuteAsync(ct);
+                return await analysis.ExecuteAnalysisAndTargetAsync(ct);
             }
             catch (Exception ex)
             {
