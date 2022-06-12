@@ -6,7 +6,6 @@ using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
-using SharpDetect.Common.SourceLinks;
 using SharpDetect.Instrumentation.Stubs;
 using SharpDetect.Instrumentation.Utilities;
 
