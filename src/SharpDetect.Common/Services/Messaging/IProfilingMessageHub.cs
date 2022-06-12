@@ -6,8 +6,7 @@ namespace SharpDetect.Common.Services
     {
         event Action<EventInfo> Heartbeat;
 
-        event Action<(Version? Version, EventInfo Info)> ProfilerLoaded;
-        event Action<EventInfo> ProfilerInitialized;
+        event Action<(Version? Version, EventInfo Info)> ProfilerInitialized;
         event Action<EventInfo> ProfilerDestroyed;
 
         event Action<(UIntPtr ModuleId, string Path, EventInfo Info)> ModuleLoaded;

@@ -65,7 +65,13 @@ namespace SharpDetect.Core
             logger = loggerFactory.CreateLogger<Analysis>();
         }
 
-        public async Task<bool> ExecuteAsync(CancellationToken ct)
+        public Task<bool> ExecuteAnalysisAndTargetAsync(CancellationToken ct)
+            => ExecuteAsync(withTargetProgram: true, ct);
+
+        public Task<bool> ExecuteOnlyAnalysisAsync(CancellationToken ct)
+            => ExecuteAsync(withTargetProgram: false, ct);
+
+        private async Task<bool> ExecuteAsync(bool withTargetProgram, CancellationToken ct)
         {
             DateTime? start = default, stop = default;
 
@@ -89,9 +95,16 @@ namespace SharpDetect.Core
                 requestsProducer.Start();
                 notificationsConsumer.Start();
                 start = dateTimeProvider.Now;
+                var wholeExecution = execution.GetAwaitableTaskAsync();
 
-                // Wait until execution completes
-                await execution.GetAwaitableTaskAsync().ConfigureAwait(false);
+                if (withTargetProgram)
+                {
+                    var target = new Target(configuration);
+                    logger.LogDebug("[{class}] Target program starting...", nameof(Analysis));
+                    wholeExecution = target.ExecuteAsync(ct).ContinueWith(_ => execution);
+                }
+
+                await wholeExecution.ConfigureAwait(false);
                 return execution.ProcessesExitedWithErrorCodeCount == 0;
             }
             finally

@@ -10,8 +10,7 @@ namespace SharpDetect.Core.Communication
     internal class ProfilingMessageHub : MessageHubBase, IProfilingMessageHub
     {
         public event Action<EventInfo>? Heartbeat;
-        public event Action<(Version? Version, EventInfo Info)>? ProfilerLoaded;
-        public event Action<EventInfo>? ProfilerInitialized;
+        public event Action<(Version? Version, EventInfo Info)>? ProfilerInitialized;
         public event Action<EventInfo>? ProfilerDestroyed;
         public event Action<(UIntPtr ModuleId, string Path, EventInfo Info)>? ModuleLoaded;
         public event Action<(TypeInfo TypeInfo, EventInfo Info)>? TypeLoaded;
@@ -31,7 +30,6 @@ namespace SharpDetect.Core.Communication
             : base(loggerFactory.CreateLogger<ProfilingMessageHub>(), new[]
             {
                 NotifyMessage.PayloadOneofCase.Heartbeat,
-                NotifyMessage.PayloadOneofCase.ProfilerLoaded,
                 NotifyMessage.PayloadOneofCase.ProfilerInitialized,
                 NotifyMessage.PayloadOneofCase.ProfilerDestroyed,
                 NotifyMessage.PayloadOneofCase.ModuleLoaded,
@@ -57,7 +55,6 @@ namespace SharpDetect.Core.Communication
             switch (message.PayloadCase)
             {
                 case NotifyMessage.PayloadOneofCase.Heartbeat: DispatchHeartbeat(message); break;
-                case NotifyMessage.PayloadOneofCase.ProfilerLoaded: DispatchProfilerLoaded(message); break;
                 case NotifyMessage.PayloadOneofCase.ProfilerInitialized: DispatchProfilerInitialized(message); break;
                 case NotifyMessage.PayloadOneofCase.ProfilerDestroyed: DispatchProfilerDestroyed(message); break;
                 case NotifyMessage.PayloadOneofCase.ModuleLoaded: DispatchModuleLoaded(message); break;
@@ -86,20 +83,14 @@ namespace SharpDetect.Core.Communication
             Heartbeat?.Invoke(info);
         }
 
-        private void DispatchProfilerLoaded(NotifyMessage message)
+        private void DispatchProfilerInitialized(NotifyMessage message)
         {
             var info = CreateEventInfo(message);
 #pragma warning disable CA1806 // Do not ignore method results
             // Note: version checking should be handled separately, we just dont want exceptions here
-            Version.TryParse(message.ProfilerLoaded.Version, out var version);
+            Version.TryParse(message.ProfilerInitialized.Version, out var version);
 #pragma warning restore CA1806 // Do not ignore method results
-            ProfilerLoaded?.Invoke((version, info));
-        }
-
-        private void DispatchProfilerInitialized(NotifyMessage message)
-        {
-            var info = CreateEventInfo(message);
-            ProfilerInitialized?.Invoke(info);
+            ProfilerInitialized?.Invoke((version, info));
         }
 
         private void DispatchProfilerDestroyed(NotifyMessage message)

@@ -27,32 +27,31 @@ message NotifyMessage
 	{
 		Response								Response = 4;
 		Notify_Heartbeat						Heartbeat = 5;
-		Notify_ProfilerLoaded					ProfilerLoaded = 6;
-		Notify_ProfilerInitialized				ProfilerInitialized = 7;
-		Notify_ProfilerDestroyed				ProfilerDestroyed = 8;
-		Notify_ModuleLoaded						ModuleLoaded = 9;
-		Notify_TypeLoaded						TypeLoaded = 10;
-		Notify_JITCompilationStarted			JITCompilationStarted = 11;
-		Notify_ThreadCreated					ThreadCreated = 12;
-		Notify_ThreadDestroyed					ThreadDestroyed = 13;
-		Notify_TypeInjected						TypeInjected = 14;
-		Notify_TypeReferenced					TypeReferenced = 15;
-		Notify_MethodInjected					MethodInjected = 16;
-		Notify_HelperMethodReferenced			HelperMethodReferenced = 17;
-		Notify_WrapperMethodReferenced			WrapperMethodReferenced = 18;
-		Notify_MethodCalled						MethodCalled = 19;
-		Notify_MethodReturned					MethodReturned = 20;
-		Notify_MethodWrapperInjected			MethodWrapperInjected = 21;
+		Notify_ProfilerInitialized				ProfilerInitialized = 6;
+		Notify_ProfilerDestroyed				ProfilerDestroyed = 7;
+		Notify_ModuleLoaded						ModuleLoaded = 8;
+		Notify_TypeLoaded						TypeLoaded = 9;
+		Notify_JITCompilationStarted			JITCompilationStarted = 10;
+		Notify_ThreadCreated					ThreadCreated = 11;
+		Notify_ThreadDestroyed					ThreadDestroyed = 12;
+		Notify_TypeInjected						TypeInjected = 13;
+		Notify_TypeReferenced					TypeReferenced = 14;
+		Notify_MethodInjected					MethodInjected = 15;
+		Notify_HelperMethodReferenced			HelperMethodReferenced = 16;
+		Notify_WrapperMethodReferenced			WrapperMethodReferenced = 17;
+		Notify_MethodCalled						MethodCalled = 18;
+		Notify_MethodReturned					MethodReturned = 19;
+		Notify_MethodWrapperInjected			MethodWrapperInjected = 20;
 		
-		Notify_GarbageCollectionStarted			GarbageCollectionStarted = 22;
-		Notify_GarbageCollectionFinished		GarbageCollectionFinished = 23;
-		Notify_RuntimeSuspendStarted			RuntimeSuspendStarted = 24;
-		Notify_RuntimeSuspendFinished			RuntimeSuspendFinished = 25;
-		Notify_RuntimeThreadSuspended			RuntimeThreadSuspended = 26;
-		Notify_RuntimeThreadResumed				RuntimeThreadResumed = 27;
+		Notify_GarbageCollectionStarted			GarbageCollectionStarted = 21;
+		Notify_GarbageCollectionFinished		GarbageCollectionFinished = 22;
+		Notify_RuntimeSuspendStarted			RuntimeSuspendStarted = 23;
+		Notify_RuntimeSuspendFinished			RuntimeSuspendFinished = 24;
+		Notify_RuntimeThreadSuspended			RuntimeThreadSuspended = 25;
+		Notify_RuntimeThreadResumed				RuntimeThreadResumed = 26;
 
-		Notify_SurvivingReferences				SurvivingReferences = 28;
-		Notify_MovedReferences					MovedReferences = 29;
+		Notify_SurvivingReferences				SurvivingReferences = 27;
+		Notify_MovedReferences					MovedReferences = 28;
 	}
 }
 
@@ -90,14 +89,9 @@ message Notify_Heartbeat
 	// No additional parameters
 }
 
-message Notify_ProfilerLoaded
-{
-	string		Version = 1;
-}
-
 message Notify_ProfilerInitialized
 {
-	// No additional parameters
+	string		Version = 1;
 }
 
 message Notify_ProfilerDestroyed

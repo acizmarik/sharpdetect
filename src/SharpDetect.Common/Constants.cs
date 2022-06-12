@@ -17,6 +17,8 @@
         public static class Configuration
         {
             public const string TargetAssembly = "TargetAssembly";
+            public const string CommandLineArgs = "CommandLineArguments";
+            public const string WorkingDirectory = "WorkingDirectory";
             public const string PluginsRootFolder = "PluginsPath";
             public const string PluginsChain = "PluginsChain";
         }
@@ -53,6 +55,13 @@
             public const string Enabled = "Instrumentation:Enabled";
             public const string Strategy = "Instrumentation:Strategy";
             public const string Patterns = "Instrumentation:Patterns";
+        }
+
+        public static class Profiling
+        {
+            public const string Monitor = "Profiling:Monitor";
+            public const string Enable = "Profiling:Enable";
+            public const string Disable = "Profiling:Disable";
         }
 
         public static class Tests

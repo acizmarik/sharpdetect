@@ -27,15 +27,15 @@ namespace SharpDetect.Metadata
         public IMetadataResolver GetResolver(int processId)
             => resolvers[processId];
 
-        private void OnProfilingInitializedHandler(EventInfo info)
+        private void OnProfilingInitializedHandler((Version? Version, EventInfo Info) args)
         {
             // Create new metadata context
-            var context = new InjectedData(info.ProcessId);
-            var emitter = new MetadataEmitter(info.ProcessId, context);
-            var resolver = new MetadataResolver(info.ProcessId, moduleBindContext, context);
+            var context = new InjectedData(args.Info.ProcessId);
+            var emitter = new MetadataEmitter(args.Info.ProcessId, context);
+            var resolver = new MetadataResolver(args.Info.ProcessId, moduleBindContext, context);
 
-            resolvers = resolvers.Add(info.ProcessId, resolver);
-            emitters = emitters.Add(info.ProcessId, emitter);
+            resolvers = resolvers.Add(args.Info.ProcessId, resolver);
+            emitters = emitters.Add(args.Info.ProcessId, emitter);
         }
 
         private void OnProfilingDestroyedHandler(EventInfo info)

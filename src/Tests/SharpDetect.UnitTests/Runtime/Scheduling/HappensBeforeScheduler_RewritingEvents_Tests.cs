@@ -31,7 +31,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var typeInjectedRaised = false;
             eventsHub.TypeInjected += _ => typeInjectedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
@@ -64,7 +64,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var methodInjectedRaised = false;
             eventsHub.MethodInjected += _ => methodInjectedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(2, pid, threadId));
@@ -98,7 +98,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var methodWrapperInjectedRaised = false;
             eventsHub.MethodWrapperInjected += _ => methodWrapperInjectedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_WrapperInjected(new(moduleId, typeMDToken, externFunctionMDToken), wrapperFunctionMDToken, new EventInfo(2, pid, threadId));
@@ -140,7 +140,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var helperMethodReferencedRaised = false;
             eventsHub.MethodInjected += _ => methodInjectedRaised = true;
             eventsHub.HelperMethodReferenced += _ => helperMethodReferencedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(2, pid, threadId));
@@ -181,7 +181,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var methodWrapperReferencedRaised = false;
             eventsHub.MethodWrapperInjected += _ => methodWrapperInjectedRaised = true;
             eventsHub.WrapperMethodReferenced += _ => methodWrapperReferencedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(definitionModuleId, definitionModulePath, new EventInfo(1, pid, threadId));
             scheduler.Schedule_ModuleLoaded(referenceModuleId, referenceModulePath, new EventInfo(2, pid, threadId));

@@ -45,7 +45,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             RuntimeEventsHub.RaiseHeartbeat(ShadowCLR, info);
         }
 
-        public void Schedule_ProfilerInitialized(EventInfo info)
+        public void Schedule_ProfilerInitialized(Version? _, EventInfo info)
         {
             // Create initial thread
             var newThread = Register(info.ThreadId);
