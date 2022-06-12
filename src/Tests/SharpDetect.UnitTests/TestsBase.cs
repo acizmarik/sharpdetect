@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
+using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services;
@@ -56,6 +57,19 @@ namespace SharpDetect.UnitTests
                 .AddInMemoryCollection(new Dictionary<string, string> {
                     { $"{Constants.ModuleDescriptors.CoreModulesPaths}:0", "Modules" },
                 })
+                .Build();
+        }
+
+        protected IConfiguration CreateInstrumentorConfiguration(bool enableInstrumentation, InstrumentationStrategy strategy, string[] patterns)
+        {
+            return new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>(
+                    new[]
+                    {
+                        new KeyValuePair<string, string>(Constants.Instrumentation.Enabled, enableInstrumentation.ToString().ToLowerInvariant()),
+                        new KeyValuePair<string, string>(Constants.Instrumentation.Strategy, strategy.ToString())
+                    }
+                    .Concat(patterns.Select((p, i) => new KeyValuePair<string, string>($"{Constants.Instrumentation.Patterns}:{i}", p)))))
                 .Build();
         }
 

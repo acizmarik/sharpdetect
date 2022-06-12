@@ -1,7 +1,6 @@
 ﻿using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Instrumentation;
@@ -156,10 +155,18 @@ namespace SharpDetect.Instrumentation
                                 Interlocked.Increment(ref injectedMethodHooksCount);
                         }
                         // Check if user requested instrumentation for this method
-                        else if (options.Patterns.Any(p => method.FullName.Contains(p)))
+                        else if (options.Enabled)
                         {
-                            // Perform instrumenation
-                            methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
+                            if (options.Strategy == InstrumentationStrategy.OnlyPatterns && options.Patterns.Any(p => method.FullName.Contains(p)))
+                            {
+                                // Perform instrumenation
+                                methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
+                            }
+                            else if (options.Strategy == InstrumentationStrategy.AllExcludingPatterns && options.Patterns.All(p => !method.FullName.Contains(p)))
+                            {
+                                // Perform instrumenation
+                                methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
+                            }
                         }
 
                         // Cache 
