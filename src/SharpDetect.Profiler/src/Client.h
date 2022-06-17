@@ -18,7 +18,7 @@
 #define CLIENT_HEADER_GUARD
 
 #include "MessageFactory.h"
-#include <zmq.h>
+#include <zmq.hpp>
 #include <cstdint>
 #include <memory>
 #include <atomic>
@@ -38,18 +38,13 @@
 class Client
 {
 public:
-	Client(el::Logger* pLogger, int notificationsPort, int requestsPort);
+	Client(el::Logger* pLogger);
 	~Client();
 
 	Client(const Client& client) = delete;
 	Client& operator=(const Client& client) = delete;
 	Client(Client&& client) = delete;
 	Client& operator=(Client&& client) = delete;
-
-	static const int GetDefaultNotificationsPort() { return 1111; }
-	static const int GetDefaultRequestsPort() { return 1112; }
-	const int GetNotificationsPort() const { return notificationsPort; }
-	const int GetRequestsPort() const { return requestsPort; }
 
 	const uint64_t GetNewNotificationId()
 	{
@@ -59,29 +54,34 @@ public:
 
 	const uint64_t SendNotification(SharpDetect::Common::Messages::NotifyMessage&& message);
 	const uint64_t SendNotification(SharpDetect::Common::Messages::NotifyMessage&& message, uint64_t id);
+	void SendResponse(SharpDetect::Common::Messages::NotifyMessage&& response, uint64_t requestId);
+
 	void Shutdown();
 
 	std::future<SharpDetect::Common::Messages::RequestMessage> ReceiveRequest(uint64_t notificationId);
 
 private:
-	void NotificationsWorker();
+	void PushWorker(const std::string& endpoint, std::mutex& queueMutex, std::queue<SharpDetect::Common::Messages::NotifyMessage>& queue, std::condition_variable& cv);
 	void RequestsWorker();
 	size_t GetNewBufferSize(size_t current, size_t minRequestSize);
 
-	const std::string notificationsAddress = "tcp://localhost";
-	const std::string requestsAddress = "tcp://127.0.0.1";
-	const int notificationsPort;
-	const int requestsPort;
+	std::string notificationsEndpoint;
+	std::string requestsEndpoint;
+	std::string responsesEndpoint;
 
 	el::Logger* pLogger;
-	void* pContext;
+	zmq::context_t context;
 	std::thread notificationsThread;
 	std::thread requestsThread;
+	std::thread responsesThread;
 	std::mutex notificationsMutex;
+	std::mutex responsesMutex;
 	std::mutex promisesMutex;
 	std::queue<SharpDetect::Common::Messages::NotifyMessage> queueNotifications;
+	std::queue<SharpDetect::Common::Messages::NotifyMessage> queueResponses;
 	std::unordered_map<uint64_t, std::promise<SharpDetect::Common::Messages::RequestMessage>> promises;
 	std::condition_variable cvNotifications;	
+	std::condition_variable cvResponses;
 
 	volatile bool finish = false;
 };

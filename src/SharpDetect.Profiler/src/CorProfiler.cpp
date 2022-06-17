@@ -157,6 +157,9 @@ HRESULT STDMETHODCALLTYPE CorProfiler::ModuleLoadFinished(ModuleID moduleId, HRE
 		}
 	}
 
+	auto response = MessageFactory::RequestProcessed(pInstrumentationContext->GetCurrentThreadId(), request.requestid(), true);
+	pMessagingClient->SendResponse(std::move(response), request.requestid());
+
 	hr = pInstrumentationContext->ImportWrappers(moduleMetadata);
 	LOG_ERROR_AND_RET_IF(FAILED(hr), pLogger, "Could not import wrapper methods in " + ToString(moduleMetadata.GetModulePath()));
 
@@ -260,8 +263,11 @@ HRESULT STDMETHODCALLTYPE CorProfiler::JITCompilationStarted(FunctionID function
 			// Emit changes
 			hr = pCorProfilerInfo->SetILFunctionBody(moduleId, functionToken, memory);
 			LOG_ERROR_AND_RET_IF(FAILED(hr), pLogger, "Could not SetILFunctionBody for method " + std::to_string(functionId));
-		}		
+		}
 	}
+
+	auto response = MessageFactory::RequestProcessed(pInstrumentationContext->GetCurrentThreadId(), request.requestid(), true);
+	pMessagingClient->SendResponse(std::move(response), request.requestid());
 
 	return S_OK;
 }
