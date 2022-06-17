@@ -232,10 +232,10 @@ namespace SharpDetect.Instrumentation
                 // Resolve wrapper token
                 if (unresolvedStub.IsWrapperMethodReferenceStub())
                 {
-                    if (resolver.TryResolveMethodDef(unresolvedStub.GetExternMethod(), out var _))
+                    if (resolver.TryResolveMethodDef(unresolvedStub.GetExternMethod(), out var externMethodDef))
                     {
                         // This must be resolvable
-                        resolver.TryGetWrapperMethodReference(methodDef, moduleInfo, out mdToken);
+                        resolver.TryGetWrapperMethodReference(externMethodDef, moduleInfo, out mdToken);
                     }
                     else
                     {

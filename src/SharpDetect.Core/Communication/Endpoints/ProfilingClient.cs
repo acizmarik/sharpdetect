@@ -71,7 +71,7 @@ namespace SharpDetect.Core.Communication.Endpoints
                 request.Wrapping.MethodsToWrap.Add(new ExternalMethodInfo()
                 {
                     TypeToken = function.TypeToken.Raw,
-                    FunctionToken = function.TypeToken.Raw,
+                    FunctionToken = function.FunctionToken.Raw,
                     ParametersCount = argc
                 });
             }
