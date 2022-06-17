@@ -28,5 +28,6 @@ if (expr) logger->error(message); \
 else (void)0
 
 #define LOG_INFO(logger, message) logger->info(message)
+#define LOG_ERROR(logger, message) logger->error(message)
 
 #endif

@@ -21,7 +21,7 @@ CorProfilerBase::CorProfilerBase()
 	: pCorProfilerInfo(nullptr), pMessagingClient(nullptr), pLogger(nullptr), refCount(0)
 {
 	PrepareLogging();
-	PrepareMessagingClient();
+	pMessagingClient = std::make_unique<Client>(pLogger);
 	instance = this;
 }
 
@@ -47,33 +47,6 @@ void CorProfilerBase::PrepareLogging()
 	configurations.set(el::Level::Error, el::ConfigurationType::Format, "%datetime %level %msg");
 	configurations.set(el::Level::Fatal, el::ConfigurationType::Format, "%datetime %level %msg");
 	pLogger->configure(configurations);
-}
-
-void CorProfilerBase::PrepareMessagingClient()
-{
-	auto notifications = -1;
-	auto requests = -1;
-
-	// Get notifications port
-	const auto notificationsPortStr = PAL::ReadEnvironmentVariable("Communication:Notifications:Port");
-	if (!notificationsPortStr.empty())
-	{
-		// We were passed value in evironments
-		notifications = std::stoi(notificationsPortStr);
-	}
-
-	// Get requests port
-	const auto requestsPortStr = PAL::ReadEnvironmentVariable("Communication:Requests:Port");
-	if (!requestsPortStr.empty())
-	{
-		// We were passed value in evironments
-		requests = std::stoi(requestsPortStr);
-	}
-
-	// Initialize messaging client
-	notifications = (notifications > 0) ? notifications : Client::GetDefaultNotificationsPort();
-	requests = (requests > 0) ? requests : Client::GetDefaultRequestsPort();
-	pMessagingClient = std::make_unique<Client>(pLogger, notifications, requests);
 }
 
 const FunctionInfo* CorProfilerBase::TryGetHookData(FunctionID function)

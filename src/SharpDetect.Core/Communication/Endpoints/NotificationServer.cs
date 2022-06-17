@@ -35,7 +35,8 @@ namespace SharpDetect.Core.Communication.Endpoints
             var port = Configuration.GetRequiredSection(Constants.Communication.Notifications.Port).Value;
             this.connectionString = $"{protocol}://{address}:{port}";
             this.poller = new NetMQPoller();
-            this.socket = new PullSocket(connectionString);
+            this.socket = new PullSocket();
+            socket.Bind(connectionString);
             this.poller.Add(socket);
             this.socket.ReceiveReady += ReceiveProfilerMessage;
         }

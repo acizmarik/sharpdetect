@@ -16,10 +16,8 @@ namespace SharpDetect.Core.Communication.Endpoints
         private readonly string outboundConnectionString;
         private readonly string inboundConnectionString;
         private readonly ILogger<RequestServer> logger;
-        private readonly BlockingCollection<(int Topic, byte[] Data)> outboundQueue;
-        private readonly ConcurrentDictionary<int, TaskCompletionSource<Response>> responsePromises;
-        private readonly ConcurrentDictionary<int, (bool State, TaskCompletionSource<Response>? Promise)> establishedConnections;
-        private readonly TimeSpan connectionDiscoveryRetryDelay;
+        private readonly BlockingCollection<((int ProcessId, ulong RequestId), byte[] Data)> outboundQueue;
+        private readonly ConcurrentDictionary<(int ProcessId, ulong RequestId), TaskCompletionSource<Response>> responsePromises;
         private readonly Thread outboundWorkerThread;
         private readonly Thread inboundWorkerThread;
         private volatile bool terminating;
@@ -43,54 +41,26 @@ namespace SharpDetect.Core.Communication.Endpoints
             this.outboundConnectionString = $"{outProtocol}://{outAddress}:{outPort}";
             
             this.inboundWorkerThread = new Thread(InboundCommunicationLoop);
+            this.inboundWorkerThread.Name = "RequestsSender";
             this.outboundWorkerThread = new Thread(OutboundCommunicationLoop);
-            this.outboundQueue = new BlockingCollection<(int Topic, byte[] Data)>();
-            this.responsePromises = new ConcurrentDictionary<int, TaskCompletionSource<Response>>();
-            this.establishedConnections = new ConcurrentDictionary<int, (bool State, TaskCompletionSource<Response>? Promise)>();
-            this.connectionDiscoveryRetryDelay = TimeSpan.FromMilliseconds(100);
+            this.outboundWorkerThread.Name = "ResponsesReceiver";
+            this.outboundQueue = new BlockingCollection<((int ProcessId, ulong RequestId), byte[] Data)>();
+            this.responsePromises = new ConcurrentDictionary<(int ProcessId, ulong RequestId), TaskCompletionSource<Response>>();
         }
 
         private void OutboundCommunicationLoop()
         {
-            void EnsureConnectionEstablished(PublisherSocket socket, int topic)
+            using (var socket = new PublisherSocket())
             {
-                if (!establishedConnections.TryGetValue(topic, out var info) || !info.State)
-                {
-                    var topicMarshaled = BitConverter.GetBytes(topic);
-                    var pingRequestMarshaled = new RequestMessage() { RequestId = 0, Ping = new Request_Ping() }.ToByteArray();
-                    var taskCompletionSource = new TaskCompletionSource<Response>();
-                    establishedConnections.TryAdd(topic, (false, taskCompletionSource));
-
-                    logger.LogDebug("[{class}] Waiting for reliable PUB-SUB connection.", nameof(RequestServer));
-                    while (!info.State)
-                    {
-                        socket
-                            .SendMoreFrame(topicMarshaled)
-                            .SendFrame(pingRequestMarshaled);
-                        if (taskCompletionSource.Task.Wait(connectionDiscoveryRetryDelay))
-                        {
-                            // The other side responded - the connection is established
-                            info.State = true;
-                            logger.LogDebug("[{class}] Reliable PUB-SUB connection established.", nameof(RequestServer));
-                        }
-                    }
-                }
-            }
-
-            using (var socket = new PublisherSocket(outboundConnectionString))
-            {
+                socket.Bind(outboundConnectionString);
                 logger.LogDebug("[{class}] Opened connection for profiler requests on {connectionString}.", nameof(RequestServer), outboundConnectionString);
 
                 // Send requests and wait for promises async
-                foreach (var (topic, data) in outboundQueue.GetConsumingEnumerable())
+                foreach (var ((processId, requestId), data) in outboundQueue.GetConsumingEnumerable())
                 {
-                    /*  This is a work-around for a well-known ZMQ issue with establishing connections for PUB-SUB
-                     *  We just ping subscriber until it responds using the second channel */
-                    EnsureConnectionEstablished(socket, topic);
-
                     socket
                         // Topic: process identification
-                        .SendMoreFrame(BitConverter.GetBytes(topic))
+                        .SendMoreFrame(processId.ToString())
                         // Data: rewriting request
                         .SendFrame(data);
                 }
@@ -102,46 +72,27 @@ namespace SharpDetect.Core.Communication.Endpoints
         private void InboundCommunicationLoop()
         {
             var timeout = TimeSpan.FromSeconds(3);
-            using (var socket = new SubscriberSocket(inboundConnectionString))
+            using (var socket = new PullSocket())
             {
+                socket.Bind(inboundConnectionString);
                 logger.LogDebug("[{class}] Opened connection for profiler request responses on {connectionString}.", nameof(RequestServer), inboundConnectionString);
-                
-                // We are actually listening to all topics (processing message from every process)
-                socket.SubscribeToAnyTopic();
 
                 // Wait for request responses
                 while (!terminating)
                 {
-                    if (!socket.TryReceiveFrameBytes(timeout, out var topicData))
+                    if (!socket.TryReceiveFrameBytes(timeout, out var frameData))
                     {
                         // We might have been terminated in the meantime
                         continue;
                     }
 
-                    var topic = BitConverter.ToInt32(topicData);
-                    var data = NotifyMessage.Parser.ParseFrom(socket.ReceiveFrameBytes());
+                    var data = NotifyMessage.Parser.ParseFrom(frameData);
+                    var requestId = data.Response.RequestId;
+                    var processId = data.ProcessId;
 
-                    // Mark request as finished
-                    establishedConnections.TryGetValue(topic, out var connectionInfo);
-                    if (data.Response.RequestId == 0)
-                    {
-                        if (connectionInfo.Promise != null)
-                        {
-                            // Connection established
-                            establishedConnections[topic] = (true, null);
-                            connectionInfo.Promise.SetResult(data.Response);
-                        }
-                        else
-                        {
-                            // Repeated message - do nothing
-                        }
-                    }
-                    else
-                    {
-                        // Regular notification
-                        responsePromises.Remove(topic, out var promise);
-                        promise!.SetResult(data.Response);
-                    }        
+                    // Regular notification
+                    responsePromises.Remove((processId, requestId), out var promise);
+                    promise!.SetResult(data.Response);   
                 }
             }
 
@@ -154,9 +105,9 @@ namespace SharpDetect.Core.Communication.Endpoints
             var promise = new TaskCompletionSource<Response>();
 
             // Create a promise about upcomming response
-            responsePromises.TryAdd(processId, promise);
+            responsePromises.TryAdd((processId, message.RequestId), promise);
             // Enqueue marshalled message for sending
-            outboundQueue.Add((processId, marshalled));
+            outboundQueue.Add(((processId, message.RequestId), marshalled));
 
             return promise.Task;
         }

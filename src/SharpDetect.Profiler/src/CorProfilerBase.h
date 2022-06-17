@@ -179,7 +179,6 @@ public:
 
 protected:
 	void PrepareLogging();
-	void PrepareMessagingClient();
 	void RegisterHook(FunctionID function, ModuleID module, mdTypeDef classToken, mdMethodDef functionToken,
 		bool captureArguments, bool captureReturnValue, size_t totalArgumentsSize, size_t totalIndirectArgumentSize,
 		std::vector<std::tuple<UINT16, UINT16, bool>>&& argumentInfos);

@@ -11,7 +11,7 @@ namespace SharpDetect.IntegrationTests.Mocks
     {
         private readonly PushSocket notificationsSenderSocket;
         private readonly SubscriberSocket requestsReceivingSocket;
-        private readonly PublisherSocket responseSendingSocket;
+        private readonly PushSocket responseSendingSocket;
         private readonly NetMQPoller requestsPoller;
         private bool isDisposed;
 
@@ -65,7 +65,7 @@ namespace SharpDetect.IntegrationTests.Mocks
                 var address = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Address).Value;
                 var port = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Port).Value;
                 var connectionString = $"{protocol}://{address}:{port}";
-                responseSendingSocket = new PublisherSocket(connectionString);
+                responseSendingSocket = new PushSocket(connectionString);
             }
         }
 
