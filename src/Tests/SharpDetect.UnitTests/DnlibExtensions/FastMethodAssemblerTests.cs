@@ -15,6 +15,7 @@ namespace SharpDetect.UnitTests.DnlibExtensions
         [InlineData(typeof(Console))]
         [InlineData(typeof(Monitor))]
         [InlineData(typeof(Unsafe))]
+        [InlineData(typeof(AssemblerTestMethods))]
         [InlineData(typeof(HappensBeforeScheduler_ProfilingEvents_Tests))]
         [InlineData(typeof(HappensBeforeScheduler_RewritingEvents_Tests))]
         [InlineData(typeof(HappensBeforeScheduler_ExecutingEvents_Tests))]
