@@ -1,6 +1,7 @@
 ﻿using dnlib.DotNet;
 using SharpDetect.Common;
 using SharpDetect.Common.Messages;
+using SharpDetect.Common.Metadata;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 
@@ -11,9 +12,9 @@ namespace SharpDetect.Metadata
         public readonly int ProcessId;
 
         private ImmutableDictionary<ModuleInfo, MDToken> eventDispatcherReferences;
-        private ImmutableDictionary<ModuleInfo, Dictionary<MethodType, MDToken>> helperReferences;
-        private ImmutableDictionary<ModuleInfo, Dictionary<MethodDef, MDToken>> externMethodToWrapperReferenceMapping;
-        private ImmutableDictionary<ModuleInfo, Dictionary<MDToken, MethodDef>> wrapperReferenceToExternMethodMapping;
+        private ImmutableDictionary<ModuleInfo, Dictionary<MethodType, HelperMethodRefMDToken>> helperReferences;
+        private ImmutableDictionary<ModuleInfo, Dictionary<ExternMethodDef, WrapperMethodRefMDToken>> externMethodToWrapperReferenceMapping;
+        private ImmutableDictionary<ModuleInfo, Dictionary<WrapperMethodRefMDToken, (WrapperMethodDef Wrapper, ExternMethodDef Extern)>> wrapperReferenceToExternMethodMapping;
         private ImmutableDictionary<ModuleInfo, Dictionary<MDToken, TypeDef>> newTypes;
         private ImmutableDictionary<ModuleInfo, Dictionary<MDToken, MethodDef>> newMethods;
 
@@ -21,9 +22,9 @@ namespace SharpDetect.Metadata
         {
             ProcessId = processId;
             eventDispatcherReferences = ImmutableDictionary<ModuleInfo, MDToken>.Empty;
-            helperReferences = ImmutableDictionary<ModuleInfo, Dictionary<MethodType, MDToken>>.Empty;
-            externMethodToWrapperReferenceMapping = ImmutableDictionary<ModuleInfo, Dictionary<MethodDef, MDToken>>.Empty;
-            wrapperReferenceToExternMethodMapping = ImmutableDictionary<ModuleInfo, Dictionary<MDToken, MethodDef>>.Empty;
+            helperReferences = ImmutableDictionary<ModuleInfo, Dictionary<MethodType, HelperMethodRefMDToken>>.Empty;
+            externMethodToWrapperReferenceMapping = ImmutableDictionary<ModuleInfo, Dictionary<ExternMethodDef, WrapperMethodRefMDToken>>.Empty;
+            wrapperReferenceToExternMethodMapping = ImmutableDictionary<ModuleInfo, Dictionary<WrapperMethodRefMDToken, (WrapperMethodDef Wrapper, ExternMethodDef Extern)>>.Empty;
             newTypes = ImmutableDictionary<ModuleInfo, Dictionary<MDToken, TypeDef>>.Empty;
             newMethods = ImmutableDictionary<ModuleInfo, Dictionary<MDToken, MethodDef>>.Empty;
         }
@@ -44,7 +45,7 @@ namespace SharpDetect.Metadata
             newMethods[owner].Add(token, definition);
         }
 
-        public void AddMethodReference(ModuleInfo importer, MethodDef definition, MDToken reference)
+        public void AddMethodReference(ModuleInfo importer, ExternMethodDef externDefinition, WrapperMethodDef wrapperDefinition, WrapperMethodRefMDToken wrapperReference)
         {
             if (!externMethodToWrapperReferenceMapping.ContainsKey(importer))
             {
@@ -52,8 +53,8 @@ namespace SharpDetect.Metadata
                 wrapperReferenceToExternMethodMapping = wrapperReferenceToExternMethodMapping.Add(importer, new());
             }
 
-            wrapperReferenceToExternMethodMapping[importer].Add(reference, definition);
-            externMethodToWrapperReferenceMapping[importer].Add(definition, reference);
+            wrapperReferenceToExternMethodMapping[importer].Add(wrapperReference, (wrapperDefinition, externDefinition));
+            externMethodToWrapperReferenceMapping[importer].Add(externDefinition, wrapperReference);
         }
 
         public void AddMethodReference(ModuleInfo importer, MethodType type, MDToken reference)
@@ -61,7 +62,7 @@ namespace SharpDetect.Metadata
             if (!helperReferences.ContainsKey(importer))
                 helperReferences = helperReferences.Add(importer, new());
 
-            helperReferences[importer].Add(type, reference);
+            helperReferences[importer].Add(type, new(reference));
         }
 
         public void AddEventDispatcherReference(ModuleInfo importer, MDToken reference)
@@ -79,7 +80,7 @@ namespace SharpDetect.Metadata
             return newMethods[module].TryGetValue(token, out methodDef);
         }
 
-        public bool TryGetHelperMethodReference(ModuleInfo module, MethodType type, out MDToken token)
+        public bool TryGetHelperMethodReference(ModuleInfo module, MethodType type, out HelperMethodRefMDToken token)
         {
             /*  Data-race is not possible here
              *     - the collection is modified only during ModuleLoadFinished event
@@ -87,7 +88,7 @@ namespace SharpDetect.Metadata
             return helperReferences[module].TryGetValue(type, out token);
         }
 
-        public bool TryGetWrapperFromMethodReference(ModuleInfo module, MethodDef method, out MDToken token)
+        public bool TryGetWrapperFromMethodReference(ModuleInfo module, ExternMethodDef method, out WrapperMethodRefMDToken token)
         {
             /*  Data-race is not possible here
              *     - the collection is modified only during ModuleLoadFinished event
@@ -100,7 +101,7 @@ namespace SharpDetect.Metadata
             return externMethodToWrapperReferenceMapping[module].TryGetValue(method, out token);
         }
 
-        public bool TryGetWrapperFromMethodReference(ModuleInfo module, IMethodDefOrRef method, out MDToken token)
+        public bool TryGetWrapperFromMethodReference(ModuleInfo module, IMethodDefOrRef method, out WrapperMethodRefMDToken token)
         {
             /*  Data-race is not possible here
              *     - the collection is modified only during ModuleLoadFinished event
@@ -112,7 +113,7 @@ namespace SharpDetect.Metadata
 
             foreach (var (methodDef, wrapperToken) in externMethodToWrapperReferenceMapping[module])
             {
-                if (methodDef.FullName != method.FullName)
+                if (methodDef.Method.FullName != method.FullName)
                     continue;
 
                 token = wrapperToken;
@@ -122,7 +123,7 @@ namespace SharpDetect.Metadata
             return false;
         }
 
-        public bool TryGetMethodFromWrapperReference(ModuleInfo module, MDToken token, [NotNullWhen(returnValue: true)]  out MethodDef? method)
+        public bool TryGetWrappedExternMethod(ModuleInfo module, WrapperMethodRefMDToken token, out ExternMethodDef method)
         {
             /*  Data-race is not possible here
              *     - the collection is modified only during ModuleLoadFinished event
@@ -132,7 +133,24 @@ namespace SharpDetect.Metadata
             if (!wrapperReferenceToExternMethodMapping.ContainsKey(module))
                 return false;
 
-            return wrapperReferenceToExternMethodMapping[module].TryGetValue(token, out method);
+            var result = wrapperReferenceToExternMethodMapping[module].TryGetValue(token, out var record);
+            method = record.Extern;
+            return result;
+        }
+
+        public bool TryGetWrapperMethod(ModuleInfo module, WrapperMethodRefMDToken token, out WrapperMethodDef method)
+        {
+            /*  Data-race is not possible here
+             *     - the collection is modified only during ModuleLoadFinished event
+             *     - once we access mapping data, it is no longer modified */
+
+            method = default;
+            if (!wrapperReferenceToExternMethodMapping.ContainsKey(module))
+                return false;
+
+            var result = wrapperReferenceToExternMethodMapping[module].TryGetValue(token, out var record);
+            method = record.Wrapper;
+            return result;
         }
     }
 }

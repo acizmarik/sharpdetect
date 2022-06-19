@@ -61,7 +61,7 @@ namespace SharpDetect.UnitTests.Metadata
 
             // Act & Assert
             modulesContext.LoadModule(processId, coreLibPath, moduleInfo);
-            Assert.True(resolver.TryGetMethodDef(functionInfo, moduleInfo, out var resolvedMethod));
+            Assert.True(resolver.TryGetMethodDef(functionInfo, moduleInfo, resolveWrappers: false, out var resolvedMethod));
             Assert.Equal(monitorTypeToken, resolvedMethod!.DeclaringType.MDToken);
             Assert.Equal(exitMethodToken, resolvedMethod!.MDToken);
         }

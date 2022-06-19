@@ -83,6 +83,12 @@ namespace SharpDetect.Common.Exceptions
             return value;
         }
 
+        public static void Null<TValue, TException>(TValue? value, [CallerArgumentExpression("value")] string? expr = null)
+        {
+            if (value != null)
+                Throw<TException>($"Provided argument {expr} was not null.");
+        }
+
         public static void True<TException>(bool expression, [CallerArgumentExpression("expression")] string? expr = null)
         {
             if (!expression)

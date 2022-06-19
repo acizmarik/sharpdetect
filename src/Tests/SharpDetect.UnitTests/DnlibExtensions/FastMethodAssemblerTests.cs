@@ -17,7 +17,7 @@ namespace SharpDetect.UnitTests.DnlibExtensions
         [InlineData(typeof(Unsafe))]
         [InlineData(typeof(HappensBeforeScheduler_ProfilingEvents_Tests))]
         [InlineData(typeof(HappensBeforeScheduler_RewritingEvents_Tests))]
-        //[InlineData(typeof(HappensBeforeScheduler_ExecutingEvents_Tests))]
+        [InlineData(typeof(HappensBeforeScheduler_ExecutingEvents_Tests))]
         public void FastMethodAssemblerTests_MethodsAreNotChanged(Type type)
         {
             var module = AssemblyDef.Load(type.Assembly.Location).ManifestModule;

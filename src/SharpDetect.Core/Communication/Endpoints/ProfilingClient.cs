@@ -106,7 +106,7 @@ namespace SharpDetect.Core.Communication.Endpoints
                 request.Instrumentation.Bytecode = ByteString.CopyFrom(bytecode);
 
             // Set parameters information if available
-            if (methodData?.CapturedParams != null)
+            if (methodData?.CapturedParams != null && methodData.CapturedParams.Length > 0)
             {
                 var paramsInfo = methodData.CapturedParams;
                 var argumentInfos = new ushort[paramsInfo.Length * 2];

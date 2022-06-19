@@ -2,6 +2,7 @@
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Messages;
+using SharpDetect.Common.Metadata;
 using SharpDetect.Common.Services.Metadata;
 using System.Diagnostics.CodeAnalysis;
 
@@ -48,7 +49,7 @@ namespace SharpDetect.Metadata
             return false;
         }
 
-        public bool TryGetMethodDef(FunctionInfo functionInfo, ModuleInfo moduleInfo, [NotNullWhen(true)] out MethodDef? methodDef)
+        public bool TryGetMethodDef(FunctionInfo functionInfo, ModuleInfo moduleInfo, bool resolveWrappers, [NotNullWhen(true)] out MethodDef? methodDef)
         {
             methodDef = null;
 
@@ -61,8 +62,22 @@ namespace SharpDetect.Metadata
                 return true;
 
             // Possibly we could have wrapped this method
-            if (state.TryGetMethodFromWrapperReference(moduleInfo, functionInfo.FunctionToken, out methodDef))
-                return true;
+            if (resolveWrappers)
+            {
+                if (state.TryGetWrappedExternMethod(moduleInfo, new(functionInfo.FunctionToken), out var wrapperMethodDef))
+                {
+                    methodDef = wrapperMethodDef.Method;
+                    return true;
+                }
+            }
+            else
+            {
+                if (state.TryGetWrapperMethod(moduleInfo, new(functionInfo.FunctionToken), out var externMethodDef))
+                {
+                    methodDef = externMethodDef.Method;
+                    return true;
+                }
+            }
 
             // Possibly this could be an injected method by SharpDetect
             if (state.TryGetInjectedMethod(moduleInfo, functionInfo.FunctionToken, out methodDef))
@@ -88,19 +103,29 @@ namespace SharpDetect.Metadata
             return true;
         }
 
-        public bool TryGetWrapperMethodReference(MethodDef externMethod, ModuleInfo moduleInfo, out MDToken reference)
+        public bool TryGetWrapperMethodReference(MethodDef externMethod, ModuleInfo moduleInfo, out WrapperMethodRefMDToken reference)
         {
             return state.TryGetWrapperFromMethodReference(moduleInfo, externMethod, out reference);
         }
 
-        public bool TryLookupWrapperMethodReference(IMethodDefOrRef externMethod, ModuleInfo moduleInfo, out MDToken reference)
+        public bool TryLookupWrapperMethodReference(IMethodDefOrRef externMethod, ModuleInfo moduleInfo, out WrapperMethodRefMDToken reference)
         {
             return state.TryGetWrapperFromMethodReference(moduleInfo, externMethod, out reference);
         }
 
-        public bool TryGetHelperMethodReference(MethodType helperType, ModuleInfo moduleInfo, out MDToken reference)
+        public bool TryGetHelperMethodReference(MethodType helperType, ModuleInfo moduleInfo, out HelperMethodRefMDToken reference)
         {
             return state.TryGetHelperMethodReference(moduleInfo, helperType, out reference);
+        }
+
+        public bool TryGetExternMethodDefinition(WrapperMethodRefMDToken wrapperRef, ModuleInfo moduleInfo, out ExternMethodDef externMethodDef)
+        {
+            return state.TryGetWrappedExternMethod(moduleInfo, wrapperRef, out externMethodDef);
+        }
+
+        public bool TryGetWrapperMethodDefinition(WrapperMethodRefMDToken wrapperRef, ModuleInfo moduleInfo, out WrapperMethodDef wrapperMethodDef)
+        {
+            return state.TryGetWrapperMethod(moduleInfo, wrapperRef, out wrapperMethodDef);
         }
 
         public bool TryResolveTypeDef(IType type, [NotNullWhen(returnValue: true)] out TypeDef? result)

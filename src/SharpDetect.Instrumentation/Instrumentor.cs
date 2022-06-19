@@ -5,6 +5,7 @@ using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.LibraryDescriptors;
+using SharpDetect.Common.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
@@ -14,6 +15,7 @@ using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Dnlib.Extensions;
 using SharpDetect.Instrumentation.Injectors;
 using SharpDetect.Instrumentation.Stubs;
+using SharpDetect.Instrumentation.Utilities;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 
@@ -104,7 +106,7 @@ namespace SharpDetect.Instrumentation
             // Fetch method definition
             var resolver = metadataContext.GetResolver(args.Info.ProcessId);
             var moduleInfo = new ModuleInfo(args.Function.ModuleId);
-            if (!resolver.TryGetMethodDef(args.Function, moduleInfo, out var method))
+            if (!resolver.TryGetMethodDef(args.Function, moduleInfo, resolveWrappers: false, out var method))
             {
                 // If we were unable to resolve the method it was created dynamically:
                 // 1.) either is a profiler method TODO: recognize these
@@ -124,10 +126,16 @@ namespace SharpDetect.Instrumentation
             // Make sure the method is instrumented if necessary
             var (isDirty, unresolvedStubs) = PreprocessMethod(method, moduleInfo, args.Info);
             // Resolve method stubs if necessary
-            var resolvedStubs = ResolveStubs(method, moduleInfo, unresolvedStubs, args.Info);
+            var resolvedStubs = ResolveStubs(moduleInfo, unresolvedStubs, args.Info);
             // Generate new method body if necessary
             var bytecode = GenerateMethodBody(method, isDirty, resolvedStubs);
             // Issue response
+            if (MethodsGenerator.IsManagedWrapper(method) && resolver.TryGetExternMethodDefinition(new(args.Function.FunctionToken), moduleInfo, out var externMethod))
+            {
+                // Library descriptors now nothing about our wrappers
+                // Before passing them for analysis, we should resolve them always
+                method = externMethod.Method;
+            }
             IssueJITCompilationResponse(method, bytecode, args.Info);
         }
 
@@ -214,7 +222,7 @@ namespace SharpDetect.Instrumentation
             }
         }
 
-        private ResolvedMethodStubs ResolveStubs(MethodDef methodDef, ModuleInfo moduleInfo, UnresolvedMethodStubs? unresolvedStubs, EventInfo info)
+        private ResolvedMethodStubs ResolveStubs(ModuleInfo moduleInfo, UnresolvedMethodStubs? unresolvedStubs, EventInfo info)
         {
             if (unresolvedStubs is null || unresolvedStubs.Count == 0)
             {
@@ -232,24 +240,28 @@ namespace SharpDetect.Instrumentation
                 // Resolve wrapper token
                 if (unresolvedStub.IsWrapperMethodReferenceStub())
                 {
+                    WrapperMethodRefMDToken wrapperMdToken;
                     if (resolver.TryResolveMethodDef(unresolvedStub.GetExternMethod(), out var externMethodDef))
                     {
                         // This must be resolvable
-                        resolver.TryGetWrapperMethodReference(externMethodDef, moduleInfo, out mdToken);
+                        resolver.TryGetWrapperMethodReference(externMethodDef, moduleInfo, out wrapperMdToken);
                     }
                     else
                     {
                         // This must be resolvable
-                        resolver.TryLookupWrapperMethodReference(unresolvedStub.GetExternMethod(), moduleInfo, out mdToken);
+                        resolver.TryLookupWrapperMethodReference(unresolvedStub.GetExternMethod(), moduleInfo, out wrapperMdToken);
                     }
+                    mdToken = wrapperMdToken.Token;
                 }
                 // Resolve helper token
                 else
                 {
                     // This must be resolvable
-                    resolver.TryGetHelperMethodReference(unresolvedStub.GetHelperMethodType(), moduleInfo, out mdToken);
+                    resolver.TryGetHelperMethodReference(unresolvedStub.GetHelperMethodType(), moduleInfo, out var helperMdToken);
+                    mdToken = helperMdToken.Token;
                 }
 
+                Guard.NotEqual<MDToken, ArgumentException>(default, mdToken);
                 resolvedStubs.Add(instruction, mdToken);
             }
 
@@ -275,9 +287,9 @@ namespace SharpDetect.Instrumentation
 
         private void IssueJITCompilationResponse(MethodDef method, byte[]? bytecode, EventInfo info)
         {
-            methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
+            var result = methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
 
-            if (bytecode is not null || data is not null)
+            if (result || bytecode is not null)
             {
                 profilingClient.IssueRewriteMethodBodyAsync(bytecode, data, info);
             }

@@ -3,6 +3,7 @@ using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
+using SharpDetect.Common.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Metadata;
@@ -204,7 +205,7 @@ namespace SharpDetect.Core.Runtime
         {
             var wrappedMethod = default(MethodDef);
             { // <Contracts>
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionInfo, new ModuleInfo(functionInfo.ModuleId), out wrappedMethod));
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionInfo, new ModuleInfo(functionInfo.ModuleId), resolveWrappers: false, out wrappedMethod));
                 Guard.NotNull<MethodDef, ShadowRuntimeStateException>(wrappedMethod);
             } // </Contracts>
 
@@ -213,6 +214,7 @@ namespace SharpDetect.Core.Runtime
 
             // Emit and bind wrapper to the original method
             emitter.Emit(new(functionInfo.ModuleId), wrapper, wrapperToken);
+            emitter.Bind(new(wrappedMethod), new(wrapper), functionInfo with { FunctionToken = wrapperToken });
         }
 
         public void Process_TypeReferenced(TypeInfo typeInfo)
@@ -228,14 +230,20 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_WrapperMethodReferenced(FunctionInfo functionDef, FunctionInfo functionRef)
         {
+            var wrapperMethod = default(WrapperMethodDef);
             var wrappedMethod = default(MethodDef);
             { // <Contracts>
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionDef, new ModuleInfo(functionDef.ModuleId), out wrappedMethod));
+                // Resolve wrapper method reference
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionDef, new ModuleInfo(functionDef.ModuleId), resolveWrappers: false, out wrappedMethod));
                 Guard.NotNull<MethodDef, ShadowRuntimeStateException>(wrappedMethod);
+
+                // Resolve wrapper method definition
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetWrapperMethodReference(wrappedMethod, new(functionDef.ModuleId), out var wrapperReference));
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetWrapperMethodDefinition(wrapperReference, new(functionDef.ModuleId), out wrapperMethod));                
             } // </Contract>
 
             // Bind reference to the original definition
-            emitter.Bind(wrappedMethod, functionRef);
+            emitter.Bind(new(wrappedMethod), wrapperMethod, functionRef);
         }
     }
 }

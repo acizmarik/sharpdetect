@@ -1,7 +1,7 @@
 ﻿using dnlib.DotNet;
-using dnlib.DotNet.Emit;
 using SharpDetect.Common;
 using SharpDetect.Common.Messages;
+using SharpDetect.Common.Metadata;
 using SharpDetect.Common.Services.Metadata;
 
 namespace SharpDetect.Metadata
@@ -17,16 +17,19 @@ namespace SharpDetect.Metadata
             this.state = state;
         }
 
+        /// <inheritdoc/>
         public void Emit(ModuleInfo owner, TypeDef definition, MDToken token)
         {
             state.AddTypeDef(owner, definition, token);
         }
 
+        /// <inheritdoc/>
         public void Emit(ModuleInfo owner, MethodDef definition, MDToken token)
         {
             state.AddMethodDef(owner, definition, token);
         }
 
+        /// <inheritdoc/>
         public void Bind(TypeDef defintion, TypeInfo reference)
         {
             // Note: there is currently a single type being always injected
@@ -34,11 +37,13 @@ namespace SharpDetect.Metadata
             state.AddEventDispatcherReference(new(reference.ModuleId), reference.TypeToken);
         }
 
-        public void Bind(MethodDef method, FunctionInfo reference)
+        /// <inheritdoc/>
+        public void Bind(ExternMethodDef externMethod, WrapperMethodDef wrapperMethod, FunctionInfo wrapperToken)
         {
-            state.AddMethodReference(new(reference.ModuleId), method, reference.FunctionToken);
+            state.AddMethodReference(new(wrapperToken.ModuleId), externMethod, wrapperMethod, new(wrapperToken.FunctionToken));
         }
 
+        /// <inheritdoc/>
         public void Bind(MethodType type, FunctionInfo reference)
         {
             state.AddMethodReference(new(reference.ModuleId), type, reference.FunctionToken);

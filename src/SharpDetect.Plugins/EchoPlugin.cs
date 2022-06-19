@@ -71,7 +71,7 @@ namespace SharpDetect.Plugins
 
         public void JITCompilationStarted(FunctionInfo method, EventInfo info)
         {
-            metadataContext.GetResolver(info.ProcessId).TryGetMethodDef(method, new(method.ModuleId), out var methodInfo);
+            metadataContext.GetResolver(info.ProcessId).TryGetMethodDef(method, new(method.ModuleId), resolveWrappers: false, out var methodInfo);
             logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] JIT compilation {method} started.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), methodInfo);
         }
 
