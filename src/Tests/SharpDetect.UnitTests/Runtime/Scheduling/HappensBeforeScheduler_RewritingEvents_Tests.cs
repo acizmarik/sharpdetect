@@ -152,47 +152,5 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(methodInjectedRaised);
             Assert.True(helperMethodReferencedRaised);
         }
-
-        [Fact]
-        public async Task Scheduller_RewritingEvent_WrapperMethodReferenced()
-        {
-            // Prepare
-            const int pid = 123;
-            UIntPtr threadId = new(456);
-            UIntPtr definitionModuleId = new(789);
-            UIntPtr referenceModuleId = new(978);
-            var definitionModulePath = typeof(Monitor).Assembly.Location;
-            var referenceModulePath = typeof(HappensBeforeScheduler_RewritingEvents_Tests).Assembly.Location;
-            var typeMDToken = new MDToken(typeof(Monitor).MetadataToken);
-            var externFunctionMDToken = new MDToken(typeof(Monitor).GetMethod(nameof(Monitor.Exit))!.MetadataToken);
-            var wrapperFunctionMDToken = new MDToken(321);
-            var wrapperReferenceFunctionMDToken = new MDToken(654);
-            var moduleBindContext = CreateModuleBindContext();
-            var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
-            var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
-            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
-            var eventsHub = new RuntimeEventsHub();
-            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
-            var executionCompletion = new TaskCompletionSource();
-
-            // Act
-            var methodWrapperInjectedRaised = false;
-            var methodWrapperReferencedRaised = false;
-            eventsHub.MethodWrapperInjected += _ => methodWrapperInjectedRaised = true;
-            eventsHub.WrapperMethodReferenced += _ => methodWrapperReferencedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
-            var mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(definitionModuleId, definitionModulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_ModuleLoaded(referenceModuleId, referenceModulePath, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_WrapperInjected(new(definitionModuleId, typeMDToken, externFunctionMDToken), wrapperFunctionMDToken, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_WrapperReferenced(new(definitionModuleId, typeMDToken, externFunctionMDToken), new(definitionModuleId, typeMDToken, wrapperReferenceFunctionMDToken), new EventInfo(4, pid, threadId));
-            mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
-            await executionCompletion.Task;
-
-            // Assert
-            Assert.True(methodWrapperInjectedRaised);
-            Assert.True(methodWrapperReferencedRaised);
-        }
     }
 }

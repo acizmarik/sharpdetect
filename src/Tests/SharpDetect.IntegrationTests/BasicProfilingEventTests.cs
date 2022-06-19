@@ -18,7 +18,8 @@ namespace SharpDetect.IntegrationTests
         public async Task BasicProfilingEventTests_AnalysisBeginsAndTerminates()
         {
             // Prepare
-            using var session = environment.CreateAnalysisSession();
+            const int processId = 123;
+            using var session = environment.CreateAnalysisSession(processId);
             var analysisTask = session.Start();
 
             // Act
@@ -26,14 +27,14 @@ namespace SharpDetect.IntegrationTests
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
                 NotificationId = 1,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerDestroyed = new Notify_ProfilerDestroyed(),
                 NotificationId = 2,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
 
@@ -48,7 +49,8 @@ namespace SharpDetect.IntegrationTests
         public async Task BasicProfilingEventTests_ThreadCreatedAndDestroyed()
         {
             // Prepare
-            using var session = environment.CreateAnalysisSession();
+            const int processId = 123;
+            using var session = environment.CreateAnalysisSession(processId);
             var analysisTask = session.Start();
 
             // Act
@@ -56,7 +58,7 @@ namespace SharpDetect.IntegrationTests
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
                 NotificationId = 1,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -66,7 +68,7 @@ namespace SharpDetect.IntegrationTests
                     ThreadId = 456
                 },
                 NotificationId = 2,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -76,14 +78,14 @@ namespace SharpDetect.IntegrationTests
                     ThreadId = 456
                 },
                 NotificationId = 3,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerDestroyed = new Notify_ProfilerDestroyed(),
                 NotificationId = 4,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
 
@@ -99,8 +101,9 @@ namespace SharpDetect.IntegrationTests
         [Fact]
         public async Task BasicProfilingEventTests_JITCompilationStarted()
         {
-            // Prepar
-            using var session = environment.CreateAnalysisSession();
+            // Prepare
+            const int processId = 123;
+            using var session = environment.CreateAnalysisSession(processId);
             var analysisTask = session.Start();
 
             // Act
@@ -108,7 +111,7 @@ namespace SharpDetect.IntegrationTests
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
                 NotificationId = 1,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -119,7 +122,7 @@ namespace SharpDetect.IntegrationTests
                     ModulePath = typeof(BasicProfilingEventTests).Assembly.Location
                 },
                 NotificationId = 2,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -130,7 +133,7 @@ namespace SharpDetect.IntegrationTests
                     TypeToken = (uint)typeof(BasicProfilingEventTests).MetadataToken
                 },
                 NotificationId = 3,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -143,14 +146,14 @@ namespace SharpDetect.IntegrationTests
                         .GetMethod(nameof(BasicProfilingEventTests_JITCompilationStarted))!.MetadataToken
                 },
                 NotificationId = 4,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerDestroyed = new Notify_ProfilerDestroyed(),
                 NotificationId = 5,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
 
@@ -167,8 +170,9 @@ namespace SharpDetect.IntegrationTests
         [Fact]
         public async Task BasicProfilingEventTests_GarbageCollectionBeginsAndTerminates()
         {
-            // Prepar
-            using var session = environment.CreateAnalysisSession();
+            // Prepare
+            const int processId = 123;
+            using var session = environment.CreateAnalysisSession(processId);
             var analysisTask = session.Start();
 
             // Act
@@ -176,7 +180,7 @@ namespace SharpDetect.IntegrationTests
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
                 NotificationId = 1,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -186,7 +190,7 @@ namespace SharpDetect.IntegrationTests
                     Reason = SUSPEND_REASON.Gc
                 },
                 NotificationId = 2,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -197,7 +201,7 @@ namespace SharpDetect.IntegrationTests
                     GenerationSegmentBounds = Google.Protobuf.ByteString.Empty
                 },
                 NotificationId = 3,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -207,21 +211,21 @@ namespace SharpDetect.IntegrationTests
                     GenerationSegmentBounds = Google.Protobuf.ByteString.Empty
                 },
                 NotificationId = 4,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 RuntimeSuspendFinished = new Notify_RuntimeSuspendFinished(),
                 NotificationId = 5,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerDestroyed = new Notify_ProfilerDestroyed(),
                 NotificationId = 6,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
 

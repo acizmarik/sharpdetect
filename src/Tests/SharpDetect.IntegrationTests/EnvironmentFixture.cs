@@ -26,13 +26,13 @@ namespace SharpDetect.IntegrationTests
             ServiceProvider = services.BuildServiceProvider();
         }
 
-        public AnalysisSession CreateAnalysisSession()
+        public AnalysisSession CreateAnalysisSession(int processId)
         {
             var scope = ServiceProvider.CreateScope();
             var provider = scope.ServiceProvider;
             var configuration = provider.GetRequiredService<IConfiguration>();
 
-            var profiler = new MockProfiler(configuration);
+            var profiler = new MockProfiler(configuration, processId);
             var analysis = provider.GetRequiredService<IAnalysis>();
             var sink = provider.GetRequiredService<BlockingCollection<string>>();
 
