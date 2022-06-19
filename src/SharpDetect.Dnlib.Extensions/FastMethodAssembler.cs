@@ -165,8 +165,8 @@ namespace SharpDetect.Dnlib.Extensions
                 case OperandType.ShortInlineI: WriteShortInlineI(instruction); break;
 
                 // Inline offsets
-                case OperandType.InlineBrTarget: bytecode.WriteInt32(ref position, (int)((instruction.Operand as Instruction)!.Offset - (position - (firstInstructionOffset - 1)))); break;
-                case OperandType.ShortInlineBrTarget: bytecode.WriteSByte(ref position, (sbyte)((instruction.Operand as Instruction)!.Offset - (position - (firstInstructionOffset - 1)))); break;
+                case OperandType.InlineBrTarget: bytecode.WriteInt32(ref position, (int)((instruction.Operand as Instruction)!.Offset - (position - (firstInstructionOffset - sizeof(int))))); break;
+                case OperandType.ShortInlineBrTarget: bytecode.WriteSByte(ref position, (sbyte)((instruction.Operand as Instruction)!.Offset - (position - (firstInstructionOffset - sizeof(sbyte))))); break;
                 case OperandType.InlineSwitch: WriteInlineSwitch(instruction); break;
 
                 // Inline tokens
