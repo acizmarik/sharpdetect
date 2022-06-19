@@ -15,7 +15,7 @@ namespace SharpDetect.IntegrationTests.Mocks
         private readonly NetMQPoller requestsPoller;
         private bool isDisposed;
 
-        public MockProfiler(IConfiguration configuration)
+        public MockProfiler(IConfiguration configuration, int processId)
         {
             {
                 // Notifications sender
@@ -23,7 +23,17 @@ namespace SharpDetect.IntegrationTests.Mocks
                 var address = configuration.GetRequiredSection(Constants.Communication.Notifications.Address).Value;
                 var port = configuration.GetRequiredSection(Constants.Communication.Notifications.Port).Value;
                 var connectionString = $"{protocol}://{address}:{port}";
-                notificationsSenderSocket = new PushSocket(connectionString);
+                notificationsSenderSocket = new PushSocket();
+                notificationsSenderSocket.Connect(connectionString);
+            }
+            {
+                // Response sender
+                var protocol = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Protocol).Value;
+                var address = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Address).Value;
+                var port = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Port).Value;
+                var connectionString = $"{protocol}://{address}:{port}";
+                responseSendingSocket = new PushSocket();
+                responseSendingSocket.Connect(connectionString);
             }
             {
                 // Requests sink
@@ -31,7 +41,8 @@ namespace SharpDetect.IntegrationTests.Mocks
                 var address = configuration.GetRequiredSection(Constants.Communication.Requests.Outbound.Address).Value;
                 var port = configuration.GetRequiredSection(Constants.Communication.Requests.Outbound.Port).Value;
                 var connectionString = $"{protocol}://{address}:{port}";
-                requestsReceivingSocket = new SubscriberSocket(connectionString);
+                requestsReceivingSocket = new SubscriberSocket();
+                requestsReceivingSocket.Connect(connectionString);
                 requestsReceivingSocket.SubscribeToAnyTopic();
                 requestsReceivingSocket.ReceiveReady += (sender, args) =>
                 {
@@ -49,23 +60,15 @@ namespace SharpDetect.IntegrationTests.Mocks
                             { 
                                 RequestId = request.RequestId, 
                                 Result = true 
-                            }
+                            },
+                            ProcessId = processId
                         };
-                        responseSendingSocket!.SendMoreFrame(topic!);
                         responseSendingSocket!.SendFrame(response.ToByteArray());
                     }
                 };
                 requestsPoller = new NetMQPoller();
                 requestsPoller.Add(requestsReceivingSocket);
                 requestsPoller.RunAsync();
-            }
-            {
-                // Response sender
-                var protocol = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Protocol).Value;
-                var address = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Address).Value;
-                var port = configuration.GetRequiredSection(Constants.Communication.Requests.Inbound.Port).Value;
-                var connectionString = $"{protocol}://{address}:{port}";
-                responseSendingSocket = new PushSocket(connectionString);
             }
         }
 

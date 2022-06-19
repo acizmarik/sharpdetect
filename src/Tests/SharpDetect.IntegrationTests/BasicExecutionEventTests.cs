@@ -19,8 +19,9 @@ namespace SharpDetect.IntegrationTests
         [Fact]
         public async Task BasicExecutionEventTests_LockAcquiredAndReleased()
         {
-            // Prepar
-            using var session = environment.CreateAnalysisSession();
+            // Prepare
+            const int processId = 123;
+            using var session = environment.CreateAnalysisSession(processId);
             var analysisTask = session.Start();
             var typeTokenAcquire = (uint)typeof(Monitor).MetadataToken;
             var typeTokenRelease = (uint)typeof(Monitor).MetadataToken;
@@ -34,7 +35,7 @@ namespace SharpDetect.IntegrationTests
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
                 NotificationId = 1,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -45,7 +46,7 @@ namespace SharpDetect.IntegrationTests
                     ModulePath = typeof(object).Assembly.Location
                 },
                 NotificationId = 2,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -56,7 +57,7 @@ namespace SharpDetect.IntegrationTests
                     TypeToken = typeTokenAcquire
                 },
                 NotificationId = 3,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -68,7 +69,7 @@ namespace SharpDetect.IntegrationTests
                     FunctionToken = methodTokenAcquire
                 },
                 NotificationId = 4,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -80,7 +81,7 @@ namespace SharpDetect.IntegrationTests
                     FunctionToken = methodTokenRelease
                 },
                 NotificationId = 5,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             // Monitor::Enter(...)
@@ -95,7 +96,7 @@ namespace SharpDetect.IntegrationTests
                     ArgumentOffsets = Google.Protobuf.ByteString.CopyFrom(argOffsets)
                 },
                 NotificationId = 6,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -107,7 +108,7 @@ namespace SharpDetect.IntegrationTests
                     FunctionToken = methodTokenAcquire
                 },
                 NotificationId = 7,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             // Monitor::Exit(...)
@@ -122,7 +123,7 @@ namespace SharpDetect.IntegrationTests
                     ArgumentOffsets = Google.Protobuf.ByteString.CopyFrom(argOffsets)
                 },
                 NotificationId = 8,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -134,14 +135,14 @@ namespace SharpDetect.IntegrationTests
                     FunctionToken = methodTokenRelease
                 },
                 NotificationId = 9,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerDestroyed = new Notify_ProfilerDestroyed(),
                 NotificationId = 10,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
 
@@ -172,7 +173,8 @@ namespace SharpDetect.IntegrationTests
         public async Task BasicExecutionEventTests_LockAcquiredAndReleased_WithWrappedExterns()
         {
             // Prepar
-            using var session = environment.CreateAnalysisSession();
+            const int processId = 123;
+            using var session = environment.CreateAnalysisSession(processId);
             var analysisTask = session.Start();
             var typeTokenAcquire = (uint)typeof(Monitor).MetadataToken;
             var typeTokenRelease = (uint)typeof(Monitor).MetadataToken;
@@ -188,7 +190,7 @@ namespace SharpDetect.IntegrationTests
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
                 NotificationId = 1,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -199,7 +201,7 @@ namespace SharpDetect.IntegrationTests
                     ModulePath = typeof(object).Assembly.Location
                 },
                 NotificationId = 2,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             // Injecting method wrappers
@@ -213,7 +215,7 @@ namespace SharpDetect.IntegrationTests
                     WrapperFunctionToken = methodTokenAcquireWrapper
                 },
                 NotificationId = 3,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
             session.Profiler.Send(new NotifyMessage()
@@ -226,7 +228,7 @@ namespace SharpDetect.IntegrationTests
                     WrapperFunctionToken = methodTokenReleaseWrapper
                 },
                 NotificationId = 4,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
             session.Profiler.Send(new NotifyMessage()
@@ -241,7 +243,7 @@ namespace SharpDetect.IntegrationTests
                     RefFunctionToken = methodTokenAcquireWrapper
                 },
                 NotificationId = 5,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
             session.Profiler.Send(new NotifyMessage()
@@ -256,7 +258,7 @@ namespace SharpDetect.IntegrationTests
                     RefFunctionToken = methodTokenReleaseWrapper
                 },
                 NotificationId = 6,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
             session.Profiler.Send(new NotifyMessage()
@@ -267,7 +269,7 @@ namespace SharpDetect.IntegrationTests
                     TypeToken = typeTokenAcquire
                 },
                 NotificationId = 7,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -281,7 +283,7 @@ namespace SharpDetect.IntegrationTests
                     ArgumentOffsets = Google.Protobuf.ByteString.CopyFrom(argOffsets)
                 },
                 NotificationId = 8,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -293,7 +295,7 @@ namespace SharpDetect.IntegrationTests
                     FunctionToken = methodTokenAcquireWrapper
                 },
                 NotificationId = 9,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             // Monitor::Exit(...)
@@ -308,7 +310,7 @@ namespace SharpDetect.IntegrationTests
                     ArgumentOffsets = Google.Protobuf.ByteString.CopyFrom(argOffsets)
                 },
                 NotificationId = 10,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
@@ -320,14 +322,14 @@ namespace SharpDetect.IntegrationTests
                     FunctionToken = methodTokenReleaseWrapper
                 },
                 NotificationId = 11,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerDestroyed = new Notify_ProfilerDestroyed(),
                 NotificationId = 12,
-                ProcessId = 123,
+                ProcessId = processId,
                 ThreadId = 0
             });
 

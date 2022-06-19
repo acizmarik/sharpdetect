@@ -27,6 +27,7 @@ namespace SharpDetect.UnitTests.Instrumentation
             var functionToken = typeof(InstrumentorTestTarget).GetMethod(nameof(InstrumentorTestTarget.StaticMethodAccessingStaticValueField))!.MetadataToken;
             var helperTypeToken = 202u;
             var helperMethodToken = 303u;
+            var helperFieldInstanceAccessMethodToken = 404u;
 
 
             // Act
@@ -36,6 +37,8 @@ namespace SharpDetect.UnitTests.Instrumentation
             context.EventsHub.RaiseModuleLoaded(null!, new ModuleInfo(new(coreLibModuleId)), coreLibModulePath, new(1, processId, new(threadId)));
             // TypeInjected("EventsHub")
             shadowCLR.Process_TypeInjected(new TypeInfo(new(coreLibModuleId), new(helperTypeToken)));
+            // MethodInjected("EventsHub.FieldInstanceAccess")
+            shadowCLR.Process_MethodInjected(new FunctionInfo(new(coreLibModuleId), new(helperTypeToken), new(helperFieldInstanceAccessMethodToken)), MethodType.FieldInstanceAccess);
             // MethodInjected("EventsHub.FieldAccess")
             shadowCLR.Process_MethodInjected(new FunctionInfo(new(coreLibModuleId), new(helperTypeToken), new(helperMethodToken)), MethodType.FieldAccess);
             // ModuleLoaded("SharpDetect.UnitTests")
@@ -48,6 +51,8 @@ namespace SharpDetect.UnitTests.Instrumentation
 
             // HelperReferenced("FieldAccess")
             shadowCLR.Process_HelperMethodReferenced(new(new(moduleId), new(helperTypeToken), new(helperMethodToken)), MethodType.FieldAccess);
+            // HelperReferenced("FieldInstanceAccess")
+            shadowCLR.Process_HelperMethodReferenced(new(new(moduleId), new(helperTypeToken), new(helperFieldInstanceAccessMethodToken)), MethodType.FieldInstanceAccess);
             // JITCompilationStarted("System.Void SharpDetect.UnitTests.Instrumentation.InstrumentatorTestTarget.StaticMethodAccessingStaticValueField")
             context.EventsHub.RaiseJITCompilationStarted(null!, new FunctionInfo(new(moduleId), new(typeToken), new(functionToken)), new(3, processId, new(threadId)));
 
@@ -101,7 +106,7 @@ namespace SharpDetect.UnitTests.Instrumentation
 
             // HelperReferenced("FieldAccess")
             shadowCLR.Process_HelperMethodReferenced(new(new(moduleId), new(helperTypeToken), new(helperFieldAccessMethodToken)), MethodType.FieldAccess);
-            // HelperReferenced("FieldAccess")
+            // HelperReferenced("FieldInstanceAccess")
             shadowCLR.Process_HelperMethodReferenced(new(new(moduleId), new(helperTypeToken), new(helperFieldInstanceAccessMethodToken)), MethodType.FieldInstanceAccess);
             // JITCompilationStarted("method1")
             context.EventsHub.RaiseJITCompilationStarted(null!, new FunctionInfo(new(moduleId), new(typeToken), new(functionToken1)), new(2, processId, new(threadId)));
