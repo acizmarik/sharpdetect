@@ -70,10 +70,14 @@ namespace SharpDetect.Dnlib.Extensions
             while (reader.CanRead(sizeof(uint)))
             {
                 var offset = reader.CurrentOffset;
+                // Get string length
                 var length = GetNextStringLength(ref reader);
+                // Read string
                 var str = reader.ReadString((int)length, System.Text.Encoding.Unicode);
-                if (str != string.Empty)
-                    cacheBuilder.Add(str, new MDToken((Table)0x70, offset - reader.StartOffset));
+                // Read null-terminator
+                reader.ReadByte();
+                // Create a new string record
+                cacheBuilder.Add(str, new MDToken((Table)0x70, offset - reader.StartOffset));
             }
 
             return cacheBuilder.ToImmutableDictionary();
