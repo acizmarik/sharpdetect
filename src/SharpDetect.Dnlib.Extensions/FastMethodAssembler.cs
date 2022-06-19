@@ -205,13 +205,13 @@ namespace SharpDetect.Dnlib.Extensions
         private void WriteInlineSwitch(Instruction instruction)
         {
             var targets = (instruction.Operand as IList<Instruction>)!;
-            uint exitOffset = (uint)(4 * targets.Count * 4);
+            var exitOffset = (int)(instruction.Offset + instruction.OpCode.Size + (4 * (targets.Count + 1)));
             bytecode.WriteInt32(ref position, targets.Count);
 
             for (var index = 0; index < targets.Count; index++)
             {
                 var target = targets[index];
-                bytecode.WriteUInt32(ref position, target.Offset - exitOffset);
+                bytecode.WriteInt32(ref position, (int)(target.Offset - exitOffset));
             }
         }
         
