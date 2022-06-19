@@ -49,7 +49,7 @@ namespace SharpDetect.Dnlib.Extensions.Utilities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void WriteInt64(this byte[] array, ref int position, long value)
         {
-            array.WriteUInt64(ref position, (uint)value);
+            array.WriteUInt64(ref position, (ulong)value);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
