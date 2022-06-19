@@ -120,11 +120,11 @@ namespace SharpDetect.Core.Runtime.Scheduling
             // Create new thread
             var newThread = Register(threadId);
 
+            // Start new shadow executor
+            newThread.Start();
+
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
             {
-                // Start new shadow executor
-                newThread.Start();
-
                 // Update ShadowCLR state
                 ShadowCLR.Process_ThreadCreated(newThread);
 
@@ -148,7 +148,6 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 // Ensure thread terminates correctly
                 UnregisterThread(threadId);
-                destroyedThread.Dispose();
             }));
         }
         
@@ -367,7 +366,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 // Ensure we can resolve the method
                 var resolvedArgumentsList = default(ArgumentsList);
                 var resolver = MetadataContext.GetResolver(ProcessId);
-                if (resolver.TryGetMethodDef(function, new(function.ModuleId), out var methodDef))
+                if (resolver.TryGetMethodDef(function, new(function.ModuleId), resolveWrappers: true, out var methodDef))
                 {
                     // Parse method call arguments
                     var parsedArguments = (arguments.HasValue && !arguments.Value.ArgValues.IsEmpty) ?
@@ -498,7 +497,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 var resolvedByRefArgumentsList = default(ArgumentsList);
                 var resolvedReturnValue = default(IValueOrObject);
                 var resolver = MetadataContext.GetResolver(ProcessId);
-                if (resolver.TryGetMethodDef(function, new(function.ModuleId), out var methodDef))
+                if (resolver.TryGetMethodDef(function, new(function.ModuleId), resolveWrappers: true, out var methodDef))
                 {
                     // Parse method call arguments
                     var parsedByRefArguments = (byRefArgs.HasValue && !byRefArgs.Value.ArgValues.IsEmpty) ?

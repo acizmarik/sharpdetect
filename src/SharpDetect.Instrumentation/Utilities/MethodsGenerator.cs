@@ -6,6 +6,16 @@ namespace SharpDetect.Instrumentation.Utilities
 {
     public static class MethodsGenerator
     {
+        private const string managedWrapperIdentifier = "SharpDetectManagedWrapper";
+
+        public static bool IsManagedWrapper(MethodDef methodDef)
+        {
+            if (methodDef.ExportInfo is MethodExportInfo info && info.Name == managedWrapperIdentifier)
+                return true;
+
+            return false;
+        }
+
         public static MethodDef CreateWrapper(MethodDef externMethod)
         {
             var wrapper = new MethodDefUser($".{externMethod.Name}", externMethod.MethodSig, MethodImplAttributes.IL | MethodImplAttributes.Managed,
@@ -13,6 +23,7 @@ namespace SharpDetect.Instrumentation.Utilities
             wrapper.Body = new CilBody();
             wrapper.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
             wrapper.DeclaringType = externMethod.DeclaringType;
+            wrapper.ExportInfo = new MethodExportInfo(managedWrapperIdentifier);
             return wrapper;
         }
 

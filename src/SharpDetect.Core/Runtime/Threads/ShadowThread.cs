@@ -39,6 +39,7 @@ namespace SharpDetect.Core.Runtime.Threads
             jobs = new BlockingCollection<(Task Job, ulong NotificationId, JobFlags Flags)>();
             waitingJobs = new Queue<(Task Job, ulong NotificationId)>();
             workerThread = new Thread(WorkerThreadLoop) { Name = DisplayName };
+            workerThread.Name = DisplayName;
         }
 
         private void OnSchedulerEpochChanged(ulong newEpoch)

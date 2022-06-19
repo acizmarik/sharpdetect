@@ -129,7 +129,7 @@ HRESULT InstrumentationContext::WrapExternMethod(ModuleMetadata& metadata, mdTyp
 	IfFailRet(wrapper.Emit(corProfilerInfo, wrapperToken));
 
 	// Notify SharpDetect.Core
-	auto message = MessageFactory::MethodWrapped(0, metadata.GetModuleId(), typeToken, methodToken, wrapperToken);
+	auto message = MessageFactory::MethodWrapped(GetCurrentThreadId(), metadata.GetModuleId(), typeToken, methodToken, wrapperToken);
 	client.SendNotification(std::move(message));
 
 	// Store information about wrapper
