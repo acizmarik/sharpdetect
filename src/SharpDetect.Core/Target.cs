@@ -43,7 +43,7 @@ namespace SharpDetect.Core
             var responsesProtocol = configuration.GetSection(Constants.Communication.Requests.Inbound.Protocol).Get<string>();
 
             CompiledCommand = Cli.Wrap("dotnet")
-                .WithArguments($"run {ExecutablePath} \"{CommandLineArguments}\"")
+                .WithArguments($"{ExecutablePath} \"{CommandLineArguments}\"")
                 .WithWorkingDirectory(WorkingDirectory)
                 .WithEnvironmentVariables(builder =>
                 {
