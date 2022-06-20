@@ -35,7 +35,7 @@ function getMonitorLockMethods(list)
 			sd.createMethodIdentifier("Enter", declaringType, true, 2, { "System.Object", "System.Boolean&" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.LockBlockingAcquire,
-				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.InjectManagedWrapper },
+				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
 				{
 					sd.createCapturedParameterInfo(0, UIntPtr.Size, false),
 					sd.createCapturedParameterInfo(1, 1, true)

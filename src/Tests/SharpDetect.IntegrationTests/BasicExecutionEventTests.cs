@@ -233,42 +233,12 @@ namespace SharpDetect.IntegrationTests
             });
             session.Profiler.Send(new NotifyMessage()
             {
-                WrapperMethodReferenced = new Notify_WrapperMethodReferenced()
-                {
-                    DefModuleId = 456,
-                    RefModuleId = 456,
-                    DefTypeToken = typeTokenAcquire,
-                    RefTypeToken = typeTokenAcquire,
-                    DefFunctionToken = methodTokenAcquire,
-                    RefFunctionToken = methodTokenAcquireWrapper
-                },
-                NotificationId = 5,
-                ProcessId = processId,
-                ThreadId = 0
-            });
-            session.Profiler.Send(new NotifyMessage()
-            {
-                WrapperMethodReferenced = new Notify_WrapperMethodReferenced()
-                {
-                    DefModuleId = 456,
-                    RefModuleId = 456,
-                    DefTypeToken = typeTokenRelease,
-                    RefTypeToken = typeTokenRelease,
-                    DefFunctionToken = methodTokenRelease,
-                    RefFunctionToken = methodTokenReleaseWrapper
-                },
-                NotificationId = 6,
-                ProcessId = processId,
-                ThreadId = 0
-            });
-            session.Profiler.Send(new NotifyMessage()
-            {
                 TypeLoaded = new Notify_TypeLoaded()
                 {
                     ModuleId = 456,
                     TypeToken = typeTokenAcquire
                 },
-                NotificationId = 7,
+                NotificationId = 5,
                 ProcessId = processId,
                 ThreadId = 0,
             });
@@ -282,7 +252,7 @@ namespace SharpDetect.IntegrationTests
                     ArgumentValues = Google.Protobuf.ByteString.CopyFrom(argValues),
                     ArgumentOffsets = Google.Protobuf.ByteString.CopyFrom(argOffsets)
                 },
-                NotificationId = 8,
+                NotificationId = 6,
                 ProcessId = processId,
                 ThreadId = 0,
             });
@@ -294,7 +264,7 @@ namespace SharpDetect.IntegrationTests
                     TypeToken = typeTokenAcquire,
                     FunctionToken = methodTokenAcquireWrapper
                 },
-                NotificationId = 9,
+                NotificationId = 7,
                 ProcessId = processId,
                 ThreadId = 0,
             });
@@ -309,7 +279,7 @@ namespace SharpDetect.IntegrationTests
                     ArgumentValues = Google.Protobuf.ByteString.CopyFrom(argValues),
                     ArgumentOffsets = Google.Protobuf.ByteString.CopyFrom(argOffsets)
                 },
-                NotificationId = 10,
+                NotificationId = 8,
                 ProcessId = processId,
                 ThreadId = 0,
             });
@@ -321,14 +291,14 @@ namespace SharpDetect.IntegrationTests
                     TypeToken = typeTokenRelease,
                     FunctionToken = methodTokenReleaseWrapper
                 },
-                NotificationId = 11,
+                NotificationId = 9,
                 ProcessId = processId,
                 ThreadId = 0,
             });
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerDestroyed = new Notify_ProfilerDestroyed(),
-                NotificationId = 12,
+                NotificationId = 10,
                 ProcessId = processId,
                 ThreadId = 0
             });
