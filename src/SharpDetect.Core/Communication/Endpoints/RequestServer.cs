@@ -123,6 +123,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         public void Stop()
         {
             terminating = true;
+            outboundQueue.CompleteAdding();
         }
 
         public void Dispose()
