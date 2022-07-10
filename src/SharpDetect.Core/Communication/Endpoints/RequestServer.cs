@@ -71,7 +71,7 @@ namespace SharpDetect.Core.Communication.Endpoints
 
         private void InboundCommunicationLoop()
         {
-            var timeout = TimeSpan.FromSeconds(3);
+            var timeout = TimeSpan.FromSeconds(1);
             using (var socket = new PullSocket())
             {
                 socket.Bind(inboundConnectionString);
