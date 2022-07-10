@@ -113,6 +113,8 @@ namespace SharpDetect.Core.Runtime.Scheduling
             {
                 isDisposed = true;
                 watchdog.Dispose();
+                foreach (var (id, _) in ThreadLookup)
+                    UnregisterThread(id);
                 ShadowThreadDestroyingQueue.CompleteAdding();
                 shadowThreadReaper.Wait();
                 GC.SuppressFinalize(this);

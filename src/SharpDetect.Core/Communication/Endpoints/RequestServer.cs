@@ -66,7 +66,7 @@ namespace SharpDetect.Core.Communication.Endpoints
                 }
             }
 
-            logger.LogDebug("[{class}] Closed connection for profiler requests on {connectionString}.", nameof(RequestServer), inboundConnectionString);
+            logger.LogDebug("[{class}] Closed connection for profiler requests on {connectionString}.", nameof(RequestServer), outboundConnectionString);
         }
 
         private void InboundCommunicationLoop()

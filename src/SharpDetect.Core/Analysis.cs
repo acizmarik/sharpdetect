@@ -75,7 +75,7 @@ namespace SharpDetect.Core
         {
             DateTime? start = default, stop = default;
 
-            var execution = new ShadowExecution(
+            using var execution = new ShadowExecution(
                 runtimeEventsHub, 
                 profilingMessageHub, 
                 rewritingMessageHub, 
