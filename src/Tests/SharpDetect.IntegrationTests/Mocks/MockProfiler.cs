@@ -85,7 +85,7 @@ namespace SharpDetect.IntegrationTests.Mocks
                 requestsPoller.RunAsync();
             }
 
-            Task.Delay(500).Wait();
+            Task.Delay(1000).Wait();
             started = true;
         }
 
@@ -99,13 +99,13 @@ namespace SharpDetect.IntegrationTests.Mocks
 
         public void Dispose()
         {
-            if (started && !isDisposed)
+            if (!isDisposed)
             {
                 isDisposed = true;
-                notificationsSenderSocket.Dispose();
-                requestsPoller.Dispose();
-                requestsReceivingSocket.Dispose();
-                responseSendingSocket.Dispose();
+                requestsPoller?.Dispose();
+                notificationsSenderSocket?.Dispose();
+                requestsReceivingSocket?.Dispose();
+                responseSendingSocket?.Dispose();
                 GC.SuppressFinalize(this);
             }
         }
