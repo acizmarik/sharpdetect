@@ -33,7 +33,9 @@ namespace SharpDetect.Dnlib.Extensions
         /// </summary>
         /// <param name="method">Method to assemble</param>
         /// <param name="stubs">Metadata tokens to fill in for injected stubs</param>
-        public FastMethodAssembler(MethodDef method, IReadOnlyDictionary<Instruction, MDToken> stubs, IStringHeapCache stringHeapCache)
+        public FastMethodAssembler(MethodDef method, IReadOnlyDictionary<Instruction, MDToken> stubs, IStringHeapCache stringHeapCache, 
+            bool optimizeMacros = true,
+            bool optimizeBranches = true)
         {
             this.method = method;
             this.stubs = stubs;
@@ -42,13 +44,17 @@ namespace SharpDetect.Dnlib.Extensions
 
             // Prepare for writing
             Guard.True<ArgumentException>(method.HasBody);
-            Initialize();
+            Initialize(optimizeMacros, optimizeBranches);
         }
 
-        private void Initialize()
+        private void Initialize(bool optimizeMacros, bool optimizeBranches)
         {
-            method.Body.OptimizeMacros();
-            method.Body.OptimizeBranches();
+            if (optimizeMacros)
+                method.Body.OptimizeMacros();
+            if (optimizeBranches)
+                method.Body.OptimizeBranches();
+
+            // Fix instruction offsets
             method.Body.UpdateInstructionOffsets();
 
             // Calculate code size

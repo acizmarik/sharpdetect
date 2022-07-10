@@ -19,16 +19,40 @@ namespace SharpDetect.UnitTests.DnlibExtensions
         [InlineData(typeof(HappensBeforeScheduler_ProfilingEvents_Tests))]
         [InlineData(typeof(HappensBeforeScheduler_RewritingEvents_Tests))]
         [InlineData(typeof(HappensBeforeScheduler_ExecutingEvents_Tests))]
-        public void FastMethodAssemblerTests_MethodsAreNotChanged(Type type)
+        public void FastMethodAssemblerTests_MethodsAreNotChanged_SingleTypes(Type typeRef)
         {
-            var module = AssemblyDef.Load(type.Assembly.Location).ManifestModule;
-            var typeDef = module.Find(type.FullName, isReflectionName: true);
+            var module = AssemblyDef.Load(typeRef.Assembly.Location).ManifestModule;
+            var typeDef = module.Find(typeRef.FullName, isReflectionName: true);
 
+            CheckAllMethods(module, typeRef, typeDef);
+        }
+
+        [Theory]
+        [InlineData(typeof(object))]
+        public void FastMethodAssemblerTests_MethodsAreNotChanged_WholeAssemblies(Type type)
+        {
+            var moduleDef = AssemblyDef.Load(type.Assembly.Location).ManifestModule;
+            var moduleRef = type.Assembly.ManifestModule;
+            
+            // Check all types
+            foreach (var typeRef in moduleRef.GetTypes().Where(t => t is not null))
+            {
+                // Check all methods
+                var typeDef = moduleDef.ResolveToken(typeRef.MetadataToken) as TypeDef;
+                if (typeDef is null)
+                    continue;
+
+                CheckAllMethods(moduleDef, typeRef, typeDef);
+            }
+        }
+
+        private void CheckAllMethods(ModuleDef module, Type typeRef, TypeDef typeDef)
+        {
             // Check all methods
             foreach (var methodDef in typeDef.Methods.Where(m => m.HasBody))
             {
-                var assembler = new FastMethodAssembler(methodDef, new Dictionary<Instruction, MDToken>(), new StringHeapCache());
-                var expected = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+                var assembler = new FastMethodAssembler(methodDef, new Dictionary<Instruction, MDToken>(), new StringHeapCache(), false, false);
+                var expected = typeRef.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                     .SingleOrDefault(m => m.MetadataToken == methodDef.MDToken.Raw)?.GetMethodBody()!.GetILAsByteArray();
                 if (expected is null)
                 {
@@ -47,9 +71,6 @@ namespace SharpDetect.UnitTests.DnlibExtensions
         {
             var isTinyHeader = (ourResult[0] & 0x03) != 3;
             ourResult = (isTinyHeader) ? ourResult[1..] : ourResult[12..];
-
-            if (!methodDef.Body.HasExceptionHandlers)
-                Assert.Equal(reflectionResult.Length, ourResult.Length);
 
             for (var i = 0; i < reflectionResult.Length; i++)
             {

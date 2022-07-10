@@ -163,7 +163,7 @@ namespace SharpDetect.Instrumentation
                                 Interlocked.Increment(ref injectedMethodHooksCount);
                         }
                         // Check if user requested instrumentation for this method
-                        else if (options.Enabled)
+                        if (options.Enabled)
                         {
                             if (options.Strategy == InstrumentationStrategy.OnlyPatterns && options.Patterns.Any(p => method.FullName.Contains(p)))
                             {
