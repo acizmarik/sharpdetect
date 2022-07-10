@@ -23,6 +23,7 @@ namespace SharpDetect.IntegrationTests
             var analysisTask = session.Start();
 
             // Act
+            session.Profiler.Start();
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
@@ -54,6 +55,7 @@ namespace SharpDetect.IntegrationTests
             var analysisTask = session.Start();
 
             // Act
+            session.Profiler.Start();
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
@@ -107,6 +109,7 @@ namespace SharpDetect.IntegrationTests
             var analysisTask = session.Start();
 
             // Act
+            session.Profiler.Start();
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
@@ -176,6 +179,7 @@ namespace SharpDetect.IntegrationTests
             var analysisTask = session.Start();
 
             // Act
+            session.Profiler.Start();
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
@@ -237,7 +241,5 @@ namespace SharpDetect.IntegrationTests
             Assert.Equal(nameof(IPlugin.GarbageCollectionFinished), session.Output.Skip(2).First());
             Assert.Equal(nameof(IPlugin.AnalysisEnded), session.Output.Skip(3).First());
         }
-
-        
     }
 }

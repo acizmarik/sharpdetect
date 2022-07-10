@@ -31,6 +31,7 @@ namespace SharpDetect.IntegrationTests
             var argOffsets = new byte[] { 8, 0 /* Value length */, 0, 0 /* Index */};
 
             // Act
+            session.Profiler.Start();
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),
@@ -186,6 +187,7 @@ namespace SharpDetect.IntegrationTests
             var argOffsets = new byte[] { 8, 0 /* Value length */, 0, 0 /* Index */};
 
             // Act
+            session.Profiler.Start();
             session.Profiler.Send(new NotifyMessage()
             {
                 ProfilerInitialized = new Notify_ProfilerInitialized(),

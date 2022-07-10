@@ -9,13 +9,27 @@ namespace SharpDetect.IntegrationTests.Mocks
 {
     public class MockProfiler : IDisposable
     {
-        private readonly PushSocket notificationsSenderSocket;
-        private readonly SubscriberSocket requestsReceivingSocket;
-        private readonly PushSocket responseSendingSocket;
-        private readonly NetMQPoller requestsPoller;
+        private readonly IConfiguration configuration;
+        private readonly int processId;
+        private PushSocket notificationsSenderSocket;
+        private SubscriberSocket requestsReceivingSocket;
+        private PushSocket responseSendingSocket;
+        private NetMQPoller requestsPoller;
         private bool isDisposed;
+        private bool started;
 
         public MockProfiler(IConfiguration configuration, int processId)
+        {
+            this.configuration = configuration;
+            this.processId = processId;
+            this.notificationsSenderSocket = null!;
+            this.requestsReceivingSocket = null!;
+            this.responseSendingSocket = null!;
+            this.requestsPoller = null!;
+            this.started = false;
+        }
+
+        public void Start()
         {
             {
                 // Notifications sender
@@ -56,10 +70,10 @@ namespace SharpDetect.IntegrationTests.Mocks
                         // Send response
                         var response = new NotifyMessage()
                         {
-                            Response = new Response() 
-                            { 
-                                RequestId = request.RequestId, 
-                                Result = true 
+                            Response = new Response()
+                            {
+                                RequestId = request.RequestId,
+                                Result = true
                             },
                             ProcessId = processId
                         };
@@ -70,16 +84,22 @@ namespace SharpDetect.IntegrationTests.Mocks
                 requestsPoller.Add(requestsReceivingSocket);
                 requestsPoller.RunAsync();
             }
+
+            Task.Delay(500).Wait();
+            started = true;
         }
 
         public void Send(NotifyMessage message)
         {
+            if (!started)
+                throw new InvalidOperationException("Start the profiler first!");
+
             notificationsSenderSocket.SendFrame(message.ToByteArray());
         }
 
         public void Dispose()
         {
-            if (!isDisposed)
+            if (started && !isDisposed)
             {
                 isDisposed = true;
                 notificationsSenderSocket.Dispose();
