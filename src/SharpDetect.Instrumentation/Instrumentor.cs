@@ -115,14 +115,6 @@ namespace SharpDetect.Instrumentation
                 return;
             }
 
-            // We can handle only methods that are managed
-            if (method.Body is null)
-            {
-                // There is nothing we can do about this method
-                profilingClient.IssueNoChangesRequestAsync(args.Info).Wait();
-                return;
-            }
-
             // Make sure the method is instrumented if necessary
             var (isDirty, unresolvedStubs) = PreprocessMethod(method, moduleInfo, args.Info);
             // Resolve method stubs if necessary
