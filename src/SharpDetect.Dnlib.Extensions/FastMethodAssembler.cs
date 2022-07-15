@@ -73,7 +73,7 @@ namespace SharpDetect.Dnlib.Extensions
             {
                 // Tiny method
                 bytecode = new byte[codeSize + 1 /* header size */];
-                bytecode.WriteByte(ref position, 0x02);
+                bytecode.WriteByte(ref position, (byte)(0x02 | (codeSize << 2)));
                 firstInstructionOffset = (uint)position;
                 WriteInstructions();
             }
