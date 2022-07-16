@@ -24,6 +24,7 @@ namespace SharpDetect.Dnlib.Extensions
         private byte[]? extraSections;
         private uint firstInstructionOffset;
         private uint lastInstructionOffset;
+        private uint methodEndOffset;
         private int position;
         private ushort maxStackSize;
         private uint codeSize;
@@ -67,7 +68,9 @@ namespace SharpDetect.Dnlib.Extensions
 
         public byte[] Assemble()
         {
-            lastInstructionOffset = method.Body.Instructions[method.Body.Instructions.Count - 1].Offset;
+            var lastInstruction = method.Body.Instructions[method.Body.Instructions.Count - 1];
+            lastInstructionOffset = lastInstruction.Offset;
+            methodEndOffset = (uint)(lastInstructionOffset + lastInstruction.GetSize());
 
             if (!RequiresFatHeader())
             {
@@ -285,11 +288,11 @@ namespace SharpDetect.Dnlib.Extensions
             return false;
         }
 
-        private static bool FitsInSmallExceptionClause(Instruction start, Instruction end)
+        private bool FitsInSmallExceptionClause(Instruction start, Instruction end)
         {
-            if (start.Offset < end.Offset)
+            if (end != null && (end?.Offset ?? methodEndOffset) < start.Offset)
                 return false;
-            return start.Offset <= ushort.MaxValue && end.Offset - start.Offset <= byte.MaxValue;
+            return start.Offset <= ushort.MaxValue && (end?.Offset ?? methodEndOffset) - start.Offset <= byte.MaxValue;
         }
 
         private byte[] WriteFatExceptionClauses(IList<ExceptionHandler> exceptionHandlers)
@@ -311,12 +314,12 @@ namespace SharpDetect.Dnlib.Extensions
                 // Write try block
                 Guard.True<InvalidProgramException>(eh.TryEnd == null || eh.TryStart.Offset < eh.TryEnd.Offset);
                 writer.WriteUInt32(eh.TryStart.Offset);
-                writer.WriteUInt32(eh.TryEnd?.Offset ?? lastInstructionOffset - eh.TryStart.Offset);
+                writer.WriteUInt32((eh.TryEnd?.Offset ?? methodEndOffset) - eh.TryStart.Offset);
 
                 // Write handler block
                 Guard.True<InvalidProgramException>(eh.HandlerEnd == null || eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
                 writer.WriteUInt32(eh.HandlerStart.Offset);
-                writer.WriteUInt32(eh.HandlerEnd?.Offset ?? lastInstructionOffset - eh.HandlerStart.Offset);
+                writer.WriteUInt32((eh.HandlerEnd?.Offset ?? methodEndOffset) - eh.HandlerStart.Offset);
 
                 // Write types for catch / filter blocks
                 if (eh.IsCatch)
@@ -331,7 +334,7 @@ namespace SharpDetect.Dnlib.Extensions
             return data;
         }
 
-        private static byte[] WriteSmallExceptionClauses(IList<ExceptionHandler> exceptionHandlers)
+        private byte[] WriteSmallExceptionClauses(IList<ExceptionHandler> exceptionHandlers)
         {
             int numExceptionHandlers = exceptionHandlers.Count;
 
@@ -348,14 +351,14 @@ namespace SharpDetect.Dnlib.Extensions
                 writer.WriteUInt16((ushort)eh.HandlerType);
 
                 // Write try block
-                Guard.True<InvalidProgramException>(eh.TryStart.Offset < eh.TryEnd.Offset);
+                Guard.True<InvalidProgramException>(eh.TryEnd == null || eh.TryStart.Offset < eh.TryEnd.Offset);
                 writer.WriteUInt16((ushort)eh.TryStart.Offset);
-                writer.WriteByte((byte)(eh.TryEnd.Offset - eh.TryStart.Offset));
+                writer.WriteByte((byte)((eh.TryEnd?.Offset ?? methodEndOffset) - eh.TryStart.Offset));
 
                 // Write handler block
-                Guard.True<InvalidProgramException>(eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
+                Guard.True<InvalidProgramException>(eh.HandlerEnd == null || eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
                 writer.WriteUInt16((ushort)eh.HandlerStart.Offset);
-                writer.WriteByte((byte)(eh.HandlerEnd.Offset - eh.HandlerStart.Offset));
+                writer.WriteByte((byte)((eh.HandlerEnd?.Offset ?? methodEndOffset) - eh.HandlerStart.Offset));
 
                 // Write types for catch / filter blocks
                 if (eh.IsCatch)
