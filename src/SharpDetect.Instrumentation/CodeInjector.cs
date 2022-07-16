@@ -23,10 +23,9 @@ namespace SharpDetect.Instrumentation
 
         public bool TryInject(MethodDef method, UnresolvedMethodStubs stubs)
         {
-            var toInject = new Queue<(Instruction, int, AnalysisEventType, InjectorBase)>();
+            var toInject = new Queue<(Instruction, AnalysisEventType, InjectorBase)>();
 
             // Iterate through all instructions
-            var counter = 0;
             foreach (var instruction in method.Body.Instructions)
             {
                 // Check all registered injectors
@@ -35,17 +34,16 @@ namespace SharpDetect.Instrumentation
                     var eventType = injector.CanInject(method, instruction);
                     if (eventType.HasValue)
                     {
-                        toInject.Enqueue((instruction, counter, eventType.Value, injector));
+                        toInject.Enqueue((instruction, eventType.Value, injector));
                     }
                 }
-
-                counter++;
             }
 
             // Inject all found events
-            foreach (var (instruction, index, eventType, injector) in toInject)
+            foreach (var (instruction, eventType, injector) in toInject)
             {
-                var sourceLink = eventRegistry.Create(eventType, method, instruction.Offset, instruction.GetSequencePoint());
+                var sourceLink = eventRegistry.Create(eventType, method, instruction, instruction.GetSequencePoint());
+                var index = method.Body.Instructions.IndexOf(instruction);
                 injector.Inject(method, index, sourceLink.Id, stubs);
             }
 
