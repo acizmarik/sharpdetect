@@ -41,7 +41,7 @@ namespace SharpDetect.Core.Runtime
         #endregion
 
         #region EXECUTING_EVENTS
-        public event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, EventInfo Info)>? FieldAccessed;
+        public event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject? Instance, EventInfo Info)>? FieldAccessed;
         public event Action<(IShadowCLR Runtime, IShadowObject Object, EventInfo Info)>? FieldInstanceAccessed;
         public event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, int Index, EventInfo Info)>? ArrayElementAccessed;
         public event Action<(IShadowCLR Runtime, IShadowObject Object, EventInfo Info)>? ArrayInstanceAccessed;
@@ -132,7 +132,7 @@ namespace SharpDetect.Core.Runtime
         #endregion
 
         #region EXECUTING_EVENT_RAISERS
-        internal void RaiseFieldAccessed(IShadowCLR runtime, ulong identifier, bool isWrite, IShadowObject instance, EventInfo info)
+        internal void RaiseFieldAccessed(IShadowCLR runtime, ulong identifier, bool isWrite, IShadowObject? instance, EventInfo info)
             => FieldAccessed?.Invoke((runtime, identifier, isWrite, instance, info));
 
         internal void RaiseFieldInstanceAccessed(IShadowCLR runtime, IShadowObject instance, EventInfo info)

@@ -440,7 +440,6 @@ namespace SharpDetect.Core.Runtime.Scheduling
                                 {
                                     var isWrite = (bool)resolvedArgumentsList[0].Argument.BoxedValue!;
                                     var identifier = (ulong)resolvedArgumentsList[1].Argument.BoxedValue!;
-                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(thread.OperationContext.FieldInstance);
                                     RuntimeEventsHub.RaiseFieldAccessed(ShadowCLR, identifier, isWrite, thread.OperationContext.FieldInstance, info);
                                     break;
                                 }

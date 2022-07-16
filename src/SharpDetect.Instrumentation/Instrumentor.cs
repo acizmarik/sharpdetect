@@ -130,7 +130,7 @@ namespace SharpDetect.Instrumentation
             // Generate new method body if necessary
             var bytecode = GenerateMethodBody(method, isDirty, resolvedStubs);
 
-            if (MethodsGenerator.IsManagedWrapper(method) && resolver.TryGetExternMethodDefinition(new(args.Function.FunctionToken), moduleInfo, out var externMethod))
+            if (MetadataGenerator.IsManagedWrapper(method) && resolver.TryGetExternMethodDefinition(new(args.Function.FunctionToken), moduleInfo, out var externMethod))
             {
                 // Library descriptors now nothing about our wrappers
                 // Before passing them for analysis, we should resolve them always

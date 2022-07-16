@@ -182,20 +182,34 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_TypeInjected(TypeInfo typeInfo)
         {
-            // TODO: do we need this for anything?
-        }
-
-        public void Process_MethodInjected(FunctionInfo functionInfo, MethodType type)
-        {
-            var moduleInfo = new ModuleInfo(functionInfo.ModuleId);
+            var moduleInfo = new ModuleInfo(typeInfo.ModuleId);
             var injectedModule = default(ModuleDef);
             { // <Contracts>
                 Guard.True<ShadowRuntimeStateException>(resolver.TryGetModuleDef(moduleInfo, out injectedModule));
                 Guard.NotNull<ModuleDef, ShadowRuntimeStateException>(injectedModule);
             } // </Contracts>
 
+            // Generate helper type
+            var helper = MetadataGenerator.CreateHelperType(injectedModule.CorLibTypes);
+
+            // Emit helper
+            emitter.Emit(moduleInfo, helper, typeInfo.TypeToken);
+        }
+
+        public void Process_MethodInjected(FunctionInfo functionInfo, MethodType type)
+        {
+            var moduleInfo = new ModuleInfo(functionInfo.ModuleId);
+            var injectedModule = default(ModuleDef);
+            var injectedType = default(TypeDef);
+            { // <Contracts>
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetModuleDef(moduleInfo, out injectedModule));
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetTypeDef(new(functionInfo.ModuleId, functionInfo.TypeToken), new(functionInfo.ModuleId), out injectedType));
+                Guard.NotNull<ModuleDef, ShadowRuntimeStateException>(injectedModule);
+                Guard.NotNull<TypeDef, ShadowRuntimeStateException>(injectedType);
+            } // </Contracts>
+
             // Generate helper method
-            var helper = MethodsGenerator.CreateHelper(type, injectedModule.CorLibTypes);
+            var helper = MetadataGenerator.CreateHelperMethod(injectedType, type, injectedModule.CorLibTypes);
 
             // Emit helper
             emitter.Emit(moduleInfo, helper, functionInfo.FunctionToken);
@@ -210,7 +224,7 @@ namespace SharpDetect.Core.Runtime
             } // </Contracts>
 
             // Generate method wrapper
-            var wrapper = MethodsGenerator.CreateWrapper(wrappedMethod);
+            var wrapper = MetadataGenerator.CreateWrapper(wrappedMethod);
 
             // Emit and bind wrapper to the original method
             emitter.Emit(new(functionInfo.ModuleId), wrapper, wrapperToken);

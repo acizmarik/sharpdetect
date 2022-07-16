@@ -42,6 +42,7 @@ namespace SharpDetect.Core.Plugins
             runtimeEventsHub.ObjectPulseReturned += RuntimeEventsHub_ObjectPulseReturned;
             runtimeEventsHub.GarbageCollectionStarted += RuntimeEventsHub_GarbageCollectionStarted;
             runtimeEventsHub.GarbageCollectionFinished += RuntimeEventsHub_GarbageCollectionFinished;
+            runtimeEventsHub.FieldAccessed += RuntimeEventsHub_FieldAccessed;
         }
 
         private void RuntimeEventsHub_ProfilerInitialized((IShadowCLR Runtime, EventInfo Info) obj) => Execute(plugin => plugin.AnalysisStarted(obj.Info));
@@ -61,6 +62,13 @@ namespace SharpDetect.Core.Plugins
         private void RuntimeEventsHub_ObjectPulseReturned((IShadowCLR Runtime, FunctionInfo Function, bool IsPulseAll, IShadowObject Instance, EventInfo Info) obj) => Execute(plugin => plugin.ObjectPulsed(obj.Instance, obj.IsPulseAll, obj.Info));
         private void RuntimeEventsHub_GarbageCollectionStarted((IShadowCLR Runtime, bool[] Generations, Common.Interop.COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info) obj) => Execute(plugin => plugin.GarbageCollectionStarted(obj.Info));
         private void RuntimeEventsHub_GarbageCollectionFinished((IShadowCLR Runtime, Common.Interop.COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info) obj) => Execute(plugin => plugin.GarbageCollectionFinished(obj.Info));
+        private void RuntimeEventsHub_FieldAccessed((IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject? Instance, EventInfo Info) obj) => Execute(plugin =>
+        {
+            if (obj.IsWrite)
+                plugin.FieldWritten(obj.Identifier, obj.Instance, false, obj.Info);
+            else
+                plugin.FieldRead(obj.Identifier, obj.Instance, false, obj.Info);
+        });
 
         public void Dispose()
         {
@@ -83,6 +91,7 @@ namespace SharpDetect.Core.Plugins
                 runtimeEventsHub.ObjectPulseReturned -= RuntimeEventsHub_ObjectPulseReturned;
                 runtimeEventsHub.GarbageCollectionStarted -= RuntimeEventsHub_GarbageCollectionStarted;
                 runtimeEventsHub.GarbageCollectionFinished -= RuntimeEventsHub_GarbageCollectionFinished;
+                runtimeEventsHub.FieldAccessed -= RuntimeEventsHub_FieldAccessed;
 
                 isDisposed = true;
                 GC.SuppressFinalize(this);
