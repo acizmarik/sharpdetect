@@ -59,7 +59,8 @@ namespace SharpDetect.Core.Models
             }
 
             // Try match an unresolved record
-            if (!unresolvedLookup.TryGetValue(method.Module.Assembly.Name, out var unresolvedAssemblyRecords))
+            var assemblyName = (method.Module != null) ? method.Module.Assembly.Name.String : coreLibraryDescriptor.AssemblyName;
+            if (!unresolvedLookup.TryGetValue(assemblyName, out var unresolvedAssemblyRecords))
             {
                 // There are no records for the given assembly
                 return false;

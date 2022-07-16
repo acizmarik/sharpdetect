@@ -33,7 +33,7 @@ namespace SharpDetect.Common.Services
         event Action<(IShadowCLR Runtime, FunctionInfo Function, MethodType Type, EventInfo Info)>? HelperMethodReferenced;
         event Action<(IShadowCLR Runtime, FunctionInfo Definition, FunctionInfo Reference, EventInfo Info)>? WrapperMethodReferenced;
 
-        event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, EventInfo Info)>? FieldAccessed;
+        event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject? Instance, EventInfo Info)>? FieldAccessed;
         event Action<(IShadowCLR Runtime, IShadowObject Object, EventInfo Info)>? FieldInstanceAccessed;
         event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, int Index, EventInfo Info)>? ArrayElementAccessed;
         event Action<(IShadowCLR Runtime, IShadowObject Object, EventInfo Info)>? ArrayInstanceAccessed;

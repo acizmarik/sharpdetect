@@ -52,7 +52,7 @@ namespace SharpDetect.Instrumentation.Injectors
                 // Load flag (READ/WRITE)
                 Instruction.Create((isWrite) ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0),
                 // Load event id
-                Instruction.Create(OpCodes.Ldc_I8, eventId),
+                Instruction.Create(OpCodes.Ldc_I8, (long)eventId),
                 // Call
                 callInstruction
             });
@@ -109,7 +109,7 @@ namespace SharpDetect.Instrumentation.Injectors
                     .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == nameof(MethodType.FieldAccess)).Identifier;
                 var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
                 var coreLibTypes = coreLibModule.CorLibTypes;
-                dummyFieldAccessRef = new MemberRefUser(coreLibModule, identifier.Name, MethodsGenerator.GetHelperMethodSig(MethodType.FieldAccess, coreLibTypes));
+                dummyFieldAccessRef = new MemberRefUser(coreLibModule, identifier.Name, MetadataGenerator.GetHelperMethodSig(MethodType.FieldAccess, coreLibTypes));
             }
 
             return dummyFieldAccessRef;
@@ -123,7 +123,7 @@ namespace SharpDetect.Instrumentation.Injectors
                     .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == nameof(MethodType.FieldInstanceAccess)).Identifier;
                 var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
                 var coreLibTypes = coreLibModule.CorLibTypes;
-                dummyFieldInstanceAccessRef = new MemberRefUser(coreLibModule, identifier.Name, MethodsGenerator.GetHelperMethodSig(MethodType.FieldInstanceAccess, coreLibTypes));
+                dummyFieldInstanceAccessRef = new MemberRefUser(coreLibModule, identifier.Name, MetadataGenerator.GetHelperMethodSig(MethodType.FieldInstanceAccess, coreLibTypes));
             }
 
             return dummyFieldInstanceAccessRef;
