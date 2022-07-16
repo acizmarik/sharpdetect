@@ -56,14 +56,14 @@ namespace SharpDetect.Plugins
         public void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var eventDescriptor = eventRegistry.Get(srcMappingId);
-            var field = eventDescriptor.Method.Body.Instructions.SingleOrDefault(i => i.Offset == eventDescriptor.InstructionOffset)?.Operand;
+            var field = eventDescriptor.Instruction.Operand;
             logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Field read {field}.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), field);
         }
 
         public void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var eventDescriptor = eventRegistry.Get(srcMappingId);
-            var field = eventDescriptor.Method.Body.Instructions.SingleOrDefault(i => i.Offset == eventDescriptor.InstructionOffset)?.Operand;
+            var field = eventDescriptor.Instruction.Operand;
             logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Field written {field}.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), field);
         }
 

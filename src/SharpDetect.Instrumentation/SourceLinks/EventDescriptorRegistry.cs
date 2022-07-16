@@ -1,4 +1,5 @@
 ﻿using dnlib.DotNet;
+using dnlib.DotNet.Emit;
 using dnlib.DotNet.Pdb;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
@@ -10,7 +11,7 @@ namespace SharpDetect.Instrumentation.SourceLinks
 {
     internal class EventDescriptorRegistry : IEventDescriptorRegistry
     {
-        private ConcurrentDictionary<ulong, SourceLink> sourceLinks;
+        private readonly ConcurrentDictionary<ulong, SourceLink> sourceLinks;
         private ulong idCounter;
 
         public EventDescriptorRegistry()
@@ -19,10 +20,10 @@ namespace SharpDetect.Instrumentation.SourceLinks
             this.idCounter = 0;
         }
 
-        public SourceLink Create(AnalysisEventType type, MethodDef method, uint instructionOffset, SequencePoint? sequencePoint = null)
+        public SourceLink Create(AnalysisEventType type, MethodDef method, Instruction instruction, SequencePoint? sequencePoint = null)
         {
             var newId = Interlocked.Increment(ref idCounter);
-            var sourceLink = new SourceLink(newId, type, method, instructionOffset, sequencePoint);
+            var sourceLink = new SourceLink(newId, type, method, instruction, sequencePoint);
             Guard.True<ArgumentException>(sourceLinks.TryAdd(newId, sourceLink));
 
             return sourceLink;
