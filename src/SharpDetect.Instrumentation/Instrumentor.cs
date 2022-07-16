@@ -121,13 +121,21 @@ namespace SharpDetect.Instrumentation
             var resolvedStubs = ResolveStubs(moduleInfo, unresolvedStubs, args.Info);
             // Generate new method body if necessary
             var bytecode = GenerateMethodBody(method, isDirty, resolvedStubs);
-            // Issue response
+
             if (MethodsGenerator.IsManagedWrapper(method) && resolver.TryGetExternMethodDefinition(new(args.Function.FunctionToken), moduleInfo, out var externMethod))
             {
                 // Library descriptors now nothing about our wrappers
                 // Before passing them for analysis, we should resolve them always
                 method = externMethod.Method;
             }
+
+            // Statistics
+            methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var interpretation);
+            if (interpretation is not null && interpretation.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks))
+                Interlocked.Increment(ref injectedMethodHooksCount);
+            if (bytecode is not null)
+                Interlocked.Increment(ref instrumentedMethodsCount);
+
             IssueJITCompilationResponse(method, bytecode, args.Info);
         }
 
@@ -148,12 +156,7 @@ namespace SharpDetect.Instrumentation
                         
                         var methodInstrumented = default(bool);
                         // Apply actions defined by method descriptors
-                        if (methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data))
-                        {
-                            // Statistics
-                            if (data.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks))
-                                Interlocked.Increment(ref injectedMethodHooksCount);
-                        }
+                        methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
                         // Check if user requested instrumentation for this method
                         if (options.Enabled)
                         {
@@ -266,9 +269,6 @@ namespace SharpDetect.Instrumentation
             var bytecode = default(byte[]);
             if (isDirty || stubs.Count > 0)
             {
-                // Statistics
-                Interlocked.Increment(ref instrumentedMethodsCount);
-
                 // Instrument method
                 var assembler = new FastMethodAssembler(method, stubs, stringHeapCache);
                 bytecode = assembler.Assemble();
