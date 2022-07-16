@@ -67,7 +67,8 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(2, pid, threadId));
+            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
+            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(3, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -143,8 +144,9 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_HelperReferenced(new(moduleId, typeMDToken, referenceFunctionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
+            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_HelperReferenced(new(moduleId, typeMDToken, referenceFunctionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(4, pid, threadId));
             mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
