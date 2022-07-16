@@ -5,6 +5,7 @@ using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
+using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 
 namespace SharpDetect.Plugins
@@ -14,12 +15,14 @@ namespace SharpDetect.Plugins
     {
         private ILogger<EchoPlugin> logger;
         private IMetadataContext metadataContext;
+        private IEventDescriptorRegistry eventRegistry;
         private bool isDisposed;
 
         public EchoPlugin()
         {
             this.logger = null!;
             this.metadataContext = null!;
+            this.eventRegistry = null!;
         }
 
         public void Initialize(IServiceProvider serviceProvider)
@@ -27,6 +30,7 @@ namespace SharpDetect.Plugins
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             logger = loggerFactory.CreateLogger<EchoPlugin>();
             metadataContext = serviceProvider.GetRequiredService<IMetadataContext>();
+            eventRegistry = serviceProvider.GetRequiredService<IEventDescriptorRegistry>();
         }
 
         public void AnalysisEnded(EventInfo info)
@@ -51,12 +55,16 @@ namespace SharpDetect.Plugins
 
         public void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Field read.", info.ProcessId, info.ThreadId, nameof(EchoPlugin));
+            var eventDescriptor = eventRegistry.Get(srcMappingId);
+            var field = eventDescriptor.Method.Body.Instructions.SingleOrDefault(i => i.Offset == eventDescriptor.InstructionOffset)?.Operand;
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Field read {field}.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), field);
         }
 
         public void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Field written.", info.ProcessId, info.ThreadId, nameof(EchoPlugin));
+            var eventDescriptor = eventRegistry.Get(srcMappingId);
+            var field = eventDescriptor.Method.Body.Instructions.SingleOrDefault(i => i.Offset == eventDescriptor.InstructionOffset)?.Operand;
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Field written {field}.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), field);
         }
 
         public void GarbageCollectionFinished(EventInfo info)
@@ -95,12 +103,14 @@ namespace SharpDetect.Plugins
 
         public void MethodCalled(FunctionInfo method, IArgumentsList? arguments, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Method called.", info.ProcessId, info.ThreadId, nameof(EchoPlugin));
+            metadataContext.GetResolver(info.ProcessId).TryGetMethodDef(method, new(method.ModuleId), true, out var methodInfo);
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Method {method} called.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), methodInfo);
         }
 
         public void MethodReturned(FunctionInfo method, IValueOrObject? returnValue, IArgumentsList? byRefArguments, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Method returned.", info.ProcessId, info.ThreadId, nameof(EchoPlugin));
+            metadataContext.GetResolver(info.ProcessId).TryGetMethodDef(method, new(method.ModuleId), true, out var methodInfo);
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Method {method} returned.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), methodInfo);
         }
 
         public void ModuleLoaded(ModuleInfo module, string path, EventInfo info)
