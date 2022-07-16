@@ -214,7 +214,7 @@ namespace SharpDetect.Core.Runtime
 
             // Emit and bind wrapper to the original method
             emitter.Emit(new(functionInfo.ModuleId), wrapper, wrapperToken);
-            emitter.Bind(new(wrappedMethod), new(wrapper), functionInfo with { FunctionToken = wrapperToken });
+            emitter.Bind(new(wrappedMethod), new(wrapper), new(functionInfo.ModuleId, functionInfo.TypeToken, wrapperToken));
         }
 
         public void Process_TypeReferenced(TypeInfo typeInfo)
