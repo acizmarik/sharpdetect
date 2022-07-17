@@ -9,14 +9,12 @@ namespace SharpDetect.Core.Plugins
 {
     internal class PluginsProxy : IDisposable
     {
-        private readonly IPluginsManager pluginsManager;
         private readonly IShadowExecutionObserver runtimeEventsHub;
         private readonly IPlugin[] plugins;
         private bool isDisposed;
 
         public PluginsProxy(IConfiguration configuration, IServiceProvider serviceProvider, IPluginsManager pluginsManager, IShadowExecutionObserver runtimeEventsHub)
         {
-            this.pluginsManager = pluginsManager;
             this.runtimeEventsHub = runtimeEventsHub;
             var chain = configuration[Constants.Configuration.PluginsChain].Split('|');
 
@@ -74,6 +72,7 @@ namespace SharpDetect.Core.Plugins
         {
             if (!isDisposed)
             {
+                // Release event handlers
                 runtimeEventsHub.ProfilerInitialized -= RuntimeEventsHub_ProfilerInitialized;
                 runtimeEventsHub.ProfilerDestroyed -= RuntimeEventsHub_ProfilerDestroyed;
                 runtimeEventsHub.ModuleLoaded -= RuntimeEventsHub_ModuleLoaded;
@@ -92,6 +91,13 @@ namespace SharpDetect.Core.Plugins
                 runtimeEventsHub.GarbageCollectionStarted -= RuntimeEventsHub_GarbageCollectionStarted;
                 runtimeEventsHub.GarbageCollectionFinished -= RuntimeEventsHub_GarbageCollectionFinished;
                 runtimeEventsHub.FieldAccessed -= RuntimeEventsHub_FieldAccessed;
+
+                // Dispose plugins that are implemented as IDisposable
+                foreach (var plugin in plugins)
+                {
+                    if (plugin.GetType().IsAssignableTo(typeof(IDisposable)))
+                        ((IDisposable)plugin)!.Dispose();
+                }
 
                 isDisposed = true;
                 GC.SuppressFinalize(this);
