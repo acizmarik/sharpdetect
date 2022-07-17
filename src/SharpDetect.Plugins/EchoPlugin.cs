@@ -120,17 +120,17 @@ namespace SharpDetect.Plugins
 
         public void ObjectPulsed(IShadowObject instance, bool isPulseAll, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Object pulsed.", info.ProcessId, info.ThreadId, nameof(EchoPlugin));
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Object pulsed {obj}.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), instance);
         }
 
         public void ObjectWaitCalled(IShadowObject instance, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Object wait called.", info.ProcessId, info.ThreadId, nameof(EchoPlugin));
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Object wait called {obj}.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), instance);
         }
 
         public void ObjectWaitReturned(IShadowObject instance, bool isSuccess, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Object wait returned.", info.ProcessId, info.ThreadId, nameof(EchoPlugin));
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Object wait returned {obj} with return {val}.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), instance, isSuccess);
         }
 
         public void ThreadCreated(UIntPtr threadId, EventInfo info)
