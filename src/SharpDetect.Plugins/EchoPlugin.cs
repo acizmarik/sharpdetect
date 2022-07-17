@@ -148,14 +148,5 @@ namespace SharpDetect.Plugins
             metadataContext.GetResolver(info.ProcessId).TryGetTypeDef(type, new(type.ModuleId), out var typeInfo);
             logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Type {type} loaded.", info.ProcessId, info.ThreadId, nameof(EchoPlugin), typeInfo);
         }
-
-        public void Dispose()
-        {
-            if (!isDisposed)
-            {
-                isDisposed = true;
-                GC.SuppressFinalize(this);
-            }
-        }
     }
 }

@@ -4,7 +4,7 @@ using SharpDetect.Common.Runtime.Arguments;
 
 namespace SharpDetect.Common.Plugins
 {
-    public interface IPlugin : IDisposable
+    public interface IPlugin
     {
         void Initialize(IServiceProvider serviceProvider);
 
