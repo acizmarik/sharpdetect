@@ -415,12 +415,14 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.SignalTryWait:
                             case MethodInterpretation.SignalBlockingWait:
                                 {
-                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject;
+                                    var instance = resolvedArgumentsList[0].Argument.ShadowObject as ShadowObject;
                                     Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
                                     var isAlreadyWaiting = (thread.GetCallstackDepth() != 0)
                                         && (thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait ||
                                             thread.PeekCallstack().Interpretation == MethodInterpretation.SignalBlockingWait);
                                     thread.PushCallStack(function, interpretationData.Interpretation, instance);
+                                    if (!isAlreadyWaiting)
+                                        instance.SyncBlock.Release(thread);
                                     RuntimeEventsHub.RaiseObjectWaitAttempted(ShadowCLR, function, instance, info);
                                     break;
                                 }
@@ -568,7 +570,6 @@ namespace SharpDetect.Core.Runtime.Scheduling
                                     Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
                                     var instance = thread.PopCallStack().Arguments as ShadowObject;
                                     var isStillWaiting = (thread.GetCallstackDepth() != 0) && thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait;
-                                    thread.PushCallStack(function, MethodInterpretation.SignalTryWait, instance);
                                     if (isStillWaiting)
                                     {
                                         // This event will be processed for the first Wait overload
