@@ -80,13 +80,7 @@ namespace SharpDetect.Instrumentation
         private void ExecutionObserver_ModuleLoaded((IShadowCLR Runtime, ModuleInfo Module, string Path, EventInfo Info) args)
         {
             // Fetch module definition
-            var moduleDef = moduleBindContext.LoadModule(
-                args.Info.ProcessId,
-                args.Path,
-                args.Module);
-
-            // Respond to profiler if any metadata changes are necessary
-            if (GetMethodsToWrap(moduleDef, args.Module.Id).Any())
+            if (moduleBindContext.TryLoadModule(args.Info.ProcessId, args.Path, args.Module, out var moduleDef) && GetMethodsToWrap(moduleDef, args.Module.Id).Any())
             {
                 // Issue wrapping request
                 profilingClient.IssueEmitMethodWrappersRequestAsync(GetMethodsToWrap(moduleDef, args.Module.Id), args.Info).Wait();

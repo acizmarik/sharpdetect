@@ -11,6 +11,7 @@ using SharpDetect.Core.Runtime.Memory;
 using SharpDetect.Core.Runtime.Threads;
 using SharpDetect.Instrumentation.Utilities;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace SharpDetect.Core.Runtime
 {
@@ -58,25 +59,32 @@ namespace SharpDetect.Core.Runtime
         public void Process_ModuleLoaded(ModuleInfo moduleInfo, string path)
         {
             // Fetch module
-            var module = moduleBindContext.LoadModule(ProcessId, path, moduleInfo);
+            if (!moduleBindContext.TryLoadModule(ProcessId, path, moduleInfo, out var module))
+                return;
 
             Modules.TryAdd(moduleInfo, module);
         }
 
+        [Conditional("DEBUG")]
         public void Process_TypeLoaded(TypeInfo typeInfo)
         {
             // Fetch module from disk (this should have been already loaded)
-            var module = Modules[new ModuleInfo(typeInfo.ModuleId)];
+            if (!Modules.TryGetValue(new ModuleInfo(typeInfo.ModuleId), out var module))
+                return;
+
             // Resolve metadata token as a type definition
             var type = (TypeDef)module.ResolveToken(typeInfo.TypeToken);
 
             Types.TryAdd(typeInfo, type);
         }
 
+        [Conditional("DEBUG")]
         public void Process_JITCompilationStarted(FunctionInfo functionInfo)
         {
             // Fetch module from disk (this should have been already loaded)
-            var module = Modules[new ModuleInfo(functionInfo.ModuleId)];
+            if (!Modules.TryGetValue(new ModuleInfo(functionInfo.ModuleId), out var module))
+                return;
+
             // Resolve metadata token as a method definition
             var function = (MethodDef)module.ResolveToken(functionInfo.FunctionToken);
 

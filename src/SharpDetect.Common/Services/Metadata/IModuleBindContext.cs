@@ -7,6 +7,7 @@ namespace SharpDetect.Common.Services.Metadata
     {
         IMetadataResolversProvider MetadataResolversProvider { get; }
 
+        bool TryLoadModule(int processId, string path, ModuleInfo moduleInfo, [NotNullWhen(returnValue: true)] out ModuleDef? module);
         ModuleDef LoadModule(int processId, string path, ModuleInfo moduleInfo);
         ModuleDef LoadModule(int processId, Stream stream, string virtualPath, ModuleInfo moduleInfo);
         ModuleDef WaitForModuleLoaded(int processId, ModuleInfo moduleInfo);
