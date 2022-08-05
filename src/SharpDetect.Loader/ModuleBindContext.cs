@@ -28,18 +28,27 @@ namespace SharpDetect.Loader
             coreLibraries = new();
         }
 
-        public ModuleDef LoadModule(int processId, string path, ModuleInfo moduleInfo)
+        public bool TryLoadModule(int processId, string path, ModuleInfo moduleInfo, [NotNullWhen(true)] out ModuleDef? module)
         {
-            if (modules.TryGetValue((processId, moduleInfo), out var module))
-                return module;
+            if (modules.TryGetValue((processId, moduleInfo), out module))
+                return true;
 
             if (!assemblyLoadContext.TryLoadFromAssemblyPath(path, out var assembly))
-                throw new ArgumentException("Could not bind module to provided path: {path}.", nameof(path));
+                return false;
 
             if (assembly.Name == coreLibraryModuleName)
                 coreLibraries.TryAdd(processId, assembly.ManifestModule);
 
-            return AddModuleToCache(processId, assembly, moduleInfo);
+            module = AddModuleToCache(processId, assembly, moduleInfo);
+            return true;
+        }
+
+        public ModuleDef LoadModule(int processId, string path, ModuleInfo moduleInfo)
+        {
+            if (!TryLoadModule(processId, path, moduleInfo, out var module))
+                throw new ArgumentException("Could not bind module to provided path: {path}.", nameof(path));
+
+            return module;
         }
 
         public ModuleDef LoadModule(int processId, Stream stream, string virtualPath, ModuleInfo moduleInfo)

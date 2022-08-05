@@ -42,7 +42,7 @@ namespace SharpDetect.Loader
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Could not load assembly from path: {path}.", assemblyPath);
+                logger.LogWarning(ex, "Could not load assembly from path: {path}.", assemblyPath);
                 assembly = null;
                 return false;
             }
@@ -62,7 +62,7 @@ namespace SharpDetect.Loader
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Could not load assembly from stream.");
+                logger.LogWarning(ex, "Could not load assembly from stream.");
                 assembly = null;
                 return false;
             }

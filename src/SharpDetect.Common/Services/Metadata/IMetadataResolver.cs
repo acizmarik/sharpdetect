@@ -7,8 +7,6 @@ namespace SharpDetect.Common.Services.Metadata
 {
     public interface IMetadataResolver
     {
-        ModuleDef WaitForModuleLoaded(ModuleInfo moduleInfo);
-
         bool TryGetModuleDef(ModuleInfo moduleInfo, [NotNullWhen(returnValue: true)] out ModuleDef? module);
         bool TryGetTypeDef(TypeInfo typeInfo, ModuleInfo moduleInfo, [NotNullWhen(returnValue: true)] out TypeDef? typeDef);
         bool TryGetMethodDef(FunctionInfo functionInfo, ModuleInfo moduleInfo, bool resolveWrappers, [NotNullWhen(returnValue: true)] out MethodDef? methodDef);
