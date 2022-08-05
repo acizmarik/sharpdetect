@@ -16,7 +16,6 @@ namespace SharpDetect.Plugins
         private ILogger<EchoPlugin> logger;
         private IMetadataContext metadataContext;
         private IEventDescriptorRegistry eventRegistry;
-        private bool isDisposed;
 
         public EchoPlugin()
         {
