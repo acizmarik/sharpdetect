@@ -26,6 +26,7 @@
 class MessageFactory
 {
 public:
+	static SharpDetect::Common::Messages::NotifyMessage Heartbeat();
 	static SharpDetect::Common::Messages::NotifyMessage RequestProcessed(ThreadID thread, ULONG requestId, bool result);
 	static SharpDetect::Common::Messages::NotifyMessage ProfilerInitialized(ThreadID thread);
 	static SharpDetect::Common::Messages::NotifyMessage ProfilerDestroyed(ThreadID thread);

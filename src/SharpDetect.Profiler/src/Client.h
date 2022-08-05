@@ -63,6 +63,7 @@ public:
 private:
 	void PushWorker(const std::string& endpoint, std::mutex& queueMutex, std::queue<SharpDetect::Common::Messages::NotifyMessage>& queue, std::condition_variable& cv);
 	void RequestsWorker();
+	void SignalsWorker();
 	size_t GetNewBufferSize(size_t current, size_t minRequestSize);
 
 	std::string notificationsEndpoint;
@@ -74,6 +75,7 @@ private:
 	std::thread notificationsThread;
 	std::thread requestsThread;
 	std::thread responsesThread;
+	std::thread signalsThread;
 	std::mutex notificationsMutex;
 	std::mutex responsesMutex;
 	std::mutex promisesMutex;

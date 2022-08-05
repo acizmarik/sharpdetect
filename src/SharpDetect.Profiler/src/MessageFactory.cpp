@@ -32,6 +32,16 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::RequestProcessed(Th
 	return message;
 }
 
+NotifyMessage MessageFactory::Heartbeat()
+{
+	auto message = NotifyMessage();
+	auto heartbeat = new Notify_Heartbeat();
+	message.set_allocated_heartbeat(heartbeat);
+	message.set_threadid(0);
+	message.set_processid(PAL::GetProcessId());
+	return message;
+}
+
 NotifyMessage MessageFactory::ProfilerInitialized(ThreadID thread)
 {
 	auto message = NotifyMessage();

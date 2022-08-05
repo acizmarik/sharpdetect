@@ -17,6 +17,7 @@
 #include "Stdafx.h"
 #include "Client.h"
 #include "PAL.h"
+#include <chrono>
 
 using namespace SharpDetect::Common::Messages;
 
@@ -41,11 +42,24 @@ Client::Client(el::Logger* pLogger)
 	responsesThread = std::thread(&Client::PushWorker, 
 		this, std::cref(responsesEndpoint), std::ref(responsesMutex), std::ref(queueResponses), std::ref(cvResponses));
 	requestsThread = std::thread(&Client::RequestsWorker, this);
+	signalsThread = std::thread(&Client::SignalsWorker, this);
 }
 
 Client::~Client()
 {
 
+}
+
+void Client::SignalsWorker()
+{
+	while (!finish)
+	{
+		// Send heartbeat
+		SendNotification(MessageFactory::Heartbeat());
+
+		// Put thread to sleep until next heartbeat
+		std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+	}
 }
 
 void Client::RequestsWorker()
@@ -75,7 +89,7 @@ void Client::RequestsWorker()
 		zmq::message_t message;
 
 		// Discard topic
-		requestsSocket.recv(message);
+		auto _ = requestsSocket.recv(message);
 		// Receive actual payload
 		if (requestsSocket.recv(message))
 		{
@@ -128,7 +142,7 @@ void Client::PushWorker(const std::string& endpoint, std::mutex& queueMutex, std
 		// Process enqueued notifications
 		while (queue.size() > 0)
 		{
-			auto current = std::move(queue.front());
+			auto&& current = std::move(queue.front());
 
 			// Marshall to byte array
 			const auto size = current.ByteSizeLong();
@@ -168,6 +182,9 @@ void Client::Shutdown()
 	// Notifications thread needs to be notified to finish
 	cvNotifications.notify_one();
 	notificationsThread.join();
+
+	// Signals thread can be joined (analysis process already knows we are terminating)
+	signalsThread.join();
 }
 
 const uint64_t Client::SendNotification(NotifyMessage&& message)
