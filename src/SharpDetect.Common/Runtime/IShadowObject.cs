@@ -4,5 +4,6 @@
     {
         bool IsAlive { get; }
         UIntPtr ShadowPointer { get; }
+        ISyncBlock SyncBlock { get; }
     }
 }
