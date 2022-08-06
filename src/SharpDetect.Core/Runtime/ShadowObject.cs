@@ -8,6 +8,8 @@ namespace SharpDetect.Core.Runtime
         public bool IsAlive { get; internal set; }
         public UIntPtr ShadowPointer { get; internal set; }
 
+        ISyncBlock IShadowObject.SyncBlock => SyncBlock;
+
         public ShadowObject()
         {
             IsAlive = true;
