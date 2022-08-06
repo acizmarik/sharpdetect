@@ -63,7 +63,7 @@ namespace SharpDetect.Plugins
 
             while (obj is not null)
             {
-                var nextThreadId = obj.SyncBlock?.LockOwner?.Id;
+                var nextThreadId = obj.SyncBlock?.LockOwnerId;
                 if (!nextThreadId.HasValue)
                     return;
 

@@ -4,6 +4,6 @@ namespace SharpDetect.Common.Runtime
 {
     public interface ISyncBlock
     {
-        IShadowThread? LockOwner { get; }
+        UIntPtr? LockOwnerId { get; }
     }
 }

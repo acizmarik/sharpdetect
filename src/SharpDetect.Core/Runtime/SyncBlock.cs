@@ -6,7 +6,9 @@ namespace SharpDetect.Core.Runtime
 {
     internal class SyncBlock : ISyncBlock
     {
+        public UIntPtr? LockOwnerId => LockOwner?.Id;
         public IShadowThread? LockOwner => lockOwner;
+
         private volatile IShadowThread? lockOwner;
         private int reentrancyCounter;
 
