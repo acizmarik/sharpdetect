@@ -39,7 +39,7 @@ namespace SharpDetect.IntegrationTests
             return new(scope, analysis, profiler, sink);
         }
 
-        public record AnalysisSession(IServiceScope Scope, IAnalysis Analyzer, MockProfiler Profiler, BlockingCollection<string> Output) : IDisposable
+        public record AnalysisSession(IServiceScope Scope, IAnalysis Analyzer, MockProfiler Profiler, BlockingCollection<string> Output) : IAsyncDisposable
         {
             private bool isDisposed;
 
@@ -48,7 +48,7 @@ namespace SharpDetect.IntegrationTests
                 return Analyzer.ExecuteOnlyAnalysisAsync(CancellationToken.None);
             }
 
-            public void Dispose()
+            public async ValueTask DisposeAsync()
             {
                 if (!isDisposed)
                 {
@@ -58,6 +58,8 @@ namespace SharpDetect.IntegrationTests
                     Scope.Dispose();
                     GC.SuppressFinalize(this);
                 }
+
+                await Task.CompletedTask;
             }
         }
 

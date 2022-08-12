@@ -1,6 +1,7 @@
 ﻿using dnlib.DotNet;
 using SharpDetect.Common;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Runtime;
 using SharpDetect.Core.Runtime.Scheduling;
@@ -21,11 +22,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var typeMDToken = new MDToken(987);
             var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
             var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
 
             // Act
@@ -54,11 +56,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var functionMDToken = new MDToken(654);
             var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
             var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
 
             // Act
@@ -89,11 +92,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var wrapperFunctionMDToken = new MDToken(321);
             var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
             var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
 
             // Act
@@ -129,11 +133,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var referenceFunctionMDToken = new MDToken(321);
             var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
             var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, new UtcDateTimeProvider());
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
             var executionCompletion = new TaskCompletionSource();
 
             // Act

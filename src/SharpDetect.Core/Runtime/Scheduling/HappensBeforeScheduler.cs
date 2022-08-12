@@ -8,6 +8,7 @@ using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
+using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Arguments;
 using SharpDetect.Core.Utilities;
@@ -20,6 +21,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         protected readonly RuntimeEventsHub RuntimeEventsHub;
         protected readonly IMetadataContext MetadataContext;
         protected readonly IMethodDescriptorRegistry MethodRegistry;
+        protected readonly IProfilingClient ProfilingClient;
 
         public HappensBeforeScheduler(
             int processId, 
@@ -27,6 +29,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             RuntimeEventsHub runtimeEventsHub, 
             IMethodDescriptorRegistry methodRegistry, 
             IMetadataContext metadataContext, 
+            IProfilingClient profilingClient, 
             IDateTimeProvider dateTimeProvider)
             : base(processId, dateTimeProvider)
         {
@@ -34,6 +37,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             this.RuntimeEventsHub = runtimeEventsHub;
             this.MetadataContext = metadataContext;
             this.MethodRegistry = methodRegistry;
+            this.ProfilingClient = profilingClient;
         }
 
         #region PROFILING_NOTIFICATIONS
@@ -250,8 +254,8 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 // Notify listeners
                 RuntimeEventsHub.RaiseGarbageCollectionFinished(ShadowCLR, bounds, info);
 
-                // TODO: continue execution
-                throw new NotSupportedException();
+                // Continue execution
+                ProfilingClient.IssueContinueExecutionRequestAsync(info).Wait();
             }));
         }
 

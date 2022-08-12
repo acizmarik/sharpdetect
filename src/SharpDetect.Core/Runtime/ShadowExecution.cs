@@ -5,6 +5,7 @@ using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
+using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Scheduling;
 using System.Collections.Immutable;
@@ -18,6 +19,7 @@ namespace SharpDetect.Core.Runtime
         public int ProcessesExitedSuccessfullyCount { get => processSuccessCount; }
 
         private ImmutableDictionary<int, HappensBeforeScheduler> schedulersLookup;
+        private readonly IProfilingClient profilingClient;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
         private readonly IMethodDescriptorRegistry methodRegistry;
@@ -35,12 +37,14 @@ namespace SharpDetect.Core.Runtime
             IProfilingMessageHub profilingMessageHub,
             IRewritingMessageHub rewritingMessageHub,
             IExecutingMessageHub executingMessageHub,
+            IProfilingClient profilingClient,
             IModuleBindContext moduleBindContext,
             IMetadataContext metadataContext,
             IMethodDescriptorRegistry methodRegistry,
             IDateTimeProvider dateTimeProvider,
             ILoggerFactory loggerFactory)
         {
+            this.profilingClient = profilingClient;
             this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
             this.methodRegistry = methodRegistry;
@@ -93,7 +97,7 @@ namespace SharpDetect.Core.Runtime
             var metadataResolver = metadataContext.GetResolver(processId);
             var metadataEmitter = metadataContext.GetEmitter(processId);
             var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, moduleBindContext);
-            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, methodRegistry, metadataContext, dateTimeProvider);
+            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, methodRegistry, metadataContext, profilingClient, dateTimeProvider);
             logger.LogInformation("[{class}] Process with PID={pid} started.", nameof(ShadowExecution), processId);
 
             scheduler.ProcessFinished += () =>
