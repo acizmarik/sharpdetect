@@ -1,28 +1,37 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
+using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
+using SharpDetect.Common.Services.Reporting;
 using System.Collections.Concurrent;
 
 namespace SharpDetect.Plugins
 {
     [PluginExport("DeadlockAnalyzer", "1.0.0")]
+    [PluginDiagnosticsCategories(new string[] { DiagnosticsCategory })]
     public class DeadlockAnalyzerPlugin : NopPlugin
     {
+        public const string DiagnosticsCategory = "Deadlock";
+        public const string DiagnosticsMessageFormat = "Affected threads: {0}";
+
         private readonly ConcurrentDictionary<UIntPtr, HashSet<IShadowObject>> ownedLocks;
         private readonly ConcurrentDictionary<UIntPtr, IShadowObject?> blockedObjects;
+        private IReportingService reportingService;
         private ILogger<DeadlockAnalyzerPlugin> logger;
 
         public DeadlockAnalyzerPlugin()
         {
             this.ownedLocks = new ConcurrentDictionary<UIntPtr, HashSet<IShadowObject>>();
             this.blockedObjects = new ConcurrentDictionary<UIntPtr, IShadowObject?>();
+            this.reportingService = null!;
             this.logger = null!;
         }
 
         public override void Initialize(IServiceProvider serviceProvider)
         {
+            reportingService = serviceProvider.GetRequiredService<IReportingService>();
             logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<DeadlockAnalyzerPlugin>();
         }
 
@@ -79,9 +88,13 @@ namespace SharpDetect.Plugins
                     {
                         // Detected deadlock
                         var threads = string.Join(", ", chain);
-                        logger.LogError("[PID={pid}][{plugin}] Detected deadlock between the following threads: {threads}!", 
-                            processId, nameof(DeadlockAnalyzerPlugin), threads);
-                        
+                        reportingService.Report(
+                            new ErrorReport(
+                                nameof(DeadlockAnalyzerPlugin),
+                                DiagnosticsCategory,
+                                string.Format(DiagnosticsMessageFormat, threads),
+                                processId,
+                                null));                        
                         return;
                     }
                 }
