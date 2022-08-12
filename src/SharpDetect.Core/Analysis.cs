@@ -19,6 +19,7 @@ namespace SharpDetect.Core
         private readonly IProfilingMessageHub profilingMessageHub;
         private readonly IRewritingMessageHub rewritingMessageHub;
         private readonly IExecutingMessageHub executingMessageHub;
+        private readonly IProfilingClient profilingClient;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataContext metadataContext;
         private readonly IDateTimeProvider dateTimeProvider;
@@ -35,6 +36,7 @@ namespace SharpDetect.Core
             IProfilingMessageHub profilingMessageHub,
             IRewritingMessageHub rewritingMessageHub,
             IExecutingMessageHub executingMessageHub,
+            IProfilingClient profilingClient,
             IModuleBindContext moduleBindContext,
             IMetadataContext metadataContext,
             INotificationsConsumer notificationsConsumer,
@@ -51,6 +53,7 @@ namespace SharpDetect.Core
             this.profilingMessageHub = profilingMessageHub;
             this.rewritingMessageHub = rewritingMessageHub;
             this.executingMessageHub = executingMessageHub;
+            this.profilingClient = profilingClient;
             this.moduleBindContext = moduleBindContext;
             this.metadataContext = metadataContext;
             this.notificationsConsumer = notificationsConsumer;
@@ -76,14 +79,15 @@ namespace SharpDetect.Core
             DateTime? start = default, stop = default;
 
             using var execution = new ShadowExecution(
-                runtimeEventsHub, 
-                profilingMessageHub, 
-                rewritingMessageHub, 
-                executingMessageHub, 
+                runtimeEventsHub,
+                profilingMessageHub,
+                rewritingMessageHub,
+                executingMessageHub,
+                profilingClient,
                 moduleBindContext,
                 metadataContext,
                 methodRegistry,
-                dateTimeProvider, 
+                dateTimeProvider,
                 loggerFactory);
 
             try

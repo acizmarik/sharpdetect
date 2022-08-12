@@ -1,5 +1,6 @@
 ﻿using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Models;
 using SharpDetect.Core.Runtime;
@@ -19,9 +20,10 @@ namespace SharpDetect.UnitTests.Runtime
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
             var moduleContext = CreateModuleBindContext();
             var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, profilingClient, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
 
             // Act
             profilingHub.Process(new NotifyMessage()
@@ -46,9 +48,10 @@ namespace SharpDetect.UnitTests.Runtime
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
             var moduleContext = CreateModuleBindContext();
             var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, profilingClient, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
             var executionFinished = execution.GetAwaitableTaskAsync();
 
             // Act
@@ -83,9 +86,10 @@ namespace SharpDetect.UnitTests.Runtime
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
             var moduleContext = CreateModuleBindContext();
             var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, profilingClient, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
 
             // Act
             profilingHub.Process(new NotifyMessage()
@@ -118,9 +122,10 @@ namespace SharpDetect.UnitTests.Runtime
             var rewritingHub = new RewritingMessageHub(LoggerFactory);
             var moduleContext = CreateModuleBindContext();
             var metadataContext = CreateMetadataContext(moduleContext, profilingHub);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
             var methodRegistry = new MethodDescriptorRegistry();
             var executingHub = new ExecutingMessageHub(LoggerFactory);
-            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
+            using var execution = new ShadowExecution(new RuntimeEventsHub(), profilingHub, rewritingHub, executingHub, profilingClient, moduleContext, metadataContext, methodRegistry, new UtcDateTimeProvider(), LoggerFactory);
             var executionFinished = execution.GetAwaitableTaskAsync();
 
             // Act
