@@ -46,7 +46,7 @@ namespace SharpDetect.UnitTests.Instrumentation
 
             var noChangesRequest = false;
             var instrumentRequest = false;
-            context.ProfilingClient.IssuedRewriteMethodBodyRequest += (_, _, _) => instrumentRequest = true;
+            context.ProfilingClient.IssuedRewriteMethodBodyRequest += (_, _, _, _) => instrumentRequest = true;
             context.ProfilingClient.IssuedNoChangesRequest += (_) => noChangesRequest = true;
 
             // HelperReferenced("FieldAccess")
@@ -101,7 +101,7 @@ namespace SharpDetect.UnitTests.Instrumentation
 
             var noChangesRequest = 0;
             var instrumentRequest = 0;
-            context.ProfilingClient.IssuedRewriteMethodBodyRequest += (_, _, _) => instrumentRequest++;
+            context.ProfilingClient.IssuedRewriteMethodBodyRequest += (_, _, _, _) => instrumentRequest++;
             context.ProfilingClient.IssuedNoChangesRequest += (_) => noChangesRequest++;
 
             // HelperReferenced("FieldAccess")

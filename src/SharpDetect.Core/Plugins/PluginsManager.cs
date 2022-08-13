@@ -168,10 +168,21 @@ namespace SharpDetect.Core.Plugins
             }
         }
 
-        private static IEnumerable<Type> FindPlugins(Assembly assembly)
+        private IEnumerable<Type> FindPlugins(Assembly assembly)
         {
-            foreach (var plugin in assembly.DefinedTypes.Where(t => t.ImplementedInterfaces.Contains(typeof(IPlugin))))
-                yield return plugin;
+            var result = new List<Type>();
+            try
+            {
+                foreach (var plugin in assembly.DefinedTypes.Where(t => t.ImplementedInterfaces.Contains(typeof(IPlugin))))
+                    result.Add(plugin);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "[{class}] Could not load types due to an error.", nameof(PluginsManager));
+                return Enumerable.Empty<Type>();
+            }
+
+            return result;
         }
 
         private static bool TryGetPluginMetadata(Type plugin, [NotNullWhen(true)] out string? name, [NotNullWhen(true)] out Version? version)
