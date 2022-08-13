@@ -25,6 +25,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Plugins", "Shar
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.IntegrationTests", "Tests\SharpDetect.IntegrationTests\SharpDetect.IntegrationTests.csproj", "{D85A079C-5591-40C9-A10B-534E1970D24B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.E2ETests", "Tests\SharpDetect.E2ETests\SharpDetect.E2ETests.csproj", "{62A052A3-F06F-49E5-858C-317F97864DBB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.E2ETests.Subject", "Tests\SharpDetect.E2ETests.Subject\SharpDetect.E2ETests.Subject.csproj", "{30568BDA-0386-4691-AD2F-0FFFD6E90A08}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -197,6 +201,38 @@ Global
 		{D85A079C-5591-40C9-A10B-534E1970D24B}.RelWithDebInfo|Any CPU.Build.0 = Release|Any CPU
 		{D85A079C-5591-40C9-A10B-534E1970D24B}.RelWithDebInfo|x64.ActiveCfg = Release|Any CPU
 		{D85A079C-5591-40C9-A10B-534E1970D24B}.RelWithDebInfo|x64.Build.0 = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Debug|x64.Build.0 = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.MinSizeRel|Any CPU.ActiveCfg = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.MinSizeRel|Any CPU.Build.0 = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.MinSizeRel|x64.ActiveCfg = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.MinSizeRel|x64.Build.0 = Debug|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Release|x64.ActiveCfg = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.Release|x64.Build.0 = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.RelWithDebInfo|Any CPU.ActiveCfg = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.RelWithDebInfo|Any CPU.Build.0 = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.RelWithDebInfo|x64.ActiveCfg = Release|Any CPU
+		{62A052A3-F06F-49E5-858C-317F97864DBB}.RelWithDebInfo|x64.Build.0 = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Debug|x64.Build.0 = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.MinSizeRel|Any CPU.ActiveCfg = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.MinSizeRel|Any CPU.Build.0 = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.MinSizeRel|x64.ActiveCfg = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.MinSizeRel|x64.Build.0 = Debug|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Release|x64.ActiveCfg = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.Release|x64.Build.0 = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.RelWithDebInfo|Any CPU.ActiveCfg = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.RelWithDebInfo|Any CPU.Build.0 = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.RelWithDebInfo|x64.ActiveCfg = Release|Any CPU
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08}.RelWithDebInfo|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -204,6 +240,8 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{16965B78-B852-4546-B32D-3CA7446E836A} = {37920ECD-3A0D-42BA-820E-FACBED7A79CE}
 		{D85A079C-5591-40C9-A10B-534E1970D24B} = {37920ECD-3A0D-42BA-820E-FACBED7A79CE}
+		{62A052A3-F06F-49E5-858C-317F97864DBB} = {37920ECD-3A0D-42BA-820E-FACBED7A79CE}
+		{30568BDA-0386-4691-AD2F-0FFFD6E90A08} = {37920ECD-3A0D-42BA-820E-FACBED7A79CE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4EB9A7A9-81B2-4838-B3D1-60CCAEEBDBE6}

@@ -7,20 +7,6 @@ on:
     branches: [ main ]
 
 jobs:
-  dotnet-build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: 6.0.x
-    - name: Restore dependencies
-      run: dotnet restore src/SharpDetect.sln
-    - name: Build & Ignore Warnings
-      run: dotnet build src/SharpDetect.sln --no-restore --no-incremental /property:WarningLevel=0
-
   dotnet-build-no-warnings:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -34,26 +20,10 @@ jobs:
       run: dotnet restore src/SharpDetect.sln
     - name: Build & Treat Warnings as Errors
       run: dotnet build src/SharpDetect.sln --no-restore --no-incremental /warnaserror
-
-  dotnet-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: 6.0.x
-    - name: Restore dependencies
-      run: dotnet restore src/SharpDetect.sln
-    - name: Build & Ignore Warnings
-      run: dotnet build src/SharpDetect.sln --no-restore --no-incremental /property:WarningLevel=0
-    - name: Test
-      run: dotnet test src/SharpDetect.sln --no-build --verbosity normal --logger GitHubActions
       
   cpp-windows-build:
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
     - name: Setup Python 3.x
@@ -95,3 +65,65 @@ jobs:
       run: |
         cd src/SharpDetect.Profiler/build
         cmake --build .
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-profiler
+        path: src/SharpDetect.Profiler/build/bin/SharpDetect.Profiler.dll
+        retention-days: 5
+
+  dotnet-unit-tests:
+    runs-on: ubuntu-latest
+    needs: dotnet-build-no-warnings
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      run: dotnet restore src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj
+    - name: Build & Ignore Warnings
+      run: dotnet build src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj --no-restore --no-incremental /property:WarningLevel=0
+    - name: Test
+      run: dotnet test src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj --no-build --verbosity normal --logger GitHubActions
+      
+  dotnet-integration-tests:
+    runs-on: ubuntu-latest
+    needs: dotnet-build-no-warnings
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      run: dotnet restore src/Tests/SharpDetect.IntegrationTests/SharpDetect.IntegrationTests.csproj
+    - name: Build & Ignore Warnings
+      run: dotnet build src/Tests/SharpDetect.IntegrationTests/SharpDetect.IntegrationTests.csproj --no-restore --no-incremental /property:WarningLevel=0
+    - name: Test
+      run: dotnet test src/Tests/SharpDetect.IntegrationTests/SharpDetect.IntegrationTests.csproj --no-build --verbosity normal --logger GitHubActions
+      
+  windows-e2e-tests:
+    runs-on: windows-2022
+    needs: [dotnet-build-no-warnings, cpp-windows-build]
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      run: dotnet restore src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj
+    - name: Build & Ignore Warnings
+      run: dotnet build src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj --no-restore --no-incremental /property:WarningLevel=0
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: windows-profiler
+        path: src/SharpDetect.Profiler/build/bin
+    - name: Test
+      run: dotnet test src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj --no-build --verbosity normal --logger GitHubActions

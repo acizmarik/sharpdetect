@@ -3,7 +3,7 @@ using System.Threading.Channels;
 
 namespace SharpDetect.Common.Services.Reporting
 {
-    public interface IReportsReader
+    public interface IReportsReaderProvider
     {
         ChannelReader<ReportBase> GetReportsReader();
     }

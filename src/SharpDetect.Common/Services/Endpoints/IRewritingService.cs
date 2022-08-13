@@ -10,6 +10,6 @@ namespace SharpDetect.Common.Services.Endpoints
 
 
         Task<Response> IssueEmitMethodWrappersRequestAsync(IEnumerable<(FunctionInfo Function, ushort Argc)> methods, EventInfo info);
-        Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, EventInfo info);
+        Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideHooks, EventInfo info);
     }
 }
