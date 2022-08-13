@@ -100,11 +100,11 @@ jobs:
       with:
         dotnet-version: 6.0.x
     - name: Restore dependencies
-      run: dotnet restore src/Tests/SharpDetect.Integration/SharpDetect.Integration.csproj
+      run: dotnet restore src/Tests/SharpDetect.IntegrationTests/SharpDetect.IntegrationTests.csproj
     - name: Build & Ignore Warnings
-      run: dotnet build src/Tests/SharpDetect.Integration/SharpDetect.Integration.csproj --no-restore --no-incremental /property:WarningLevel=0
+      run: dotnet build src/Tests/SharpDetect.IntegrationTests/SharpDetect.IntegrationTests.csproj --no-restore --no-incremental /property:WarningLevel=0
     - name: Test
-      run: dotnet test src/Tests/SharpDetect.Integration/SharpDetect.Integration.csproj --no-build --verbosity normal --logger GitHubActions
+      run: dotnet test src/Tests/SharpDetect.IntegrationTests/SharpDetect.IntegrationTests.csproj --no-build --verbosity normal --logger GitHubActions
       
   windows-e2e-tests:
     runs-on: windows-2022
@@ -127,5 +127,3 @@ jobs:
         path: src/SharpDetect.Profiler/build/bin
     - name: Test
       run: dotnet test src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj --no-build --verbosity normal --logger GitHubActions
-    - name: Download articats
-      uses: actions/download-artifact@v2
