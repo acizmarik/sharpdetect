@@ -86,7 +86,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         /// <param name="methodData">Method information</param>
         /// <param name="info">Event we are responding to</param>
         /// <returns></returns>
-        public Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, EventInfo info)
+        public Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideIssueHooks, EventInfo info)
         {
             var request = new RequestMessage
             {
@@ -95,7 +95,7 @@ namespace SharpDetect.Core.Communication.Endpoints
 
                 Instrumentation = new Request_Instrumentation()
                 {
-                    InjectHooks = (methodData?.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks) == true),
+                    InjectHooks = (overrideIssueHooks || methodData?.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks) == true),
                     CaptureArguments = (methodData?.Flags.HasFlag(MethodRewritingFlags.CaptureArguments) == true),
                     CaptureReturnValue = (methodData?.Flags.HasFlag(MethodRewritingFlags.CaptureReturnValue) == true)
                 }

@@ -26,9 +26,19 @@ namespace SharpDetect.E2ETests.Utilities
                 new KeyValuePair<string, string>(Constants.Configuration.PluginsChain, plugins),
                 new KeyValuePair<string, string>(Constants.Configuration.PluginsRootFolder, Directory.GetCurrentDirectory()),
                 new KeyValuePair<string, string>(Constants.Configuration.ProfilerPath, ProfilerDllPath),
-                new KeyValuePair<string, string>(Constants.Instrumentation.Enabled, "True"),
-                new KeyValuePair<string, string>(Constants.Instrumentation.Strategy, nameof(InstrumentationStrategy.OnlyPatterns)),
-                new KeyValuePair<string, string>($"{Constants.Instrumentation.Patterns}:0", TestsConfiguration.SubjectNamespace)
+
+                // Rewriting options
+                new KeyValuePair<string, string>(Constants.Rewriting.Enabled, "True"),
+                new KeyValuePair<string, string>(Constants.Rewriting.Strategy, nameof(InstrumentationStrategy.OnlyPatterns)),
+                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:0:Pattern", TestsConfiguration.SubjectNamespace),
+                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:0:Target", nameof(InstrumentationTarget.Method)),
+                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:1:Pattern", TestsConfiguration.SubjectNamespace),
+                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:1:Target", nameof(InstrumentationTarget.Field)),
+
+                // Hook options
+                new KeyValuePair<string, string>(Constants.EntryExitHooks.Enabled, "True"),
+                new KeyValuePair<string, string>(Constants.EntryExitHooks.Strategy, nameof(InstrumentationStrategy.OnlyPatterns)),
+                new KeyValuePair<string, string>($"{Constants.EntryExitHooks.Patterns}:0", TestsConfiguration.SubjectNamespace)
             });
         }
     }

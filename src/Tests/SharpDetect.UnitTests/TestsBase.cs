@@ -66,10 +66,10 @@ namespace SharpDetect.UnitTests
                 .AddInMemoryCollection(new Dictionary<string, string>(
                     new[]
                     {
-                        new KeyValuePair<string, string>(Constants.Instrumentation.Enabled, enableInstrumentation.ToString().ToLowerInvariant()),
-                        new KeyValuePair<string, string>(Constants.Instrumentation.Strategy, strategy.ToString())
+                        new KeyValuePair<string, string>(Constants.Rewriting.Enabled, enableInstrumentation.ToString().ToLowerInvariant()),
+                        new KeyValuePair<string, string>(Constants.Rewriting.Strategy, strategy.ToString())
                     }
-                    .Concat(patterns.Select((p, i) => new KeyValuePair<string, string>($"{Constants.Instrumentation.Patterns}:{i}", p)))))
+                    .Concat(patterns.Select((p, i) => new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:{i}", p)))))
                 .Build();
         }
 
