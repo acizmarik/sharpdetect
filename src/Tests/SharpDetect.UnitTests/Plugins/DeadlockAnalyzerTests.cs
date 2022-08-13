@@ -16,7 +16,7 @@ namespace SharpDetect.UnitTests.Plugins
         {
             // Prepare
             const int pid = 123;
-            using var thread1 = new ShadowThread(pid, new UIntPtr(456), 1, new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller()); ;
+            using var thread1 = new ShadowThread(pid, new UIntPtr(456), 1, new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
             using var thread2 = new ShadowThread(pid, new UIntPtr(789), 2, new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
             var plugin = new DeadlockAnalyzerPlugin();
             var reportingService = new ReportingService();
@@ -41,13 +41,12 @@ namespace SharpDetect.UnitTests.Plugins
             plugin.LockAcquireAttempted(shadowObj2, new EventInfo(5, pid, thread1.Id));
             // T2 attempts acquire O1 (blocked) -> Deadlock
             plugin.LockAcquireAttempted(shadowObj1, new EventInfo(6, pid, thread2.Id));
-            var report = await reportingService.GetReportsReader().ReadAsync();
 
             // Assert
             Assert.Equal(1, reportingService.ErrorCount);
             Assert.Equal(0, reportingService.WarningCount);
             Assert.Equal(0, reportingService.InformationCount);
-            Assert.Equal(DeadlockAnalyzerPlugin.DiagnosticsCategory, report.Category);
+            Assert.Equal(DeadlockAnalyzerPlugin.DiagnosticsCategory, (await reportingService.GetReportsReader().ReadAsync()).Category);
         }
     }
 }
