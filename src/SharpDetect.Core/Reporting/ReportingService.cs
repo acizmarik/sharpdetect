@@ -45,6 +45,7 @@ namespace SharpDetect.Core.Reporting
         {
             if (!isDisposed)
             {
+                isDisposed = true; ;
                 reports.Writer.Complete();
                 GC.SuppressFinalize(this);
             }
