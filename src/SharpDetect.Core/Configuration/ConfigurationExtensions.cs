@@ -42,8 +42,10 @@ namespace SharpDetect.Core.Configuration
             services.AddScoped<IProfilingClient, ProfilingClient>();
             services.AddScoped<IHealthMonitor, HealthMonitor>();
             services.AddScoped<IShadowExecutionObserver, RuntimeEventsHub>(p => p.GetRequiredService<RuntimeEventsHub>());
-            services.AddScoped<IReportingService, ReportingService>();
-            services.AddScoped<IReportsReader, ReportingService>(p => p.GetRequiredService<ReportingService>());
+            services.AddScoped<ReportingService>();
+            services.AddScoped<IReportingService>(p => p.GetRequiredService<ReportingService>());
+            services.AddScoped<IReportsReaderProvider>(p => p.GetRequiredService<ReportingService>());
+            services.AddScoped<IReportingServiceController>(p => p.GetRequiredService<ReportingService>());
         }
 
         private static void AddModuleDescriptors(this IServiceCollection services)

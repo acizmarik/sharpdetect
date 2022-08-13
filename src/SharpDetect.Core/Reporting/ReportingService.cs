@@ -4,14 +4,13 @@ using System.Threading.Channels;
 
 namespace SharpDetect.Core.Reporting
 {
-    internal class ReportingService : IReportingService, IReportsReader, IDisposable
+    internal class ReportingService : IReportingService, IReportsReaderProvider, IReportingServiceController
     {
         public int ErrorCount { get { return errorCount; } }
         public int WarningCount { get { return warningCount; } }
         public int InformationCount { get { return informationCount; } }
         private volatile int errorCount, warningCount, informationCount;
         private readonly Channel<ReportBase> reports;
-        private bool isDisposed;
 
         public ReportingService()
         {
@@ -21,6 +20,11 @@ namespace SharpDetect.Core.Reporting
         public ChannelReader<ReportBase> GetReportsReader()
         {
             return reports.Reader;
+        }
+
+        public void Complete()
+        {
+            reports.Writer.Complete();
         }
 
         public void Report(ReportBase report)
@@ -39,16 +43,6 @@ namespace SharpDetect.Core.Reporting
             }
 
             Task.Run(() => reports.Writer.WriteAsync(report)).Wait();
-        }
-
-        public void Dispose()
-        {
-            if (!isDisposed)
-            {
-                isDisposed = true; ;
-                reports.Writer.Complete();
-                GC.SuppressFinalize(this);
-            }
         }
     }
 }

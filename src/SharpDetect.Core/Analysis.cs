@@ -5,6 +5,7 @@ using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
+using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Runtime;
 
@@ -27,6 +28,7 @@ namespace SharpDetect.Core
         private readonly IInstrumentor instrumentor;
         private readonly IPluginsManager pluginsManager;
         private readonly IMethodDescriptorRegistry methodRegistry;
+        private readonly IReportingServiceController reportingController;
         private readonly ILoggerFactory loggerFactory;
         private readonly ILogger<Analysis> logger;
 
@@ -44,6 +46,7 @@ namespace SharpDetect.Core
             IInstrumentor instrumentor,
             IPluginsManager pluginsManager,
             IMethodDescriptorRegistry methodRegistry,
+            IReportingServiceController reportingController,
             IDateTimeProvider dateTimeProvider,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory)
@@ -61,6 +64,7 @@ namespace SharpDetect.Core
             this.instrumentor = instrumentor;
             this.pluginsManager = pluginsManager;
             this.methodRegistry = methodRegistry;
+            this.reportingController = reportingController;
             this.dateTimeProvider = dateTimeProvider;
             this.serviceProvider = serviceProvider;
             this.loggerFactory = loggerFactory;
@@ -116,6 +120,7 @@ namespace SharpDetect.Core
                 notificationsConsumer.Stop();
                 requestsProducer.Stop();
                 stop = dateTimeProvider.Now;
+                reportingController.Complete();
                 logger.LogDebug("[{class}] Analysis ended.", nameof(Analysis));
                 DumpStatistics(start, stop);
             }

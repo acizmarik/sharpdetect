@@ -8,6 +8,7 @@ namespace SharpDetect.Core
 {
     internal class Target
     {
+        private readonly string ProfilerPath;
         private readonly string ExecutablePath;
         private readonly string CommandLineArguments;
         private readonly string WorkingDirectory;
@@ -15,7 +16,8 @@ namespace SharpDetect.Core
 
         public Target(IConfiguration configuration)
         {
-            ExecutablePath = configuration.GetSection(Constants.Configuration.TargetAssembly).Get<string>();
+            Guard.True<ArgumentException>(File.Exists(ExecutablePath = configuration.GetSection(Constants.Configuration.TargetAssembly).Get<string>()));
+            Guard.True<ArgumentException>(File.Exists(ProfilerPath = configuration.GetSection(Constants.Configuration.ProfilerPath).Get<string>()));
             CommandLineArguments = configuration.GetSection(Constants.Configuration.CommandLineArgs).Get<string>() ?? string.Empty;
             Guard.NotNull<string, ArgumentException>(
                 WorkingDirectory = configuration.GetSection(Constants.Configuration.WorkingDirectory).Get<string>()
@@ -50,8 +52,7 @@ namespace SharpDetect.Core
                     // Profiling flags
                     builder.Set("CORECLR_ENABLE_PROFILING", "1");
                     builder.Set("CORECLR_PROFILER", "{79d2f672-5206-11eb-ae93-0242ac130002}");
-                    builder.Set("CORECLR_PROFILER_PATH", 
-                        /* TODO: change this */ "D:/Workspace/Cpy/SharpDetect/src/SharpDetect.Profiler/build/bin/SharpDetect.Profiler.dll");
+                    builder.Set("CORECLR_PROFILER_PATH", ProfilerPath);
 
                     // CoreCLR knobs
                     builder.Set("COMPlus_ReadyToRun", "0");
