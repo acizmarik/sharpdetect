@@ -48,7 +48,7 @@ namespace SharpDetect.Console
         private void ParseLocalConfiguration(string localConfigFilePath)
         {
             var localConfig = new ConfigurationBuilder()
-                .AddJsonFile(localConfigFilePath)
+                .AddYamlFile(localConfigFilePath)
                 .Build();
 
             // Ensure target assembly is set
