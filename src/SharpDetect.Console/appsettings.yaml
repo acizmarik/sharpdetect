@@ -1,0 +1,76 @@
+﻿---
+########################################################
+#                                                      #
+#        Global SharpDetect configuration file         #
+# All settings can be overriden by local configuration #
+#                                                      #
+########################################################
+
+  # Folder with plugins (will also traverse all its subfolders)
+  PluginsPath: ''
+  # Path to the profiler native library
+  ProfilerPath: ''
+
+  # Logging settings for CLI
+  Serilog:
+    MinimumLevel: Debug
+    Template: "{Timestamp:HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+
+  # Internally, for inter-process communication we use Zero-MQ
+  # Different ports can be chosen if these are already taken on the machine
+  # Protocols can be changed between tcp and ipc (the latter can be faster, mainly on Linux machines)
+  Communication:
+    Notifications:
+      Port: 1221
+      Address: localhost
+      Protocol: tcp
+    Requests:
+      Outbound:
+        Port: 1222
+        Address: localhost
+        Protocol: tcp
+      Inbound:
+        Port: 1223
+        Address: localhost
+        Protocol: tcp
+
+  # Paths to module descriptors
+  ModuleDescriptors:
+    # Path to main (built-in) modules
+    # Default is Modules directory
+    Core:
+    - Modules
+    # Paths to additional (extension) modules
+    Extensions: []
+
+########################################################
+#                                                      #
+#                 DANGER ZONE BELOW                    #
+#  DO NOT edit anything, unless you know what you are  #
+#  doing. Default should be good-enough for 99% cases  #
+#                                                      #
+########################################################
+
+  # Configuration options for the profiler module
+  # Defaults are designed to provide good analysis experience
+  Profiling:
+    # Determines what to monitor (registering for profiling callbacks)
+    Monitor:
+    - COR_PRF_MONITOR_MODULE_LOADS
+    - COR_PRF_MONITOR_CLASS_LOADS
+    - COR_PRF_MONITOR_JIT_COMPILATION
+    - COR_PRF_MONITOR_GC
+    - COR_PRF_MONITOR_THREADS
+    - COR_PRF_MONITOR_CODE_TRANSITIONS
+    - COR_PRF_MONITOR_ENTERLEAVE
+    - COR_PRF_MONITOR_SUSPENDS
+    # Determines what special features to enable (capturing argument values)
+    Enable:
+    - COR_PRF_ENABLE_FUNCTION_ARGS
+    - COR_PRF_ENABLE_FUNCTION_RETVAL
+    - COR_PRF_ENABLE_FRAME_INFO
+    # Determines what features to turn off
+    # For example, with inlining we can not monitor certain method entries / exits
+    Disable:
+    - COR_PRF_DISABLE_INLINING
+    - COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST

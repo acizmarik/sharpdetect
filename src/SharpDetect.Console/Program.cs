@@ -32,7 +32,7 @@ namespace SharpDetect.Console
             return new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddEnvironmentVariables()
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+                .AddYamlFile("appsettings.yaml", optional: false, reloadOnChange: false)
                 .Build();
         }
 
