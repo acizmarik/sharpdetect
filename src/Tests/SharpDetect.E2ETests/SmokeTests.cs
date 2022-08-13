@@ -35,7 +35,7 @@ namespace SharpDetect.E2ETests
                 }
                 else if (report.Category == nameof(IPlugin.MethodCalled))
                 {
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}::Main()")
+                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main()")
                         reachedEntryPoint = true;
                 }
             }

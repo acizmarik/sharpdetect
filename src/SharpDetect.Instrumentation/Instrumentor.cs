@@ -14,6 +14,7 @@ using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Dnlib.Extensions;
 using SharpDetect.Instrumentation.Injectors;
+using SharpDetect.Instrumentation.Options;
 using SharpDetect.Instrumentation.Stubs;
 using SharpDetect.Instrumentation.Utilities;
 using System.Collections.Concurrent;
@@ -68,10 +69,15 @@ namespace SharpDetect.Instrumentation
             executionObserver.ModuleLoaded += ExecutionObserver_ModuleLoaded;
             executionObserver.JITCompilationStarted += ExecutionObserver_JITCompilationStarted;
 
-            options = new InstrumentationOptions(
-                configuration.GetSection(Constants.Instrumentation.Enabled).Get<bool>(),
-                configuration.GetSection(Constants.Instrumentation.Strategy).Get<InstrumentationStrategy>(),
-                configuration.GetSection(Constants.Instrumentation.Patterns).Get<string[]>());
+            var rewritingOptions = new RewritingOptions(
+                configuration.GetSection(Constants.Rewriting.Enabled).Get<bool>(),
+                configuration.GetSection(Constants.Rewriting.Strategy).Get<InstrumentationStrategy>(),
+                configuration.GetSection(Constants.Rewriting.Patterns).Get<RewritingPattern[]>());
+            var hookOptions = new EntryExitHookOptions(
+                configuration.GetSection(Constants.EntryExitHooks.Enabled).Get<bool>(),
+                configuration.GetSection(Constants.EntryExitHooks.Strategy).Get<InstrumentationStrategy>(),
+                configuration.GetSection(Constants.EntryExitHooks.Patterns).Get<string[]>());
+            options = new InstrumentationOptions(rewritingOptions, hookOptions);
         }
 
         /// <summary>
@@ -132,13 +138,31 @@ namespace SharpDetect.Instrumentation
             }
 
             // Statistics
-            methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var interpretation);
-            if (interpretation is not null && interpretation.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks))
+            var injectHooks = ShouldInsertEntryExitHooks(method);
+            if (injectHooks)
                 Interlocked.Increment(ref injectedMethodHooksCount);
             if (bytecode is not null)
                 Interlocked.Increment(ref instrumentedMethodsCount);
 
-            IssueJITCompilationResponse(method, bytecode, args.Info);
+            IssueJITCompilationResponse(method, bytecode, injectHooks, args.Info);
+        }
+
+        private bool ShouldInsertEntryExitHooks(MethodDef method)
+        {
+            methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var interpretation);
+
+            var userRequested = false;
+            if (options.HookOptions.Enabled)
+            {
+                if (options.RewritingOptions.Strategy == InstrumentationStrategy.OnlyPatterns)
+                    userRequested = options.HookOptions.Patterns.FirstOrDefault(p => method.FullName.Contains(p)) != default;
+                else if (options.RewritingOptions.Strategy == InstrumentationStrategy.AllExcludingPatterns)
+                    userRequested = options.HookOptions.Patterns.All(p => !method.FullName.Contains(p));
+                else
+                    throw new NotImplementedException($"Strategy: {nameof(options.RewritingOptions.Strategy)}");
+            }
+
+            return userRequested || (interpretation is not null && interpretation.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks));
         }
 
         private (bool IsDirty, UnresolvedMethodStubs? Stubs) PreprocessMethod(MethodDef method, ModuleInfo moduleInfo, EventInfo info)
@@ -160,14 +184,9 @@ namespace SharpDetect.Instrumentation
                         // Apply actions defined by method descriptors
                         methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
                         // Check if user requested instrumentation for this method
-                        if (options.Enabled)
+                        if (options.RewritingOptions.Enabled)
                         {
-                            if (options.Strategy == InstrumentationStrategy.OnlyPatterns && options.Patterns.Any(p => method.FullName.Contains(p)))
-                            {
-                                // Perform instrumenation
-                                methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
-                            }
-                            else if (options.Strategy == InstrumentationStrategy.AllExcludingPatterns && options.Patterns.All(p => !method.FullName.Contains(p)))
+                            if (ShouldRewriteMethod(method))
                             {
                                 // Perform instrumenation
                                 methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
@@ -184,6 +203,20 @@ namespace SharpDetect.Instrumentation
             return item;
         }
 
+        private bool ShouldRewriteMethod(MethodDef method)
+        {
+            if (!options.RewritingOptions.Enabled)
+                return false;
+
+            var patterns = options.RewritingOptions.Patterns.Where(p => p.Target.HasFlag(InstrumentationTarget.Method));
+
+            if (options.RewritingOptions.Strategy == InstrumentationStrategy.OnlyPatterns)
+                return patterns.FirstOrDefault(p => method.FullName.Contains(p.Pattern)) != default;
+            else if (options.RewritingOptions.Strategy == InstrumentationStrategy.AllExcludingPatterns)
+                return patterns.All(p => !method.FullName.Contains(p.Pattern));
+            else
+                throw new NotImplementedException($"Strategy: {nameof(options.RewritingOptions.Strategy)}");
+        }
 
         private void WrapAnalyzedExternMethodCalls(MethodDef method, ModuleInfo moduleInfo, UnresolvedMethodStubs stubs, EventInfo info)
         {
@@ -279,13 +312,13 @@ namespace SharpDetect.Instrumentation
             return bytecode;
         }
 
-        private void IssueJITCompilationResponse(MethodDef method, byte[]? bytecode, EventInfo info)
+        private void IssueJITCompilationResponse(MethodDef method, byte[]? bytecode, bool overrideIssueHooks, EventInfo info)
         {
             var result = methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
 
-            if (result || bytecode is not null)
+            if (result || overrideIssueHooks || bytecode is not null)
             {
-                profilingClient.IssueRewriteMethodBodyAsync(bytecode, data, info);
+                profilingClient.IssueRewriteMethodBodyAsync(bytecode, data, overrideIssueHooks, info);
             }
             else
             {

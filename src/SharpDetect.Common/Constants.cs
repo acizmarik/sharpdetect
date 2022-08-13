@@ -51,11 +51,18 @@
             }
         }
 
-        public static class Instrumentation
+        public static class Rewriting
         {
-            public const string Enabled = "Instrumentation:Enabled";
-            public const string Strategy = "Instrumentation:Strategy";
-            public const string Patterns = "Instrumentation:Patterns";
+            public const string Enabled = "Rewriting:Enabled";
+            public const string Strategy = "Rewriting:Strategy";
+            public const string Patterns = "Rewriting:Patterns";
+        }
+
+        public static class EntryExitHooks
+        {
+            public const string Enabled = "EntryExitHooks:Enabled";
+            public const string Strategy = "EntryExitHooks:Strategy";
+            public const string Patterns = "EntryExitHooks:Patterns";
         }
 
         public static class Profiling
