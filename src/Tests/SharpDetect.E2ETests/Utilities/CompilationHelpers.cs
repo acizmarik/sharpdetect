@@ -11,7 +11,7 @@ namespace SharpDetect.E2ETests.Utilities
 
             try
             {
-                await Cli.Wrap("dotnet.exe")
+                await Cli.Wrap("dotnet")
                     .WithArguments($"build")
                     .WithValidation(CommandResultValidation.ZeroExitCode)
                     .WithStandardOutputPipe(PipeTarget.ToStringBuilder(sb))
