@@ -23,7 +23,7 @@ namespace SharpDetect.UnitTests.Plugins
             var serviceProvider = BuildServiceProvider(
                 (typeof(ILoggerFactory), LoggerFactory),
                 (typeof(IReportingService), reportingService),
-                (typeof(IReportsReader), reportingService));
+                (typeof(IReportsReaderProvider), reportingService));
             plugin.Initialize(serviceProvider);
             var shadowObj1 = new ShadowObject() { ShadowPointer = new(0x123456789) };
             var shadowObj2 = new ShadowObject() { ShadowPointer = new(0x987654321) };
