@@ -5,11 +5,13 @@ using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
+using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Common.Services.Scripts;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Communication.Endpoints;
 using SharpDetect.Core.Models;
 using SharpDetect.Core.Plugins;
+using SharpDetect.Core.Reporting;
 using SharpDetect.Core.Runtime;
 using SharpDetect.Core.Runtime.Monitoring;
 using SharpDetect.Core.Scripts;
@@ -40,6 +42,8 @@ namespace SharpDetect.Core.Configuration
             services.AddScoped<IProfilingClient, ProfilingClient>();
             services.AddScoped<IHealthMonitor, HealthMonitor>();
             services.AddScoped<IShadowExecutionObserver, RuntimeEventsHub>(p => p.GetRequiredService<RuntimeEventsHub>());
+            services.AddScoped<IReportingService, ReportingService>();
+            services.AddScoped<IReportsReader, ReportingService>(p => p.GetRequiredService<ReportingService>());
         }
 
         private static void AddModuleDescriptors(this IServiceCollection services)
