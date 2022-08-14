@@ -1,4 +1,4 @@
-﻿namespace SharpDetect.E2ETests
+﻿namespace SharpDetect.E2ETests.Definitions
 {
     internal static class TestsConfiguration
     {
