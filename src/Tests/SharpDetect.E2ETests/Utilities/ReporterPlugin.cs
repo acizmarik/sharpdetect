@@ -2,6 +2,7 @@
 using SharpDetect.Common;
 using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins.Metadata;
+using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
@@ -43,5 +44,8 @@ namespace SharpDetect.E2ETests.Utilities
             metadataContext.GetResolver(info.ProcessId).TryGetMethodDef(method, new(method.ModuleId), resolveWrappers: true, out var methodDef);
             reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(MethodReturned), methodDef?.FullName ?? "<unknown-method>", info.ProcessId, default));
         }
+        public override void LockAcquireAttempted(IShadowObject instance, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(LockAcquireAttempted), string.Empty, info.ProcessId, default));
+        public override void LockAcquireReturned(IShadowObject instance, bool isSuccess, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(LockAcquireReturned), string.Empty, info.ProcessId, default));
+        public override void LockReleased(IShadowObject instance, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(LockReleased), string.Empty, info.ProcessId, default));
     }
 }
