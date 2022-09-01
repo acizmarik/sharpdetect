@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using dnlib.DotNet;
+using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Common;
 using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins.Metadata;
@@ -47,5 +48,15 @@ namespace SharpDetect.E2ETests.Utilities
         public override void LockAcquireAttempted(IShadowObject instance, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(LockAcquireAttempted), string.Empty, info.ProcessId, default));
         public override void LockAcquireReturned(IShadowObject instance, bool isSuccess, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(LockAcquireReturned), string.Empty, info.ProcessId, default));
         public override void LockReleased(IShadowObject instance, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(LockReleased), string.Empty, info.ProcessId, default));
+        public override void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
+        {
+            var mapping = eventRegistry.Get(srcMappingId);
+            reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(FieldRead), ((IField)mapping.Instruction.Operand).FullName, info.ProcessId, default));
+        }
+        public override void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
+        {
+            var mapping = eventRegistry.Get(srcMappingId);
+            reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(FieldWritten), ((IField)mapping.Instruction.Operand).FullName, info.ProcessId, default));
+        }
     }
 }
