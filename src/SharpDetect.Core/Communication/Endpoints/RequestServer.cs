@@ -133,8 +133,10 @@ namespace SharpDetect.Core.Communication.Endpoints
                 isDisposed = true;
                 terminating = true;
                 outboundQueue.CompleteAdding();
-                outboundWorkerThread.Join();
-                inboundWorkerThread.Join();
+                if (inboundWorkerThread.ThreadState != ThreadState.Unstarted)
+                    outboundWorkerThread.Join();
+                if (inboundWorkerThread.ThreadState != ThreadState.Unstarted)
+                    inboundWorkerThread.Join();
                 GC.SuppressFinalize(this);
             }
         }
