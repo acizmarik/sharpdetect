@@ -20,6 +20,10 @@
   # Different ports can be chosen if these are already taken on the machine
   # Protocols can be changed between tcp and ipc (the latter can be faster, mainly on Linux machines)
   Communication:
+    Signals:
+      Port: 1220
+      Address: localhost
+      Protocol: tcp
     Notifications:
       Port: 1221
       Address: localhost

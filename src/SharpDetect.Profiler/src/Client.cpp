@@ -24,6 +24,9 @@ using namespace SharpDetect::Common::Messages;
 Client::Client(el::Logger* pLogger)
 	: pLogger(pLogger)
 {
+	auto signalsProtocol = PAL::ReadEnvironmentVariable("SHARPDETECT_Signals_Protocol");
+	auto signalsAddress = PAL::ReadEnvironmentVariable("SHARPDETECT_Signals_Address");
+	auto signalsPort = PAL::ReadEnvironmentVariable("SHARPDETECT_Signals_Port");
 	auto notificationsProtocol = PAL::ReadEnvironmentVariable("SHARPDETECT_Notifications_Protocol");
 	auto notificationsAddress = PAL::ReadEnvironmentVariable("SHARPDETECT_Notifications_Address");
 	auto notificationsPort = PAL::ReadEnvironmentVariable("SHARPDETECT_Notifications_Port");
@@ -36,6 +39,7 @@ Client::Client(el::Logger* pLogger)
 	notificationsEndpoint = notificationsProtocol + "://" + notificationsAddress + ":" + notificationsPort;
 	requestsEndpoint = requestsProtocol + "://" + requestsAddress + ":" + requestsPort;
 	responsesEndpoint = responsesProtocol + "://" + responsesAddress + ":" + responsesPort;
+	signalsEndpoint = signalsProtocol + "://" + signalsAddress + ":" + signalsPort;
 
 	notificationsThread = std::thread(&Client::PushWorker, 
 		this, std::cref(notificationsEndpoint), std::ref(notificationsMutex), std::ref(queueNotifications), std::ref(cvNotifications));
@@ -52,10 +56,20 @@ Client::~Client()
 
 void Client::SignalsWorker()
 {
+	auto size = MessageFactory::Heartbeat().ByteSizeLong();
+	auto buffer = std::make_unique<char[]>(size);
+
+	zmq::socket_t socket(context, zmq::socket_type::push);
+	socket.connect(signalsEndpoint);
+
 	while (!finish)
 	{
 		// Send heartbeat
-		SendNotification(MessageFactory::Heartbeat());
+		auto&& heartbeat = MessageFactory::Heartbeat();
+		heartbeat.SerializeToArray(buffer.get(), size);
+
+		// Send notification
+		socket.send(buffer.get(), size, 0);
 
 		// Put thread to sleep until next heartbeat
 		std::this_thread::sleep_for(std::chrono::milliseconds(1500));

@@ -164,8 +164,12 @@ namespace SharpDetect.Core.Runtime
         #region PROFILING_NOTIFICATIONS
         private void ProfilingMessageHub_Heartbeat(EventInfo info)
         {
-            var scheduler = GetScheduler(info.ProcessId);
-            scheduler.Schedule_Heartbeat(info);
+            // Note: some heartbeats might come earlier than the actual analysis starts
+            // Such heartbeats can be discarded (watchdog is not iinitialized yet)
+            if (schedulersLookup.TryGetValue(info.ProcessId, out var scheduler))
+            {
+                scheduler.Schedule_Heartbeat(info);
+            }
         }
 
         private void ProfilingMessageHub_ProfilerInitialized((Version? Version, EventInfo Info) args)
