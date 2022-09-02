@@ -9,8 +9,8 @@ namespace SharpDetect.Core.Communication
 {
     internal class ExecutingMessageHub : MessageHubBase, IExecutingMessageHub
     {
-        public event Action<(FunctionInfo Function, RawArgumentsList? Arguments, EventInfo Info)>? MethodCalled;
-        public event Action<(FunctionInfo Function, RawReturnValue? ReturnValue, RawArgumentsList? ByRefArguments, EventInfo Info)>? MethodReturned;
+        public event Action<(FunctionInfo Function, RawArgumentsList? Arguments, RawEventInfo Info)>? MethodCalled;
+        public event Action<(FunctionInfo Function, RawReturnValue? ReturnValue, RawArgumentsList? ByRefArguments, RawEventInfo Info)>? MethodReturned;
 
         public ExecutingMessageHub(ILoggerFactory loggerFactory)
             : base(loggerFactory.CreateLogger<ProfilingMessageHub>(), new[]

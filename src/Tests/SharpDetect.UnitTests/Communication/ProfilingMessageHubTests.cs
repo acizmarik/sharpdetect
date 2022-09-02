@@ -20,7 +20,7 @@ namespace SharpDetect.UnitTests.Communication
             UIntPtr threadId = new(789);
 
             var raised = false;
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.Heartbeat += args =>
             {
@@ -54,7 +54,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var version = default(Version?);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.ProfilerInitialized += args =>
             {
@@ -88,7 +88,7 @@ namespace SharpDetect.UnitTests.Communication
             UIntPtr threadId = new(789);
 
             var raised = false;
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.ProfilerDestroyed += args =>
             {
@@ -125,7 +125,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var moduleInfo = default(UIntPtr);
             var pathInfo = default(string);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.ModuleLoaded += args =>
             {
@@ -165,7 +165,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var typeInfo = default(TypeInfo);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.TypeLoaded += args =>
             {
@@ -205,7 +205,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var functionInfo = default(FunctionInfo);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.JITCompilationStarted += args =>
             {
@@ -244,7 +244,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var threadInfo = default(UIntPtr);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.ThreadCreated += args =>
             {
@@ -281,7 +281,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var threadInfo = default(UIntPtr);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.ThreadDestroyed += args =>
             {
@@ -318,7 +318,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var reasonInfo = default(COR_PRF_SUSPEND_REASON);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.RuntimeSuspendStarted += args =>
             {
@@ -353,7 +353,7 @@ namespace SharpDetect.UnitTests.Communication
             UIntPtr threadId = new(789);
 
             var raised = false;
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.RuntimeSuspendFinished += args =>
             {
@@ -388,7 +388,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var threadInfo = default(UIntPtr);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.RuntimeThreadSuspended += args =>
             {
@@ -425,7 +425,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var threadInfo = default(UIntPtr);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.RuntimeThreadResumed += args =>
             {
@@ -471,7 +471,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var generationInfos = default(bool[]);
             var boundInfos = default(COR_PRF_GC_GENERATION_RANGE[]);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.GarbageCollectionStarted += args =>
             {
@@ -520,7 +520,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var boundInfos = default(COR_PRF_GC_GENERATION_RANGE[]);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.GarbageCollectionFinished += args =>
             {
@@ -564,7 +564,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var startInfos = default(UIntPtr[]);
             var lengthInfos = default(UIntPtr[]);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.SurvivingReferences += args =>
             {
@@ -614,7 +614,7 @@ namespace SharpDetect.UnitTests.Communication
             var oldStartInfos = default(UIntPtr[]);
             var newStartInfos = default(UIntPtr[]);
             var lengthInfos = default(UIntPtr[]);
-            var eventInfo = default(EventInfo);
+            var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.MovedReferences += args =>
             {

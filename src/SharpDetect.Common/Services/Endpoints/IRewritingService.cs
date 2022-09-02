@@ -5,11 +5,11 @@ namespace SharpDetect.Common.Services.Endpoints
 {
     public interface IProfilingClient
     {
-        Task<Response> IssueNoChangesRequestAsync(EventInfo info);
-        Task<Response> IssueContinueExecutionRequestAsync(EventInfo info);
+        Task<Response> IssueNoChangesRequestAsync(RawEventInfo info);
+        Task<Response> IssueContinueExecutionRequestAsync(RawEventInfo info);
 
 
-        Task<Response> IssueEmitMethodWrappersRequestAsync(IEnumerable<(FunctionInfo Function, ushort Argc)> methods, EventInfo info);
-        Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideHooks, EventInfo info);
+        Task<Response> IssueEmitMethodWrappersRequestAsync(IEnumerable<(FunctionInfo Function, ushort Argc)> methods, RawEventInfo info);
+        Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideHooks, RawEventInfo info);
     }
 }

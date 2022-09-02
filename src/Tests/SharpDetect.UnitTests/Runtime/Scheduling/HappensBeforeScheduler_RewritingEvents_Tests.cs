@@ -33,10 +33,10 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var typeInjectedRaised = false;
             eventsHub.TypeInjected += _ => typeInjectedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
+            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new RawEventInfo(2, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -67,11 +67,11 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var methodInjectedRaised = false;
             eventsHub.MethodInjected += _ => methodInjectedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new RawEventInfo(2, pid, threadId));
+            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new RawEventInfo(3, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -103,10 +103,10 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var methodWrapperInjectedRaised = false;
             eventsHub.MethodWrapperInjected += _ => methodWrapperInjectedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_WrapperInjected(new(moduleId, typeMDToken, externFunctionMDToken), wrapperFunctionMDToken, new EventInfo(2, pid, threadId));
+            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_WrapperInjected(new(moduleId, typeMDToken, externFunctionMDToken), wrapperFunctionMDToken, new RawEventInfo(2, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -146,12 +146,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var helperMethodReferencedRaised = false;
             eventsHub.MethodInjected += _ => methodInjectedRaised = true;
             eventsHub.HelperMethodReferenced += _ => helperMethodReferencedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             var mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
-            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_HelperReferenced(new(moduleId, typeMDToken, referenceFunctionMDToken), Common.Messages.MethodType.FieldAccess, new EventInfo(4, pid, threadId));
+            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new RawEventInfo(2, pid, threadId));
+            scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_HelperReferenced(new(moduleId, typeMDToken, referenceFunctionMDToken), Common.Messages.MethodType.FieldAccess, new RawEventInfo(4, pid, threadId));
             mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 

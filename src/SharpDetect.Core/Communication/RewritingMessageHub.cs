@@ -8,12 +8,12 @@ namespace SharpDetect.Core.Communication
 {
     internal class RewritingMessageHub : MessageHubBase, IRewritingMessageHub
     {
-        public event Action<(TypeInfo TypeInfo, EventInfo Info)>? TypeInjected;
-        public event Action<(FunctionInfo FunctionInfo, MethodType Type, EventInfo Info)>? MethodInjected;
-        public event Action<(FunctionInfo FunctionInfo, MDToken WrapperToken, EventInfo Info)>? MethodWrapperInjected;
-        public event Action<(TypeInfo TypeInfo, EventInfo Info)>? TypeReferenced;
-        public event Action<(FunctionInfo FunctionInfo, MethodType Type, EventInfo Info)>? HelperMethodReferenced;
-        public event Action<(FunctionInfo Definition, FunctionInfo Reference, EventInfo Info)>? WrapperMethodReferenced;
+        public event Action<(TypeInfo TypeInfo, RawEventInfo Info)>? TypeInjected;
+        public event Action<(FunctionInfo FunctionInfo, MethodType Type, RawEventInfo Info)>? MethodInjected;
+        public event Action<(FunctionInfo FunctionInfo, MDToken WrapperToken, RawEventInfo Info)>? MethodWrapperInjected;
+        public event Action<(TypeInfo TypeInfo, RawEventInfo Info)>? TypeReferenced;
+        public event Action<(FunctionInfo FunctionInfo, MethodType Type, RawEventInfo Info)>? HelperMethodReferenced;
+        public event Action<(FunctionInfo Definition, FunctionInfo Reference, RawEventInfo Info)>? WrapperMethodReferenced;
 
         public RewritingMessageHub(ILoggerFactory loggerFactory)
             : base(loggerFactory.CreateLogger<RewritingMessageHub>(), new[]

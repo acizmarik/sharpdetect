@@ -4,6 +4,7 @@ using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services;
+using SharpDetect.Core.Runtime;
 
 namespace SharpDetect.Core.Plugins
 {
@@ -44,37 +45,42 @@ namespace SharpDetect.Core.Plugins
             runtimeEventsHub.ArrayElementAccessed += RuntimeEventsHub_ArrayElementAccessed;
         }
 
-        private void RuntimeEventsHub_ProfilerInitialized((IShadowCLR Runtime, EventInfo Info) obj) => Execute(plugin => plugin.AnalysisStarted(obj.Info));
-        private void RuntimeEventsHub_ProfilerDestroyed((IShadowCLR Runtime, EventInfo Info) obj) => Execute(plugin => plugin.AnalysisEnded(obj.Info));
-        private void RuntimeEventsHub_ModuleLoaded((IShadowCLR Runtime, ModuleInfo Module, string Path, EventInfo Info) obj) => Execute(plugin => plugin.ModuleLoaded(obj.Module, obj.Path, obj.Info));
-        private void RuntimeEventsHub_TypeLoaded((IShadowCLR Runtime, TypeInfo Type, EventInfo Info) obj) => Execute(plugin => plugin.TypeLoaded(obj.Type, obj.Info));
-        private void RuntimeEventsHub_JITCompilationStarted((IShadowCLR Runtime, FunctionInfo Function, EventInfo Info) obj) => Execute(plugin => plugin.JITCompilationStarted(obj.Function, obj.Info));
-        private void RuntimeEventsHub_ThreadCreated((IShadowCLR Runtime, UIntPtr ThreadId, EventInfo Info) obj) => Execute(plugin => plugin.ThreadCreated(obj.ThreadId, obj.Info));
-        private void RuntimeEventsHub_ThreadDestroyed((IShadowCLR Runtime, UIntPtr ThreadId, EventInfo Info) obj) => Execute(plugin => plugin.ThreadDestroyed(obj.ThreadId, obj.Info));
-        private void RuntimeEventsHub_MethodCalled((IShadowCLR Runtime, FunctionInfo Function, Common.Runtime.Arguments.IArgumentsList? Arguments, EventInfo Info) obj) => Execute(plugin => plugin.MethodCalled(obj.Function, obj.Arguments, obj.Info));
-        private void RuntimeEventsHub_MethodReturned((IShadowCLR Runtime, FunctionInfo Function, Common.Runtime.Arguments.IValueOrObject? returnValue, Common.Runtime.Arguments.IArgumentsList? ByRefArguments, EventInfo Info) obj) => Execute(plugin => plugin.MethodReturned(obj.Function, obj.returnValue, obj.ByRefArguments, obj.Info));
-        private void RuntimeEventsHub_LockAcquireAttempted((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, EventInfo Info) obj) => Execute(plugin => plugin.LockAcquireAttempted(obj.Instance, obj.Info));
-        private void RuntimeEventsHub_LockAcquireReturned((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, bool IsSuccess, EventInfo Info) obj) => Execute(plugin => plugin.LockAcquireReturned(obj.Instance, obj.IsSuccess, obj.Info));
-        private void RuntimeEventsHub_LockReleaseReturned((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, EventInfo Info) obj) => Execute(plugin => plugin.LockReleased(obj.Instance, obj.Info));
-        private void RuntimeEventsHub_ObjectWaitAttempted((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, EventInfo Info) obj) => Execute(plugin => plugin.ObjectWaitCalled(obj.Instance, obj.Info));
-        private void RuntimeEventsHub_ObjectWaitReturned((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, bool IsSuccess, EventInfo Info) obj) => Execute(plugin => plugin.ObjectWaitReturned(obj.Instance, obj.IsSuccess, obj.Info));
-        private void RuntimeEventsHub_ObjectPulseReturned((IShadowCLR Runtime, FunctionInfo Function, bool IsPulseAll, IShadowObject Instance, EventInfo Info) obj) => Execute(plugin => plugin.ObjectPulsed(obj.Instance, obj.IsPulseAll, obj.Info));
-        private void RuntimeEventsHub_GarbageCollectionStarted((IShadowCLR Runtime, bool[] Generations, Common.Interop.COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info) obj) => Execute(plugin => plugin.GarbageCollectionStarted(obj.Info));
-        private void RuntimeEventsHub_GarbageCollectionFinished((IShadowCLR Runtime, Common.Interop.COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info) obj) => Execute(plugin => plugin.GarbageCollectionFinished(obj.Info));
-        private void RuntimeEventsHub_FieldAccessed((IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject? Instance, EventInfo Info) obj) => Execute(plugin =>
+        private void RuntimeEventsHub_ProfilerInitialized((IShadowCLR Runtime, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.AnalysisStarted(CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ProfilerDestroyed((IShadowCLR Runtime, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.AnalysisEnded(CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ModuleLoaded((IShadowCLR Runtime, ModuleInfo Module, string Path, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ModuleLoaded(obj.Module, obj.Path, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_TypeLoaded((IShadowCLR Runtime, TypeInfo Type, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.TypeLoaded(obj.Type, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_JITCompilationStarted((IShadowCLR Runtime, FunctionInfo Function, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.JITCompilationStarted(obj.Function, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ThreadCreated((IShadowCLR Runtime, UIntPtr ThreadId, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ThreadCreated(obj.ThreadId, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ThreadDestroyed((IShadowCLR Runtime, UIntPtr ThreadId, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ThreadDestroyed(obj.ThreadId, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_MethodCalled((IShadowCLR Runtime, FunctionInfo Function, Common.Runtime.Arguments.IArgumentsList? Arguments, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.MethodCalled(obj.Function, obj.Arguments, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_MethodReturned((IShadowCLR Runtime, FunctionInfo Function, Common.Runtime.Arguments.IValueOrObject? returnValue, Common.Runtime.Arguments.IArgumentsList? ByRefArguments, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.MethodReturned(obj.Function, obj.returnValue, obj.ByRefArguments, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_LockAcquireAttempted((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.LockAcquireAttempted(obj.Instance, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_LockAcquireReturned((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, bool IsSuccess, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.LockAcquireReturned(obj.Instance, obj.IsSuccess, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_LockReleaseReturned((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.LockReleased(obj.Instance, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ObjectWaitAttempted((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ObjectWaitCalled(obj.Instance, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ObjectWaitReturned((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, bool IsSuccess, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ObjectWaitReturned(obj.Instance, obj.IsSuccess, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ObjectPulseReturned((IShadowCLR Runtime, FunctionInfo Function, bool IsPulseAll, IShadowObject Instance, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ObjectPulsed(obj.Instance, obj.IsPulseAll, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_GarbageCollectionStarted((IShadowCLR Runtime, bool[] Generations, Common.Interop.COR_PRF_GC_GENERATION_RANGE[] Bounds, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.GarbageCollectionStarted(CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_GarbageCollectionFinished((IShadowCLR Runtime, Common.Interop.COR_PRF_GC_GENERATION_RANGE[] Bounds, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.GarbageCollectionFinished(CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_FieldAccessed((IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject? Instance, Common.RawEventInfo Info) obj) => Execute(plugin =>
         {
             if (obj.IsWrite)
-                plugin.FieldWritten(obj.Identifier, obj.Instance, false, obj.Info);
+                plugin.FieldWritten(obj.Identifier, obj.Instance, false, CreatePluginEventInfo(obj.Runtime, obj.Info));
             else
-                plugin.FieldRead(obj.Identifier, obj.Instance, false, obj.Info);
+                plugin.FieldRead(obj.Identifier, obj.Instance, false, CreatePluginEventInfo(obj.Runtime, obj.Info));
         });
-        private void RuntimeEventsHub_ArrayElementAccessed((IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, int Index, EventInfo Info) obj) => Execute(plugin =>
+        private void RuntimeEventsHub_ArrayElementAccessed((IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, int Index, Common.RawEventInfo Info) obj) => Execute(plugin =>
         {
             if (obj.IsWrite)
-                plugin.ArrayElementWritten(obj.Identifier, obj.Instance, obj.Index, obj.Info);
+                plugin.ArrayElementWritten(obj.Identifier, obj.Instance, obj.Index, CreatePluginEventInfo(obj.Runtime, obj.Info));
             else
-                plugin.ArrayElementRead(obj.Identifier, obj.Instance, obj.Index, obj.Info);
+                plugin.ArrayElementRead(obj.Identifier, obj.Instance, obj.Index, CreatePluginEventInfo(obj.Runtime, obj.Info));
         });
+
+        private static Common.Plugins.EventInfo CreatePluginEventInfo(IShadowCLR shadowRuntime, Common.RawEventInfo info)
+        {
+            return new(shadowRuntime, ((ShadowCLR)shadowRuntime).Threads[info.ThreadId]);
+        }
 
         public void Dispose()
         {

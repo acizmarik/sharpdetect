@@ -27,7 +27,7 @@ namespace SharpDetect.Metadata
         public IMetadataResolver GetResolver(int processId)
             => resolvers[processId];
 
-        private void OnProfilingInitializedHandler((Version? Version, EventInfo Info) args)
+        private void OnProfilingInitializedHandler((Version? Version, RawEventInfo Info) args)
         {
             // Create new metadata context
             var context = new InjectedData(args.Info.ProcessId);
@@ -38,7 +38,7 @@ namespace SharpDetect.Metadata
             emitters = emitters.Add(args.Info.ProcessId, emitter);
         }
 
-        private void OnProfilingDestroyedHandler(EventInfo info)
+        private void OnProfilingDestroyedHandler(RawEventInfo info)
         {
             // Destroy metadata context
             resolvers.Remove(info.ProcessId);

@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using SharpDetect.Common.Runtime;
+﻿using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 
 namespace SharpDetect.Common.Plugins

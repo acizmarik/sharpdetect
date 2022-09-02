@@ -83,7 +83,7 @@ namespace SharpDetect.Instrumentation
         /// <summary>
         /// Resolve ModuleLoaded event and issue metadata modification requests
         /// </summary>
-        private void ExecutionObserver_ModuleLoaded((IShadowCLR Runtime, ModuleInfo Module, string Path, EventInfo Info) args)
+        private void ExecutionObserver_ModuleLoaded((IShadowCLR Runtime, ModuleInfo Module, string Path, RawEventInfo Info) args)
         {
             // Fetch module definition
             if (moduleBindContext.TryLoadModule(args.Info.ProcessId, args.Path, args.Module, out var moduleDef) && GetMethodsToWrap(moduleDef, args.Module.Id).Any())
@@ -101,7 +101,7 @@ namespace SharpDetect.Instrumentation
         /// <summary>
         /// Resolve JITCompilation started event and issue bytecode instrumentation requests
         /// </summary>
-        private void ExecutionObserver_JITCompilationStarted((IShadowCLR Runtime, FunctionInfo Function, EventInfo Info) args)
+        private void ExecutionObserver_JITCompilationStarted((IShadowCLR Runtime, FunctionInfo Function, RawEventInfo Info) args)
         {
             // Fetch method definition
             var resolver = metadataContext.GetResolver(args.Info.ProcessId);
@@ -165,7 +165,7 @@ namespace SharpDetect.Instrumentation
             return userRequested || (interpretation is not null && interpretation.Flags.HasFlag(MethodRewritingFlags.InjectEntryExitHooks));
         }
 
-        private (bool IsDirty, UnresolvedMethodStubs? Stubs) PreprocessMethod(MethodDef method, ModuleInfo moduleInfo, EventInfo info)
+        private (bool IsDirty, UnresolvedMethodStubs? Stubs) PreprocessMethod(MethodDef method, ModuleInfo moduleInfo, RawEventInfo info)
         {
             // Ensure we do not instrument the same method multiple times
             // Also we need to make sure we always return the same bytecode (JITCompilationStarted might be called multiple times for a single method)
@@ -218,7 +218,7 @@ namespace SharpDetect.Instrumentation
                 throw new NotImplementedException($"Strategy: {nameof(options.RewritingOptions.Strategy)}");
         }
 
-        private void WrapAnalyzedExternMethodCalls(MethodDef method, ModuleInfo moduleInfo, UnresolvedMethodStubs stubs, EventInfo info)
+        private void WrapAnalyzedExternMethodCalls(MethodDef method, ModuleInfo moduleInfo, UnresolvedMethodStubs stubs, RawEventInfo info)
         {
             var resolver = metadataContext.GetResolver(info.ProcessId);
             foreach (var instruction in method.Body.Instructions.Where(i => i.OpCode.Code == Code.Call && i.Operand is IMethodDefOrRef))
@@ -252,7 +252,7 @@ namespace SharpDetect.Instrumentation
             }
         }
 
-        private ResolvedMethodStubs ResolveStubs(ModuleInfo moduleInfo, UnresolvedMethodStubs? unresolvedStubs, EventInfo info)
+        private ResolvedMethodStubs ResolveStubs(ModuleInfo moduleInfo, UnresolvedMethodStubs? unresolvedStubs, RawEventInfo info)
         {
             if (unresolvedStubs is null || unresolvedStubs.Count == 0)
             {
@@ -312,7 +312,7 @@ namespace SharpDetect.Instrumentation
             return bytecode;
         }
 
-        private void IssueJITCompilationResponse(MethodDef method, byte[]? bytecode, bool overrideIssueHooks, EventInfo info)
+        private void IssueJITCompilationResponse(MethodDef method, byte[]? bytecode, bool overrideIssueHooks, RawEventInfo info)
         {
             var result = methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
 

@@ -35,7 +35,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Act
             var profilerInitializedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             mainThread.Execute(1, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
@@ -71,9 +71,9 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var profilerDestroyedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.ProfilerDestroyed += _ => profilerDestroyedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ProfilerDestroyed(new EventInfo(1, pid, threadId));
+            scheduler.Schedule_ProfilerDestroyed(new RawEventInfo(1, pid, threadId));
             await executionFinished.Task;
 
             // Assert
@@ -106,9 +106,9 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var moduleLoadedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.ModuleLoaded += _ => moduleLoadedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
+            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             mainThread.Execute(2, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -148,10 +148,10 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.ModuleLoaded += _ => moduleLoadedRaised = true;
             eventsHub.TypeLoaded += _ => typeLoadedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_TypeLoaded(new TypeInfo(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
+            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_TypeLoaded(new TypeInfo(moduleId, typeMDToken), new RawEventInfo(2, pid, threadId));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -196,11 +196,11 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.ModuleLoaded += _ => moduleLoadedRaised = true;
             eventsHub.TypeLoaded += _ => typeLoadedRaised = true;
             eventsHub.JITCompilationStarted += _ => jitCompilationRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_TypeLoaded(new TypeInfo(moduleId, typeMDToken), new EventInfo(2, pid, threadId));
-            scheduler.Schedule_JITCompilationStarted(new FunctionInfo(moduleId, typeMDToken, functionMDToken), new EventInfo(3, pid, threadId));
+            scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_TypeLoaded(new TypeInfo(moduleId, typeMDToken), new RawEventInfo(2, pid, threadId));
+            scheduler.Schedule_JITCompilationStarted(new FunctionInfo(moduleId, typeMDToken, functionMDToken), new RawEventInfo(3, pid, threadId));
             mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
             await executionCompletion.Task;
 
@@ -241,9 +241,9 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var threadCreatedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.ThreadCreated += _ => threadCreatedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId1));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ThreadCreated(threadId2, new EventInfo(1, pid, threadId1));
+            scheduler.Schedule_ThreadCreated(threadId2, new RawEventInfo(1, pid, threadId1));
             mainThread.Execute(2, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -281,10 +281,10 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.ThreadCreated += _ => threadCreatedRaised = true;
             eventsHub.ThreadDestroyed += _ => threadDestroyedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId1));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_ThreadCreated(threadId2, new EventInfo(1, pid, threadId1));
-            scheduler.Schedule_ThreadDestroyed(threadId2, new EventInfo(2, pid, threadId1));
+            scheduler.Schedule_ThreadCreated(threadId2, new RawEventInfo(1, pid, threadId1));
+            scheduler.Schedule_ThreadDestroyed(threadId2, new RawEventInfo(2, pid, threadId1));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -321,9 +321,9 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var runtimeSuspendStartedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId1));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(1, pid, threadId1));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId1));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -363,10 +363,10 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId1));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(1, pid, threadId1));
-            scheduler.Schedule_RuntimeSuspendFinished(new EventInfo(2, pid, threadId1));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId1));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(2, pid, threadId1));
             mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -408,11 +408,11 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.ThreadCreated += _ => threadCreatedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId1));
-            scheduler.Schedule_ThreadCreated(threadId2, new EventInfo(1, pid, threadId1));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
+            scheduler.Schedule_ThreadCreated(threadId2, new RawEventInfo(1, pid, threadId1));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(2, pid, threadId1));
-            scheduler.Schedule_RuntimeThreadSuspended(threadId2, new EventInfo(3, pid, threadId1));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(2, pid, threadId1));
+            scheduler.Schedule_RuntimeThreadSuspended(threadId2, new RawEventInfo(3, pid, threadId1));
             mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -457,12 +457,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.ThreadCreated += _ => threadCreatedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId1));
-            scheduler.Schedule_ThreadCreated(threadId2, new EventInfo(1, pid, threadId1));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
+            scheduler.Schedule_ThreadCreated(threadId2, new RawEventInfo(1, pid, threadId1));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(2, pid, threadId1));
-            scheduler.Schedule_RuntimeThreadSuspended(threadId2, new EventInfo(3, pid, threadId1));
-            scheduler.Schedule_RuntimeThreadResumed(threadId2, new EventInfo(4, pid, threadId1));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(2, pid, threadId1));
+            scheduler.Schedule_RuntimeThreadSuspended(threadId2, new RawEventInfo(3, pid, threadId1));
+            scheduler.Schedule_RuntimeThreadResumed(threadId2, new RawEventInfo(4, pid, threadId1));
             mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -517,11 +517,11 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_RuntimeThreadSuspended(threadId, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new EventInfo(3, pid, threadId));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
             mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -577,12 +577,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
             eventsHub.GarbageCollectionFinished += _ => garbageCollectionFinishedRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_RuntimeThreadSuspended(threadId, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_GarbageCollectionFinished(bounds, new EventInfo(4, pid, threadId));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_GarbageCollectionFinished(bounds, new RawEventInfo(4, pid, threadId));
             mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -641,12 +641,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
             eventsHub.SurvivingReferences += _ => survivingReferencesRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_RuntimeThreadSuspended(threadId, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_SurvivingReferences(survivingStarts, survivingLengths, new EventInfo(4, pid, threadId));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_SurvivingReferences(survivingStarts, survivingLengths, new RawEventInfo(4, pid, threadId));
             mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
@@ -706,12 +706,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
             eventsHub.MovedReferences += _ => movedReferencesRaised = true;
-            scheduler.Schedule_ProfilerInitialized(default(Version), new EventInfo(0, pid, threadId));
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
-            scheduler.Schedule_RuntimeSuspendStarted(reason, new EventInfo(1, pid, threadId));
-            scheduler.Schedule_RuntimeThreadSuspended(threadId, new EventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new EventInfo(3, pid, threadId));
-            scheduler.Schedule_MovedReferences(oldStarts, newStarts, lengths, new EventInfo(4, pid, threadId));
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
+            scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_MovedReferences(oldStarts, newStarts, lengths, new RawEventInfo(4, pid, threadId));
             mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
