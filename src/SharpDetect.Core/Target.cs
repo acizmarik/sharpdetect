@@ -29,6 +29,11 @@ namespace SharpDetect.Core
             var disableFlags = configuration.GetSection(Constants.Profiling.Disable).Get<string[]>();
             var flags = Enum.Parse<COR_PRF_MONITOR>(string.Join(',', monitorFlags.Concat(enableFlags).Concat(disableFlags)));
 
+            // Signals endpoint
+            var signalsPort = configuration.GetSection(Constants.Communication.Signals.Port).Get<string>();
+            var signalsAddress = configuration.GetSection(Constants.Communication.Signals.Address).Get<string>();
+            var signalsProtocol = configuration.GetSection(Constants.Communication.Signals.Protocol).Get<string>();
+
             // Notifications endpoint
             var notificationsPort = configuration.GetSection(Constants.Communication.Notifications.Port).Get<string>();
             var notificationsAddress = configuration.GetSection(Constants.Communication.Notifications.Address).Get<string>();
@@ -61,6 +66,9 @@ namespace SharpDetect.Core
 
                     // SharpDetect settings
                     builder.Set("SHARPDETECT_Profiler_Flags", ((ulong)flags).ToString());
+                    builder.Set("SHARPDETECT_Signals_Protocol", signalsProtocol);
+                    builder.Set("SHARPDETECT_Signals_Address", signalsAddress);
+                    builder.Set("SHARPDETECT_Signals_Port", signalsPort);
                     builder.Set("SHARPDETECT_Notifications_Protocol", notificationsProtocol);
                     builder.Set("SHARPDETECT_Notifications_Address", notificationsAddress);
                     builder.Set("SHARPDETECT_Notifications_Port", notificationsPort);

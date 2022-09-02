@@ -66,6 +66,7 @@ private:
 	void SignalsWorker();
 	size_t GetNewBufferSize(size_t current, size_t minRequestSize);
 
+	std::string signalsEndpoint;
 	std::string notificationsEndpoint;
 	std::string requestsEndpoint;
 	std::string responsesEndpoint;

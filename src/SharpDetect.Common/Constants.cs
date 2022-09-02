@@ -26,6 +26,13 @@
 
         public static class Communication
         {
+            public static class Signals
+            {
+                public const string Port = "Communication:Signals:Port";
+                public const string Address = "Communication:Signals:Address";
+                public const string Protocol = "Communication:Signals:Protocol";
+            }
+
             public static class Notifications
             {
                 public const string Port = "Communication:Notifications:Port";
