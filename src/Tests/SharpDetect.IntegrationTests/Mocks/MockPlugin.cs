@@ -4,6 +4,7 @@ using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
+using SharpDetect.Common.Runtime.Threads;
 using System.Collections.Concurrent;
 
 namespace SharpDetect.IntegrationTests.Mocks
@@ -41,8 +42,8 @@ namespace SharpDetect.IntegrationTests.Mocks
         public void ObjectPulsed(IShadowObject instance, bool isPulseAll, EventInfo info) => sink.Add(nameof(ObjectPulsed));
         public void ObjectWaitCalled(IShadowObject instance, EventInfo info) => sink.Add(nameof(ObjectWaitCalled));
         public void ObjectWaitReturned(IShadowObject instance, bool isSuccess, EventInfo info) => sink.Add(nameof(ObjectWaitReturned));
-        public void ThreadCreated(UIntPtr threadId, EventInfo info) => sink.Add(nameof(ThreadCreated));
-        public void ThreadDestroyed(UIntPtr threadId, EventInfo info) => sink.Add(nameof(ThreadDestroyed));
+        public void ThreadCreated(IShadowThread thread, EventInfo info) => sink.Add(nameof(ThreadCreated));
+        public void ThreadDestroyed(IShadowThread thread, EventInfo info) => sink.Add(nameof(ThreadDestroyed));
         public void TypeLoaded(TypeInfo type, EventInfo info) => sink.Add(nameof(TypeLoaded));
 
         public void Dispose()

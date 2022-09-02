@@ -3,6 +3,7 @@ using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
+using SharpDetect.Common.Runtime.Threads;
 
 namespace SharpDetect.Plugins
 {
@@ -28,8 +29,8 @@ namespace SharpDetect.Plugins
         public virtual void ObjectPulsed(IShadowObject instance, bool isPulseAll, EventInfo info) { /* Intentionally empty */ }
         public virtual void ObjectWaitCalled(IShadowObject instance, EventInfo info) { /* Intentionally empty */ }
         public virtual void ObjectWaitReturned(IShadowObject instance, bool isSuccess, EventInfo info) { /* Intentionally empty */ }
-        public virtual void ThreadCreated(UIntPtr threadId, EventInfo info) { /* Intentionally empty */ }
-        public virtual void ThreadDestroyed(UIntPtr threadId, EventInfo info) { /* Intentionally empty */ }
+        public virtual void ThreadCreated(IShadowThread thread, EventInfo info) { /* Intentionally empty */ }
+        public virtual void ThreadDestroyed(IShadowThread thread, EventInfo info) { /* Intentionally empty */ }
         public virtual void TypeLoaded(TypeInfo type, EventInfo info) { /* Intentionally empty */ }
     }
 }
