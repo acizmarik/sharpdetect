@@ -41,6 +41,7 @@ namespace SharpDetect.Core.Plugins
             runtimeEventsHub.GarbageCollectionStarted += RuntimeEventsHub_GarbageCollectionStarted;
             runtimeEventsHub.GarbageCollectionFinished += RuntimeEventsHub_GarbageCollectionFinished;
             runtimeEventsHub.FieldAccessed += RuntimeEventsHub_FieldAccessed;
+            runtimeEventsHub.ArrayElementAccessed += RuntimeEventsHub_ArrayElementAccessed;
         }
 
         private void RuntimeEventsHub_ProfilerInitialized((IShadowCLR Runtime, EventInfo Info) obj) => Execute(plugin => plugin.AnalysisStarted(obj.Info));
@@ -66,6 +67,13 @@ namespace SharpDetect.Core.Plugins
                 plugin.FieldWritten(obj.Identifier, obj.Instance, false, obj.Info);
             else
                 plugin.FieldRead(obj.Identifier, obj.Instance, false, obj.Info);
+        });
+        private void RuntimeEventsHub_ArrayElementAccessed((IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, int Index, EventInfo Info) obj) => Execute(plugin =>
+        {
+            if (obj.IsWrite)
+                plugin.ArrayElementWritten(obj.Identifier, obj.Instance, obj.Index, obj.Info);
+            else
+                plugin.ArrayElementRead(obj.Identifier, obj.Instance, obj.Index, obj.Info);
         });
 
         public void Dispose()
