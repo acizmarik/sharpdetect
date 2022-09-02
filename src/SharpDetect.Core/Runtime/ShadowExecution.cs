@@ -162,7 +162,7 @@ namespace SharpDetect.Core.Runtime
         }
 
         #region PROFILING_NOTIFICATIONS
-        private void ProfilingMessageHub_Heartbeat(EventInfo info)
+        private void ProfilingMessageHub_Heartbeat(RawEventInfo info)
         {
             // Note: some heartbeats might come earlier than the actual analysis starts
             // Such heartbeats can be discarded (watchdog is not iinitialized yet)
@@ -172,91 +172,91 @@ namespace SharpDetect.Core.Runtime
             }
         }
 
-        private void ProfilingMessageHub_ProfilerInitialized((Version? Version, EventInfo Info) args)
+        private void ProfilingMessageHub_ProfilerInitialized((Version? Version, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_ProfilerInitialized(args.Version, args.Info);
         }
 
-        private void ProfilingMessageHub_ProfilerDestroyed(EventInfo info)
+        private void ProfilingMessageHub_ProfilerDestroyed(RawEventInfo info)
         {
             var scheduler = GetScheduler(info.ProcessId);
             scheduler.Schedule_ProfilerDestroyed(info);
         }
 
-        private void ProfilingMessageHub_ModuleLoaded((UIntPtr ModuleId, string Path, EventInfo Info) args)
+        private void ProfilingMessageHub_ModuleLoaded((UIntPtr ModuleId, string Path, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_ModuleLoaded(args.ModuleId, args.Path, args.Info);
         }
 
-        private void ProfilingMessageHub_TypeLoaded((TypeInfo TypeInfo, EventInfo Info) args)
+        private void ProfilingMessageHub_TypeLoaded((TypeInfo TypeInfo, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_TypeLoaded(args.TypeInfo, args.Info);
         }
 
-        private void ProfilingMessageHub_JITCompilationStarted((FunctionInfo FunctionInfo, EventInfo Info) args)
+        private void ProfilingMessageHub_JITCompilationStarted((FunctionInfo FunctionInfo, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_JITCompilationStarted(args.FunctionInfo, args.Info);
         }
 
-        private void ProfilingMessageHub_ThreadCreated((UIntPtr ThreadId, EventInfo Info) args)
+        private void ProfilingMessageHub_ThreadCreated((UIntPtr ThreadId, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_ThreadCreated(args.ThreadId, args.Info);
         }
 
-        private void ProfilingMessageHub_ThreadDestroyed((UIntPtr ThreadId, EventInfo Info) args)
+        private void ProfilingMessageHub_ThreadDestroyed((UIntPtr ThreadId, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_ThreadDestroyed(args.ThreadId, args.Info);
         }
 
-        private void ProfilingMessageHub_RuntimeSuspendStarted((COR_PRF_SUSPEND_REASON Reason, EventInfo Info) args)
+        private void ProfilingMessageHub_RuntimeSuspendStarted((COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_RuntimeSuspendStarted(args.Reason, args.Info);
         }
        
-        private void ProfilingMessageHub_RuntimeSuspendFinished(EventInfo info)
+        private void ProfilingMessageHub_RuntimeSuspendFinished(RawEventInfo info)
         {
             var scheduler = GetScheduler(info.ProcessId);
             scheduler.Schedule_RuntimeSuspendFinished(info);
         }
 
-        private void ProfilingMessageHub_RuntimeThreadSuspended((UIntPtr ThreadId, EventInfo Info) args)
+        private void ProfilingMessageHub_RuntimeThreadSuspended((UIntPtr ThreadId, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_RuntimeThreadSuspended(args.ThreadId, args.Info);
         }
 
-        private void ProfilingMessageHub_RuntimeThreadResumed((UIntPtr ThreadId, EventInfo Info) args)
+        private void ProfilingMessageHub_RuntimeThreadResumed((UIntPtr ThreadId, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_RuntimeThreadResumed(args.ThreadId, args.Info);
         }
 
-        private void ProfilingMessageHub_GarbageCollectionStarted((bool[] GenerationsCollected, COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info) args)
+        private void ProfilingMessageHub_GarbageCollectionStarted((bool[] GenerationsCollected, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_GarbageCollectionStarted(args.GenerationsCollected, args.Bounds, args.Info);
         }
 
-        private void ProfilingMessageHub_GarbageCollectionFinished((COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info) args)
+        private void ProfilingMessageHub_GarbageCollectionFinished((COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_GarbageCollectionFinished(args.Bounds, args.Info);
         }
 
-        private void ProfilingMessageHub_SurvivingReferences((UIntPtr[] BlockStarts, UIntPtr[] Lengths, EventInfo Info) args)
+        private void ProfilingMessageHub_SurvivingReferences((UIntPtr[] BlockStarts, UIntPtr[] Lengths, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_SurvivingReferences(args.BlockStarts, args.Lengths, args.Info);
         }
 
-        private void ProfilingMessageHub_MovedReferences((UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, EventInfo Info) args)
+        private void ProfilingMessageHub_MovedReferences((UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_MovedReferences(args.OldBlockStarts, args.NewBlockStarts, args.Lengths, args.Info);
@@ -264,37 +264,37 @@ namespace SharpDetect.Core.Runtime
         #endregion
 
         #region REWRITING_NOTIFICATIONS
-        private void RewritingHub_TypeInjected((TypeInfo TypeInfo, EventInfo Info) args)
+        private void RewritingHub_TypeInjected((TypeInfo TypeInfo, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_TypeInjected(args.TypeInfo, args.Info);
         }
 
-        private void RewritingHub_TypeReferenced((TypeInfo TypeInfo, EventInfo Info) args)
+        private void RewritingHub_TypeReferenced((TypeInfo TypeInfo, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_TypeReferenced(args.TypeInfo, args.Info);
         }
 
-        private void RewritingHub_MethodInjected((FunctionInfo FunctionInfo, MethodType Type, EventInfo Info) args)
+        private void RewritingHub_MethodInjected((FunctionInfo FunctionInfo, MethodType Type, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_MethodInjected(args.FunctionInfo, args.Type, args.Info);
         }
 
-        private void RewritingHub_WrapperInjected((FunctionInfo FunctionInfo, MDToken WrapperToken, EventInfo Info) args)
+        private void RewritingHub_WrapperInjected((FunctionInfo FunctionInfo, MDToken WrapperToken, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_WrapperInjected(args.FunctionInfo, args.WrapperToken, args.Info);
         }
 
-        private void RewritingHub_WrapperReferenced((FunctionInfo FunctionDef, FunctionInfo FunctionRef, EventInfo Info) args)
+        private void RewritingHub_WrapperReferenced((FunctionInfo FunctionDef, FunctionInfo FunctionRef, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_WrapperReferenced(args.FunctionDef, args.FunctionRef, args.Info);
         }
 
-        private void RewritingHub_HelperReferenced((FunctionInfo FunctionRef, MethodType Type, EventInfo Info) args)
+        private void RewritingHub_HelperReferenced((FunctionInfo FunctionRef, MethodType Type, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_HelperReferenced(args.FunctionRef, args.Type, args.Info);
@@ -302,13 +302,13 @@ namespace SharpDetect.Core.Runtime
         #endregion
 
         #region EXECUTING_NOTIFICATIONS
-        private void ExecutingHub_MethodCalled((FunctionInfo Function, RawArgumentsList? Arguments, EventInfo Info) args)
+        private void ExecutingHub_MethodCalled((FunctionInfo Function, RawArgumentsList? Arguments, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_MethodCalled(args.Function, args.Arguments, args.Info);
         }
 
-        private void ExecutingHub_MethodReturned((FunctionInfo Function, RawReturnValue? ReturnValue, RawArgumentsList? ByRefArguments, EventInfo Info) args)
+        private void ExecutingHub_MethodReturned((FunctionInfo Function, RawReturnValue? ReturnValue, RawArgumentsList? ByRefArguments, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_MethodReturned(args.Function, args.ReturnValue, args.ByRefArguments, args.Info);

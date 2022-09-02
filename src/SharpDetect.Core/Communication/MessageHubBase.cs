@@ -20,7 +20,7 @@ namespace SharpDetect.Core.Communication
             return SupportedMessageTypes.Contains(type);
         }
 
-        protected static EventInfo CreateEventInfo(NotifyMessage message)
+        protected static RawEventInfo CreateEventInfo(NotifyMessage message)
             => new(message.NotificationId, message.ProcessId, new(message.ThreadId));
     }
 }

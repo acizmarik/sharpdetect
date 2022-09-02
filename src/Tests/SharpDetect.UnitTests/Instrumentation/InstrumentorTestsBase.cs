@@ -34,30 +34,30 @@ namespace SharpDetect.UnitTests.Instrumentation
 
         public class MockProfilingClient : IProfilingClient
         {
-            public event Action<EventInfo>? IssuedContinueExecutionRequest;
-            public event Action<IEnumerable<(FunctionInfo Function, ushort Argc)>, EventInfo>? IssuedEmitMethodWrappersRequest;
-            public event Action<EventInfo>? IssuedNoChangesRequest;
-            public event Action<byte[]?, MethodInterpretationData?, bool?, EventInfo>? IssuedRewriteMethodBodyRequest;
+            public event Action<RawEventInfo>? IssuedContinueExecutionRequest;
+            public event Action<IEnumerable<(FunctionInfo Function, ushort Argc)>, RawEventInfo>? IssuedEmitMethodWrappersRequest;
+            public event Action<RawEventInfo>? IssuedNoChangesRequest;
+            public event Action<byte[]?, MethodInterpretationData?, bool?, RawEventInfo>? IssuedRewriteMethodBodyRequest;
 
-            public Task<Response> IssueContinueExecutionRequestAsync(EventInfo info)
+            public Task<Response> IssueContinueExecutionRequestAsync(RawEventInfo info)
             {
                 IssuedContinueExecutionRequest?.Invoke(info);
                 return Task.FromResult(new Response() { Result = true });
             }
 
-            public Task<Response> IssueEmitMethodWrappersRequestAsync(IEnumerable<(FunctionInfo Function, ushort Argc)> methods, EventInfo info)
+            public Task<Response> IssueEmitMethodWrappersRequestAsync(IEnumerable<(FunctionInfo Function, ushort Argc)> methods, RawEventInfo info)
             {
                 IssuedEmitMethodWrappersRequest?.Invoke(methods, info);
                 return Task.FromResult(new Response() { Result = true });
             }
 
-            public Task<Response> IssueNoChangesRequestAsync(EventInfo info)
+            public Task<Response> IssueNoChangesRequestAsync(RawEventInfo info)
             {
                 IssuedNoChangesRequest?.Invoke(info);
                 return Task.FromResult(new Response() { Result = true });
             }
 
-            public Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideIssueHooks, EventInfo info)
+            public Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideIssueHooks, RawEventInfo info)
             {
                 IssuedRewriteMethodBodyRequest?.Invoke(bytecode, methodData, overrideIssueHooks, info);
                 return Task.FromResult(new Response() { Result = true });

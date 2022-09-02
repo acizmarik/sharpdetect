@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using SharpDetect.Common;
 using SharpDetect.Common.Diagnostics;
+using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services.Reporting;
@@ -37,27 +37,27 @@ namespace SharpDetect.Plugins
 
         public override void LockAcquireAttempted(IShadowObject instance, EventInfo info)
         {
-            blockedObjects[info.ThreadId] = instance;
-            EnsureNoDeadlocks(instance, info.ThreadId, info.ProcessId);
+            blockedObjects[info.Thread.Id] = instance;
+            EnsureNoDeadlocks(instance, info.Thread.Id, info.Runtime.ProcessId);
         }
 
         public override void LockAcquireReturned(IShadowObject instance, bool isSuccess, EventInfo info)
         {
             if (isSuccess)
             {
-                var collection = ownedLocks.GetOrAdd(info.ThreadId, new HashSet<IShadowObject>());
+                var collection = ownedLocks.GetOrAdd(info.Thread.Id, new HashSet<IShadowObject>());
                 lock (collection)
                 {
                     collection.Add(instance);
                 }
             }
 
-            blockedObjects[info.ThreadId] = null;
+            blockedObjects[info.Thread.Id] = null;
         }
 
         public override void LockReleased(IShadowObject instance, EventInfo info)
         {
-            var collection = ownedLocks[info.ThreadId];
+            var collection = ownedLocks[info.Thread.Id];
             lock (collection)
             {
                 collection.Remove(instance);

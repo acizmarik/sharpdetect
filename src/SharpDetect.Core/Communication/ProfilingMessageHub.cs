@@ -9,22 +9,22 @@ namespace SharpDetect.Core.Communication
 {
     internal class ProfilingMessageHub : MessageHubBase, IProfilingMessageHub
     {
-        public event Action<EventInfo>? Heartbeat;
-        public event Action<(Version? Version, EventInfo Info)>? ProfilerInitialized;
-        public event Action<EventInfo>? ProfilerDestroyed;
-        public event Action<(UIntPtr ModuleId, string Path, EventInfo Info)>? ModuleLoaded;
-        public event Action<(TypeInfo TypeInfo, EventInfo Info)>? TypeLoaded;
-        public event Action<(FunctionInfo FunctionInfo, EventInfo Info)>? JITCompilationStarted;
-        public event Action<(UIntPtr ThreadId, EventInfo Info)>? ThreadCreated;
-        public event Action<(UIntPtr ThreadId, EventInfo Info)>? ThreadDestroyed;
-        public event Action<(COR_PRF_SUSPEND_REASON Reason, EventInfo Info)>? RuntimeSuspendStarted;
-        public event Action<EventInfo>? RuntimeSuspendFinished;
-        public event Action<(UIntPtr ThreadId, EventInfo Info)>? RuntimeThreadSuspended;
-        public event Action<(UIntPtr ThreadId, EventInfo Info)>? RuntimeThreadResumed;
-        public event Action<(bool[] GenerationsCollected, COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info)>? GarbageCollectionStarted;
-        public event Action<(COR_PRF_GC_GENERATION_RANGE[] Bounds, EventInfo Info)>? GarbageCollectionFinished;
-        public event Action<(UIntPtr[] BlockStarts, UIntPtr[] Lengths, EventInfo Info)>? SurvivingReferences;
-        public event Action<(UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, EventInfo Info)>? MovedReferences;
+        public event Action<RawEventInfo>? Heartbeat;
+        public event Action<(Version? Version, RawEventInfo Info)>? ProfilerInitialized;
+        public event Action<RawEventInfo>? ProfilerDestroyed;
+        public event Action<(UIntPtr ModuleId, string Path, RawEventInfo Info)>? ModuleLoaded;
+        public event Action<(TypeInfo TypeInfo, RawEventInfo Info)>? TypeLoaded;
+        public event Action<(FunctionInfo FunctionInfo, RawEventInfo Info)>? JITCompilationStarted;
+        public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? ThreadCreated;
+        public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
+        public event Action<(COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
+        public event Action<RawEventInfo>? RuntimeSuspendFinished;
+        public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadSuspended;
+        public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadResumed;
+        public event Action<(bool[] GenerationsCollected, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionStarted;
+        public event Action<(COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionFinished;
+        public event Action<(UIntPtr[] BlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? SurvivingReferences;
+        public event Action<(UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? MovedReferences;
 
         public ProfilingMessageHub(ILoggerFactory loggerFactory)
             : base(loggerFactory.CreateLogger<ProfilingMessageHub>(), new[]

@@ -7,7 +7,7 @@ namespace SharpDetect.Common.Services
 
     public interface IExecutingMessageHub : INotificationsHandler
     {
-        event Action<(FunctionInfo Function, RawArgumentsList? Arguments, EventInfo Info)> MethodCalled;
-        event Action<(FunctionInfo Function, RawReturnValue? ReturnValue, RawArgumentsList? ByRefArguments, EventInfo Info)> MethodReturned;
+        event Action<(FunctionInfo Function, RawArgumentsList? Arguments, RawEventInfo Info)> MethodCalled;
+        event Action<(FunctionInfo Function, RawReturnValue? ReturnValue, RawArgumentsList? ByRefArguments, RawEventInfo Info)> MethodReturned;
     }
 }

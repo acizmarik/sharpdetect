@@ -20,7 +20,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var type = default(TypeInfo);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var hub = new RewritingMessageHub(LoggerFactory);
             hub.TypeInjected += args =>
             {
@@ -66,7 +66,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var function = default(FunctionInfo);
             var type = default(MethodType);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var hub = new RewritingMessageHub(LoggerFactory);
             hub.MethodInjected += args =>
             {
@@ -117,7 +117,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var function = default(FunctionInfo);
             var wrapper = default(MDToken);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var hub = new RewritingMessageHub(LoggerFactory);
             hub.MethodWrapperInjected += args =>
             {
@@ -165,7 +165,7 @@ namespace SharpDetect.UnitTests.Communication
 
             var raised = false;
             var type = default(TypeInfo);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var hub = new RewritingMessageHub(LoggerFactory);
             hub.TypeReferenced += args =>
             {
@@ -211,7 +211,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var function = default(FunctionInfo);
             var type = default(MethodType);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var hub = new RewritingMessageHub(LoggerFactory);
             hub.HelperMethodReferenced += args =>
             {
@@ -264,7 +264,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var definition = default(FunctionInfo);
             var reference = default(FunctionInfo);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var hub = new RewritingMessageHub(LoggerFactory);
             hub.WrapperMethodReferenced += args =>
             {

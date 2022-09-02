@@ -30,7 +30,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var function = default(FunctionInfo);
             var arguments = default(RawArgumentsList?);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var executingMessageHub = new ExecutingMessageHub(LoggerFactory);
             executingMessageHub.MethodCalled += args =>
             {
@@ -93,7 +93,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var function = default(FunctionInfo);
             var arguments = default(RawArgumentsList?);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var executingMessageHub = new ExecutingMessageHub(LoggerFactory);
             executingMessageHub.MethodCalled += args =>
             {
@@ -185,7 +185,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var function = default(FunctionInfo);
             var arguments = default(RawArgumentsList?);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var executingMessageHub = new ExecutingMessageHub(LoggerFactory);
             executingMessageHub.MethodCalled += args =>
             {
@@ -251,7 +251,7 @@ namespace SharpDetect.UnitTests.Communication
             var function = default(FunctionInfo);
             var retValue = default(RawReturnValue?);
             var byRefArguments = default(RawArgumentsList?);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var executingMessageHub = new ExecutingMessageHub(LoggerFactory);
             executingMessageHub.MethodReturned += args =>
             {
@@ -330,7 +330,7 @@ namespace SharpDetect.UnitTests.Communication
             var function = default(FunctionInfo);
             var retValue = default(RawReturnValue?);
             var byRefArguments = default(RawArgumentsList?);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var executingMessageHub = new ExecutingMessageHub(LoggerFactory);
             executingMessageHub.MethodReturned += args =>
             {
@@ -414,7 +414,7 @@ namespace SharpDetect.UnitTests.Communication
             var function = default(FunctionInfo);
             var retValue = default(RawReturnValue?);
             var byRefArguments = default(RawArgumentsList?);
-            var info = default(EventInfo);
+            var info = default(RawEventInfo);
             var executingMessageHub = new ExecutingMessageHub(LoggerFactory);
             executingMessageHub.MethodReturned += args =>
             {

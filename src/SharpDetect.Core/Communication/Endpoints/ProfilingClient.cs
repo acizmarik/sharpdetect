@@ -23,7 +23,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         /// <param name="processId">Process ID to send to request to</param>
         /// <param name="info">Event we are responding to</param>
         /// <returns>Request response</returns>
-        public Task<Response> IssueNoChangesRequestAsync(EventInfo info)
+        public Task<Response> IssueNoChangesRequestAsync(RawEventInfo info)
         {
             var request = new RequestMessage()
             {
@@ -40,7 +40,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         /// </summary>
         /// <param name="info">Event we are respondint to</param>
         /// <returns>Request response</returns>
-        public Task<Response> IssueContinueExecutionRequestAsync(EventInfo info)
+        public Task<Response> IssueContinueExecutionRequestAsync(RawEventInfo info)
         {
             var request = new RequestMessage()
             {
@@ -57,7 +57,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         /// </summary>
         /// <param name="methods">Method wrappers information</param>
         /// <param name="info">Event we are responding to</param>
-        public Task<Response> IssueEmitMethodWrappersRequestAsync(IEnumerable<(FunctionInfo Function, ushort Argc)> methods, EventInfo info)
+        public Task<Response> IssueEmitMethodWrappersRequestAsync(IEnumerable<(FunctionInfo Function, ushort Argc)> methods, RawEventInfo info)
         {
             var request = new RequestMessage()
             {
@@ -86,7 +86,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         /// <param name="methodData">Method information</param>
         /// <param name="info">Event we are responding to</param>
         /// <returns></returns>
-        public Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideIssueHooks, EventInfo info)
+        public Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideIssueHooks, RawEventInfo info)
         {
             var request = new RequestMessage
             {
