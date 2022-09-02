@@ -1,4 +1,5 @@
-﻿using SharpDetect.E2ETests.Subject.Helpers.Fields;
+﻿using SharpDetect.E2ETests.Subject.Helpers.Arrays;
+using SharpDetect.E2ETests.Subject.Helpers.Fields;
 
 namespace SharpDetect.E2ETests.Subject
 {
@@ -81,14 +82,169 @@ namespace SharpDetect.E2ETests.Subject
             StaticFieldReferenceType.Test_Field_ReferenceType_Static = new object();
         }
 
+        public static void Test_Array_I_Read()
+        {
+            ArrayElement.Test_Array_I = new nuint[1];
+            var cpy = ArrayElement.Test_Array_I[0];
+        }
+
+        public static void Test_Array_I_Write()
+        {
+            ArrayElement.Test_Array_I = new nuint[1];
+            ArrayElement.Test_Array_I[0] = 123;
+        }
+
+        public static void Test_Array_I1_Read()
+        {
+            ArrayElement.Test_Array_I1 = new sbyte[1];
+            var cpy = ArrayElement.Test_Array_I1[0];
+        }
+
+        public static void Test_Array_I1_Write()
+        {
+            ArrayElement.Test_Array_I1 = new sbyte[1];
+            ArrayElement.Test_Array_I1[0] = 123;
+        }
+
+        public static void Test_Array_I2_Read()
+        {
+            ArrayElement.Test_Array_I2 = new short[1];
+            var cpy = ArrayElement.Test_Array_I2[0];
+        }
+
+        public static void Test_Array_I2_Write()
+        {
+            ArrayElement.Test_Array_I2 = new short[1];
+            ArrayElement.Test_Array_I2[0] = 123;
+        }
+
+        public static void Test_Array_I4_Read()
+        {
+            ArrayElement.Test_Array_I4 = new int[1];
+            var cpy = ArrayElement.Test_Array_I4[0];
+        }
+
+        public static void Test_Array_I4_Write()
+        {
+            ArrayElement.Test_Array_I4 = new int[1];
+            ArrayElement.Test_Array_I4[0] = 123;
+        }
+
+        public static void Test_Array_I8_Read()
+        {
+            ArrayElement.Test_Array_I8 = new long[1];
+            var cpy = ArrayElement.Test_Array_I8[0];
+        }
+
+        public static void Test_Array_I8_Write()
+        {
+            ArrayElement.Test_Array_I8 = new long[1];
+            ArrayElement.Test_Array_I8[0] = 123;
+        }
+
+        public static void Test_Array_U1_Read()
+        {
+            ArrayElement.Test_Array_U1 = new byte[1];
+            var cpy = ArrayElement.Test_Array_U1[0];
+        }
+
+        public static void Test_Array_U1_Write()
+        {
+            ArrayElement.Test_Array_U1 = new byte[1];
+            ArrayElement.Test_Array_U1[0] = 123;
+        }
+
+        public static void Test_Array_U2_Read()
+        {
+            ArrayElement.Test_Array_U2 = new ushort[1];
+            var cpy = ArrayElement.Test_Array_U2[0];
+        }
+
+        public static void Test_Array_U2_Write()
+        {
+            ArrayElement.Test_Array_U2 = new ushort[1];
+            ArrayElement.Test_Array_U2[0] = 123;
+        }
+
+        public static void Test_Array_U4_Read()
+        {
+            ArrayElement.Test_Array_U4 = new uint[1];
+            var cpy = ArrayElement.Test_Array_U4[0];
+        }
+
+        public static void Test_Array_U4_Write()
+        {
+            ArrayElement.Test_Array_U4 = new uint[1];
+            ArrayElement.Test_Array_U4[0] = 123;
+        }
+
+        public static void Test_Array_U8_Read()
+        {
+            ArrayElement.Test_Array_U8 = new ulong[1];
+            var cpy = ArrayElement.Test_Array_U8[0];
+        }
+
+        public static void Test_Array_U8_Write()
+        {
+            ArrayElement.Test_Array_U8 = new ulong[1];
+            ArrayElement.Test_Array_U8[0] = 123;
+        }
+
+        public static void Test_Array_R4_Read()
+        {
+            ArrayElement.Test_Array_R4 = new float[1];
+            var cpy = ArrayElement.Test_Array_R4[0];
+        }
+
+        public static void Test_Array_R4_Write()
+        {
+            ArrayElement.Test_Array_R4 = new float[1];
+            ArrayElement.Test_Array_R4[0] = 123;
+        }
+
+        public static void Test_Array_R8_Read()
+        {
+            ArrayElement.Test_Array_R8 = new double[1];
+            var cpy = ArrayElement.Test_Array_R8[0];
+        }
+
+        public static void Test_Array_R8_Write()
+        {
+            ArrayElement.Test_Array_R8 = new double[1];
+            ArrayElement.Test_Array_R8[0] = 123;
+        }
+
+        public static void Test_Array_Ref_Read()
+        {
+            ArrayElement.Test_Array_Ref = new object[1];
+            var cpy = ArrayElement.Test_Array_Ref[0];
+        }
+
+        public static void Test_Array_Ref_Write()
+        {
+            ArrayElement.Test_Array_Ref = new object[1];
+            ArrayElement.Test_Array_Ref[0] = 123;
+        }
+
+        public static void Test_Array_Struct_Read()
+        {
+            ArrayElement.Test_Array_Struct = new DateTime[1];
+            var cpy = ArrayElement.Test_Array_Struct[0];
+        }
+
+        public static void Test_Array_Struct_Write()
+        {
+            ArrayElement.Test_Array_Struct = new DateTime[1];
+            ArrayElement.Test_Array_Struct[0] = DateTime.UtcNow;
+        }
 
         public static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
 
+            // Method interpretation events
             switch (args[0])
             {
-                // Locks
                 case nameof(Test_MonitorMethods_EnterExit1):
                     Test_MonitorMethods_EnterExit1();
                     break;
@@ -96,7 +252,7 @@ namespace SharpDetect.E2ETests.Subject
                     Test_MonitorMethods_EnterExit2();
                     break;
                 case nameof(Test_MonitorMethods_TryEnterExit1):
-                    Test_MonitorMethods_TryEnterExit1 ();
+                    Test_MonitorMethods_TryEnterExit1();
                     break;
                 case nameof(Test_MonitorMethods_TryEnterExit2):
                     Test_MonitorMethods_TryEnterExit2();
@@ -104,7 +260,11 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_MonitorMethods_TryEnterExit3):
                     Test_MonitorMethods_TryEnterExit3();
                     break;
-                // Fields
+            }
+
+            // Field events
+            switch (args[0])
+            {
                 case nameof(Test_Field_ValueType_Instance_Read):
                     Test_Field_ValueType_Instance_Read();
                     break;
@@ -128,6 +288,89 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_Field_ReferenceType_Static_Write):
                     Test_Field_ReferenceType_Static_Write();
+                    break;
+            }
+
+            switch (args[0])
+            {
+                // Arrays
+                case nameof(Test_Array_I_Read):
+                    Test_Array_I_Read();
+                    break;
+                case nameof(Test_Array_I_Write):
+                    Test_Array_I_Write();
+                    break;
+                case nameof(Test_Array_I1_Read):
+                    Test_Array_I1_Read();
+                    break;
+                case nameof(Test_Array_I1_Write):
+                    Test_Array_I1_Write();
+                    break;
+                case nameof(Test_Array_I2_Read):
+                    Test_Array_I2_Read();
+                    break;
+                case nameof(Test_Array_I2_Write):
+                    Test_Array_I2_Write();
+                    break;
+                case nameof(Test_Array_I4_Read):
+                    Test_Array_I4_Read();
+                    break;
+                case nameof(Test_Array_I4_Write):
+                    Test_Array_I4_Write();
+                    break;
+                case nameof(Test_Array_I8_Read):
+                    Test_Array_I8_Read();
+                    break;
+                case nameof(Test_Array_I8_Write):
+                    Test_Array_I8_Write();
+                    break;
+                case nameof(Test_Array_U1_Read):
+                    Test_Array_U1_Read();
+                    break;
+                case nameof(Test_Array_U1_Write):
+                    Test_Array_U1_Write();
+                    break;
+                case nameof(Test_Array_U2_Read):
+                    Test_Array_U2_Read();
+                    break;
+                case nameof(Test_Array_U2_Write):
+                    Test_Array_U2_Write();
+                    break;
+                case nameof(Test_Array_U4_Read):
+                    Test_Array_U4_Read();
+                    break;
+                case nameof(Test_Array_U4_Write):
+                    Test_Array_U4_Write();
+                    break;
+                case nameof(Test_Array_U8_Read):
+                    Test_Array_U8_Read();
+                    break;
+                case nameof(Test_Array_U8_Write):
+                    Test_Array_U8_Write();
+                    break;
+                case nameof(Test_Array_R4_Read):
+                    Test_Array_R4_Read();
+                    break;
+                case nameof(Test_Array_R4_Write):
+                    Test_Array_R4_Write();
+                    break;
+                case nameof(Test_Array_R8_Read):
+                    Test_Array_R8_Read();
+                    break;
+                case nameof(Test_Array_R8_Write):
+                    Test_Array_R8_Write();
+                    break;
+                case nameof(Test_Array_Ref_Read):
+                    Test_Array_Ref_Read();
+                    break;
+                case nameof(Test_Array_Ref_Write):
+                    Test_Array_Ref_Write();
+                    break;
+                case nameof(Test_Array_Struct_Read):
+                    Test_Array_Struct_Read();
+                    break;
+                case nameof(Test_Array_Struct_Write):
+                    Test_Array_Struct_Write();
                     break;
             }
         }

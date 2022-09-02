@@ -58,5 +58,7 @@ namespace SharpDetect.E2ETests.Utilities
             var mapping = eventRegistry.Get(srcMappingId);
             reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(FieldWritten), ((IField)mapping.Instruction.Operand).FullName, info.ProcessId, default));
         }
+        public override void ArrayElementRead(ulong srcMappingId, IShadowObject instance, int index, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(ArrayElementRead), string.Empty, info.ProcessId, default));
+        public override void ArrayElementWritten(ulong srcMappingId, IShadowObject instance, int index, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(ArrayElementWritten), string.Empty, info.ProcessId, default));
     }
 }
