@@ -1,5 +1,6 @@
 ﻿using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
+using SharpDetect.Common.Runtime.Threads;
 
 namespace SharpDetect.Common.Plugins
 {
@@ -14,8 +15,8 @@ namespace SharpDetect.Common.Plugins
         void TypeLoaded(TypeInfo type, EventInfo info);
         void JITCompilationStarted(FunctionInfo method, EventInfo info);
 
-        void ThreadCreated(UIntPtr threadId, EventInfo info);
-        void ThreadDestroyed(UIntPtr threadId, EventInfo info);
+        void ThreadCreated(IShadowThread thread, EventInfo info);
+        void ThreadDestroyed(IShadowThread thread, EventInfo info);
 
         void GarbageCollectionStarted(EventInfo info);
         void GarbageCollectionFinished(EventInfo info);

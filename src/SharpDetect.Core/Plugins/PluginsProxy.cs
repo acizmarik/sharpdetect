@@ -50,8 +50,8 @@ namespace SharpDetect.Core.Plugins
         private void RuntimeEventsHub_ModuleLoaded((IShadowCLR Runtime, ModuleInfo Module, string Path, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ModuleLoaded(obj.Module, obj.Path, CreatePluginEventInfo(obj.Runtime, obj.Info)));
         private void RuntimeEventsHub_TypeLoaded((IShadowCLR Runtime, TypeInfo Type, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.TypeLoaded(obj.Type, CreatePluginEventInfo(obj.Runtime, obj.Info)));
         private void RuntimeEventsHub_JITCompilationStarted((IShadowCLR Runtime, FunctionInfo Function, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.JITCompilationStarted(obj.Function, CreatePluginEventInfo(obj.Runtime, obj.Info)));
-        private void RuntimeEventsHub_ThreadCreated((IShadowCLR Runtime, UIntPtr ThreadId, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ThreadCreated(obj.ThreadId, CreatePluginEventInfo(obj.Runtime, obj.Info)));
-        private void RuntimeEventsHub_ThreadDestroyed((IShadowCLR Runtime, UIntPtr ThreadId, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ThreadDestroyed(obj.ThreadId, CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ThreadCreated((IShadowCLR Runtime, UIntPtr ThreadId, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ThreadCreated(((ShadowCLR)obj.Runtime).Threads[obj.Info.ThreadId], CreatePluginEventInfo(obj.Runtime, obj.Info)));
+        private void RuntimeEventsHub_ThreadDestroyed((IShadowCLR Runtime, UIntPtr ThreadId, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.ThreadDestroyed(((ShadowCLR)obj.Runtime).Threads[obj.Info.ThreadId], CreatePluginEventInfo(obj.Runtime, obj.Info)));
         private void RuntimeEventsHub_MethodCalled((IShadowCLR Runtime, FunctionInfo Function, Common.Runtime.Arguments.IArgumentsList? Arguments, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.MethodCalled(obj.Function, obj.Arguments, CreatePluginEventInfo(obj.Runtime, obj.Info)));
         private void RuntimeEventsHub_MethodReturned((IShadowCLR Runtime, FunctionInfo Function, Common.Runtime.Arguments.IValueOrObject? returnValue, Common.Runtime.Arguments.IArgumentsList? ByRefArguments, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.MethodReturned(obj.Function, obj.returnValue, obj.ByRefArguments, CreatePluginEventInfo(obj.Runtime, obj.Info)));
         private void RuntimeEventsHub_LockAcquireAttempted((IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.LockAcquireAttempted(obj.Instance, CreatePluginEventInfo(obj.Runtime, obj.Info)));
@@ -77,7 +77,7 @@ namespace SharpDetect.Core.Plugins
                 plugin.ArrayElementRead(obj.Identifier, obj.Instance, obj.Index, CreatePluginEventInfo(obj.Runtime, obj.Info));
         });
 
-        private static Common.Plugins.EventInfo CreatePluginEventInfo(IShadowCLR shadowRuntime, Common.RawEventInfo info)
+        private static EventInfo CreatePluginEventInfo(IShadowCLR shadowRuntime, Common.RawEventInfo info)
         {
             return new(shadowRuntime, ((ShadowCLR)shadowRuntime).Threads[info.ThreadId]);
         }

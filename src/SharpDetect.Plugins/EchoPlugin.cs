@@ -5,6 +5,7 @@ using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
+using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 
@@ -132,14 +133,14 @@ namespace SharpDetect.Plugins
             logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Object wait returned {obj} with return {val}.", info.Runtime.ProcessId, info.Thread.DisplayName, nameof(EchoPlugin), instance, isSuccess);
         }
 
-        public void ThreadCreated(UIntPtr threadId, EventInfo info)
+        public void ThreadCreated(IShadowThread thread, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Thread created.", info.Runtime.ProcessId, info.Thread.DisplayName, nameof(EchoPlugin));
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Thread {threadId} created.", info.Runtime.ProcessId, info.Thread.DisplayName, nameof(EchoPlugin), thread.DisplayName);
         }
 
-        public void ThreadDestroyed(UIntPtr threadId, EventInfo info)
+        public void ThreadDestroyed(IShadowThread thread, EventInfo info)
         {
-            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Thread {threadId} destroyed.", info.Runtime.ProcessId, info.Thread.DisplayName, nameof(EchoPlugin), threadId);
+            logger.LogInformation("[PID={pid}][TID={tid}][{plugin}] Thread {threadId} destroyed.", info.Runtime.ProcessId, info.Thread.DisplayName, nameof(EchoPlugin), thread.DisplayName);
         }
 
         public void TypeLoaded(TypeInfo type, EventInfo info)
