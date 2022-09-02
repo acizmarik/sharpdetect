@@ -46,7 +46,7 @@ namespace SharpDetect.Instrumentation.Injectors
         private void InjectLoadStoreStaticField(MethodDef method, int instructionIndex, ulong eventId, bool isWrite, UnresolvedMethodStubs stubs)
         {
             var instruction = method.Body.Instructions[instructionIndex];
-            var callInstruction = Instruction.Create(OpCodes.Call, CreateStubFieldAccess());
+            var callInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldAccess, ref dummyFieldAccessRef));
             method.InjectAfter(instruction, new Instruction[]
             {
                 // Load flag (READ/WRITE)
@@ -77,7 +77,7 @@ namespace SharpDetect.Instrumentation.Injectors
             }
 
             // Capture instance
-            var fieldInstanceAccessInstruction = Instruction.Create(OpCodes.Call, CreateStubFieldReferenceAccess());
+            var fieldInstanceAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldInstanceAccess, ref dummyFieldInstanceAccessRef));
             method.InjectAfter(pushInstruction!, new Instruction[]
             {
                 // Duplicate
@@ -86,7 +86,7 @@ namespace SharpDetect.Instrumentation.Injectors
                 fieldInstanceAccessInstruction
             });
             // Capture field information
-            var fieldAccessInstruction = Instruction.Create(OpCodes.Call, CreateStubFieldAccess());
+            var fieldAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldAccess, ref dummyFieldAccessRef));
             method.InjectAfter(instruction, new Instruction[]
             {
                 // Load flag (READ/WRITE)
@@ -101,32 +101,18 @@ namespace SharpDetect.Instrumentation.Injectors
             stubs.Add(fieldInstanceAccessInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.FieldInstanceAccess));
         }
 
-        private IMethod CreateStubFieldAccess()
+        private IMethod CreateStub(MethodType type, ref IMethod? methodRef)
         {
-            if (dummyFieldAccessRef is null)
+            if (methodRef is null)
             {
                 var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().Methods
-                    .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == nameof(MethodType.FieldAccess)).Identifier;
+                    .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == Enum.GetName(typeof(MethodType), type)).Identifier;
                 var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
                 var coreLibTypes = coreLibModule.CorLibTypes;
-                dummyFieldAccessRef = new MemberRefUser(coreLibModule, identifier.Name, MetadataGenerator.GetHelperMethodSig(MethodType.FieldAccess, coreLibTypes));
+                methodRef = new MemberRefUser(coreLibModule, identifier.Name, MetadataGenerator.GetHelperMethodSig(type, coreLibTypes));
             }
 
-            return dummyFieldAccessRef;
-        }
-
-        private IMethod CreateStubFieldReferenceAccess()
-        {
-            if (dummyFieldInstanceAccessRef is null)
-            {
-                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().Methods
-                    .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == nameof(MethodType.FieldInstanceAccess)).Identifier;
-                var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
-                var coreLibTypes = coreLibModule.CorLibTypes;
-                dummyFieldInstanceAccessRef = new MemberRefUser(coreLibModule, identifier.Name, MetadataGenerator.GetHelperMethodSig(MethodType.FieldInstanceAccess, coreLibTypes));
-            }
-
-            return dummyFieldInstanceAccessRef;
+            return methodRef;
         }
 
         public override AnalysisEventType? CanInject(MethodDef methodDef, Instruction instruction)
