@@ -69,8 +69,7 @@ namespace SharpDetect.Plugins.LockSet
                 CandidateLocks.IntersectWith(currentLocks);
 
             // There are no locks guarding access to the variable
-            return CandidateLocks.Count == 0;
-
+            return CandidateLocks.Count != 0;
         }
     }
 }
