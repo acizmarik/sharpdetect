@@ -52,7 +52,7 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
         public CSharpExpressionBuilder Convert(string typeFullName)
         {
             var type = Type.GetType(typeFullName);
-            Guard.NotEmpty<InvalidOperationException>(stack);
+            Guard.NotEmpty<Expression, InvalidOperationException>(stack);
             Guard.NotNull<Type, ArgumentException>(type);
 
             var argument = stack.Pop();
@@ -83,7 +83,7 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
 
         public CSharpExpressionBuilder Member(string memberName)
         {
-            Guard.NotEmpty<InvalidOperationException>(stack);
+            Guard.NotEmpty<Expression, InvalidOperationException>(stack);
             var argument = stack.Pop();
             var candidateMembers = argument.Type.GetMember(memberName, MemberTypes.Field | MemberTypes.Property, BindingFlags.Public | BindingFlags.Instance);
             Guard.NotNull<MemberInfo[], ArgumentException>(candidateMembers);
@@ -96,7 +96,7 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
         public CSharpExpressionBuilder Unbox(string typeFullName)
         {
             var type = Type.GetType(typeFullName);
-            Guard.NotEmpty<InvalidOperationException>(stack);
+            Guard.NotEmpty<Expression, InvalidOperationException>(stack);
             Guard.NotNull<Type, ArgumentException>(type);
 
             var argument = stack.Pop();

@@ -64,9 +64,9 @@ namespace SharpDetect.Common.Exceptions
                 Throw<TException>($"Provided argument {expr} was evaluated to {actual}, which was equal to {invalid}.");
         }
 
-        public static void NotEmpty<TException>(ICollection collection, [CallerArgumentExpression("collection")] string? expr = null)
+        public static void NotEmpty<TValue, TException>(IEnumerable<TValue> collection, [CallerArgumentExpression("collection")] string? expr = null)
         {
-            if (collection.Count == 0)
+            if ((collection.TryGetNonEnumeratedCount(out var count) && count == 0) || !collection.Any())
                 Throw<TException>($"Provided collection {expr} was empty.");
         }
 
