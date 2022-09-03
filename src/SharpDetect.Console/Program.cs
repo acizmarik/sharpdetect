@@ -4,7 +4,7 @@ using Serilog;
 using Serilog.Events;
 using SharpDetect.Common;
 using SharpDetect.Common.Services;
-using SharpDetect.Console.Configuration;
+using SharpDetect.Console.Commands;
 using SharpDetect.Core.Configuration;
 using System.CommandLine;
 
@@ -14,26 +14,30 @@ namespace SharpDetect.Console
     {
         public static async Task Main(string[] args)
         {
-            var configuration = CreateConfiguration();
-
-            // Setup dependency injection
-            var services = new ServiceCollection();
-            ConfigureCommonServices(services, configuration);
-            ConfigureCliSpecificServices(services);
-            var servicesProvider = services.BuildServiceProvider();
-
             // Execute root command
-            var handler = servicesProvider.GetRequiredService<RootCommand>();
-            await handler.InvokeAsync(args).ConfigureAwait(continueOnCapturedContext: false);
+            var rootCommand = CreateCliRootCommand();
+            await rootCommand.InvokeAsync(args).ConfigureAwait(continueOnCapturedContext: false);
         }
 
-        internal static IConfiguration CreateConfiguration()
+        internal static IConfiguration CreateConfiguration(
+            string? overridingYamlFile = null, 
+            params KeyValuePair<string, string>[] inMemoryConfig)
         {
-            return new ConfigurationBuilder()
+            var builder = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddEnvironmentVariables()
-                .AddYamlFile("appsettings.yaml", optional: false, reloadOnChange: false)
-                .Build();
+                .AddYamlFile("appsettings.yaml", optional: false, reloadOnChange: false);
+
+            builder.AddInMemoryCollection(inMemoryConfig);
+
+            if (overridingYamlFile is not null)
+            {
+                if (!File.Exists(overridingYamlFile))
+                    throw new FileNotFoundException("Local configuration was not found.", overridingYamlFile);
+                builder.AddYamlFile(overridingYamlFile, optional: false, reloadOnChange: false);
+            }
+
+            return builder.Build();
         }
 
         internal static void ConfigureCommonServices(ServiceCollection services, IConfiguration configuration)
@@ -64,11 +68,26 @@ namespace SharpDetect.Console
 
         internal static void ConfigureCliSpecificServices(ServiceCollection services)
         {
-            // Register command handlers
-            services.AddCommandLineHandlers();
-
             // Make application run based on real time
             services.AddSingleton<IDateTimeProvider, UtcDateTimeProvider>();
+        }
+
+        private static RootCommand CreateCliRootCommand()
+        {
+            var rootCommand = new RootCommand("This is a dynamic analysis framework for .NET applications.");
+            rootCommand.Handler = System.CommandLine.Invocation.CommandHandler.Create(() => rootCommand.Invoke("-h"));
+
+            foreach (var commandDescriptor in typeof(Program).Module.GetTypes().Where(t => t.IsAssignableTo(typeof(CommandBase)) && !t.IsAbstract))
+            {
+                var instance = (CommandBase)Activator.CreateInstance(commandDescriptor)!;
+                var command = new Command(instance.Name, instance.Description);
+                foreach (var arg in instance.Arguments)
+                    command.AddArgument(arg);
+                command.Handler = instance.Handler;
+                rootCommand.Add(command);
+            }
+
+            return rootCommand;
         }
     }
 }
