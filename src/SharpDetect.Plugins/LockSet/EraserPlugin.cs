@@ -97,7 +97,7 @@ namespace SharpDetect.Plugins.LockSet
             metadataContext.GetResolver(info.Runtime.ProcessId).TryResolveFieldDef(fieldRef, out var fieldDef);
 
             if (instance == null)
-                success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateRead(info.Thread, locks));
+                success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateWrite(info.Thread, locks));
             else
                 success = TryAccessInstanceField(info.Thread, fieldDef!, instance, (locks) => instanceFields.TryGetValue(instance, out var tracked)
                     && tracked[fieldDef!].TryUpdateRead(info.Thread, locks));
