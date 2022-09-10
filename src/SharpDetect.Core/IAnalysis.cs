@@ -2,7 +2,7 @@
 {
     public interface IAnalysis
     {
-        Task<bool> ExecuteOnlyAnalysisAsync(CancellationToken ct);
-        Task<bool> ExecuteAnalysisAndTargetAsync(CancellationToken ct);
+        Task<bool> ExecuteOnlyAnalysisAsync(bool dumpStatistics, CancellationToken ct);
+        Task<bool> ExecuteAnalysisAndTargetAsync(bool dumpStatistics, CancellationToken ct);
     }
 }
