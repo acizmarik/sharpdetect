@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
@@ -28,12 +29,13 @@ namespace SharpDetect.Core
         private readonly IInstrumentor instrumentor;
         private readonly IPluginsManager pluginsManager;
         private readonly IMethodDescriptorRegistry methodRegistry;
+        private readonly IReportsReaderProvider reportsReaderProvider;
         private readonly IReportingServiceController reportingController;
         private readonly ILoggerFactory loggerFactory;
         private readonly ILogger<Analysis> logger;
 
         public Analysis(
-            IConfiguration configuration, 
+            IConfiguration configuration,
             RuntimeEventsHub runtimeEventsHub,
             IProfilingMessageHub profilingMessageHub,
             IRewritingMessageHub rewritingMessageHub,
@@ -46,6 +48,7 @@ namespace SharpDetect.Core
             IInstrumentor instrumentor,
             IPluginsManager pluginsManager,
             IMethodDescriptorRegistry methodRegistry,
+            IReportsReaderProvider reportsReaderProvider,
             IReportingServiceController reportingController,
             IDateTimeProvider dateTimeProvider,
             IServiceProvider serviceProvider,
@@ -63,6 +66,7 @@ namespace SharpDetect.Core
             this.requestsProducer = requestsProducer;
             this.instrumentor = instrumentor;
             this.pluginsManager = pluginsManager;
+            this.reportsReaderProvider = reportsReaderProvider;
             this.methodRegistry = methodRegistry;
             this.reportingController = reportingController;
             this.dateTimeProvider = dateTimeProvider;
@@ -122,11 +126,11 @@ namespace SharpDetect.Core
                 stop = dateTimeProvider.Now;
                 reportingController.Complete();
                 logger.LogDebug("[{class}] Analysis ended.", nameof(Analysis));
-                DumpStatistics(start, stop);
+                await DumpStatisticsAsync(start, stop);
             }
         }
 
-        private void DumpStatistics(DateTime? start, DateTime? stop)
+        private async Task DumpStatisticsAsync(DateTime? start, DateTime? stop)
         {
             var duration = (start.HasValue) ? stop - start : TimeSpan.Zero;
 
@@ -135,12 +139,30 @@ namespace SharpDetect.Core
                 "- Duration: {duration}{lf}" +
                 "- Number of instrumented methods: {instrumented}{lf}" +
                 "- Number of injected method hooks: {hooks}{lf}" +
-                "- Number of injected method wrappers: {wrappers}",
+                "- Number of injected method wrappers: {wrappers}{lf}" +
+                "- Number of reports: {reports}",
                 /* line 1 args */ nameof(Analysis), Environment.NewLine, 
                 /* line 2 args */ duration, Environment.NewLine,
                 /* line 3 args */ instrumentor.InstrumentedMethodsCount, Environment.NewLine,
                 /* line 4 args */ instrumentor.InjectedMethodHooksCount, Environment.NewLine,
-                /* line 5 args */ instrumentor.InjectedMethodWrappersCount);
+                /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine,
+                /* line 6 args */ reportsReaderProvider.GetReportsReader().Count);
+
+            await foreach (var report in reportsReaderProvider.GetReportsReader().ReadAllAsync())
+            {
+                switch (report)
+                {
+                    case ErrorReport error:
+                        logger.LogError("[{reporter}][{category}] {description}", error.Reporter, error.Category, error.Description);
+                        break;
+                    case WarningReport warning:
+                        logger.LogWarning("[{reporter}][{category}] {description}", warning.Reporter, warning.Category, warning.Description);
+                        break;
+                    case InformationReport information:
+                        logger.LogInformation("[{reporter}][{category}] {description}", information.Reporter, information.Category, information.Description);
+                        break;
+                }
+            }
         }
     }
 }
