@@ -116,7 +116,17 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 foreach (var (id, _) in ThreadLookup)
                     UnregisterThread(id);
                 ShadowThreadDestroyingQueue.CompleteAdding();
+
+                try
+                {
                 shadowThreadReaper.Wait();
+                }
+                catch (ThreadInterruptedException)
+                {
+                    // It is necessary to interrupt thread because it might be blocked
+                    // This is a normal state
+                }
+
                 GC.SuppressFinalize(this);
             }
         }
