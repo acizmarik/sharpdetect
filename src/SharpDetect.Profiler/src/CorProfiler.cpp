@@ -25,6 +25,7 @@
 #include "TinyMethodUser.h"
 #include "InstructionFactory.h"
 #include "ILGenerator.h"
+#include "PAL.h"
 #include "MessageFactory.h"
 #include <array>
 #include <cstdint>
@@ -51,19 +52,8 @@ HRESULT STDMETHODCALLTYPE CorProfiler::Initialize(IUnknown *pICorProfilerInfoUnk
 	LOG_ERROR_AND_RET_IF(FAILED(hr), pLogger, "Could not query ICorProfilerInfo.");
 
 	// Register for profiler notifications
-	auto eventMask =	COR_PRF_MONITOR_THREADS |
-						COR_PRF_MONITOR_MODULE_LOADS |
-						COR_PRF_MONITOR_CLASS_LOADS |
-						COR_PRF_MONITOR_JIT_COMPILATION |
-						COR_PRF_MONITOR_ENTERLEAVE |
-						COR_PRF_MONITOR_SUSPENDS |
-						COR_PRF_MONITOR_GC |
-						COR_PRF_ENABLE_FUNCTION_ARGS |
-						COR_PRF_ENABLE_FUNCTION_RETVAL |
-						COR_PRF_ENABLE_FRAME_INFO |
-						COR_PRF_DISABLE_INLINING |
-						COR_PRF_DISABLE_ALL_NGEN_IMAGES |
-						COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST;
+	auto eventMaskRaw = PAL::ReadEnvironmentVariable("SHARPDETECT_Profiling_Flags");
+	auto eventMask = std::stoi(eventMaskRaw, 0, 10);
 	hr = this->pCorProfilerInfo->SetEventMask(eventMask);
 	LOG_ERROR_AND_RET_IF(FAILED(hr), pLogger, "Could not set event mask " + std::to_string(eventMask));
 

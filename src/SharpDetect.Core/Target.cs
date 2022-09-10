@@ -65,7 +65,7 @@ namespace SharpDetect.Core
                     builder.Set("COMPlus_TieredCompilation", "0");
 
                     // SharpDetect settings
-                    builder.Set("SHARPDETECT_Profiler_Flags", ((ulong)flags).ToString());
+                    builder.Set("SHARPDETECT_Profiling_Flags", ((ulong)flags).ToString());
                     builder.Set("SHARPDETECT_Signals_Protocol", signalsProtocol);
                     builder.Set("SHARPDETECT_Signals_Address", signalsAddress);
                     builder.Set("SHARPDETECT_Signals_Port", signalsPort);
