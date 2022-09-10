@@ -17,6 +17,7 @@ namespace SharpDetect.Core.Plugins
         private readonly DirectoryInfo pluginsRootDirectory;
         private readonly Dictionary<string, Assembly> loadedAssemblies;
         private readonly Dictionary<string, List<PluginInfo>> loadedPluginInfos;
+        private readonly Dictionary<Type, PluginInfo> pluginInfosLookup;
         private readonly Dictionary<PluginInfo, Func<IPlugin>> pluginActivators;
         private volatile bool loaded;
 
@@ -27,6 +28,7 @@ namespace SharpDetect.Core.Plugins
             this.logger = loggerFactory.CreateLogger<PluginsManager>();
             this.loadedAssemblies = new();
             this.loadedPluginInfos = new();
+            this.pluginInfosLookup = new();
             this.pluginActivators = new();
 
             // Ensure directory is valid
@@ -53,6 +55,13 @@ namespace SharpDetect.Core.Plugins
             }
 
             return Task.FromResult(loadedPluginInfos.Count);
+        }
+
+        public bool TryGetPluginInfo(IPlugin plugin, [NotNullWhen(true)] out PluginInfo? pluginInfo)
+        {
+            var result = pluginInfosLookup.TryGetValue(plugin.GetType(), out var info);
+            pluginInfo = (result) ? info : null;
+            return result;
         }
 
         private async Task<int> LoadPluginsImplAsync(CancellationToken ct)
@@ -88,6 +97,7 @@ namespace SharpDetect.Core.Plugins
                                 if (!loadedPluginInfos.ContainsKey(name))
                                     loadedPluginInfos.Add(name, new());
                                 loadedPluginInfos[name].Add(pluginInfo);
+                                pluginInfosLookup.Add(pluginType, pluginInfo);
 
                                 // Add activator for the plugin
                                 pluginActivators.Add(pluginInfo, () => (IPlugin)Activator.CreateInstance(pluginType)!);

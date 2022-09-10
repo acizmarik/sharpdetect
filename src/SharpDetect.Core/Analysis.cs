@@ -101,7 +101,7 @@ namespace SharpDetect.Core
             try
             {
                 await pluginsManager.LoadPluginsAsync(ct).ConfigureAwait(false);
-                using var pluginsProxy = new PluginsProxy(configuration, serviceProvider, pluginsManager, runtimeEventsHub);
+                using var pluginsProxy = new PluginsProxy(configuration, serviceProvider, pluginsManager, runtimeEventsHub, loggerFactory);
                 pluginsProxy.Initialize();
                 logger.LogDebug("[{class}] Analysis started.", nameof(Analysis));
                 requestsProducer.Start();
