@@ -221,6 +221,7 @@ namespace SharpDetect.Core.Runtime
 
             // Emit helper
             emitter.Emit(moduleInfo, helper, functionInfo.FunctionToken);
+            emitter.Bind(type, functionInfo);
         }
 
         public void Process_MethodWrapped(FunctionInfo functionInfo, MDToken wrapperToken)
