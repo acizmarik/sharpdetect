@@ -76,13 +76,13 @@ namespace SharpDetect.Core
             logger = loggerFactory.CreateLogger<Analysis>();
         }
 
-        public Task<bool> ExecuteAnalysisAndTargetAsync(CancellationToken ct)
-            => ExecuteAsync(withTargetProgram: true, ct);
+        public Task<bool> ExecuteAnalysisAndTargetAsync(bool dumpStatistics, CancellationToken ct)
+            => ExecuteAsync(withTargetProgram: true, dumpStatistics, ct);
 
-        public Task<bool> ExecuteOnlyAnalysisAsync(CancellationToken ct)
-            => ExecuteAsync(withTargetProgram: false, ct);
+        public Task<bool> ExecuteOnlyAnalysisAsync(bool dumpStatistics, CancellationToken ct)
+            => ExecuteAsync(withTargetProgram: false, dumpStatistics, ct);
 
-        private async Task<bool> ExecuteAsync(bool withTargetProgram, CancellationToken ct)
+        private async Task<bool> ExecuteAsync(bool withTargetProgram, bool dumpStatistics, CancellationToken ct)
         {
             DateTime? start = default, stop = default;
 
@@ -126,7 +126,8 @@ namespace SharpDetect.Core
                 stop = dateTimeProvider.Now;
                 reportingController.Complete();
                 logger.LogDebug("[{class}] Analysis ended.", nameof(Analysis));
-                await DumpStatisticsAsync(start, stop);
+                if (dumpStatistics)
+                    await DumpStatisticsAsync(start, stop);
             }
         }
 
@@ -140,13 +141,12 @@ namespace SharpDetect.Core
                 "- Number of instrumented methods: {instrumented}{lf}" +
                 "- Number of injected method hooks: {hooks}{lf}" +
                 "- Number of injected method wrappers: {wrappers}{lf}" +
-                "- Number of reports: {reports}",
+                "- Number of reports: ",
                 /* line 1 args */ nameof(Analysis), Environment.NewLine, 
                 /* line 2 args */ duration, Environment.NewLine,
                 /* line 3 args */ instrumentor.InstrumentedMethodsCount, Environment.NewLine,
                 /* line 4 args */ instrumentor.InjectedMethodHooksCount, Environment.NewLine,
-                /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine,
-                /* line 6 args */ reportsReaderProvider.GetReportsReader().Count);
+                /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine);
 
             await foreach (var report in reportsReaderProvider.GetReportsReader().ReadAllAsync())
             {

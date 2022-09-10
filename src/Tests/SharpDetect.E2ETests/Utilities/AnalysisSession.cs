@@ -29,7 +29,7 @@ namespace SharpDetect.E2ETests.Utilities
             CancellationToken = ctSource.Token;
 
             var analysis = serviceProvider.GetRequiredService<IAnalysis>();
-            return analysis.ExecuteAnalysisAndTargetAsync(ctSource.Token);
+            return analysis.ExecuteAnalysisAndTargetAsync(dumpStatistics: false, ctSource.Token);
         }
 
         public TService GetRequiredService<TService>()

@@ -50,7 +50,7 @@ namespace SharpDetect.Console.Commands
                 // Execution
                 logger.LogDebug("[{class}] Execution started with {arguments}.", nameof(RunAnalysisCommand), new[] { localConfiguration, pluginsConfiguration });
                 // TODO: implement CancellationTokenProvider
-                return await analysis.ExecuteAnalysisAndTargetAsync(CancellationToken.None);
+                return await analysis.ExecuteAnalysisAndTargetAsync(dumpStatistics: true, CancellationToken.None);
             }
             catch (Exception ex)
             {
