@@ -132,6 +132,7 @@ namespace SharpDetect.Core.Runtime
         {
             ImmutableDictionary<int, HappensBeforeScheduler> oldLookup;
             ImmutableDictionary<int, HappensBeforeScheduler> newLookup;
+            var scheduler = schedulersLookup[processId];
 
             do
             {
@@ -144,6 +145,8 @@ namespace SharpDetect.Core.Runtime
             // Make sure to notify about end once there are not profiled processes
             if (newCount == 0)
                 executionFinishedCompletionSource.SetResult();
+
+            scheduler.Dispose();
         }
 
         private HappensBeforeScheduler GetScheduler(int processId)
