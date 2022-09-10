@@ -1,22 +1,33 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services;
 using SharpDetect.Core.Runtime;
+using System.Runtime.CompilerServices;
 
 namespace SharpDetect.Core.Plugins
 {
     internal class PluginsProxy : IDisposable
     {
         private readonly IShadowExecutionObserver runtimeEventsHub;
+        private readonly IPluginsManager pluginsManager;
         private readonly IPlugin[] plugins;
+        private readonly ILogger<PluginsProxy> logger;
         private bool isDisposed;
 
-        public PluginsProxy(IConfiguration configuration, IServiceProvider serviceProvider, IPluginsManager pluginsManager, IShadowExecutionObserver runtimeEventsHub)
+        public PluginsProxy(
+            IConfiguration configuration, 
+            IServiceProvider serviceProvider, 
+            IPluginsManager pluginsManager, 
+            IShadowExecutionObserver runtimeEventsHub,
+            ILoggerFactory loggerFactory)
         {
             this.runtimeEventsHub = runtimeEventsHub;
+            this.pluginsManager = pluginsManager;
+            this.logger = loggerFactory.CreateLogger<PluginsProxy>();
             var chain = configuration[Constants.Configuration.PluginsChain].Split('|');
 
             Guard.True<ArgumentException>(pluginsManager.TryConstructPlugins(chain, serviceProvider, out plugins));
@@ -118,10 +129,23 @@ namespace SharpDetect.Core.Plugins
             }
         }
 
-        public void Execute(Action<IPlugin> action)
+        public void Execute(Action<IPlugin> action, [CallerMemberName] string? memberName = null)
         {
+            IPlugin? currentPlugin = null; 
             foreach (var plugin in plugins)
-                action(plugin);
+            {
+                try
+                {
+                    currentPlugin = plugin;
+                    action(plugin);
+                }
+                catch (Exception ex)
+                {
+                    pluginsManager.TryGetPluginInfo(currentPlugin!, out var pluginInfo);
+                    logger.LogWarning(ex, "[{class}] An unhandled exception occurred in plugin {plugin} while executing {event}.",
+                        nameof(PluginsProxy), (pluginInfo.HasValue) ? pluginInfo.Value.Name : "<unable-to-resolve-plugin>", memberName);
+                }
+            }
         }
     }
 }

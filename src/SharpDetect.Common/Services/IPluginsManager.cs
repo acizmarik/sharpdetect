@@ -10,5 +10,6 @@ namespace SharpDetect.Common.Services
         IEnumerable<PluginInfo> GetLoadedPluginInfos();
 
         bool TryConstructPlugins(string[] pluginDescriptions, IServiceProvider provider, [NotNullWhen(returnValue: true)] out IPlugin[] plugins);
+        bool TryGetPluginInfo(IPlugin plugin, [NotNullWhen(returnValue: true)] out PluginInfo? pluginInfo);
     }
 }
