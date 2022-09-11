@@ -65,8 +65,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         protected void Schedule(UIntPtr threadId, ulong taskId, JobFlags flags, Task job)
         {
-            var thread = ThreadLookup[threadId];
-            thread.Execute(taskId, flags, job);
+            // Note: there is a possibility that a notification might arrive during termination
+            // However, in this case we should probably just discard it
+            if (ThreadLookup.TryGetValue(threadId, out var thread))
+                thread.Execute(taskId, flags, job);
         }
 
         protected ShadowThread Register(UIntPtr threadId)
