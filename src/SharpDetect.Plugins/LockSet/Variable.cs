@@ -10,38 +10,45 @@ namespace SharpDetect.Plugins.LockSet
         protected HashSet<object>? CandidateLocks { get; set; }
         private static HashSet<object> EmptyLocks { get; } = new HashSet<object>();
 
-        public Variable(IShadowThread thread)
+        public Variable(IShadowThread thread, HashSet<IShadowObject> currentLocks)
         {
             CreatorThread = thread;
+            CandidateLocks = new(currentLocks);
         }
 
         public bool TryUpdateRead(IShadowThread thread, HashSet<IShadowObject> currentLocks)
         {
             // Update variable state
-            if (State == VariableState.Exclusive && thread != CreatorThread)
-                State = VariableState.Shared;
+            lock (this)
+            {
+                if (State == VariableState.Exclusive && thread != CreatorThread)
+                    State = VariableState.Shared;
 
-            return CheckVariable(currentLocks);
+                return CheckVariable(currentLocks);
+            }
         }
 
         public bool TryUpdateWrite(IShadowThread thread, HashSet<IShadowObject> currentLocks)
         {
             // Update variable state
-            switch (State)
+            lock (this)
             {
-                case VariableState.Virgin:
-                case VariableState.Exclusive:
-                    if (thread == CreatorThread)
-                        State = VariableState.Exclusive;
-                    else
+                switch (State)
+                {
+                    case VariableState.Virgin:
+                    case VariableState.Exclusive:
+                        if (thread == CreatorThread)
+                            State = VariableState.Exclusive;
+                        else
+                            State = VariableState.SharedModified;
+                        break;
+                    case VariableState.Shared:
                         State = VariableState.SharedModified;
-                    break;
-                case VariableState.Shared:
-                    State = VariableState.SharedModified;
-                    break;
-            }
+                        break;
+                }
 
-            return CheckVariable(currentLocks);
+                return CheckVariable(currentLocks);
+            }
         }
 
         private bool CheckVariable(HashSet<IShadowObject> currentLocks)

@@ -10,6 +10,7 @@ using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace SharpDetect.Plugins.LockSet
 {
@@ -78,7 +79,11 @@ namespace SharpDetect.Plugins.LockSet
         {
             var success = false;
             var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            metadataContext.GetResolver(info.Runtime.ProcessId).TryResolveFieldDef(fieldRef, out var fieldDef);
+            if (!metadataContext.GetResolver(info.Runtime.ProcessId).TryResolveFieldDef(fieldRef, out var fieldDef) || fieldDef.IsInitOnly)
+            {
+                // If field is readonly then races are not possible
+                return;
+            }
 
             if (instance == null)
                 success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateRead(info.Thread, locks));
@@ -94,7 +99,11 @@ namespace SharpDetect.Plugins.LockSet
         {
             var success = false;
             var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            metadataContext.GetResolver(info.Runtime.ProcessId).TryResolveFieldDef(fieldRef, out var fieldDef);
+            if (!metadataContext.GetResolver(info.Runtime.ProcessId).TryResolveFieldDef(fieldRef, out var fieldDef) || fieldDef.IsInitOnly)
+            {
+                // If field is readonly then races are not possible
+                return;
+            }
 
             if (instance == null)
                 success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateWrite(info.Thread, locks));
@@ -135,60 +144,76 @@ namespace SharpDetect.Plugins.LockSet
 
         private bool TryAccessStaticField(IShadowThread thread, FieldDef field, Func<HashSet<IShadowObject>, bool> validator)
         {
-            // Make sure we are tracking current field
-            staticFields.TryGetValue(field, out var tracked);
-            if (tracked == null)
+            lock (field)
             {
-                tracked = new Variable(thread);
-                staticFields.TryAdd(field, tracked);
-            }
+                // Make sure we are tracking current field
+                staticFields.TryGetValue(field, out var tracked);
+                var threadLocks = takenLocks[thread];
+                lock (threadLocks)
+                {
+                    if (tracked == null)
+                    {
+                        lock (threadLocks)
+                            tracked = new Variable(thread, threadLocks);
+                        staticFields.TryAdd(field, tracked);
+                    }
 
-            // Update access information
-            var currentLocks = takenLocks[thread];
-            lock (currentLocks)
-                return validator(currentLocks);
+                    // Update access information
+                    return validator(threadLocks);
+                }
+            }
         }
 
         private bool TryAccessInstanceField(IShadowThread thread, FieldDef field, IShadowObject instance, Func<HashSet<IShadowObject>, bool> validator)
         {
-            // Make sure we are tracking current instance
-            instanceFields.TryGetValue(instance, out var tracked);
-            if (tracked == null)
+            lock (instance)
             {
-                tracked = new ();
-                instanceFields.TryAdd(instance, tracked);
+                // Make sure we are tracking current instance
+                instanceFields.TryGetValue(instance, out var tracked);
+                if (tracked == null)
+                {
+                    tracked = new();
+                    instanceFields.TryAdd(instance, tracked);
+                }
+
+                // Make sure we are tracking current field
+                var threadLocks = takenLocks[thread];
+                lock (threadLocks)
+                {
+                    if (!tracked.ContainsKey(field))
+                        tracked.TryAdd(field, new Variable(thread, threadLocks));
+
+                    // Update access information
+                    return validator(threadLocks);
+                }
             }
-
-            // Make sure we are tracking current field
-            if (!tracked.ContainsKey(field))
-                tracked.TryAdd(field, new Variable(thread));
-
-            // Update access information
-            var currentLocks = takenLocks[thread];
-            lock (currentLocks)
-                return validator(currentLocks);
         }
 
 
         private bool TryAccessArrayElement(IShadowThread thread, IShadowObject array, int index, Func<HashSet<IShadowObject>, bool> validator)
         {
-            // Make sure we are tracking current array
-            arrayElements.TryGetValue(array, out var tracked);
-            if (tracked == null)
+            lock (array)
             {
-                tracked = new();
-                arrayElements.TryAdd(array, tracked);
+                // Make sure we are tracking current array
+                arrayElements.TryGetValue(array, out var tracked);
+                if (tracked == null)
+                {
+                    tracked = new();
+                    arrayElements.TryAdd(array, tracked);
+                }
+
+                // Make sure we are tracking current array element
+                arrayElements.TryGetValue(array, out var trackedArray);
+                var threadLocks = takenLocks[thread];
+                lock (threadLocks)
+                {
+                    if (!trackedArray!.ContainsKey(index))
+                        trackedArray.TryAdd(index, new Variable(thread, threadLocks));
+
+                    // Update access information
+                    return validator(threadLocks);
+                }
             }
-
-            // Make sure we are tracking current array element
-            arrayElements.TryGetValue(array, out var trackedArray);
-            if (!trackedArray!.ContainsKey(index))
-                trackedArray.TryAdd(index, new Variable(thread));
-
-            // Update access information for the current element
-            var currentLocks = takenLocks[thread];
-            lock (currentLocks)
-                return validator(currentLocks);
         }
 
         private void AddViolation(FieldDef fieldDef, EventInfo info)
