@@ -446,14 +446,15 @@ namespace SharpDetect.Core.Runtime.Scheduling
                                 {
                                     var isWrite = (bool)resolvedArgumentsList[0].Argument.BoxedValue!;
                                     var identifier = (ulong)resolvedArgumentsList[1].Argument.BoxedValue!;
-                                    RuntimeEventsHub.RaiseFieldAccessed(ShadowCLR, identifier, isWrite, thread.OperationContext.FieldInstance, info);
+                                    var fieldInstance = thread.OperationContext.GetAndResetLastFieldInstance();
+                                    RuntimeEventsHub.RaiseFieldAccessed(ShadowCLR, identifier, isWrite, fieldInstance, info);
                                     break;
                                 }
                             case MethodInterpretation.FieldInstanceAccess:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject;
                                     Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
-                                    thread.OperationContext.FieldInstance = (instance as ShadowObject)!;
+                                    thread.OperationContext.SetFieldInstance(instance as ShadowObject);
                                     RuntimeEventsHub.RaiseFieldInstanceAccessed(ShadowCLR, instance, info);
                                     break;
                                 }
@@ -462,25 +463,25 @@ namespace SharpDetect.Core.Runtime.Scheduling
                                 {
                                     var isWrite = (bool)resolvedArgumentsList[0].Argument.BoxedValue!;
                                     var identifier = (ulong)resolvedArgumentsList[1].Argument.BoxedValue!;
-                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(thread.OperationContext.ArrayInstance);
-                                    Guard.NotNull<int?, ShadowRuntimeStateException>(thread.OperationContext.ArrayIndex);
-                                    var instance = thread.OperationContext.ArrayInstance;
-                                    var index = thread.OperationContext.ArrayIndex.Value;
-                                    RuntimeEventsHub.RaiseArrayElementAccessed(ShadowCLR, identifier, isWrite, instance, index, info);
+                                    var arrayInstance = thread.OperationContext.GetAndResetLastArrayInstance();
+                                    var arrayIndex = thread.OperationContext.GetAndResetLastArrayIndex();
+                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(arrayInstance);
+                                    Guard.NotNull<int?, ShadowRuntimeStateException>(arrayIndex);
+                                    RuntimeEventsHub.RaiseArrayElementAccessed(ShadowCLR, identifier, isWrite, arrayInstance, arrayIndex.Value, info);
                                     break;
                                 }
                             case MethodInterpretation.ArrayInstanceAccess:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject;
                                     Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
-                                    thread.OperationContext.ArrayInstance = (instance as ShadowObject)!;
+                                    thread.OperationContext.SetArrayInstance(instance as ShadowObject);
                                     RuntimeEventsHub.RaiseArrayInstanceAccessed(ShadowCLR, instance, info);
                                     break;
                                 }
                             case MethodInterpretation.ArrayIndexAccess:
                                 {
                                     var index = (int)resolvedArgumentsList[0].Argument.BoxedValue!;
-                                    thread.OperationContext.ArrayIndex = index;
+                                    thread.OperationContext.SetArrayIndex(index);
                                     RuntimeEventsHub.RaiseArrayIndexAccessed(ShadowCLR, index, info);
                                     break;
                                 }
