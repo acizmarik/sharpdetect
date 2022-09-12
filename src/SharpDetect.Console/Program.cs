@@ -51,7 +51,7 @@ namespace SharpDetect.Console
                 var eventFormat = configuration.GetRequiredSection(Constants.Serilog.Template).Value;
                 var minimumLevelRaw = configuration.GetRequiredSection(Constants.Serilog.Level).Value;
                 if (!Enum.TryParse<LogEventLevel>(minimumLevelRaw, out var minimumLevel))
-                    throw new ArgumentException($"Provided setting {minimumLevel} is not valid!");
+                    throw new ArgumentException($"Provided setting {minimumLevel} is not valid.");
 
                 var minimumLevelConfig = new Serilog.Core.LoggingLevelSwitch(minimumLevel);
                 Log.Logger = new LoggerConfiguration()

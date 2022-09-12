@@ -30,7 +30,7 @@ namespace SharpDetect.Core.Communication
                 case NotifyMessage.PayloadOneofCase.MethodReturned: DispatchMethodReturned(message); break;
 
                 default:
-                    Logger.LogError("[{class}] Unrecognized message type: {type}!", nameof(ExecutingMessageHub), message.PayloadCase);
+                    Logger.LogError("[{class}] Unrecognized message type: {type}.", nameof(ExecutingMessageHub), message.PayloadCase);
                     throw new NotSupportedException("Provided message type is not supported.");
             }
         }

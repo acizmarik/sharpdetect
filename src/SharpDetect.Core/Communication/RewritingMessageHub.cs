@@ -40,7 +40,7 @@ namespace SharpDetect.Core.Communication
                 case NotifyMessage.PayloadOneofCase.WrapperMethodReferenced: DispatchWrapperMethodReferenced(message); break;
 
                 default:
-                    Logger.LogError("[{class}] Unrecognized message type: {type}!", nameof(RewritingMessageHub), message.PayloadCase);
+                    Logger.LogError("[{class}] Unrecognized message type: {type}.", nameof(RewritingMessageHub), message.PayloadCase);
                     throw new NotSupportedException("Provided message type is not supported.");
             }
         }
