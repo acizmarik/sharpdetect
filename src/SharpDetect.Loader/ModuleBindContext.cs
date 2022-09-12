@@ -46,7 +46,7 @@ namespace SharpDetect.Loader
         public ModuleDef LoadModule(int processId, string path, ModuleInfo moduleInfo)
         {
             if (!TryLoadModule(processId, path, moduleInfo, out var module))
-                throw new ArgumentException("Could not bind module to provided path: {path}.", nameof(path));
+                throw new ArgumentException($"Could not bind module to provided path: {path}.", nameof(path));
 
             return module;
         }
@@ -57,7 +57,7 @@ namespace SharpDetect.Loader
                 return module;
 
             if (!assemblyLoadContext.TryLoadFromStream(stream, virtualPath, out var assembly))
-                throw new ArgumentException("Could not bind module to provided path: {path}.", nameof(virtualPath));
+                throw new ArgumentException($"Could not bind module to provided path: {virtualPath}.", nameof(virtualPath));
 
             return AddModuleToCache(processId, assembly, moduleInfo);
         }
@@ -77,7 +77,7 @@ namespace SharpDetect.Loader
         public ModuleDef GetModule(int processId, ModuleInfo moduleInfo)
         {
             if (!TryGetModule(processId, moduleInfo, out var module))
-                throw new ArgumentException($"Module for handle: {moduleInfo.Id} was not loaded.");
+                throw new ArgumentException($"Module for handle {moduleInfo.Id} was not loaded.");
             return module;
         }
 
@@ -98,7 +98,7 @@ namespace SharpDetect.Loader
         public ModuleDef GetCoreLibModule(int processId)
         {
             if (!TryGetCoreLibModule(processId, out var module))
-                throw new ArgumentException($"Core library module for PID: {processId} was not loaded.");
+                throw new ArgumentException($"Core library module for PID {processId} was not loaded.");
             return module;
         }
 

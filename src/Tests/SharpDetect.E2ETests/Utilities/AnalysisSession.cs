@@ -36,7 +36,7 @@ namespace SharpDetect.E2ETests.Utilities
             where TService : class
         {
             if (serviceProvider == null)
-                throw new InvalidOperationException("Create analysis session first!");
+                throw new InvalidOperationException("Create analysis session first.");
 
             return serviceProvider.GetRequiredService<TService>();
         }

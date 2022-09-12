@@ -370,6 +370,7 @@ namespace SharpDetect.Dnlib.Extensions
             }
 
             if (writer.Position != data.Length)
+                // TODO: this assembly was probably obfuscated, please dont do that :)
                 throw new InvalidOperationException();
             return data;
         }

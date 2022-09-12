@@ -117,7 +117,7 @@ namespace SharpDetect.UnitTests.DnlibExtensions
             {
                 var instruction = methodDef.Body.Instructions.Last(instr => instr.Offset <= index);
                 if (correctResult[index] != ourResult[index])
-                    throw new Exception($"Wrongly assembled instruction {instruction}");
+                    throw new Exception($"Incorrectly assembled instruction {instruction}");
             }
         }
 
@@ -138,14 +138,14 @@ namespace SharpDetect.UnitTests.DnlibExtensions
             {
                 var instruction = methodDef.Body.Instructions.Last(instr => instr.Offset <= index);
                 if (correctResult[index] != ourResult[index])
-                    throw new Exception($"Wrongly assembled instruction {instruction}");
+                    throw new Exception($"Incorrectly assembled instruction {instruction}");
             }
 
             // Check handler blocks
             for (; index < correctResult.Length; index++)
             {
                 if (correctResult[index] != ourResult[index])
-                    throw new Exception($"Wrongly assembled handler block");
+                    throw new Exception($"Incorrectly assembled handler block");
             }
         }
     }

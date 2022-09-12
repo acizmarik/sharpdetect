@@ -18,7 +18,8 @@ namespace SharpDetect.Common.Exceptions
                 { typeof(ArgumentNullException), static m => new ArgumentNullException(m) },
                 { typeof(ShadowRuntimeStateException), static m => new ShadowRuntimeStateException(m) },
                 { typeof(InvalidOperationException), static m => new InvalidOperationException(m) },
-                { typeof(InvalidProgramException), static m => new InvalidProgramException(m) }
+                { typeof(InvalidProgramException), static m => new InvalidProgramException(m) },
+                { typeof(FileNotFoundException), static m => new FileNotFoundException(m) }
             };
             lookup = builder.ToImmutableDictionary();
         }
@@ -27,7 +28,7 @@ namespace SharpDetect.Common.Exceptions
             where TException : Exception
         {
             if (!EqualityComparer<TValue>.Default.Equals(expected, actual))
-                Throw<TException>($"Provided argument {expr} was evaluated to {actual}, which is not equal to {expected}.");
+                Throw<TException>($"Provided argument {expr} was evaluated to {actual}. The expected value was {expected}.");
         }
 
         public static GuardGreaterThanComparer<TValue, TException> Greater<TValue, TException>(TValue actual, [CallerArgumentExpression("actual")] string? expr = null)
@@ -61,7 +62,7 @@ namespace SharpDetect.Common.Exceptions
         public static void NotEqual<TValue, TException>(TValue invalid, TValue actual, [CallerArgumentExpression("actual")] string? expr = null)
         {
             if (EqualityComparer<TValue>.Default.Equals(invalid, actual))
-                Throw<TException>($"Provided argument {expr} was evaluated to {actual}, which was equal to {invalid}.");
+                Throw<TException>($"Provided argument {expr} cannot be equal to {invalid}.");
         }
 
         public static void NotEmpty<TValue, TException>(IEnumerable<TValue> collection, [CallerArgumentExpression("collection")] string? expr = null)
@@ -83,22 +84,16 @@ namespace SharpDetect.Common.Exceptions
             return value;
         }
 
-        public static void Null<TValue, TException>(TValue? value, [CallerArgumentExpression("value")] string? expr = null)
-        {
-            if (value != null)
-                Throw<TException>($"Provided argument {expr} was not null.");
-        }
-
         public static void True<TException>(bool expression, [CallerArgumentExpression("expression")] string? expr = null)
         {
             if (!expression)
-                Throw<TException>($"Provided argument {expr} was evaluated to {expression}.");
+                Throw<TException>($"Provided argument {expr} was evaluated to {expression}, while expected value was {!expression}.");
         }
 
         public static void False<TException>(bool expression, [CallerArgumentExpression("expression")] string? expr = null)
         {
             if (expression)
-                Throw<TException>($"Provided argument {expr} was evaluated to {expression}.");
+                Throw<TException>($"Provided argument {expr} was evaluated to {expression}, while expected value was {!expression}.");
         }
 
         public static void NotReachable<TException>([CallerMemberName] string? member = null, [CallerFilePath] string? filePath = null)
@@ -133,7 +128,7 @@ namespace SharpDetect.Common.Exceptions
             where TValue : IComparable<TValue>
         {
             if (left.Value.CompareTo(right) < 0)
-                Throw<TException>($"Provided argument {left.Expression} was not greater or equal than {right}.");
+                Throw<TException>($"Provided argument {left.Expression} was not greater than or equal to {right}.");
         }
 
         public static void Than<TValue, TException>(this GuardLessThanComparer<TValue, TException> left, TValue right)
@@ -149,7 +144,7 @@ namespace SharpDetect.Common.Exceptions
             where TValue : IComparable<TValue>
         {
             if (left.Value.CompareTo(right) > 0)
-                Throw<TException>($"Provided argument {left.Expression} was not lesser or equal than {right}.");
+                Throw<TException>($"Provided argument {left.Expression} was not lesser than or equal to {right}.");
         }
     }
 }

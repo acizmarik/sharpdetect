@@ -72,7 +72,7 @@ namespace SharpDetect.Core.Communication
                 case NotifyMessage.PayloadOneofCase.MovedReferences: DispatchMovedReferences(message); break;
 
                 default:
-                    Logger.LogError("[{class}] Unrecognized message type: {type}!", nameof(ProfilingMessageHub), message.PayloadCase);
+                    Logger.LogError("[{class}] Unrecognized message type: {type}.", nameof(ProfilingMessageHub), message.PayloadCase);
                     throw new NotSupportedException("Provided message type is not supported.");
             }
         }
