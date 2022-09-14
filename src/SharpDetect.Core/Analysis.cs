@@ -134,6 +134,7 @@ namespace SharpDetect.Core
         private async Task DumpStatisticsAsync(DateTime? start, DateTime? stop)
         {
             var duration = (start.HasValue) ? stop - start : TimeSpan.Zero;
+            var reader = reportsReaderProvider.GetReportsReader();
 
             logger.LogInformation(
                 "[{class}] Execution information: {lf}" +
@@ -141,14 +142,15 @@ namespace SharpDetect.Core
                 "- Number of instrumented methods: {instrumented}{lf}" +
                 "- Number of injected method hooks: {hooks}{lf}" +
                 "- Number of injected method wrappers: {wrappers}{lf}" +
-                "- Number of reports: ",
+                "- Number of reports: {count}{lf}",
                 /* line 1 args */ nameof(Analysis), Environment.NewLine, 
                 /* line 2 args */ duration, Environment.NewLine,
                 /* line 3 args */ instrumentor.InstrumentedMethodsCount, Environment.NewLine,
                 /* line 4 args */ instrumentor.InjectedMethodHooksCount, Environment.NewLine,
-                /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine);
+                /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine,
+                /* line 6 args */ reader.Count, Environment.NewLine);
 
-            await foreach (var report in reportsReaderProvider.GetReportsReader().ReadAllAsync())
+            await foreach (var report in reader.ReadAllAsync())
             {
                 switch (report)
                 {
