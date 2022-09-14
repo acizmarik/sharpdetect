@@ -54,12 +54,31 @@ namespace SharpDetect.Console.Commands
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "[{class}] Execution failed.", nameof(RunAnalysisCommand));
+                var errorFormat = "[{0}] Execution failed.";
+                if (logger is not null)
+                {
+                    logger.LogError(ex, errorFormat, nameof(RunAnalysisCommand));
+                }
+                else
+                {
+                    // In case the service provider was not built yet
+                    System.Console.Error.WriteLine(errorFormat, nameof(RunAnalysisCommand));
+                    System.Console.Error.WriteLine(ex);
+                }
+
                 return await Task.FromResult(false);
             }
             finally
             {
-                logger?.LogDebug("[{class}] Execution ended.", nameof(RunAnalysisCommand));
+                var messageFormat = "[{0}] Execution ended.";
+                if (logger is not null)
+                {
+                    logger.LogDebug(messageFormat, nameof(RunAnalysisCommand));
+                }
+                else
+                {
+                    System.Console.WriteLine(messageFormat, nameof(RunAnalysisCommand));
+                }
             }
         }
 
