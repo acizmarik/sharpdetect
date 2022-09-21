@@ -1,6 +1,7 @@
 ﻿using dnlib.DotNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Common;
 using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
@@ -10,7 +11,7 @@ using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
 using System.Collections.Concurrent;
-using System.Threading;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SharpDetect.Plugins.LockSet
 {
@@ -30,6 +31,7 @@ namespace SharpDetect.Plugins.LockSet
         private IMetadataContext metadataContext;
         private IEventDescriptorRegistry eventRegistry;
         private ILogger<EraserPlugin> logger;
+        private TypeDef? threadStaticAttribute;
 
         public EraserPlugin()
         {
@@ -51,6 +53,15 @@ namespace SharpDetect.Plugins.LockSet
             logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<EraserPlugin>();
         }
 
+        public override void ModuleLoaded(ModuleInfo module, string path, EventInfo info)
+        {
+            if (threadStaticAttribute == null)
+            {
+                var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
+                resolver.TryLookupTypeDef("System.ThreadStaticAttribute", module, out threadStaticAttribute);
+            }
+        }
+
         public override void ArrayElementRead(ulong srcMappingId, IShadowObject instance, int index, EventInfo info)
         {
             var success = TryAccessArrayElement(info.Thread, instance, index, (takenLocks) =>
@@ -60,7 +71,7 @@ namespace SharpDetect.Plugins.LockSet
             });
 
             if (!success)
-                AddViolation(instance, info);
+                AddViolation(instance, index, info);
         }
 
         public override void ArrayElementWritten(ulong srcMappingId, IShadowObject instance, int index, EventInfo info)
@@ -72,18 +83,15 @@ namespace SharpDetect.Plugins.LockSet
             });
 
             if (!success)
-                AddViolation(instance, info);
+                AddViolation(instance, index, info);
         }
 
         public override void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var success = false;
             var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            if (!metadataContext.GetResolver(info.Runtime.ProcessId).TryResolveFieldDef(fieldRef, out var fieldDef) || fieldDef.IsInitOnly)
-            {
-                // If field is readonly then races are not possible
+            if (!ShouldAnalyzeField(fieldRef, info.Runtime.ProcessId, out var fieldDef))
                 return;
-            }
 
             if (instance == null)
                 success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateRead(info.Thread, locks));
@@ -99,11 +107,8 @@ namespace SharpDetect.Plugins.LockSet
         {
             var success = false;
             var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            if (!metadataContext.GetResolver(info.Runtime.ProcessId).TryResolveFieldDef(fieldRef, out var fieldDef) || fieldDef.IsInitOnly)
-            {
-                // If field is readonly then races are not possible
+            if (!ShouldAnalyzeField(fieldRef, info.Runtime.ProcessId, out var fieldDef))
                 return;
-            }
 
             if (instance == null)
                 success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateWrite(info.Thread, locks));
@@ -227,15 +232,33 @@ namespace SharpDetect.Plugins.LockSet
                         null));
         }
 
-        private void AddViolation(IShadowObject array, EventInfo info)
+        private void AddViolation(IShadowObject array, int index, EventInfo info)
         {
             reportingService.Report(
                 new ErrorReport(
                     nameof(EraserPlugin),
                         DiagnosticsCategory,
-                        string.Format(DiagnosticsMessageFormat, array),
+                        string.Format(DiagnosticsMessageFormat, $"{array}[{index}]"),
                         info.Runtime.ProcessId,
                         null));
+        }
+
+        private bool ShouldAnalyzeField(IField fieldRef, int pid, [NotNullWhen(returnValue: true)] out FieldDef? fieldDef)
+        {
+            // Do not proceed if we can not resolve the field
+            var resolver = metadataContext.GetResolver(pid);
+            if (!resolver.TryResolveFieldDef(fieldRef, out fieldDef))
+                return false;
+
+            // Readonly fields can not be involved in a data-race
+            if (fieldDef.IsInitOnly)
+                return false;
+
+            // ThreadStatic annotated fields can not be involved in a data-race
+            if (fieldDef.HasCustomAttributes && fieldDef.CustomAttributes.FirstOrDefault(a => a.AttributeType == threadStaticAttribute) != null)
+                return false;
+
+            return true;
         }
     }
 }
