@@ -150,20 +150,19 @@ namespace SharpDetect.Core
                 /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine,
                 /* line 6 args */ reader.Count, Environment.NewLine);
 
+            var reports = new Dictionary<(Type Type, string reporter, string Category, string Description), int>();
             await foreach (var report in reader.ReadAllAsync())
             {
-                switch (report)
-                {
-                    case ErrorReport error:
-                        logger.LogError("[{reporter}][{category}] {description}", error.Reporter, error.Category, error.Description);
-                        break;
-                    case WarningReport warning:
-                        logger.LogWarning("[{reporter}][{category}] {description}", warning.Reporter, warning.Category, warning.Description);
-                        break;
-                    case InformationReport information:
-                        logger.LogInformation("[{reporter}][{category}] {description}", information.Reporter, information.Category, information.Description);
-                        break;
-                }
+                var key = (report.GetType(), report.Reporter, report.Category, report.Description);
+                if (!reports.ContainsKey(key))
+                    reports[key] = 0;
+
+                reports[key]++;
+            }
+
+            foreach (var ((reportType, reporter, category, description), occurrences) in reports.OrderByDescending(e => e.Value))
+            {
+                logger.LogError("[{reporter}][{category}] {description} occurred {n}-times", reporter, category, description, occurrences);
             }
         }
     }
