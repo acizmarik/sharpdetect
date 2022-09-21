@@ -8,6 +8,7 @@ namespace SharpDetect.Core.Runtime.Threads
     internal class ShadowThread : IShadowThread, IDisposable
     {
         public UIntPtr Id { get; private set; }
+        public int VirtualId { get; private set; }
         public int ProcessId { get; private set; }
         public ulong Epoch { get; private set; }
         public string DisplayName { get; private set; }
@@ -27,6 +28,7 @@ namespace SharpDetect.Core.Runtime.Threads
             ProcessId = processId;
             Id = threadId;
             Epoch = schedulerEpochChangeSignaler.Epoch;
+            VirtualId = virtualThreadId;
             DisplayName = $"{nameof(ShadowThread)}-{virtualThreadId}";
             State = ShadowThreadState.Running;
             OperationContext = new OperationContext();
