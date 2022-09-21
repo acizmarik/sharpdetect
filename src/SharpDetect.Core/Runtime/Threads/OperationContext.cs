@@ -1,44 +1,51 @@
-﻿namespace SharpDetect.Core.Runtime.Threads
+﻿using SharpDetect.Common.Exceptions;
+
+namespace SharpDetect.Core.Runtime.Threads
 {
     internal class OperationContext
     {
-        private ShadowObject? fieldInstance, arrayInstance;
-        private int? arrayIndex;
+        private readonly Stack<ShadowObject?> fieldInstances;
+        private readonly Stack<ShadowObject?> arrayInstances;
+        private readonly Stack<int> arrayIndices;
+
+        public OperationContext()
+        {
+            fieldInstances = new();
+            arrayInstances = new();
+            arrayIndices = new();
+        }
 
         public ShadowObject? GetAndResetLastFieldInstance()
         {
-            var result = fieldInstance;
-            fieldInstance = null;
+            fieldInstances.TryPop(out var result);
             return result;
         }
 
         public void SetFieldInstance(ShadowObject? instance)
         {
-            fieldInstance = instance;
+            fieldInstances.Push(instance);
         }
 
         public ShadowObject? GetAndResetLastArrayInstance()
         {
-            var result = arrayInstance;
-            arrayInstance = null;
-            return result;
+            Guard.NotEmpty<ShadowObject?, ShadowRuntimeStateException>(arrayInstances);
+            return arrayInstances.Pop();
         }
 
         public void SetArrayInstance(ShadowObject? instance)
         {
-            arrayInstance = instance;
+            arrayInstances.Push(instance);
         }
 
         public int? GetAndResetLastArrayIndex()
         {
-            var result = arrayIndex;
-            arrayIndex = null;
-            return result;
+            Guard.NotEmpty<int, ShadowRuntimeStateException>(arrayIndices);
+            return arrayIndices.Pop();
         }
 
-        public void SetArrayIndex(int? index)
+        public void SetArrayIndex(int index)
         {
-            arrayIndex = index;
+            arrayIndices.Push(index);
         }
     }
 }
