@@ -114,7 +114,7 @@ namespace SharpDetect.Plugins.LockSet
                 success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateWrite(info.Thread, locks));
             else
                 success = TryAccessInstanceField(info.Thread, fieldDef!, instance, (locks) => instanceFields.TryGetValue(instance, out var tracked)
-                    && tracked[fieldDef!].TryUpdateRead(info.Thread, locks));
+                    && tracked[fieldDef!].TryUpdateWrite(info.Thread, locks));
 
             if (!success)
                 AddViolation(fieldDef!, info);
