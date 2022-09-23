@@ -10,6 +10,8 @@ using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
+using SharpDetect.Common.SourceLinks;
+using SharpDetect.Plugins.Utilities;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
@@ -71,7 +73,15 @@ namespace SharpDetect.Plugins.LockSet
             });
 
             if (!success)
-                AddViolation(instance, index, info);
+            {
+                var sourceLink = eventRegistry.Get(srcMappingId);
+                reportingService.CreateReport(
+                    plugin: nameof(EraserPlugin),
+                    message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                    category: DiagnosticsCategory,
+                    processId: info.Runtime.ProcessId,
+                    sourceLink);
+            }
         }
 
         public override void ArrayElementWritten(ulong srcMappingId, IShadowObject instance, int index, EventInfo info)
@@ -83,14 +93,24 @@ namespace SharpDetect.Plugins.LockSet
             });
 
             if (!success)
-                AddViolation(instance, index, info);
+            {
+                var sourceLink = eventRegistry.Get(srcMappingId);
+                reportingService.CreateReport(
+                    plugin: nameof(EraserPlugin),
+                    message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                    category: DiagnosticsCategory,
+                    processId: info.Runtime.ProcessId,
+                    sourceLink);
+            }
         }
 
         public override void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var success = false;
-            var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            if (!ShouldAnalyzeField(fieldRef, info.Runtime.ProcessId, out var fieldDef))
+            var sourceLink = eventRegistry.Get(srcMappingId);
+            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
+            if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
 
             if (instance == null)
@@ -100,14 +120,23 @@ namespace SharpDetect.Plugins.LockSet
                     && tracked[fieldDef!].TryUpdateRead(info.Thread, locks));
 
             if (!success)
-                AddViolation(fieldDef!, info);
+            {
+                reportingService.CreateReport(
+                    plugin: nameof(EraserPlugin),
+                    message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                    category: DiagnosticsCategory,
+                    processId: info.Runtime.ProcessId,
+                    sourceLink);
+            }
         }
 
         public override void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var success = false;
-            var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            if (!ShouldAnalyzeField(fieldRef, info.Runtime.ProcessId, out var fieldDef))
+            var sourceLink = eventRegistry.Get(srcMappingId);
+            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
+            if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
 
             if (instance == null)
@@ -117,7 +146,14 @@ namespace SharpDetect.Plugins.LockSet
                     && tracked[fieldDef!].TryUpdateWrite(info.Thread, locks));
 
             if (!success)
-                AddViolation(fieldDef!, info);
+            {
+                reportingService.CreateReport(
+                    plugin: nameof(EraserPlugin),
+                    message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                    category: DiagnosticsCategory,
+                    processId: info.Runtime.ProcessId,
+                    sourceLink);
+            }
         }
 
         public override void LockAcquireReturned(IShadowObject instance, bool isSuccess, EventInfo info)
@@ -219,46 +255,6 @@ namespace SharpDetect.Plugins.LockSet
                     return validator(threadLocks);
                 }
             }
-        }
-
-        private void AddViolation(FieldDef fieldDef, EventInfo info)
-        {
-            reportingService.Report(
-                new ErrorReport(
-                    nameof(EraserPlugin),
-                        DiagnosticsCategory,
-                        string.Format(DiagnosticsMessageFormat, fieldDef),
-                        info.Runtime.ProcessId,
-                        null));
-        }
-
-        private void AddViolation(IShadowObject array, int index, EventInfo info)
-        {
-            reportingService.Report(
-                new ErrorReport(
-                    nameof(EraserPlugin),
-                        DiagnosticsCategory,
-                        string.Format(DiagnosticsMessageFormat, $"{array}[{index}]"),
-                        info.Runtime.ProcessId,
-                        null));
-        }
-
-        private bool ShouldAnalyzeField(IField fieldRef, int pid, [NotNullWhen(returnValue: true)] out FieldDef? fieldDef)
-        {
-            // Do not proceed if we can not resolve the field
-            var resolver = metadataContext.GetResolver(pid);
-            if (!resolver.TryResolveFieldDef(fieldRef, out fieldDef))
-                return false;
-
-            // Readonly fields can not be involved in a data-race
-            if (fieldDef.IsInitOnly)
-                return false;
-
-            // ThreadStatic annotated fields can not be involved in a data-race
-            if (fieldDef.HasCustomAttributes && fieldDef.CustomAttributes.FirstOrDefault(a => a.AttributeType == threadStaticAttribute) != null)
-                return false;
-
-            return true;
         }
     }
 }

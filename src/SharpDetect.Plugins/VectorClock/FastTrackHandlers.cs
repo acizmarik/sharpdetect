@@ -1,15 +1,14 @@
 ﻿using dnlib.DotNet;
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Common;
-using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
+using SharpDetect.Plugins.Utilities;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 
 namespace SharpDetect.Plugins.VectorClock
 {
@@ -123,6 +122,7 @@ namespace SharpDetect.Plugins.VectorClock
                 resolver.TryLookupTypeDef("System.ThreadStaticAttribute", module, out threadStaticAttribute);
             }
         }
+
         public override void ArrayElementRead(ulong srcMappingId, IShadowObject instance, int index, EventInfo info)
         {
             lock (ftLock)
@@ -130,7 +130,15 @@ namespace SharpDetect.Plugins.VectorClock
                 var thread = GetThreadState(info.Thread);
                 var variable = GetArrayElementVariableState(thread, false, instance, index);
                 if (!Read(variable, thread))
-                    AddViolation(instance, index, info);
+                {
+                    var sourceLink = eventRegistry.Get(srcMappingId);
+                    reportingService.CreateReport(
+                        plugin: nameof(FastTrackPlugin),
+                        message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                        category: DiagnosticsCategory,
+                        processId: info.Runtime.ProcessId,
+                        sourceLink);
+                }
             }
         }
 
@@ -141,14 +149,24 @@ namespace SharpDetect.Plugins.VectorClock
                 var thread = GetThreadState(info.Thread);
                 var variable = GetArrayElementVariableState(thread, true, instance, index);
                 if (!Write(variable, thread))
-                    AddViolation(instance, index, info);
+                {
+                    var sourceLink = eventRegistry.Get(srcMappingId);
+                    reportingService.CreateReport(
+                        plugin: nameof(FastTrackPlugin),
+                        message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                        category: DiagnosticsCategory,
+                        processId: info.Runtime.ProcessId,
+                        sourceLink);
+                }
             }
         }
 
         public override void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
-            var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            if (!ShouldAnalyzeField(fieldRef, info.Runtime.ProcessId, out var fieldDef))
+            var sourceLink = eventRegistry.Get(srcMappingId);
+            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
+            if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
 
             lock (ftLock)
@@ -156,14 +174,23 @@ namespace SharpDetect.Plugins.VectorClock
                 var thread = GetThreadState(info.Thread);
                 var variable = GetFieldVariableState(thread, false, fieldDef, instance);
                 if (!Read(variable, thread))
-                     AddViolation(fieldDef, info);
+                {
+                    reportingService.CreateReport(
+                        plugin: nameof(FastTrackPlugin),
+                        message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                        category: DiagnosticsCategory,
+                        processId: info.Runtime.ProcessId,
+                        sourceLink);
+                }
             }
         }
 
         public override void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
-            var fieldRef = (IField)eventRegistry.Get(srcMappingId).Instruction.Operand;
-            if (!ShouldAnalyzeField(fieldRef, info.Runtime.ProcessId, out var fieldDef))
+            var sourceLink = eventRegistry.Get(srcMappingId);
+            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
+            if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
 
             lock (ftLock)
@@ -171,7 +198,14 @@ namespace SharpDetect.Plugins.VectorClock
                 var thread = GetThreadState(info.Thread);
                 var variable = GetFieldVariableState(thread, true, fieldDef, instance);
                 if (!Write(variable, thread))
-                    AddViolation(fieldDef, info);
+                {
+                    reportingService.CreateReport(
+                        plugin: nameof(FastTrackPlugin),
+                        message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                        category: DiagnosticsCategory,
+                        processId: info.Runtime.ProcessId,
+                        sourceLink);
+                }
             }
         }
 
@@ -216,46 +250,6 @@ namespace SharpDetect.Plugins.VectorClock
                 var newThread = GetThreadState(info.Thread);
                 Join(originalThread, newThread);
             }
-        }
-
-        private void AddViolation(FieldDef fieldDef, EventInfo info)
-        {
-            reportingService.Report(
-                new ErrorReport(
-                    nameof(FastTrackPlugin),
-                        DiagnosticsCategory,
-                        string.Format(DiagnosticsMessageFormat, fieldDef),
-                        info.Runtime.ProcessId,
-                        null));
-        }
-
-        private void AddViolation(IShadowObject array, int index, EventInfo info)
-        {
-            reportingService.Report(
-                new ErrorReport(
-                    nameof(FastTrackPlugin),
-                        DiagnosticsCategory,
-                        string.Format(DiagnosticsMessageFormat, $"{array}[{index}]"),
-                        info.Runtime.ProcessId,
-                        null));
-        }
-
-        private bool ShouldAnalyzeField(IField fieldRef, int pid, [NotNullWhen(returnValue: true)] out FieldDef? fieldDef)
-        {
-            // Do not proceed if we can not resolve the field
-            var resolver = metadataContext.GetResolver(pid);
-            if (!resolver.TryResolveFieldDef(fieldRef, out fieldDef))
-                return false;
-
-            // Readonly fields can not be involved in a data-race
-            if (fieldDef.IsInitOnly)
-                return false;
-
-            // ThreadStatic annotated fields can not be involved in a data-race
-            if (fieldDef.HasCustomAttributes && fieldDef.CustomAttributes.FirstOrDefault(a => a.AttributeType == threadStaticAttribute) != null)
-                return false;
-
-            return true;
         }
     }
 }
