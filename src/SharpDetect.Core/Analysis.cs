@@ -1,14 +1,15 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
+using SharpDetect.Common.SourceLinks;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Runtime;
+using System.Text;
 
 namespace SharpDetect.Core
 {
@@ -150,19 +151,39 @@ namespace SharpDetect.Core
                 /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine,
                 /* line 6 args */ reader.Count, Environment.NewLine);
 
-            var reports = new Dictionary<(Type Type, string reporter, string Category, string Description), int>();
+            var reports = new Dictionary<(Type Type, string reporter, string Category, string Description), (int Count, HashSet<SourceLink> SourceLinks)>();
             await foreach (var report in reader.ReadAllAsync())
             {
                 var key = (report.GetType(), report.Reporter, report.Category, report.Description);
                 if (!reports.ContainsKey(key))
-                    reports[key] = 0;
+                    reports[key] = (0, new HashSet<SourceLink>(report.SourceLinks ?? Enumerable.Empty<SourceLink>()));
 
-                reports[key]++;
+                var (count, sourceLinks) = reports[key];
+                foreach (var link in report.SourceLinks ?? Enumerable.Empty<SourceLink>())
+                    sourceLinks.Add(link);
+
+                reports[key] = (count + 1, sourceLinks);
             }
 
-            foreach (var ((reportType, reporter, category, description), occurrences) in reports.OrderByDescending(e => e.Value))
+            foreach (var ((reportType, reporter, category, description), (count, sourceLinks)) in reports.OrderByDescending(e => e.Value.Count))
             {
-                logger.LogError("[{reporter}][{category}] {description} occurred {n}-times", reporter, category, description, occurrences);
+                var messageBuilder = new StringBuilder();
+                var argumentsBuilder = new List<object>();
+                messageBuilder.Append("[{reporter}][{category}] {description} reported {n}-times");
+                argumentsBuilder.AddRange(new object[] { reporter, category, description, count });
+
+                if (sourceLinks.Count > 0)
+                {
+                    foreach (var link in sourceLinks)
+                    {
+                        messageBuilder.Append(Environment.NewLine);
+                        messageBuilder.Append("\tat {method} on offset {instruction}");
+                        argumentsBuilder.Add(link.Method);
+                        argumentsBuilder.Add(link.Instruction);
+                    }
+                }
+
+                logger.LogWarning(messageBuilder.ToString(), argumentsBuilder.ToArray());
             }
         }
     }
