@@ -12,18 +12,26 @@ namespace SharpDetect.E2ETests
     public class DataRaceDetectionTests
     {
         [Theory]
-        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Static_SimpleRace))]
-        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Static_BadLocking))]
-        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Instance_SimpleRace))]
-        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Instance_BadLocking))]
-        [InlineData(nameof(Program.Test_DataRace_ValueType_Static_SimpleRace))]
-        [InlineData(nameof(Program.Test_DataRace_ValueType_Static_BadLocking))]
-        [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_SimpleRace))]
-        [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_BadLocking))]
-        public async Task DataRaceDetectionTests_Eraser_ShouldDetectDataRace(string testName)
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Static_SimpleRace), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Static_SimpleRace), "FastTrack")]
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Static_BadLocking), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Static_BadLocking), "FastTrack")]
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Instance_SimpleRace), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Instance_SimpleRace), "FastTrack")]
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Instance_BadLocking), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ReferenceType_Instance_BadLocking), "FastTrack")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Static_SimpleRace), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Static_SimpleRace), "FastTrack")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Static_BadLocking), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Static_BadLocking), "FastTrack")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_SimpleRace), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_SimpleRace), "FastTrack")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_BadLocking), "Eraser")]
+        [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_BadLocking), "FastTrack")]
+        public async Task DataRaceDetectionTests_ShouldDetectDataRace(string testName, string plugin)
         {
             // Prepare
-            await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, "Eraser|Reporter", testName);
+            await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, $"{plugin}|Reporter", testName);
             var fieldName = testName.Substring(0, testName.LastIndexOf('_'));
 
             // Act
@@ -81,16 +89,22 @@ namespace SharpDetect.E2ETests
         }
 
         [Theory]
-        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Static_CorrectLocks))]
-        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_CorrectLocks))]
-        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_DifferentInstances))]
-        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Static_CorrectLocks))]
-        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_CorrectLocks))]
-        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_DifferentInstances))]
-        public async Task DataRaceDetectionTests_Eraser_NoDataRace(string testName)
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Static_CorrectLocks), "Eraser")]
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Static_CorrectLocks), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_CorrectLocks), "Eraser")]
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_CorrectLocks), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_DifferentInstances), "Eraser")]
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_DifferentInstances), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Static_CorrectLocks), "Eraser")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Static_CorrectLocks), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_CorrectLocks), "Eraser")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_CorrectLocks), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_DifferentInstances), "Eraser")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_DifferentInstances), "FastTrack")]
+        public async Task DataRaceDetectionTests_NoDataRace(string testName, string plugin)
         {
             // Prepare
-            await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, "Eraser", testName);
+            await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, plugin, testName);
 
             // Act
             await session.Start();
