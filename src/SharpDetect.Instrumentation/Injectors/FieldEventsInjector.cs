@@ -46,9 +46,14 @@ namespace SharpDetect.Instrumentation.Injectors
         private void InjectLoadStoreStaticField(MethodDef method, int instructionIndex, ulong eventId, bool isWrite, UnresolvedMethodStubs stubs)
         {
             var instruction = method.Body.Instructions[instructionIndex];
+            var pushInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldInstanceAccess, ref dummyFieldInstanceAccessRef));
             var callInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldAccess, ref dummyFieldAccessRef));
             method.InjectAfter(instruction, new Instruction[]
             {
+                // Load null as instance
+                Instruction.Create(OpCodes.Ldnull),
+                // Call
+                pushInstruction,
                 // Load flag (READ/WRITE)
                 Instruction.Create((isWrite) ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0),
                 // Load event id
@@ -57,7 +62,8 @@ namespace SharpDetect.Instrumentation.Injectors
                 callInstruction
             });
 
-            // Mark stub for fixing during assembling
+            // Mark stubs for fixing during assembling
+            stubs.Add(pushInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.FieldInstanceAccess));
             stubs.Add(callInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.FieldAccess));
         }
 
