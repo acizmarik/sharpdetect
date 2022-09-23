@@ -17,8 +17,8 @@ namespace SharpDetect.Core.Runtime.Threads
 
         public ShadowObject? GetAndResetLastFieldInstance()
         {
-            fieldInstances.TryPop(out var result);
-            return result;
+            Guard.NotEmpty<ShadowObject?, ShadowRuntimeStateException>(fieldInstances);
+            return fieldInstances.Pop();
         }
 
         public void SetFieldInstance(ShadowObject? instance)
