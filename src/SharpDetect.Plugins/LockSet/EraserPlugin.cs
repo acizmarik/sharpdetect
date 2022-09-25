@@ -19,8 +19,8 @@ namespace SharpDetect.Plugins.LockSet
     public class EraserPlugin : NopPlugin
     {
         public const string DiagnosticsCategory = "Data-race";
-        public const string DiagnosticsMessageFormatArrays = "Possible data-race on an array element: {arrayInstance}[{index}]";
-        public const string DiagnosticsMessageFormatFields = "Possible data-race on a field: {field}";
+        public const string DiagnosticsMessageFormatArrays = "Possible data-race on an array element: {2}[{3}]";
+        public const string DiagnosticsMessageFormatFields = "Possible data-race on a field: {2}";
 
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<FieldDef, Variable>> instanceFields;
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<int, Variable>> arrayElements;
