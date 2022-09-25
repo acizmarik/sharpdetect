@@ -1,7 +1,7 @@
 ﻿using dnlib.DotNet;
 using dnlib.DotNet.Emit;
-using SharpDetect.Common;
 using SharpDetect.Common.Services.Instrumentation;
+using SharpDetect.Common.SourceLinks;
 using SharpDetect.Instrumentation.Injectors;
 using SharpDetect.Instrumentation.Stubs;
 
@@ -23,7 +23,7 @@ namespace SharpDetect.Instrumentation
 
         public bool TryInject(MethodDef method, UnresolvedMethodStubs stubs)
         {
-            var toInject = new Queue<(Instruction, AnalysisEventType, InjectorBase)>();
+            var toInject = new Queue<(Instruction, InjectorBase, SourceLink)>();
 
             // Iterate through all instructions
             foreach (var instruction in method.Body.Instructions)
@@ -34,15 +34,16 @@ namespace SharpDetect.Instrumentation
                     var eventType = injector.CanInject(method, instruction);
                     if (eventType.HasValue)
                     {
-                        toInject.Enqueue((instruction, eventType.Value, injector));
+                        var sourceLink = eventRegistry.Create(eventType.Value, method, instruction, instruction.GetSequencePoint());
+                        toInject.Enqueue((instruction, injector, sourceLink));
                     }
                 }
             }
 
             // Inject all found events
-            foreach (var (instruction, eventType, injector) in toInject)
+            foreach (var (instruction, injector, sourceLink) in toInject)
             {
-                var sourceLink = eventRegistry.Create(eventType, method, instruction, instruction.GetSequencePoint());
+                
                 var index = method.Body.Instructions.IndexOf(instruction);
                 injector.Inject(method, index, sourceLink.Id, stubs);
             }
