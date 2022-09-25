@@ -12,6 +12,7 @@ namespace SharpDetect.Loader
         public IEnumerable<AssemblyDef> Assemblies { get { return assemblies.Values; } }
         public AssemblyResolver AssemblyResolver { get; }
         public Resolver MemberResolver { get; }
+        private readonly ModuleCreationOptions moduleCreationOptions;
         private readonly ModuleContext moduleContext;
         private readonly ConcurrentDictionary<string, AssemblyDef> assemblies;
         private readonly ILogger<AssemblyLoadContext> logger;
@@ -21,6 +22,11 @@ namespace SharpDetect.Loader
             this.logger = loggerFactory.CreateLogger<AssemblyLoadContext>();
             assemblies = new();
             moduleContext = ModuleDef.CreateModuleContext();
+            moduleCreationOptions = new ModuleCreationOptions()
+            {
+                Context = moduleContext,
+                TryToLoadPdbFromDisk = true
+            };
             MemberResolver = (Resolver)moduleContext.Resolver;
             AssemblyResolver = (AssemblyResolver)moduleContext.AssemblyResolver;
             AssemblyResolver.UseGAC = false;
@@ -55,7 +61,7 @@ namespace SharpDetect.Loader
 
             try
             {
-                assembly = AssemblyDef.Load(assemblyStream, moduleContext);
+                assembly = AssemblyDef.Load(assemblyStream, moduleCreationOptions);
                 AssemblyResolver.AddToCache(assembly);
                 LogSuccessLoad(virtualPath, assembly);
                 return true;

@@ -24,17 +24,21 @@ namespace SharpDetect.Instrumentation
         public bool TryInject(MethodDef method, UnresolvedMethodStubs stubs)
         {
             var toInject = new Queue<(Instruction, InjectorBase, SourceLink)>();
+            var sequencePoint = null as dnlib.DotNet.Pdb.SequencePoint;
 
             // Iterate through all instructions
             foreach (var instruction in method.Body.Instructions)
             {
+                if (instruction.SequencePoint != null)
+                    sequencePoint = instruction.SequencePoint;
+
                 // Check all registered injectors
                 foreach (var injector in injectors)
                 {
                     var eventType = injector.CanInject(method, instruction);
                     if (eventType.HasValue)
                     {
-                        var sourceLink = eventRegistry.Create(eventType.Value, method, instruction, instruction.GetSequencePoint());
+                        var sourceLink = eventRegistry.Create(eventType.Value, method, instruction, sequencePoint);
                         toInject.Enqueue((instruction, injector, sourceLink));
                     }
                 }
