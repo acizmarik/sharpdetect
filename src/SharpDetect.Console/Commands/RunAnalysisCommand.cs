@@ -2,7 +2,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
+using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Exceptions;
+using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Core;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -50,7 +52,17 @@ namespace SharpDetect.Console.Commands
                 // Execution
                 logger.LogDebug("[{class}] Execution started with {arguments}.", nameof(RunAnalysisCommand), new[] { localConfiguration, pluginsConfiguration });
                 // TODO: implement CancellationTokenProvider
-                return await analysis.ExecuteAnalysisAndTargetAsync(dumpStatistics: true, CancellationToken.None);
+                var analysisResult = await analysis.ExecuteAnalysisAndTargetAsync(CancellationToken.None);
+
+                // Results
+                var reports = new List<ReportBase>();
+                var reportsReader = serviceProvider.GetRequiredService<IReportsReaderProvider>();
+                await foreach (var report in reportsReader.GetReportsReader().ReadAllAsync())
+                    reports.Add(report);
+                var reportsRenderer = serviceProvider.GetRequiredService<IReportsRenderer>();
+                reportsRenderer.Render(reports);
+
+                return analysisResult;
             }
             catch (Exception ex)
             {

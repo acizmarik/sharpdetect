@@ -6,10 +6,8 @@ using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
-using SharpDetect.Common.SourceLinks;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Runtime;
-using System.Text;
 
 namespace SharpDetect.Core
 {
@@ -77,13 +75,13 @@ namespace SharpDetect.Core
             logger = loggerFactory.CreateLogger<Analysis>();
         }
 
-        public Task<bool> ExecuteAnalysisAndTargetAsync(bool dumpStatistics, CancellationToken ct)
-            => ExecuteAsync(withTargetProgram: true, dumpStatistics, ct);
+        public Task<bool> ExecuteAnalysisAndTargetAsync(CancellationToken ct)
+            => ExecuteAsync(withTargetProgram: true, ct);
 
-        public Task<bool> ExecuteOnlyAnalysisAsync(bool dumpStatistics, CancellationToken ct)
-            => ExecuteAsync(withTargetProgram: false, dumpStatistics, ct);
+        public Task<bool> ExecuteOnlyAnalysisAsync(CancellationToken ct)
+            => ExecuteAsync(withTargetProgram: false, ct);
 
-        private async Task<bool> ExecuteAsync(bool withTargetProgram, bool dumpStatistics, CancellationToken ct)
+        private async Task<bool> ExecuteAsync(bool withTargetProgram, CancellationToken ct)
         {
             DateTime? start = default, stop = default;
 
@@ -127,63 +125,6 @@ namespace SharpDetect.Core
                 stop = dateTimeProvider.Now;
                 reportingController.Complete();
                 logger.LogDebug("[{class}] Analysis ended.", nameof(Analysis));
-                if (dumpStatistics)
-                    await DumpStatisticsAsync(start, stop);
-            }
-        }
-
-        private async Task DumpStatisticsAsync(DateTime? start, DateTime? stop)
-        {
-            var duration = (start.HasValue) ? stop - start : TimeSpan.Zero;
-            var reader = reportsReaderProvider.GetReportsReader();
-
-            logger.LogInformation(
-                "[{class}] Execution information: {lf}" +
-                "- Duration: {duration}{lf}" +
-                "- Number of instrumented methods: {instrumented}{lf}" +
-                "- Number of injected method hooks: {hooks}{lf}" +
-                "- Number of injected method wrappers: {wrappers}{lf}" +
-                "- Number of reports: {count}{lf}",
-                /* line 1 args */ nameof(Analysis), Environment.NewLine, 
-                /* line 2 args */ duration, Environment.NewLine,
-                /* line 3 args */ instrumentor.InstrumentedMethodsCount, Environment.NewLine,
-                /* line 4 args */ instrumentor.InjectedMethodHooksCount, Environment.NewLine,
-                /* line 5 args */ instrumentor.InjectedMethodWrappersCount, Environment.NewLine,
-                /* line 6 args */ reader.Count, Environment.NewLine);
-
-            var reports = new Dictionary<(Type Type, string reporter, string Category, string Description), (int Count, HashSet<SourceLink> SourceLinks)>();
-            await foreach (var report in reader.ReadAllAsync())
-            {
-                var key = (report.GetType(), report.Reporter, report.Category, report.Description);
-                if (!reports.ContainsKey(key))
-                    reports[key] = (0, new HashSet<SourceLink>(report.SourceLinks ?? Enumerable.Empty<SourceLink>()));
-
-                var (count, sourceLinks) = reports[key];
-                foreach (var link in report.SourceLinks ?? Enumerable.Empty<SourceLink>())
-                    sourceLinks.Add(link);
-
-                reports[key] = (count + 1, sourceLinks);
-            }
-
-            foreach (var ((reportType, reporter, category, description), (count, sourceLinks)) in reports.OrderByDescending(e => e.Value.Count))
-            {
-                var messageBuilder = new StringBuilder();
-                var argumentsBuilder = new List<object>();
-                messageBuilder.Append("[{reporter}][{category}] {description} reported {n}-times");
-                argumentsBuilder.AddRange(new object[] { reporter, category, description, count });
-
-                if (sourceLinks.Count > 0)
-                {
-                    foreach (var link in sourceLinks)
-                    {
-                        messageBuilder.Append(Environment.NewLine);
-                        messageBuilder.Append("\tat {method} on offset {instruction}");
-                        argumentsBuilder.Add(link.Method);
-                        argumentsBuilder.Add(link.Instruction);
-                    }
-                }
-
-                logger.LogWarning(messageBuilder.ToString(), argumentsBuilder.ToArray());
             }
         }
     }

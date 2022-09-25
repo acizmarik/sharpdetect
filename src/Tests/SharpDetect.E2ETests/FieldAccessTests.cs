@@ -44,26 +44,26 @@ namespace SharpDetect.E2ETests
                     analysisEnded = true;
                 else if (report.Category == nameof(IPlugin.TypeLoaded))
                 {
-                    if (report.Description == typeof(InvalidProgramException).FullName)
+                    if (report.MessageFormat == typeof(InvalidProgramException).FullName)
                         invalidProgramException = true;
                 }
                 else if (report.Category == nameof(IPlugin.MethodCalled))
                 {
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         reachedEntryPoint = true;
-                    else if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
+                    else if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
                         reachedTestMethod = true;
                 }
                 else if (report.Category == nameof(IPlugin.MethodReturned))
                 {
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         leftEntryPoint = true;
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
                         leftTestMethod = true;
                 }
                 else if ((!isWrite && report.Category == nameof(IPlugin.FieldRead)) || (isWrite && report.Category == nameof(IPlugin.FieldWritten)))
                 {
-                    if (reachedTestMethod && !leftTestMethod && report.Description.Contains(fieldName))
+                    if (reachedTestMethod && !leftTestMethod && report.MessageFormat.Contains(fieldName))
                     {
                         fieldAccess = true;
                     }

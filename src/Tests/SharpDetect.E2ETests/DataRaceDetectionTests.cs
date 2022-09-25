@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common.Plugins;
+﻿using dnlib.DotNet;
+using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Services.Reporting;
 using SharpDetect.E2ETests.Definitions;
 using SharpDetect.E2ETests.Subject;
@@ -28,7 +29,7 @@ namespace SharpDetect.E2ETests
         [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_SimpleRace), "FastTrack")]
         [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_BadLocking), "Eraser")]
         [InlineData(nameof(Program.Test_DataRace_ValueType_Instance_BadLocking), "FastTrack")]
-        public async Task DataRaceDetectionTests_ShouldDetectDataRace(string testName, string plugin)
+        public async Task DataRaceDetectionTests_Fields_ShouldDetectDataRace(string testName, string plugin)
         {
             // Prepare
             await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, $"{plugin}|Reporter", testName);
@@ -53,26 +54,28 @@ namespace SharpDetect.E2ETests
                     analysisEnded = true;
                 else if (report.Category == nameof(IPlugin.TypeLoaded))
                 {
-                    if (report.Description == typeof(InvalidProgramException).FullName)
+                    if (report.MessageFormat == typeof(InvalidProgramException).FullName)
                         invalidProgramException = true;
                 }
                 else if (report.Category == nameof(IPlugin.MethodCalled))
                 {
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         reachedEntryPoint = true;
-                    else if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
+                    else if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
                         reachedTestMethod = true;
                 }
                 else if (report.Category == nameof(IPlugin.MethodReturned))
                 {
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         leftEntryPoint = true;
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
                         leftTestMethod = true;
                 }
                 else if (report.Category == EraserPlugin.DiagnosticsCategory)
                 {
-                    if (report.Description.Contains(fieldName) && reachedTestMethod && !leftTestMethod)
+                    var arguments = report.Arguments;
+                    var field = (arguments![0] as FieldDef)!;
+                    if (field.FullName.Contains(fieldName) && reachedTestMethod && !leftTestMethod)
                         dataRace = true;
                 }
             }

@@ -2,5 +2,11 @@
 
 namespace SharpDetect.Common.Diagnostics
 {
-    public abstract record ReportBase(string Reporter, string Category, string Description, int Pid, SourceLink[]? SourceLinks);
+    public abstract record ReportBase(
+        string Reporter, 
+        string Category, 
+        string MessageFormat, 
+        object?[]? Arguments, 
+        int ProcessId, 
+        SourceLink[]? SourceLinks);
 }

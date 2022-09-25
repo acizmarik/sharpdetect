@@ -30,12 +30,12 @@ namespace SharpDetect.E2ETests
                     analysisEnded = true;
                 else if (report.Category == nameof(IPlugin.TypeLoaded))
                 {
-                    if (report.Description == typeof(InvalidProgramException).FullName)
+                    if (report.MessageFormat == typeof(InvalidProgramException).FullName)
                         invalidProgramException = true;
                 }
                 else if (report.Category == nameof(IPlugin.MethodCalled))
                 {
-                    if (report.Description == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         reachedEntryPoint = true;
                 }
             }

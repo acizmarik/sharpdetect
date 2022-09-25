@@ -9,12 +9,13 @@ namespace SharpDetect.Plugins.Utilities
         public static void CreateReport(
             this IReportingService reporter, 
             string plugin, 
-            string message, 
+            string messageFormat,
+            object[]? arguments,
             string category, 
             int processId, 
             params SourceLink[] links)
         {
-            var report = new WarningReport(plugin, category, message, processId, links);
+            var report = new WarningReport(plugin, category, messageFormat, arguments, processId, links);
             reporter.Report(report);
         }
     }

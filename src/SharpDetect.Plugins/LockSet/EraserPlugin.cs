@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
-using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
@@ -10,10 +9,8 @@ using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
-using SharpDetect.Common.SourceLinks;
 using SharpDetect.Plugins.Utilities;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 
 namespace SharpDetect.Plugins.LockSet
 {
@@ -22,7 +19,8 @@ namespace SharpDetect.Plugins.LockSet
     public class EraserPlugin : NopPlugin
     {
         public const string DiagnosticsCategory = "Data-race";
-        public const string DiagnosticsMessageFormat = "Affected variable: {0}";
+        public const string DiagnosticsMessageFormatArrays = "Possible data-race on an array element: {arrayInstance}[{index}]";
+        public const string DiagnosticsMessageFormatFields = "Possible data-race on a field: {field}";
 
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<FieldDef, Variable>> instanceFields;
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<int, Variable>> arrayElements;
@@ -77,7 +75,8 @@ namespace SharpDetect.Plugins.LockSet
                 var sourceLink = eventRegistry.Get(srcMappingId);
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
-                    message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                    messageFormat: DiagnosticsMessageFormatArrays,
+                    arguments: new object[] { instance, index },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
                     sourceLink);
@@ -97,7 +96,8 @@ namespace SharpDetect.Plugins.LockSet
                 var sourceLink = eventRegistry.Get(srcMappingId);
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
-                    message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                    messageFormat: DiagnosticsMessageFormatArrays,
+                    arguments: new object[] { instance, index },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
                     sourceLink);
@@ -123,7 +123,8 @@ namespace SharpDetect.Plugins.LockSet
             {
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
-                    message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                    messageFormat: DiagnosticsMessageFormatFields,
+                    arguments: new[] { fieldDef },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
                     sourceLink);
@@ -149,7 +150,8 @@ namespace SharpDetect.Plugins.LockSet
             {
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
-                    message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                    messageFormat: DiagnosticsMessageFormatFields,
+                    arguments: new[] { fieldDef },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
                     sourceLink);

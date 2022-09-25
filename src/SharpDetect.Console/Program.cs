@@ -4,7 +4,9 @@ using Serilog;
 using Serilog.Events;
 using SharpDetect.Common;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Console.Commands;
+using SharpDetect.Console.Services;
 using SharpDetect.Core.Configuration;
 using System.CommandLine;
 
@@ -70,6 +72,7 @@ namespace SharpDetect.Console
         {
             // Make application run based on real time
             services.AddSingleton<IDateTimeProvider, UtcDateTimeProvider>();
+            services.AddSingleton<IReportsRenderer, ConsoleReportsRenderer>();
         }
 
         private static RootCommand CreateCliRootCommand()

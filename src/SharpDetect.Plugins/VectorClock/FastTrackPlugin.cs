@@ -8,7 +8,8 @@ namespace SharpDetect.Plugins.VectorClock
     public partial class FastTrackPlugin : NopPlugin
     {
         public const string DiagnosticsCategory = "Data-race";
-        public const string DiagnosticsMessageFormat = "Affected variable: {0}";
+        public const string DiagnosticsMessageFormatArrays = "Possible data-race on an array element: {arrayInstance}[{index}]";
+        public const string DiagnosticsMessageFormatFields = "Possible data-race on a field: {field}";
 
         private static bool Read(VariableState variable, ThreadState thread)
         {
