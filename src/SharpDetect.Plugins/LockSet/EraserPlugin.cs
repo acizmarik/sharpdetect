@@ -19,8 +19,8 @@ namespace SharpDetect.Plugins.LockSet
     public class EraserPlugin : NopPlugin
     {
         public const string DiagnosticsCategory = "Data-race";
-        public const string DiagnosticsMessageFormatArrays = "Possible data-race on an array element: {2}[{3}]";
-        public const string DiagnosticsMessageFormatFields = "Possible data-race on a field: {2}";
+        public const string DiagnosticsMessageFormatArrays = "Possible data-race on array element: {2}[{3}]";
+        public const string DiagnosticsMessageFormatFields = "Possible data-race on field: {2}";
 
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<FieldDef, Variable>> instanceFields;
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<int, Variable>> arrayElements;
@@ -79,6 +79,7 @@ namespace SharpDetect.Plugins.LockSet
                     arguments: new object[] { instance, index },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
+                    thread: info.Thread,
                     sourceLink);
             }
         }
@@ -100,6 +101,7 @@ namespace SharpDetect.Plugins.LockSet
                     arguments: new object[] { instance, index },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
+                    thread: info.Thread,
                     sourceLink);
             }
         }
@@ -127,6 +129,7 @@ namespace SharpDetect.Plugins.LockSet
                     arguments: new[] { fieldDef },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
+                    thread: info.Thread,
                     sourceLink);
             }
         }
@@ -154,6 +157,7 @@ namespace SharpDetect.Plugins.LockSet
                     arguments: new[] { fieldDef },
                     category: DiagnosticsCategory,
                     processId: info.Runtime.ProcessId,
+                    thread: info.Thread,
                     sourceLink);
             }
         }

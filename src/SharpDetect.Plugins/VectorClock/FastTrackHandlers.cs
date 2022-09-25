@@ -138,6 +138,7 @@ namespace SharpDetect.Plugins.VectorClock
                         arguments: new object[] { instance, index },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
+                        thread: info.Thread,
                         sourceLink);
                 }
             }
@@ -158,6 +159,7 @@ namespace SharpDetect.Plugins.VectorClock
                         arguments: new object[] { instance, index },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
+                        thread: info.Thread,
                         sourceLink);
                 }
             }
@@ -183,6 +185,7 @@ namespace SharpDetect.Plugins.VectorClock
                         arguments: new[] { fieldDef },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
+                        thread: info.Thread,
                         sourceLink);
                 }
             }
@@ -208,6 +211,7 @@ namespace SharpDetect.Plugins.VectorClock
                         arguments: new[] { fieldDef },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
+                        thread: info.Thread,
                         sourceLink);
                 }
             }
