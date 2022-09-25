@@ -92,9 +92,10 @@ namespace SharpDetect.Plugins
                             new ErrorReport(
                                 nameof(DeadlockAnalyzerPlugin),
                                 DiagnosticsCategory,
-                                string.Format(DiagnosticsMessageFormat, threads),
+                                DiagnosticsMessageFormat,
+                                new[] { threads },
                                 processId,
-                                null));                        
+                                null));
                         return;
                     }
                 }

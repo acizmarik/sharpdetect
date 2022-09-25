@@ -134,7 +134,8 @@ namespace SharpDetect.Plugins.VectorClock
                     var sourceLink = eventRegistry.Get(srcMappingId);
                     reportingService.CreateReport(
                         plugin: nameof(FastTrackPlugin),
-                        message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                        messageFormat: DiagnosticsMessageFormatArrays,
+                        arguments: new object[] { instance, index },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
                         sourceLink);
@@ -153,7 +154,8 @@ namespace SharpDetect.Plugins.VectorClock
                     var sourceLink = eventRegistry.Get(srcMappingId);
                     reportingService.CreateReport(
                         plugin: nameof(FastTrackPlugin),
-                        message: string.Format(DiagnosticsMessageFormat, $"{instance}[{index}]"),
+                        messageFormat: DiagnosticsMessageFormatArrays,
+                        arguments: new object[] { instance, index },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
                         sourceLink);
@@ -177,7 +179,8 @@ namespace SharpDetect.Plugins.VectorClock
                 {
                     reportingService.CreateReport(
                         plugin: nameof(FastTrackPlugin),
-                        message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                        messageFormat: DiagnosticsMessageFormatFields,
+                        arguments: new[] { fieldDef },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
                         sourceLink);
@@ -201,7 +204,8 @@ namespace SharpDetect.Plugins.VectorClock
                 {
                     reportingService.CreateReport(
                         plugin: nameof(FastTrackPlugin),
-                        message: string.Format(DiagnosticsMessageFormat, fieldDef),
+                        messageFormat: DiagnosticsMessageFormatFields,
+                        arguments: new[] { fieldDef },
                         category: DiagnosticsCategory,
                         processId: info.Runtime.ProcessId,
                         sourceLink);
