@@ -2,7 +2,7 @@
 {
     internal struct Epoch
     {
-        public uint Value;
+        public volatile uint Value;
         public const uint ReadSharedEpoch = 0xFF_FF_FF_FF;
         private const uint ThreadIdMark = 0xFF_00_00_00;
         private const uint ClockMask = 0x00_FF_FF_FF;

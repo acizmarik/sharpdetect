@@ -9,7 +9,7 @@ namespace SharpDetect.Plugins.VectorClock
     {
         public const string DiagnosticsCategory = "Data-race";
         public const string DiagnosticsMessageFormatArrays = "Possible data-race on an array element: {arrayInstance}[{index}]";
-        public const string DiagnosticsMessageFormatFields = "Possible data-race on a field: {field}";
+        public const string DiagnosticsMessageFormatFields = "Possible data-race on a field: {2}";
 
         private static bool Read(VariableState variable, ThreadState thread)
         {
