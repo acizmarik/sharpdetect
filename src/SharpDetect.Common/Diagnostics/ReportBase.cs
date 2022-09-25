@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common.SourceLinks;
+﻿using SharpDetect.Common.Runtime.Threads;
+using SharpDetect.Common.SourceLinks;
 
 namespace SharpDetect.Common.Diagnostics
 {
@@ -8,5 +9,6 @@ namespace SharpDetect.Common.Diagnostics
         string MessageFormat, 
         object?[]? Arguments, 
         int ProcessId, 
-        SourceLink[]? SourceLinks);
+        IShadowThread Thread,
+        SourceLink? SourceLink);
 }

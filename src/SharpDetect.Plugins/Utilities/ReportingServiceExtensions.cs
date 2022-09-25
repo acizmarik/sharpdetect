@@ -1,4 +1,5 @@
 ﻿using SharpDetect.Common.Diagnostics;
+using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Common.SourceLinks;
 
@@ -13,9 +14,10 @@ namespace SharpDetect.Plugins.Utilities
             object[]? arguments,
             string category, 
             int processId, 
-            params SourceLink[] links)
+            IShadowThread thread,
+            SourceLink? link)
         {
-            var report = new WarningReport(plugin, category, messageFormat, arguments, processId, links);
+            var report = new WarningReport(plugin, category, messageFormat, arguments, processId, thread, link);
             reporter.Report(report);
         }
     }

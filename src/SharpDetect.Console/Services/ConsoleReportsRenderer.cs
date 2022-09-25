@@ -53,9 +53,9 @@ namespace SharpDetect.Console.Services
                     argumentsBuilder = builders.ArgumentsBuilder;
                 }
 
-                foreach (var sourceLink in report.SourceLinks ?? Enumerable.Empty<SourceLink>())
+                if (report.SourceLink is SourceLink sourceLink)
                 {
-                    if (sourceLink.SequencePoint is SequencePoint sequencePoint)
+                    if (report.SourceLink?.SequencePoint is SequencePoint sequencePoint)
                     {
                         // PDB is available, we can provide better source mapping information
                         messageBuilder.AppendLine();
@@ -65,8 +65,6 @@ namespace SharpDetect.Console.Services
                         argumentsBuilder.Add(sequencePoint.StartLine);
                         messageBuilder.Append($"{{{argumentsBuilder.Count}}} occurred ");
                         argumentsBuilder.Add(sequencePoint.StartColumn);
-                        messageBuilder.Append($"{{{argumentsBuilder.Count}}}");
-                        argumentsBuilder.Add(sourceLink.Type);
                     }
                     else
                     {
@@ -76,9 +74,13 @@ namespace SharpDetect.Console.Services
                         argumentsBuilder.Add(sourceLink.Method);
                         messageBuilder.Append($" on offset {{{argumentsBuilder.Count}}} occurred ");
                         argumentsBuilder.Add($"IL_{sourceLink.Instruction.Offset:X4}");
-                        messageBuilder.Append($"{{{argumentsBuilder.Count}}}");
-                        argumentsBuilder.Add(sourceLink.Type);
                     }
+
+                    // Common info about threads
+                    messageBuilder.Append($"{{{argumentsBuilder.Count}}}");
+                    argumentsBuilder.Add(sourceLink.Type);
+                    messageBuilder.Append($" executed by thread {{{argumentsBuilder.Count}}}");
+                    argumentsBuilder.Add(report.Thread);
                 }
             }
 

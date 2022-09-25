@@ -146,5 +146,10 @@ namespace SharpDetect.Core.Runtime.Threads
                 GC.SuppressFinalize(this);
             }
         }
+
+        public override string ToString()
+        {
+            return DisplayName;
+        }
     }
 }
