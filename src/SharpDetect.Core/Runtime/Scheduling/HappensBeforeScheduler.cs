@@ -193,6 +193,30 @@ namespace SharpDetect.Core.Runtime.Scheduling
             }));
         }
 
+        public void Schedule_RuntimeResumeStarted(RawEventInfo info)
+        {
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            {
+                // Update ShadowCLR state
+                ShadowCLR.Process_RuntimeResumeStarted();
+
+                // Notify listeners
+                RuntimeEventsHub.RaiseRuntimeResumeStarted(ShadowCLR, info);
+            }));
+        }
+
+        public void Schedule_RuntimeResumeFinished(RawEventInfo info)
+        {
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            {
+                // Update ShadowCLR state
+                ShadowCLR.Process_RuntimeResumeFinished();
+
+                // Notify listeners
+                RuntimeEventsHub.RaiseRuntimeResumeFinished(ShadowCLR, info);
+            }));
+        }
+
         public void Schedule_RuntimeThreadSuspended(UIntPtr threadId, RawEventInfo info)
         {
             var thread = ThreadLookup[threadId];

@@ -47,11 +47,13 @@ message NotifyMessage
 		Notify_GarbageCollectionFinished		GarbageCollectionFinished = 22;
 		Notify_RuntimeSuspendStarted			RuntimeSuspendStarted = 23;
 		Notify_RuntimeSuspendFinished			RuntimeSuspendFinished = 24;
-		Notify_RuntimeThreadSuspended			RuntimeThreadSuspended = 25;
-		Notify_RuntimeThreadResumed				RuntimeThreadResumed = 26;
+		Notify_RuntimeResumeStarted				RuntimeResumeStarted = 25;
+		Notify_RuntimeResumeFinished			RuntimeResumeFinished = 26;
+		Notify_RuntimeThreadSuspended			RuntimeThreadSuspended = 27;
+		Notify_RuntimeThreadResumed				RuntimeThreadResumed = 28;
 
-		Notify_SurvivingReferences				SurvivingReferences = 27;
-		Notify_MovedReferences					MovedReferences = 28;
+		Notify_SurvivingReferences				SurvivingReferences = 29;
+		Notify_MovedReferences					MovedReferences = 30;
 	}
 }
 
@@ -217,6 +219,16 @@ message Notify_RuntimeSuspendStarted
 }
 
 message Notify_RuntimeSuspendFinished
+{
+	// No additional parameters
+}
+
+message Notify_RuntimeResumeStarted
+{
+	// No additional parameters
+}
+
+message Notify_RuntimeResumeFinished
 {
 	// No additional parameters
 }

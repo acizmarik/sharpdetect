@@ -23,6 +23,8 @@ namespace SharpDetect.Core.Runtime
         public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
         public event Action<(IShadowCLR Runtime, COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
         public event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeSuspendFinished;
+        public event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeResumeStarted;
+        public event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeResumeFinished;
         public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadSuspended;
         public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadResumed;
         public event Action<(IShadowCLR Runtime, bool[] Generations, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionStarted;
@@ -91,6 +93,12 @@ namespace SharpDetect.Core.Runtime
 
         internal void RaiseRuntimeSuspendFinished(IShadowCLR runtime, RawEventInfo info)
             => RuntimeSuspendFinished?.Invoke((runtime, info));
+
+        internal void RaiseRuntimeResumeStarted(IShadowCLR runtime, RawEventInfo info)
+            => RuntimeResumeStarted?.Invoke((runtime, info));
+
+        internal void RaiseRuntimeResumeFinished(IShadowCLR runtime, RawEventInfo info)
+            => RuntimeResumeFinished?.Invoke((runtime, info));
 
         internal void RaiseRuntimeThreadSuspended(IShadowCLR runtime, UIntPtr threadId, RawEventInfo info)
             => RuntimeThreadSuspended?.Invoke((runtime, threadId, info));

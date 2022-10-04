@@ -300,6 +300,10 @@ HRESULT STDMETHODCALLTYPE CorProfiler::GarbageCollectionFinished()
 	auto request = requestFuture.get();
 	LOG_ERROR_IF(request.Payload_case() != RequestMessage::PayloadCase::kContinueExecution, pLogger, "Unexpected request. Continuing execution...");
 
+	// Acknowledge that we are continuing execution
+	auto response = MessageFactory::RequestProcessed(pInstrumentationContext->GetCurrentThreadId(), request.requestid(), true);
+	pMessagingClient->SendResponse(std::move(response), request.requestid());
+
 	return S_OK;
 }
 
@@ -356,6 +360,22 @@ HRESULT STDMETHODCALLTYPE CorProfiler::RuntimeSuspendStarted(COR_PRF_SUSPEND_REA
 HRESULT STDMETHODCALLTYPE CorProfiler::RuntimeSuspendFinished()
 {
 	auto message = MessageFactory::RuntimeSuspendFinished(pInstrumentationContext->GetCurrentThreadId());
+	pMessagingClient->SendNotification(std::move(message));
+
+	return S_OK;
+}
+
+HRESULT __stdcall CorProfiler::RuntimeResumeStarted()
+{
+	auto message = MessageFactory::RuntimeResumeStarted(pInstrumentationContext->GetCurrentThreadId());
+	pMessagingClient->SendNotification(std::move(message));
+
+	return S_OK;
+}
+
+HRESULT __stdcall CorProfiler::RuntimeResumeFinished()
+{
+	auto message = MessageFactory::RuntimeResumeFinished(pInstrumentationContext->GetCurrentThreadId());
 	pMessagingClient->SendNotification(std::move(message));
 
 	return S_OK;

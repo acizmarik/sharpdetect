@@ -49,6 +49,8 @@ public:
 	static SharpDetect::Common::Messages::NotifyMessage GarbageCollectionFinished(ThreadID thread, BYTE* bounds, ULONG cbBounds);
 	static SharpDetect::Common::Messages::NotifyMessage RuntimeSuspendStarted(ThreadID thread, COR_PRF_SUSPEND_REASON reason);
 	static SharpDetect::Common::Messages::NotifyMessage RuntimeSuspendFinished(ThreadID thread);
+	static SharpDetect::Common::Messages::NotifyMessage RuntimeResumeStarted(ThreadID thread);
+	static SharpDetect::Common::Messages::NotifyMessage RuntimeResumeFinished(ThreadID thread);
 	static SharpDetect::Common::Messages::NotifyMessage RuntimeThreadSuspended(ThreadID thread, ThreadID suspendedThread);
 	static SharpDetect::Common::Messages::NotifyMessage RuntimeThreadResumed(ThreadID thread, ThreadID resumedThread);
 	static SharpDetect::Common::Messages::NotifyMessage SurvivingReferences(ThreadID thread, BYTE* ranges, ULONG cbRanges, BYTE* lengths, ULONG cbLengths);

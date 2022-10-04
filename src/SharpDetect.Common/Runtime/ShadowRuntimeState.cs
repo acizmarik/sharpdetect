@@ -4,7 +4,9 @@
     {
         Initiated,
         Executing,
+        Suspending,
         Suspended,
+        Resuming,
         Terminated
     }
 }

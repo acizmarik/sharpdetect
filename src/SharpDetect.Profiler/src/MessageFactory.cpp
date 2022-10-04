@@ -306,6 +306,26 @@ SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeSuspendFinis
 	return message;
 }
 
+SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeResumeStarted(ThreadID thread)
+{
+	auto message = NotifyMessage();
+	auto runtimeResumeStarted = new Notify_RuntimeResumeStarted();
+	message.set_allocated_runtimeresumestarted(runtimeResumeStarted);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
+	return message;
+}
+
+SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeResumeFinished(ThreadID thread)
+{
+	auto message = NotifyMessage();
+	auto runtimeResumeFinished = new Notify_RuntimeResumeFinished();
+	message.set_allocated_runtimeresumefinished(runtimeResumeFinished);
+	message.set_threadid(thread);
+	message.set_processid(PAL::GetProcessId());
+	return message;
+}
+
 SharpDetect::Common::Messages::NotifyMessage MessageFactory::RuntimeThreadSuspended(ThreadID thread, ThreadID suspendedThread)
 {
 	auto message = NotifyMessage();

@@ -65,6 +65,8 @@ public:
 	HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason) override;
 	HRESULT STDMETHODCALLTYPE RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON suspendReason) override;
 	HRESULT STDMETHODCALLTYPE RuntimeSuspendFinished() override;
+	HRESULT STDMETHODCALLTYPE RuntimeResumeStarted() override;
+	HRESULT STDMETHODCALLTYPE RuntimeResumeFinished() override;
 	HRESULT STDMETHODCALLTYPE RuntimeThreadSuspended(ThreadID threadId) override;
 	HRESULT STDMETHODCALLTYPE RuntimeThreadResumed(ThreadID threadId) override;
 	HRESULT STDMETHODCALLTYPE MovedReferences2(ULONG cMovedObjectIDRanges, ObjectID oldObjectIDRangeStart[], ObjectID newObjectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
