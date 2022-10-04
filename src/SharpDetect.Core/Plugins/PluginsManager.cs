@@ -124,7 +124,7 @@ namespace SharpDetect.Core.Plugins
         {
             var index = 0;
             plugins = new IPlugin[pluginDescriptions.Length];
-            foreach (var pluginDescription in pluginDescriptions)
+            foreach (var pluginDescription in pluginDescriptions.Select(p => p.Trim()))
             {
                 // Ensure plugin is available
                 if (!loadedPluginInfos.TryGetValue(pluginDescription, out var pluginInfo))
