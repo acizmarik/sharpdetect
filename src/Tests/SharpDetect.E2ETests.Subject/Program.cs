@@ -361,6 +361,11 @@ namespace SharpDetect.E2ETests.Subject
             Task.WaitAll(task1, task2);
         }
 
+        public static void Test_GarbageCollection_Simple()
+        {
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+        }
+
         public static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
@@ -541,6 +546,14 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_ValueType_Instance_DifferentInstances):
                     Test_NoDataRace_ValueType_Instance_DifferentInstances();
+                    break;
+            }
+
+            // Garbage collection events
+            switch (args[0])
+            {
+                case nameof(Test_GarbageCollection_Simple):
+                    Test_GarbageCollection_Simple();
                     break;
             }
         }
