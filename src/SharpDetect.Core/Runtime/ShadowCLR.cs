@@ -108,15 +108,35 @@ namespace SharpDetect.Core.Runtime
                 Guard.Equal<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(null, SuspensionReason);
             } // </Contracts>
 
-            State = ShadowRuntimeState.Suspended;
+            State = ShadowRuntimeState.Suspending;
             SuspensionReason = reason;
         }
 
         public void Process_RuntimeSuspendFinished()
         {
             { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
+                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspending, State);
                 Guard.NotEqual<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(null, SuspensionReason);
+            } // </Contracts>
+
+            State = ShadowRuntimeState.Suspended;
+        }
+
+        public void Process_RuntimeResumeStarted()
+        {
+            { // <Contracts>
+                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
+                Guard.NotNull<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(SuspensionReason);
+            } // </Contracts>
+
+            State = ShadowRuntimeState.Resuming;
+        }
+
+        public void Process_RuntimeResumeFinished()
+        {
+            { // <Contracts>
+                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Resuming, State);
+                Guard.NotNull<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(SuspensionReason);
             } // </Contracts>
 
             State = ShadowRuntimeState.Executing;
@@ -126,7 +146,7 @@ namespace SharpDetect.Core.Runtime
         public void Process_RuntimeThreadSuspended(ShadowThread thread)
         {
             { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
+                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspending, State);
                 Guard.Equal<ShadowThreadState, ShadowRuntimeStateException>(ShadowThreadState.Running, thread.State);
             } // </Contracts>
             thread.EnterState(ShadowThreadState.Suspended);

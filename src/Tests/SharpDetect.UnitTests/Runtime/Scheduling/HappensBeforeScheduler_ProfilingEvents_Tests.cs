@@ -330,7 +330,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Assert
             Assert.Single(shadowCLR.Threads);
             Assert.True(shadowCLR.Threads.TryGetValue(threadId1, out var shadowThread1) && mainThread == shadowThread1);
-            Assert.Equal(ShadowRuntimeState.Suspended, shadowCLR.State);
+            Assert.Equal(ShadowRuntimeState.Suspending, shadowCLR.State);
             Assert.True(shadowCLR.SuspensionReason.HasValue);
             Assert.Equal(reason, shadowCLR.SuspensionReason!.Value);
             Assert.True(profilerInitializedRaised);
@@ -373,11 +373,109 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Assert
             Assert.Single(shadowCLR.Threads);
             Assert.True(shadowCLR.Threads.TryGetValue(threadId1, out var shadowThread1) && mainThread == shadowThread1);
+            Assert.Equal(ShadowRuntimeState.Suspended, shadowCLR.State);
+            Assert.True(shadowCLR.SuspensionReason.HasValue);
+            Assert.True(profilerInitializedRaised);
+            Assert.True(runtimeSuspendStartedRaised);
+            Assert.True(runtimeSuspendFinishedRaised);
+        }
+
+        [Fact]
+        public async Task Scheduller_ProfilingEvent_RuntimeResumeStartedAsync()
+        {
+            // Prepare
+            const int pid = 123;
+            UIntPtr threadId1 = new(456);
+            UIntPtr threadId2 = new(789);
+            ShadowThread mainThread;
+            var reason = COR_PRF_SUSPEND_REASON.GC;
+            var moduleBindContext = CreateModuleBindContext();
+            var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
+            var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
+            var eventsHub = new RuntimeEventsHub();
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
+            var executionFinished = new TaskCompletionSource();
+
+            // Act
+            var profilerInitializedRaised = false;
+            var runtimeSuspendStartedRaised = false;
+            var runtimeSuspendFinishedRaised = false;
+            var runtimeResumeStartedRaised = false;
+            eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
+            eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
+            eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
+            eventsHub.RuntimeResumeStarted += _ => runtimeResumeStartedRaised = true;
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
+            mainThread = scheduler.ShadowThreads.First();
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId1));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(2, pid, threadId1));
+            scheduler.Schedule_RuntimeResumeStarted(new RawEventInfo(3, pid, threadId1));
+            mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
+            await executionFinished.Task;
+
+            // Assert
+            Assert.Single(shadowCLR.Threads);
+            Assert.True(shadowCLR.Threads.TryGetValue(threadId1, out var shadowThread1) && mainThread == shadowThread1);
+            Assert.Equal(ShadowRuntimeState.Resuming, shadowCLR.State);
+            Assert.True(shadowCLR.SuspensionReason.HasValue);
+            Assert.True(profilerInitializedRaised);
+            Assert.True(runtimeSuspendStartedRaised);
+            Assert.True(runtimeSuspendFinishedRaised);
+            Assert.True(runtimeResumeStartedRaised);
+        }
+
+        [Fact]
+        public async Task Scheduller_ProfilingEvent_RuntimeResumeFinishedAsync()
+        {
+            // Prepare
+            const int pid = 123;
+            UIntPtr threadId1 = new(456);
+            UIntPtr threadId2 = new(789);
+            ShadowThread mainThread;
+            var reason = COR_PRF_SUSPEND_REASON.GC;
+            var moduleBindContext = CreateModuleBindContext();
+            var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
+            var profilingClient = Moq.Mock.Of<IProfilingClient>();
+            var metadataContext = CreateMetadataContext(moduleBindContext, profilingMessageHub);
+            var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
+            var eventsHub = new RuntimeEventsHub();
+            var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
+            var executionFinished = new TaskCompletionSource();
+
+            // Act
+            var profilerInitializedRaised = false;
+            var runtimeSuspendStartedRaised = false;
+            var runtimeSuspendFinishedRaised = false;
+            var runtimeResumeStartedRaised = false;
+            var runtimeResumeFinishedRaised = false;
+            eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
+            eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
+            eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
+            eventsHub.RuntimeResumeStarted += _ => runtimeResumeStartedRaised = true;
+            eventsHub.RuntimeResumeFinished += _ => runtimeResumeFinishedRaised = true;
+            scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
+            mainThread = scheduler.ShadowThreads.First();
+            scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId1));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(2, pid, threadId1));
+            scheduler.Schedule_RuntimeResumeStarted(new RawEventInfo(3, pid, threadId1));
+            scheduler.Schedule_RuntimeResumeFinished(new RawEventInfo(4, pid, threadId1));
+            mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
+            await executionFinished.Task;
+
+            // Assert
+            Assert.Single(shadowCLR.Threads);
+            Assert.True(shadowCLR.Threads.TryGetValue(threadId1, out var shadowThread1) && mainThread == shadowThread1);
             Assert.Equal(ShadowRuntimeState.Executing, shadowCLR.State);
             Assert.False(shadowCLR.SuspensionReason.HasValue);
             Assert.True(profilerInitializedRaised);
             Assert.True(runtimeSuspendStartedRaised);
             Assert.True(runtimeSuspendFinishedRaised);
+            Assert.True(runtimeResumeStartedRaised);
+            Assert.True(runtimeResumeFinishedRaised);
         }
 
         [Fact]
@@ -419,7 +517,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Assert
             Assert.Equal(2, shadowCLR.Threads.Count);
             Assert.True(shadowCLR.Threads.TryGetValue(threadId1, out var shadowThread1) && mainThread == shadowThread1);
-            Assert.Equal(ShadowRuntimeState.Suspended, shadowCLR.State);
+            Assert.Equal(ShadowRuntimeState.Suspending, shadowCLR.State);
             Assert.Equal(ShadowThreadState.Suspended, shadowCLR.Threads[threadId2].State);
             Assert.True(shadowCLR.SuspensionReason.HasValue);
             Assert.Equal(reason, shadowCLR.SuspensionReason);
@@ -453,17 +551,22 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var threadCreatedRaised = false;
             var runtimeSuspendStartedRaised = false;
             var runtimeThreadSuspendedRaised = false;
+            var runtimeSuspendFinishedRaised = false;
+            var runtimeThreadResumedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.ThreadCreated += _ => threadCreatedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
+            eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
+            eventsHub.RuntimeThreadResumed += _ => runtimeThreadResumedRaised = true;
             scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId1));
             scheduler.Schedule_ThreadCreated(threadId2, new RawEventInfo(1, pid, threadId1));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(2, pid, threadId1));
             scheduler.Schedule_RuntimeThreadSuspended(threadId2, new RawEventInfo(3, pid, threadId1));
-            scheduler.Schedule_RuntimeThreadResumed(threadId2, new RawEventInfo(4, pid, threadId1));
-            mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(4, pid, threadId1));
+            scheduler.Schedule_RuntimeThreadResumed(threadId2, new RawEventInfo(5, pid, threadId1));
+            mainThread.Execute(6, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
             // Assert
@@ -477,6 +580,8 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(threadCreatedRaised);
             Assert.True(runtimeSuspendStartedRaised);
             Assert.True(runtimeThreadSuspendedRaised);
+            Assert.True(runtimeSuspendFinishedRaised);
+            Assert.True(runtimeThreadResumedRaised);
         }
 
         [Fact]
@@ -512,17 +617,20 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var profilerInitializedRaised = false;
             var runtimeSuspendStartedRaised = false;
             var runtimeThreadSuspendedRaised = false;
+            var runtimeSuspendFinishedRaised = false;
             var garbageCollectionStartedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
+            eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
             scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
-            mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(4, pid, threadId));
+            mainThread.Execute(6, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
             // Assert
@@ -534,6 +642,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(profilerInitializedRaised);
             Assert.True(runtimeSuspendStartedRaised);
             Assert.True(runtimeThreadSuspendedRaised);
+            Assert.True(runtimeSuspendFinishedRaised);
             Assert.True(garbageCollectionStartedRaised);
         }
 
@@ -570,10 +679,12 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var profilerInitializedRaised = false;
             var runtimeSuspendStartedRaised = false;
             var runtimeThreadSuspendedRaised = false;
+            var runtimeSuspendFinishedRaised = false;
             var garbageCollectionStartedRaised = false;
             var garbageCollectionFinishedRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
+            eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
             eventsHub.GarbageCollectionFinished += _ => garbageCollectionFinishedRaised = true;
@@ -581,9 +692,10 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
-            scheduler.Schedule_GarbageCollectionFinished(bounds, new RawEventInfo(4, pid, threadId));
-            mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(4, pid, threadId));
+            scheduler.Schedule_GarbageCollectionFinished(bounds, new RawEventInfo(5, pid, threadId));
+            mainThread.Execute(6, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
             // Assert
@@ -595,6 +707,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(profilerInitializedRaised);
             Assert.True(runtimeSuspendStartedRaised);
             Assert.True(runtimeThreadSuspendedRaised);
+            Assert.True(runtimeSuspendFinishedRaised);
             Assert.True(garbageCollectionStartedRaised);
             Assert.True(garbageCollectionFinishedRaised);
         }
@@ -634,20 +747,23 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var profilerInitializedRaised = false;
             var runtimeSuspendStartedRaised = false;
             var runtimeThreadSuspendedRaised = false;
+            var runtimeSuspendFinishedRaised = false;
             var garbageCollectionStartedRaised = false;
             var survivingReferencesRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
+            eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
             eventsHub.SurvivingReferences += _ => survivingReferencesRaised = true;
             scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
-            scheduler.Schedule_SurvivingReferences(survivingStarts, survivingLengths, new RawEventInfo(4, pid, threadId));
-            mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(4, pid, threadId));
+            scheduler.Schedule_SurvivingReferences(survivingStarts, survivingLengths, new RawEventInfo(5, pid, threadId));
+            mainThread.Execute(6, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
             // Assert
@@ -659,6 +775,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(profilerInitializedRaised);
             Assert.True(runtimeSuspendStartedRaised);
             Assert.True(runtimeThreadSuspendedRaised);
+            Assert.True(runtimeSuspendFinishedRaised);
             Assert.True(garbageCollectionStartedRaised);
             Assert.True(survivingReferencesRaised);
         }
@@ -699,20 +816,23 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var profilerInitializedRaised = false;
             var runtimeSuspendStartedRaised = false;
             var runtimeThreadSuspendedRaised = false;
+            var runtimeSuspendFinishedRaised = false;
             var garbageCollectionStartedRaised = false;
             var movedReferencesRaised = false;
             eventsHub.ProfilerInitialized += _ => profilerInitializedRaised = true;
             eventsHub.RuntimeSuspendStarted += _ => runtimeSuspendStartedRaised = true;
             eventsHub.RuntimeThreadSuspended += _ => runtimeThreadSuspendedRaised = true;
+            eventsHub.RuntimeSuspendFinished += _ => runtimeSuspendFinishedRaised = true;
             eventsHub.GarbageCollectionStarted += _ => garbageCollectionStartedRaised = true;
             eventsHub.MovedReferences += _ => movedReferencesRaised = true;
             scheduler.Schedule_ProfilerInitialized(default(Version), new RawEventInfo(0, pid, threadId));
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_RuntimeSuspendStarted(reason, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_RuntimeThreadSuspended(threadId, new RawEventInfo(2, pid, threadId));
-            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(3, pid, threadId));
-            scheduler.Schedule_MovedReferences(oldStarts, newStarts, lengths, new RawEventInfo(4, pid, threadId));
-            mainThread.Execute(5, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
+            scheduler.Schedule_RuntimeSuspendFinished(new RawEventInfo(3, pid, threadId));
+            scheduler.Schedule_GarbageCollectionStarted(generations, bounds, new RawEventInfo(4, pid, threadId));
+            scheduler.Schedule_MovedReferences(oldStarts, newStarts, lengths, new RawEventInfo(5, pid, threadId));
+            mainThread.Execute(6, JobFlags.Concurrent, new Task(() => executionFinished.SetResult()));
             await executionFinished.Task;
 
             // Assert
@@ -724,6 +844,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             Assert.True(profilerInitializedRaised);
             Assert.True(runtimeSuspendStartedRaised);
             Assert.True(runtimeThreadSuspendedRaised);
+            Assert.True(runtimeSuspendFinishedRaised);
             Assert.True(garbageCollectionStartedRaised);
             Assert.True(movedReferencesRaised);
         }

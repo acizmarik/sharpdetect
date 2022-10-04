@@ -18,6 +18,8 @@ namespace SharpDetect.Common.Services
 
         event Action<(COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)> RuntimeSuspendStarted;
         event Action<RawEventInfo> RuntimeSuspendFinished;
+        event Action<RawEventInfo> RuntimeResumeStarted;
+        event Action<RawEventInfo> RuntimeResumeFinished;
         event Action<(UIntPtr ThreadId, RawEventInfo Info)> RuntimeThreadSuspended;
         event Action<(UIntPtr ThreadId, RawEventInfo Info)> RuntimeThreadResumed;
 

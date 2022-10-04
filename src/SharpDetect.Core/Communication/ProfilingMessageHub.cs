@@ -19,6 +19,8 @@ namespace SharpDetect.Core.Communication
         public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
         public event Action<(COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
         public event Action<RawEventInfo>? RuntimeSuspendFinished;
+        public event Action<RawEventInfo>? RuntimeResumeStarted;
+        public event Action<RawEventInfo>? RuntimeResumeFinished;
         public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadSuspended;
         public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadResumed;
         public event Action<(bool[] GenerationsCollected, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionStarted;
@@ -64,6 +66,8 @@ namespace SharpDetect.Core.Communication
                 case NotifyMessage.PayloadOneofCase.ThreadDestroyed: DispatchThreadDestroyed(message); break;
                 case NotifyMessage.PayloadOneofCase.RuntimeSuspendStarted: DispatchRuntimeSuspendStarted(message); break;
                 case NotifyMessage.PayloadOneofCase.RuntimeSuspendFinished: DispatchRuntimeSuspendFinished(message); break;
+                case NotifyMessage.PayloadOneofCase.RuntimeResumeStarted: DispatchRuntimeResumeStarted(message); break;
+                case NotifyMessage.PayloadOneofCase.RuntimeResumeFinished: DispatchRuntimeResumeFinished(message); break;
                 case NotifyMessage.PayloadOneofCase.RuntimeThreadSuspended: DispatchRuntimeThreadSuspended(message); break;
                 case NotifyMessage.PayloadOneofCase.RuntimeThreadResumed: DispatchRuntimeThreadResumed(message); break;
                 case NotifyMessage.PayloadOneofCase.GarbageCollectionStarted: DispatchGarbageCollectionStarted(message); break;
@@ -147,6 +151,18 @@ namespace SharpDetect.Core.Communication
         {
             var info = CreateEventInfo(message);
             RuntimeSuspendFinished?.Invoke(info);
+        }
+
+        private void DispatchRuntimeResumeStarted(NotifyMessage message)
+        {
+            var info = CreateEventInfo(message);
+            RuntimeResumeStarted?.Invoke(info);
+        }
+
+        private void DispatchRuntimeResumeFinished(NotifyMessage message)
+        {
+            var info = CreateEventInfo(message);
+            RuntimeResumeFinished?.Invoke(info);
         }
 
         private void DispatchRuntimeThreadSuspended(NotifyMessage message)

@@ -64,6 +64,8 @@ namespace SharpDetect.Core.Runtime
             profilingMessageHub.ThreadDestroyed += ProfilingMessageHub_ThreadDestroyed;
             profilingMessageHub.RuntimeSuspendStarted += ProfilingMessageHub_RuntimeSuspendStarted;
             profilingMessageHub.RuntimeSuspendFinished += ProfilingMessageHub_RuntimeSuspendFinished;
+            profilingMessageHub.RuntimeResumeStarted += ProfilingMessageHub_RuntimeResumeStarted;
+            profilingMessageHub.RuntimeResumeFinished += ProfilingMessageHub_RuntimeResumeFinished;
             profilingMessageHub.RuntimeThreadSuspended += ProfilingMessageHub_RuntimeThreadSuspended;
             profilingMessageHub.RuntimeThreadResumed += ProfilingMessageHub_RuntimeThreadResumed;
             profilingMessageHub.GarbageCollectionStarted += ProfilingMessageHub_GarbageCollectionStarted;
@@ -227,6 +229,18 @@ namespace SharpDetect.Core.Runtime
         {
             var scheduler = GetScheduler(info.ProcessId);
             scheduler.Schedule_RuntimeSuspendFinished(info);
+        }
+
+        private void ProfilingMessageHub_RuntimeResumeStarted(RawEventInfo info)
+        {
+            var scheduler = GetScheduler(info.ProcessId);
+            scheduler.Schedule_RuntimeResumeStarted(info);
+        }
+
+        private void ProfilingMessageHub_RuntimeResumeFinished(RawEventInfo info)
+        {
+            var scheduler = GetScheduler(info.ProcessId);
+            scheduler.Schedule_RuntimeResumeFinished(info);
         }
 
         private void ProfilingMessageHub_RuntimeThreadSuspended((UIntPtr ThreadId, RawEventInfo Info) args)

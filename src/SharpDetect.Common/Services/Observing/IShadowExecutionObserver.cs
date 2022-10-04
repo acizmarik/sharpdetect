@@ -19,6 +19,8 @@ namespace SharpDetect.Common.Services
         event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
         event Action<(IShadowCLR Runtime, COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
         event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeSuspendFinished;
+        event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeResumeStarted;
+        event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeResumeFinished;
         event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadSuspended;
         event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadResumed;
         event Action<(IShadowCLR Runtime, bool[] Generations, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionStarted;
