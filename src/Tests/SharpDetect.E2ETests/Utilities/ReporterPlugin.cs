@@ -61,5 +61,7 @@ namespace SharpDetect.E2ETests.Utilities
         }
         public override void ArrayElementRead(ulong srcMappingId, IShadowObject instance, int index, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(ArrayElementRead), string.Empty, new object[] { instance, index }, info.Runtime.ProcessId, info.Thread, default));
         public override void ArrayElementWritten(ulong srcMappingId, IShadowObject instance, int index, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(ArrayElementWritten), string.Empty, new object[] { instance, index }, info.Runtime.ProcessId, info.Thread, default));
+        public override void GarbageCollectionStarted(EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(GarbageCollectionStarted), string.Empty, null, info.Runtime.ProcessId, info.Thread, default));
+        public override void GarbageCollectionFinished(EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(GarbageCollectionFinished), string.Empty, null, info.Runtime.ProcessId, info.Thread, default));
     }
 }
