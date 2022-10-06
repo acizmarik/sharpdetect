@@ -1,5 +1,4 @@
 ﻿using dnlib.DotNet;
-using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Common;
 using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins;
@@ -16,22 +15,18 @@ namespace SharpDetect.E2ETests.Utilities
     [PluginExport("Reporter", "1.0.0")]
     public class ReporterPlugin : NopPlugin
     {
-        private IMetadataContext metadataContext;
-        private IReportingService reportingService;
-        private IEventDescriptorRegistry eventRegistry;
+        private readonly IMetadataContext metadataContext;
+        private readonly IReportingService reportingService;
+        private readonly IEventDescriptorRegistry eventRegistry;
 
-        public ReporterPlugin()
+        public ReporterPlugin(
+            IMetadataContext metadataContext,
+            IReportingService reportingService,
+            IEventDescriptorRegistry eventRegistry)
         {
-            metadataContext = null!;
-            reportingService = null!;
-            eventRegistry = null!;
-        }
-
-        public override void Initialize(IServiceProvider serviceProvider)
-        {
-            metadataContext = serviceProvider.GetRequiredService<IMetadataContext>();
-            reportingService = serviceProvider.GetRequiredService<IReportingService>();
-            eventRegistry = serviceProvider.GetRequiredService<IEventDescriptorRegistry>();
+            this.metadataContext = metadataContext;
+            this.reportingService = reportingService;
+            this.eventRegistry = eventRegistry;
         }
 
         public override void AnalysisStarted(EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(AnalysisStarted), string.Empty, null, info.Runtime.ProcessId, info.Thread, default));

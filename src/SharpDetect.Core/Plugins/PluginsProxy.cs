@@ -1,10 +1,14 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services;
+using SharpDetect.Common.Services.Instrumentation;
+using SharpDetect.Common.Services.Metadata;
+using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Core.Runtime;
 using System.Runtime.CompilerServices;
 
@@ -12,10 +16,12 @@ namespace SharpDetect.Core.Plugins
 {
     internal class PluginsProxy : IDisposable
     {
+        private readonly IConfiguration configuration;
         private readonly IShadowExecutionObserver runtimeEventsHub;
+        private readonly IServiceProvider serviceProvider;
         private readonly IPluginsManager pluginsManager;
-        private readonly IPlugin[] plugins;
         private readonly ILogger<PluginsProxy> logger;
+        private IPlugin[] plugins;
         private bool isDisposed;
 
         public PluginsProxy(
@@ -25,16 +31,20 @@ namespace SharpDetect.Core.Plugins
             IShadowExecutionObserver runtimeEventsHub,
             ILoggerFactory loggerFactory)
         {
+            this.configuration = configuration;
+            this.serviceProvider = serviceProvider;
             this.runtimeEventsHub = runtimeEventsHub;
             this.pluginsManager = pluginsManager;
+            this.plugins = null!;
             this.logger = loggerFactory.CreateLogger<PluginsProxy>();
-            var chain = configuration[Constants.Configuration.PluginsChain].Split('|');
-
-            Guard.True<ArgumentException>(pluginsManager.TryConstructPlugins(chain, serviceProvider, out plugins));
         }
 
         public void Initialize()
         {
+            var pluginIdentifiers = configuration[Constants.Configuration.PluginsChain].Split('|');
+            var serviceProvider = CreatePluginServiceProvider();
+            Guard.True<ArgumentException>(pluginsManager.TryConstructPlugins(pluginIdentifiers, configuration, serviceProvider, out plugins));
+
             runtimeEventsHub.ProfilerInitialized += RuntimeEventsHub_ProfilerInitialized;
             runtimeEventsHub.ProfilerDestroyed += RuntimeEventsHub_ProfilerDestroyed;
             runtimeEventsHub.ModuleLoaded += RuntimeEventsHub_ModuleLoaded;
@@ -54,6 +64,16 @@ namespace SharpDetect.Core.Plugins
             runtimeEventsHub.GarbageCollectionFinished += RuntimeEventsHub_GarbageCollectionFinished;
             runtimeEventsHub.FieldAccessed += RuntimeEventsHub_FieldAccessed;
             runtimeEventsHub.ArrayElementAccessed += RuntimeEventsHub_ArrayElementAccessed;
+        }
+
+        private IServiceProvider CreatePluginServiceProvider()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton(serviceProvider.GetRequiredService<ILoggerFactory>());
+            serviceCollection.AddSingleton(serviceProvider.GetRequiredService<IMetadataContext>());
+            serviceCollection.AddSingleton(serviceProvider.GetRequiredService<IReportingService>());
+            serviceCollection.AddSingleton(serviceProvider.GetRequiredService<IEventDescriptorRegistry>());
+            return serviceCollection.BuildServiceProvider();
         }
 
         private void RuntimeEventsHub_ProfilerInitialized((IShadowCLR Runtime, Common.RawEventInfo Info) obj) => Execute(plugin => plugin.AnalysisStarted(CreatePluginEventInfo(obj.Runtime, obj.Info)));

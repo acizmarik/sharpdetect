@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
@@ -18,7 +19,7 @@ namespace SharpDetect.Core.Plugins
         private readonly Dictionary<string, Assembly> loadedAssemblies;
         private readonly Dictionary<string, List<PluginInfo>> loadedPluginInfos;
         private readonly Dictionary<Type, PluginInfo> pluginInfosLookup;
-        private readonly Dictionary<PluginInfo, Func<IPlugin>> pluginActivators;
+        private readonly Dictionary<PluginInfo, Func<IServiceProvider, IConfiguration, IPlugin>> pluginActivators;
         private volatile bool loaded;
 
         public PluginsManager(IConfiguration configuration, ILoggerFactory loggerFactory)
@@ -100,7 +101,18 @@ namespace SharpDetect.Core.Plugins
                                 pluginInfosLookup.Add(pluginType, pluginInfo);
 
                                 // Add activator for the plugin
-                                pluginActivators.Add(pluginInfo, () => (IPlugin)Activator.CreateInstance(pluginType)!);
+                                pluginActivators.Add(pluginInfo, (sp, conf) =>
+                                {
+                                    var plugin = (IPlugin)ActivatorUtilities.CreateInstance(sp, pluginType);
+                                    var configurationEntry = $"{Constants.Configuration.PluginSettings}:{name}";
+                                    var configurationItems = conf.GetSection(configurationEntry).AsEnumerable();
+                                    var configurationBuilder = new ConfigurationBuilder();
+                                    configurationBuilder.AddInMemoryCollection(configurationItems
+                                        .Select(s => new KeyValuePair<string, string>(s.Key, s.Value))
+                                        .Where(kv => kv.Value != null));
+                                    plugin.Configure(configurationBuilder.Build());
+                                    return plugin;
+                                });
                             }
                         }
                     }
@@ -120,7 +132,7 @@ namespace SharpDetect.Core.Plugins
             return pluginActivators.Count;
         }
 
-        public bool TryConstructPlugins(string[] pluginDescriptions, IServiceProvider provider, [NotNullWhen(true)] out IPlugin[] plugins)
+        public bool TryConstructPlugins(string[] pluginDescriptions, IConfiguration globalConfiguration, IServiceProvider provider, [NotNullWhen(true)] out IPlugin[] plugins)
         {
             var index = 0;
             plugins = new IPlugin[pluginDescriptions.Length];
@@ -137,8 +149,9 @@ namespace SharpDetect.Core.Plugins
                 bool result;
                 try
                 {
-                    var plugin = pluginActivators[pluginInfo.First()]();
-                    plugin.Initialize(provider);
+
+
+                    var plugin = pluginActivators[pluginInfo.First()](provider, globalConfiguration);
                     plugins[index++] = plugin;
                     result = true;
                 }

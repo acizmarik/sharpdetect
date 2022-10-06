@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common.Runtime;
+﻿using Microsoft.Extensions.Configuration;
+using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Runtime.Threads;
 
@@ -6,7 +7,7 @@ namespace SharpDetect.Common.Plugins
 {
     public interface IPlugin
     {
-        void Initialize(IServiceProvider serviceProvider);
+        void Configure(IConfiguration configuration);
 
         void AnalysisStarted(EventInfo info);
         void AnalysisEnded(EventInfo info);
