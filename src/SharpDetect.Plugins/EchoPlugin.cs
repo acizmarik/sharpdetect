@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Plugins;
@@ -14,23 +14,20 @@ namespace SharpDetect.Plugins
     [PluginExport("Echo", "1.0.0")]
     public class EchoPlugin : IPlugin
     {
-        private ILogger<EchoPlugin> logger;
-        private IMetadataContext metadataContext;
-        private IEventDescriptorRegistry eventRegistry;
+        private readonly ILogger<EchoPlugin> logger;
+        private readonly IMetadataContext metadataContext;
+        private readonly IEventDescriptorRegistry eventRegistry;
 
-        public EchoPlugin()
+        public EchoPlugin(IMetadataContext metadataContext, IEventDescriptorRegistry eventRegistry, ILoggerFactory loggerFactory)
         {
-            this.logger = null!;
-            this.metadataContext = null!;
-            this.eventRegistry = null!;
+            this.logger = loggerFactory.CreateLogger<EchoPlugin>();
+            this.metadataContext = metadataContext;
+            this.eventRegistry = eventRegistry;
         }
 
-        public void Initialize(IServiceProvider serviceProvider)
+        public void Configure(IConfiguration configuration)
         {
-            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-            logger = loggerFactory.CreateLogger<EchoPlugin>();
-            metadataContext = serviceProvider.GetRequiredService<IMetadataContext>();
-            eventRegistry = serviceProvider.GetRequiredService<IEventDescriptorRegistry>();
+
         }
 
         public void AnalysisEnded(EventInfo info)

@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common;
+﻿using Microsoft.Extensions.Configuration;
+using SharpDetect.Common;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
@@ -10,6 +11,7 @@ namespace SharpDetect.Plugins
     [PluginExport("Nop", "1.0.0")]
     public class NopPlugin : IPlugin
     {
+        public virtual void Configure(IConfiguration configuration) { /* Intentionally empty */ }
         public virtual void AnalysisEnded(EventInfo info) { /* Intentionally empty */ }
         public virtual void AnalysisStarted(EventInfo info) { /* Intentionally empty */ }
         public virtual void ArrayElementRead(ulong srcMappingId, IShadowObject instance, int index, EventInfo info) { /* Intentionally empty */ }
@@ -18,7 +20,6 @@ namespace SharpDetect.Plugins
         public virtual void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info) { /* Intentionally empty */ }
         public virtual void GarbageCollectionFinished(EventInfo info) { /* Intentionally empty */ }
         public virtual void GarbageCollectionStarted(EventInfo info) { /* Intentionally empty */ }
-        public virtual void Initialize(IServiceProvider serviceProvider) { /* Intentionally empty */ }
         public virtual void JITCompilationStarted(FunctionInfo method, EventInfo info) { /* Intentionally empty */ }
         public virtual void LockAcquireAttempted(IShadowObject instance, EventInfo info) { /* Intentionally empty */ }
         public virtual void LockAcquireReturned(IShadowObject instance, bool isSuccess, EventInfo info) { /* Intentionally empty */ }

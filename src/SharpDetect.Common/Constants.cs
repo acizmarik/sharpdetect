@@ -22,6 +22,7 @@
             public const string PluginsRootFolder = "PluginsPath";
             public const string PluginsChain = "PluginsChain";
             public const string ProfilerPath = "ProfilerPath";
+            public const string PluginSettings = "Plugins";
         }
 
         public static class Communication

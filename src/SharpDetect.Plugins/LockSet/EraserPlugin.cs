@@ -1,6 +1,4 @@
 ﻿using dnlib.DotNet;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
@@ -27,30 +25,24 @@ namespace SharpDetect.Plugins.LockSet
         private readonly ConcurrentDictionary<FieldDef, Variable> staticFields;
         private readonly ConcurrentDictionary<IShadowThread, HashSet<IShadowObject>> takenLocks;
 
-        private IReportingService reportingService;
-        private IMetadataContext metadataContext;
-        private IEventDescriptorRegistry eventRegistry;
-        private ILogger<EraserPlugin> logger;
+        private readonly IMetadataContext metadataContext;
+        private readonly IReportingService reportingService;
+        private readonly IEventDescriptorRegistry eventRegistry;
         private TypeDef? threadStaticAttribute;
 
-        public EraserPlugin()
+        public EraserPlugin(
+            IMetadataContext metadataContext, 
+            IReportingService reportingService, 
+            IEventDescriptorRegistry eventRegistry)
         {
+            this.metadataContext = metadataContext;
+            this.reportingService = reportingService;
+            this.eventRegistry = eventRegistry;
+
             instanceFields = new();
             arrayElements = new();
             staticFields = new();
             takenLocks = new();
-            reportingService = null!;
-            metadataContext = null!;
-            eventRegistry = null!;
-            logger = null!;
-        }
-
-        public override void Initialize(IServiceProvider serviceProvider)
-        {
-            reportingService = serviceProvider.GetRequiredService<IReportingService>();
-            metadataContext = serviceProvider.GetRequiredService<IMetadataContext>();
-            eventRegistry = serviceProvider.GetRequiredService<IEventDescriptorRegistry>();
-            logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<EraserPlugin>();
         }
 
         public override void ModuleLoaded(ModuleInfo module, string path, EventInfo info)

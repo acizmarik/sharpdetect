@@ -1,5 +1,4 @@
 ﻿using dnlib.DotNet;
-using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Common;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Runtime;
@@ -23,23 +22,26 @@ namespace SharpDetect.Plugins.VectorClock
         private volatile int lastThreadId;
         private volatile int threadsCount;
 
-        private IReportingService reportingService;
-        private IMetadataContext metadataContext;
-        private IEventDescriptorRegistry eventRegistry;
+        private readonly IReportingService reportingService;
+        private readonly IMetadataContext metadataContext;
+        private readonly IEventDescriptorRegistry eventRegistry;
         private TypeDef? threadStaticAttribute;
 
-        public FastTrackPlugin()
+        public FastTrackPlugin(
+            IMetadataContext metadataContext,
+            IReportingService reportingService,
+            IEventDescriptorRegistry eventRegistry)
         {
+            this.reportingService = reportingService;
+            this.metadataContext = metadataContext;
+            this.eventRegistry = eventRegistry;
+
             this.threads = new();
             this.locks = new();
             this.instanceFields = new();
             this.arrayElements = new();
             this.staticFields = new();
             this.ftLock = new();
-
-            this.reportingService = null!;
-            this.metadataContext = null!;
-            this.eventRegistry = null!;
         }
 
         private ThreadState GetThreadState(IShadowThread thread)
@@ -105,13 +107,6 @@ namespace SharpDetect.Plugins.VectorClock
 
             var variable = trackedInstanceFields[field];
             return variable;
-        }
-
-        public override void Initialize(IServiceProvider serviceProvider)
-        {
-            reportingService = serviceProvider.GetRequiredService<IReportingService>();
-            metadataContext = serviceProvider.GetRequiredService<IMetadataContext>();
-            eventRegistry = serviceProvider.GetRequiredService<IEventDescriptorRegistry>();
         }
 
         public override void ModuleLoaded(ModuleInfo module, string path, EventInfo info)
