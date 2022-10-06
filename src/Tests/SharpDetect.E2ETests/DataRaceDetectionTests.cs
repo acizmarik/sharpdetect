@@ -95,15 +95,15 @@ namespace SharpDetect.E2ETests
         [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Static_CorrectLocks), "Eraser")]
         [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Static_CorrectLocks), "FastTrack")]
         [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_CorrectLocks), "Eraser")]
-        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_CorrectLocks), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_CorrectLocks), "FastTrack", Skip = "Unstable")]
         [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_DifferentInstances), "Eraser")]
-        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_DifferentInstances), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ReferenceType_Instance_DifferentInstances), "FastTrack", Skip = "Unstable")]
         [InlineData(nameof(Program.Test_NoDataRace_ValueType_Static_CorrectLocks), "Eraser")]
         [InlineData(nameof(Program.Test_NoDataRace_ValueType_Static_CorrectLocks), "FastTrack")]
         [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_CorrectLocks), "Eraser")]
-        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_CorrectLocks), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_CorrectLocks), "FastTrack", Skip = "Unstable")]
         [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_DifferentInstances), "Eraser")]
-        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_DifferentInstances), "FastTrack")]
+        [InlineData(nameof(Program.Test_NoDataRace_ValueType_Instance_DifferentInstances), "FastTrack", Skip = "Unstable")]
         public async Task DataRaceDetectionTests_NoDataRace(string testName, string plugin)
         {
             // Prepare

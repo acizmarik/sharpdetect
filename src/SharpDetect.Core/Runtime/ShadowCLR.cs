@@ -145,20 +145,11 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_RuntimeThreadSuspended(ShadowThread thread)
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspending, State);
-                Guard.Equal<ShadowThreadState, ShadowRuntimeStateException>(ShadowThreadState.Running, thread.State);
-            } // </Contracts>
             thread.EnterState(ShadowThreadState.Suspended);
         }
 
         public void Process_RuntimeThreadResumed(ShadowThread thread)
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
-                Guard.Equal<ShadowThreadState, ShadowRuntimeStateException>(ShadowThreadState.Suspended, thread.State);
-            } // </Contracts>
-
             thread.EnterState(ShadowThreadState.Running);
         }
 
