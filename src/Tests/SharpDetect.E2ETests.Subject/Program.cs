@@ -366,6 +366,33 @@ namespace SharpDetect.E2ETests.Subject
             GC.Collect(2, GCCollectionMode.Forced, true, true);
         }
 
+        public static void Test_GarbageCollection_ObjectTracking()
+        {
+            // Generate garbage
+            for (var i = 0; i < 1000; i++)
+                new object();
+
+            // Create tracked object
+            var lockObj = new object();
+            lock (lockObj)
+            {
+                // Create some more garbage
+                new object();
+                new object();
+            }
+
+            // Perform compacting GC (lockObj should be moved)
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+
+            // Access the same object again
+            lock (lockObj)
+            {
+                // Create some more garbage
+                new object();
+                new object();
+            }
+        }
+
         public static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
@@ -554,6 +581,9 @@ namespace SharpDetect.E2ETests.Subject
             {
                 case nameof(Test_GarbageCollection_Simple):
                     Test_GarbageCollection_Simple();
+                    break;
+                case nameof(Test_GarbageCollection_ObjectTracking):
+                    Test_GarbageCollection_ObjectTracking();
                     break;
             }
         }

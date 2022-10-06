@@ -34,34 +34,6 @@ namespace SharpDetect.Core.Runtime.Memory
             }
             // Assign new memory segments lookup
             memorySegments = newIntervalTree;
-
-            // Find all objects that need to reassigned to a different generation
-            var toReassign = new Dictionary<GcGeneration, List<ShadowObject>>();
-            foreach (var (addr, shadowObj) in objectsLookup[GcGeneration.COR_PRF_GC_GEN_0])
-            {
-                var generation = memorySegments.Query(addr).FirstOrDefault();
-                if (generation == GcGeneration.COR_PRF_GC_GEN_0)
-                    continue;
-
-                if (!toReassign.ContainsKey(generation))
-                    toReassign.Add(generation, new List<ShadowObject>());
-
-                toReassign[generation].Add(shadowObj);
-            }
-
-            // Move all objects in wrong generation
-            foreach (var (gen, collection) in toReassign)
-            {
-                var formerGeneration = objectsLookup[GcGeneration.COR_PRF_GC_GEN_0];
-                var generation = objectsLookup[gen];
-                foreach (var shadowObj in collection)
-                {
-                    // Add to the new generation
-                    generation.TryAdd(shadowObj.ShadowPointer, shadowObj);
-                    // Remove from the old generation
-                    formerGeneration.Remove(shadowObj.ShadowPointer, out _);
-                }
-            }
         }
 
         public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, UIntPtr[] lengths)
