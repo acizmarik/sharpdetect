@@ -23,12 +23,13 @@ namespace SharpDetect.Console.Services
         public void Render(IEnumerable<ReportBase> reports)
         {
             var reportsLookup = new Dictionary<string, 
-                (ReportBase OriginalReport, StringBuilder FormatBuilder, List<object?> ArgumentsBuilder)>();
+                (ReportBase OriginalReport, StringBuilder FormatBuilder, List<object?> ArgumentsBuilder, HashSet<ReportDataEntry> VisitedEntries)>();
 
             foreach (var report in reports)
             {
                 var messageBuilder = new StringBuilder();
                 var argumentsBuilder = new List<object?>();
+                var visitedEntries = new HashSet<ReportDataEntry>();
 
                 messageBuilder.Append("[{0}]: ");
                 argumentsBuilder.Add(report.Category);
@@ -43,19 +44,21 @@ namespace SharpDetect.Console.Services
                 if (!reportsLookup.TryGetValue(identifier, out var builders))
                 {
                     // This is the first time this report was found, initialize it
-                    reportsLookup[identifier] = (report, messageBuilder, argumentsBuilder);
+                    reportsLookup[identifier] = (report, messageBuilder, argumentsBuilder, visitedEntries);
                 }
                 else
                 {
                     // This error was already pre-constructed, add more information
                     messageBuilder = builders.FormatBuilder;
                     argumentsBuilder = builders.ArgumentsBuilder;
+                    visitedEntries = builders.VisitedEntries;
                 }
 
                 if (report.Entries is ReportDataEntry[] entries)
                 {
-                    foreach (var entry in entries)
+                    foreach (var entry in entries.Where(e => !visitedEntries.Contains(e)))
                     {
+                        visitedEntries.Add(entry);
                         if (entry.SourceLink.SequencePoint is SequencePoint sequencePoint)
                         {
                             // PDB is available, we can provide better source mapping information
@@ -86,7 +89,7 @@ namespace SharpDetect.Console.Services
                 }
             }
 
-            foreach (var (report, messageBuilder, argumentsBuilder) in reportsLookup.Values)
+            foreach (var (report, messageBuilder, argumentsBuilder, _) in reportsLookup.Values)
             {
                 var messageFormat = messageBuilder.ToString();
                 var arguments = argumentsBuilder.ToArray();
