@@ -1,5 +1,6 @@
 ﻿using dnlib.DotNet;
 using SharpDetect.Common;
+using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Runtime;
@@ -7,7 +8,9 @@ using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
+using SharpDetect.Common.SourceLinks;
 using SharpDetect.Plugins.Utilities;
+using System;
 using System.Collections.Concurrent;
 
 namespace SharpDetect.Plugins.LockSet
@@ -17,13 +20,14 @@ namespace SharpDetect.Plugins.LockSet
     public class EraserPlugin : NopPlugin
     {
         public const string DiagnosticsCategory = "Data-race";
-        public const string DiagnosticsMessageFormatArrays = "Possible data-race on array element: {2}[{3}]";
-        public const string DiagnosticsMessageFormatFields = "Possible data-race on field: {2}";
+        public const string DiagnosticsMessageFormatArrays = "Possible data-race on array element: {1}[{2}]";
+        public const string DiagnosticsMessageFormatFields = "Possible data-race on field: {1}";
 
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<FieldDef, Variable>> instanceFields;
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<int, Variable>> arrayElements;
         private readonly ConcurrentDictionary<FieldDef, Variable> staticFields;
         private readonly ConcurrentDictionary<IShadowThread, HashSet<IShadowObject>> takenLocks;
+        private readonly MemoryAccessRegistry memoryAccesses;
 
         private readonly IMetadataContext metadataContext;
         private readonly IReportingService reportingService;
@@ -39,6 +43,7 @@ namespace SharpDetect.Plugins.LockSet
             this.reportingService = reportingService;
             this.eventRegistry = eventRegistry;
 
+            memoryAccesses = new();
             instanceFields = new();
             arrayElements = new();
             staticFields = new();
@@ -56,101 +61,103 @@ namespace SharpDetect.Plugins.LockSet
 
         public override void ArrayElementRead(ulong srcMappingId, IShadowObject instance, int index, EventInfo info)
         {
-            var success = TryAccessArrayElement(info.Thread, instance, index, (takenLocks) =>
+            var sourceLink = eventRegistry.Get(srcMappingId);
+            var result = TryAccessArrayElement(info.Thread, instance, index, (takenLocks) =>
             {
+                memoryAccesses.RegisterAccess(instance, index, new ReportDataEntry(
+                    info.Runtime.ProcessId, info.Thread, AnalysisEventType.ArrayElementRead, sourceLink));
                 arrayElements.TryGetValue(instance, out var tracked);
                 return tracked![index].TryUpdateRead(info.Thread, takenLocks);
             });
 
-            if (!success)
+            if (!result)
             {
-                var sourceLink = eventRegistry.Get(srcMappingId);
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
                     messageFormat: DiagnosticsMessageFormatArrays,
                     arguments: new object[] { instance, index },
                     category: DiagnosticsCategory,
-                    processId: info.Runtime.ProcessId,
-                    thread: info.Thread,
-                    sourceLink);
+                    entries: memoryAccesses.GetAllAccesses(instance, index).ToArray());
             }
         }
 
         public override void ArrayElementWritten(ulong srcMappingId, IShadowObject instance, int index, EventInfo info)
         {
-            var success = TryAccessArrayElement(info.Thread, instance, index, (takenLocks) =>
+            var sourceLink = eventRegistry.Get(srcMappingId);
+            var result = TryAccessArrayElement(info.Thread, instance, index, (takenLocks) =>
             {
+                memoryAccesses.RegisterAccess(instance, index, new ReportDataEntry(
+                    info.Runtime.ProcessId, info.Thread, AnalysisEventType.ArrayElementWrite, sourceLink));
                 arrayElements.TryGetValue(instance, out var tracked);
                 return tracked![index].TryUpdateWrite(info.Thread, takenLocks);
             });
 
-            if (!success)
+            if (!result)
             {
-                var sourceLink = eventRegistry.Get(srcMappingId);
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
                     messageFormat: DiagnosticsMessageFormatArrays,
                     arguments: new object[] { instance, index },
                     category: DiagnosticsCategory,
-                    processId: info.Runtime.ProcessId,
-                    thread: info.Thread,
-                    sourceLink);
+                    entries: memoryAccesses.GetAllAccesses(instance, index).ToArray());
             }
         }
 
         public override void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
-            var success = false;
+            var result = false;
             var sourceLink = eventRegistry.Get(srcMappingId);
             var fieldRef = (IField)sourceLink.Instruction.Operand;
             var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
             if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
 
+            memoryAccesses.RegisterAccess(fieldDef.MDToken, new ReportDataEntry(
+                info.Runtime.ProcessId, info.Thread, AnalysisEventType.FieldRead, sourceLink));
+
             if (instance == null)
-                success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateRead(info.Thread, locks));
+                result = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateRead(info.Thread, locks));
             else
-                success = TryAccessInstanceField(info.Thread, fieldDef!, instance, (locks) => instanceFields.TryGetValue(instance, out var tracked)
+                result = TryAccessInstanceField(info.Thread, fieldDef!, instance, (locks) => instanceFields.TryGetValue(instance, out var tracked)
                     && tracked[fieldDef!].TryUpdateRead(info.Thread, locks));
 
-            if (!success)
+            if (!result)
             {
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
                     messageFormat: DiagnosticsMessageFormatFields,
                     arguments: new[] { fieldDef },
                     category: DiagnosticsCategory,
-                    processId: info.Runtime.ProcessId,
-                    thread: info.Thread,
-                    sourceLink);
+                    entries: memoryAccesses.GetAllAccesses(fieldDef.MDToken).ToArray());
             }
         }
 
         public override void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
-            var success = false;
+            var result = false;
             var sourceLink = eventRegistry.Get(srcMappingId);
             var fieldRef = (IField)sourceLink.Instruction.Operand;
             var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
             if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
 
+            memoryAccesses.RegisterAccess(fieldDef.MDToken, new ReportDataEntry(
+                info.Runtime.ProcessId, info.Thread, AnalysisEventType.FieldWrite, sourceLink));
+
             if (instance == null)
-                success = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateWrite(info.Thread, locks));
+                result = TryAccessStaticField(info.Thread, fieldDef!, (locks) => staticFields[fieldDef!].TryUpdateWrite(info.Thread, locks));
             else
-                success = TryAccessInstanceField(info.Thread, fieldDef!, instance, (locks) => instanceFields.TryGetValue(instance, out var tracked)
+                result = TryAccessInstanceField(info.Thread, fieldDef!, instance, (locks) => instanceFields.TryGetValue(instance, out var tracked)
                     && tracked[fieldDef!].TryUpdateWrite(info.Thread, locks));
 
-            if (!success)
+            if (!result)
             {
                 reportingService.CreateReport(
                     plugin: nameof(EraserPlugin),
                     messageFormat: DiagnosticsMessageFormatFields,
                     arguments: new[] { fieldDef },
                     category: DiagnosticsCategory,
-                    processId: info.Runtime.ProcessId,
-                    thread: info.Thread,
-                    sourceLink);
+                    entries: memoryAccesses.GetAllAccesses(fieldDef.MDToken).ToArray());
             }
         }
 

@@ -1,5 +1,6 @@
 ﻿using dnlib.DotNet;
 using SharpDetect.Common;
+using SharpDetect.Common.Diagnostics;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Threads;
@@ -13,6 +14,7 @@ namespace SharpDetect.Plugins.VectorClock
 {
     public partial class FastTrackPlugin
     {
+        private readonly MemoryAccessRegistry memoryAccesses;
         private readonly ConcurrentDictionary<IShadowThread, ThreadState> threads;
         private readonly ConcurrentDictionary<IShadowObject, LockState> locks;
         private readonly ConcurrentDictionary<IShadowObject, ConcurrentDictionary<FieldDef, VariableState>> instanceFields;
@@ -36,6 +38,7 @@ namespace SharpDetect.Plugins.VectorClock
             this.metadataContext = metadataContext;
             this.eventRegistry = eventRegistry;
 
+            this.memoryAccesses = new();
             this.threads = new();
             this.locks = new();
             this.instanceFields = new();
@@ -127,14 +130,15 @@ namespace SharpDetect.Plugins.VectorClock
                 if (!Read(variable, thread))
                 {
                     var sourceLink = eventRegistry.Get(srcMappingId);
+                    memoryAccesses.RegisterAccess(instance, index,
+                        new ReportDataEntry(info.Runtime.ProcessId, info.Thread, AnalysisEventType.ArrayElementRead, sourceLink));
+
                     reportingService.CreateReport(
                         plugin: nameof(FastTrackPlugin),
                         messageFormat: DiagnosticsMessageFormatArrays,
                         arguments: new object[] { instance, index },
                         category: DiagnosticsCategory,
-                        processId: info.Runtime.ProcessId,
-                        thread: info.Thread,
-                        sourceLink);
+                        entries: memoryAccesses.GetAllAccesses(instance, index).ToArray());
                 }
             }
         }
@@ -148,14 +152,15 @@ namespace SharpDetect.Plugins.VectorClock
                 if (!Write(variable, thread))
                 {
                     var sourceLink = eventRegistry.Get(srcMappingId);
+                    memoryAccesses.RegisterAccess(instance, index,
+                        new ReportDataEntry(info.Runtime.ProcessId, info.Thread, AnalysisEventType.ArrayElementWrite, sourceLink));
+                    
                     reportingService.CreateReport(
                         plugin: nameof(FastTrackPlugin),
                         messageFormat: DiagnosticsMessageFormatArrays,
                         arguments: new object[] { instance, index },
                         category: DiagnosticsCategory,
-                        processId: info.Runtime.ProcessId,
-                        thread: info.Thread,
-                        sourceLink);
+                        entries: memoryAccesses.GetAllAccesses(instance, index).ToArray());
                 }
             }
         }
@@ -170,6 +175,8 @@ namespace SharpDetect.Plugins.VectorClock
 
             lock (ftLock)
             {
+                memoryAccesses.RegisterAccess(fieldDef.MDToken,
+                    new ReportDataEntry(info.Runtime.ProcessId, info.Thread, AnalysisEventType.FieldRead, sourceLink));
                 var thread = GetThreadState(info.Thread);
                 var variable = GetFieldVariableState(thread, false, fieldDef, instance);
                 if (!Read(variable, thread))
@@ -179,9 +186,7 @@ namespace SharpDetect.Plugins.VectorClock
                         messageFormat: DiagnosticsMessageFormatFields,
                         arguments: new[] { fieldDef },
                         category: DiagnosticsCategory,
-                        processId: info.Runtime.ProcessId,
-                        thread: info.Thread,
-                        sourceLink);
+                        entries: memoryAccesses.GetAllAccesses(fieldDef.MDToken).ToArray());
                 }
             }
         }
@@ -196,6 +201,8 @@ namespace SharpDetect.Plugins.VectorClock
 
             lock (ftLock)
             {
+                memoryAccesses.RegisterAccess(fieldDef.MDToken,
+                    new ReportDataEntry(info.Runtime.ProcessId, info.Thread, AnalysisEventType.FieldWrite, sourceLink));
                 var thread = GetThreadState(info.Thread);
                 var variable = GetFieldVariableState(thread, true, fieldDef, instance);
                 if (!Write(variable, thread))
@@ -205,9 +212,7 @@ namespace SharpDetect.Plugins.VectorClock
                         messageFormat: DiagnosticsMessageFormatFields,
                         arguments: new[] { fieldDef },
                         category: DiagnosticsCategory,
-                        processId: info.Runtime.ProcessId,
-                        thread: info.Thread,
-                        sourceLink);
+                        entries: memoryAccesses.GetAllAccesses(fieldDef.MDToken).ToArray());
                 }
             }
         }

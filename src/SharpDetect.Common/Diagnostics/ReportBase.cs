@@ -7,8 +7,6 @@ namespace SharpDetect.Common.Diagnostics
         string Reporter, 
         string Category, 
         string MessageFormat, 
-        object?[]? Arguments, 
-        int ProcessId, 
-        IShadowThread Thread,
-        SourceLink? SourceLink);
+        object?[]? Arguments,
+        ReportDataEntry[]? Entries);
 }
