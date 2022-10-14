@@ -30,9 +30,8 @@ namespace SharpDetect.Console.Services
                 var messageBuilder = new StringBuilder();
                 var argumentsBuilder = new List<object?>();
 
-                messageBuilder.Append("[{0}][PID={1}]: ");
+                messageBuilder.Append("[{0}]: ");
                 argumentsBuilder.Add(report.Category);
-                argumentsBuilder.Add(report.ProcessId);
                 messageBuilder.Append(report.MessageFormat.Trim());
                 foreach (var messageArgument in report.Arguments ?? Enumerable.Empty<object?>())
                     argumentsBuilder.Add(messageArgument);
@@ -53,34 +52,37 @@ namespace SharpDetect.Console.Services
                     argumentsBuilder = builders.ArgumentsBuilder;
                 }
 
-                if (report.SourceLink is SourceLink sourceLink)
+                if (report.Entries is ReportDataEntry[] entries)
                 {
-                    if (report.SourceLink?.SequencePoint is SequencePoint sequencePoint)
+                    foreach (var entry in entries)
                     {
-                        // PDB is available, we can provide better source mapping information
-                        messageBuilder.AppendLine();
-                        messageBuilder.Append($"\t at {{{argumentsBuilder.Count}}}");
-                        argumentsBuilder.Add(sequencePoint.Document.Url);
-                        messageBuilder.Append($":{{{argumentsBuilder.Count}}}:");
-                        argumentsBuilder.Add(sequencePoint.StartLine);
-                        messageBuilder.Append($"{{{argumentsBuilder.Count}}} occurred ");
-                        argumentsBuilder.Add(sequencePoint.StartColumn);
-                    }
-                    else
-                    {
-                        // PDB is not available, we should provide instruction offsets
-                        messageBuilder.AppendLine();
-                        messageBuilder.Append($"\t at {{{argumentsBuilder.Count}}}");
-                        argumentsBuilder.Add(sourceLink.Method);
-                        messageBuilder.Append($" on offset {{{argumentsBuilder.Count}}} occurred ");
-                        argumentsBuilder.Add($"IL_{sourceLink.Instruction.Offset:X4}");
-                    }
+                        if (entry.SourceLink.SequencePoint is SequencePoint sequencePoint)
+                        {
+                            // PDB is available, we can provide better source mapping information
+                            messageBuilder.AppendLine();
+                            messageBuilder.Append($"\t at {{{argumentsBuilder.Count}}}");
+                            argumentsBuilder.Add(sequencePoint.Document.Url);
+                            messageBuilder.Append($":{{{argumentsBuilder.Count}}}:");
+                            argumentsBuilder.Add(sequencePoint.StartLine);
+                            messageBuilder.Append($"{{{argumentsBuilder.Count}}} occurred ");
+                            argumentsBuilder.Add(sequencePoint.StartColumn);
+                        }
+                        else
+                        {
+                            // PDB is not available, we should provide instruction offsets
+                            messageBuilder.AppendLine();
+                            messageBuilder.Append($"\t at {{{argumentsBuilder.Count}}}");
+                            argumentsBuilder.Add(entry.SourceLink.Method);
+                            messageBuilder.Append($" on offset {{{argumentsBuilder.Count}}} occurred ");
+                            argumentsBuilder.Add($"IL_{entry.SourceLink.Instruction.Offset:X4}");
+                        }
 
-                    // Common info about threads
-                    messageBuilder.Append($"{{{argumentsBuilder.Count}}}");
-                    argumentsBuilder.Add(sourceLink.Type);
-                    messageBuilder.Append($" executed by thread {{{argumentsBuilder.Count}}}");
-                    argumentsBuilder.Add(report.Thread);
+                        // Common info about threads
+                        messageBuilder.Append($"{{{argumentsBuilder.Count}}}");
+                        argumentsBuilder.Add(entry.Type);
+                        messageBuilder.Append($" executed by thread {{{argumentsBuilder.Count}}}");
+                        argumentsBuilder.Add(entry.Thread);
+                    }
                 }
             }
 
