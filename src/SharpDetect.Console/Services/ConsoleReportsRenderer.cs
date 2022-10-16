@@ -65,10 +65,8 @@ namespace SharpDetect.Console.Services
                             messageBuilder.AppendLine();
                             messageBuilder.Append($"\t at {{{argumentsBuilder.Count}}}");
                             argumentsBuilder.Add(sequencePoint.Document.Url);
-                            messageBuilder.Append($":{{{argumentsBuilder.Count}}}:");
+                            messageBuilder.Append($":{{{argumentsBuilder.Count}}} occurred ");
                             argumentsBuilder.Add(sequencePoint.StartLine);
-                            messageBuilder.Append($"{{{argumentsBuilder.Count}}} occurred ");
-                            argumentsBuilder.Add(sequencePoint.StartColumn);
                         }
                         else
                         {
