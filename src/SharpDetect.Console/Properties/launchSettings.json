@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "SharpDetect.Console": {
-      "commandName": "Project",
-      "commandLineArgs": "analyze \"C:\\Users\\Andy\\Desktop\\test.json\" \"Echo\""
-    }
-  }
-}
