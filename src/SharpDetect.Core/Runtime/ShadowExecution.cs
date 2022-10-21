@@ -24,6 +24,7 @@ namespace SharpDetect.Core.Runtime
         private readonly IMetadataContext metadataContext;
         private readonly IMethodDescriptorRegistry methodRegistry;
         private readonly IDateTimeProvider dateTimeProvider;
+        private readonly ILoggerFactory loggerFactory;
         private readonly RuntimeEventsHub runtimeEventsHub;
         private readonly TaskCompletionSource executionFinishedCompletionSource;
         private readonly ILogger<ShadowExecution> logger;
@@ -49,6 +50,7 @@ namespace SharpDetect.Core.Runtime
             this.metadataContext = metadataContext;
             this.methodRegistry = methodRegistry;
             this.dateTimeProvider = dateTimeProvider;
+            this.loggerFactory = loggerFactory;
             this.logger = loggerFactory.CreateLogger<ShadowExecution>();
             this.runtimeEventsHub = runtimeEventsHub;
             this.schedulersLookup = ImmutableDictionary.Create<int, HappensBeforeScheduler>();
@@ -99,7 +101,7 @@ namespace SharpDetect.Core.Runtime
             var metadataResolver = metadataContext.GetResolver(processId);
             var metadataEmitter = metadataContext.GetEmitter(processId);
             var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, moduleBindContext);
-            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, methodRegistry, metadataContext, profilingClient, dateTimeProvider);
+            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, methodRegistry, metadataContext, profilingClient, dateTimeProvider, loggerFactory);
             logger.LogInformation("[{class}] Process with PID={pid} started.", nameof(ShadowExecution), processId);
 
             scheduler.ProcessFinished += () =>

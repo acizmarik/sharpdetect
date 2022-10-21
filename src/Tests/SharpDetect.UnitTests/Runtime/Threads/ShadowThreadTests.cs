@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common;
+﻿using Microsoft.Extensions.Logging.Abstractions;
+using SharpDetect.Common;
 using SharpDetect.Core.Runtime.Scheduling;
 using SharpDetect.Core.Runtime.Threads;
 using Xunit;
@@ -15,7 +16,7 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             const int processId = 123;
             var threadId = new UIntPtr(456);
             const int virtualThreadId = 789;
-            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new SchedulerBase.SchedulerEpochChangeSignaller());
+            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), new SchedulerBase.SchedulerEpochChangeSignaller());
 
             // Assert
             Assert.Equal(processId, shadowThread.ProcessId);
@@ -33,7 +34,7 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             var threadId = new UIntPtr(456);
             const int virtualThreadId = 789;
             const string threadName = "NewThreadName";
-            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new SchedulerBase.SchedulerEpochChangeSignaller());
+            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), new SchedulerBase.SchedulerEpochChangeSignaller());
 
             // Act
             shadowThread.SetName(threadName);
@@ -49,7 +50,7 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             const int processId = 123;
             var threadId = new UIntPtr(456);
             const int virtualThreadId = 789;
-            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new SchedulerBase.SchedulerEpochChangeSignaller());
+            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), new SchedulerBase.SchedulerEpochChangeSignaller());
             var functionInfo = new FunctionInfo(new(123), new(456), new(789));
             var arguments = new[] { new object(), "Hello world" };
 
@@ -69,7 +70,7 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             const int processId = 123;
             var threadId = new UIntPtr(456);
             const int virtualThreadId = 789;
-            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new SchedulerBase.SchedulerEpochChangeSignaller());
+            using var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), new SchedulerBase.SchedulerEpochChangeSignaller());
             var functionInfo = new FunctionInfo(new(123), new(456), new(789));
             var arguments = new[] { new object(), "Hello world" };
             shadowThread.PushCallStack(functionInfo, MethodInterpretation.Regular, arguments);
@@ -92,7 +93,7 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             var task2Executed = false;
 
             // Act
-            using (var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new SchedulerBase.SchedulerEpochChangeSignaller()))
+            using (var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), new SchedulerBase.SchedulerEpochChangeSignaller()))
             {
                 shadowThread.Start();
                 shadowThread.Execute(notificationId: 0, flags: JobFlags.Concurrent, new Task(() =>
@@ -121,7 +122,7 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             var task2Executed = false;
 
             // Act
-            using (var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new SchedulerBase.SchedulerEpochChangeSignaller()))
+            using (var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), new SchedulerBase.SchedulerEpochChangeSignaller()))
             {
                 shadowThread.Start();
 
@@ -156,7 +157,7 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             var signaller = new SchedulerBase.SchedulerEpochChangeSignaller();
 
             // Act
-            using (var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, signaller))
+            using (var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), signaller))
             {
                 shadowThread.Start();
 
