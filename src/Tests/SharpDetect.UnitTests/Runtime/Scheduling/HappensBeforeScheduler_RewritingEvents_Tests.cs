@@ -1,4 +1,5 @@
 ﻿using dnlib.DotNet;
+using Microsoft.Extensions.Logging.Abstractions;
 using SharpDetect.Common;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Endpoints;
@@ -27,7 +28,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
             var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider(), new NullLoggerFactory());
             var executionCompletion = new TaskCompletionSource();
 
             // Act
@@ -61,7 +62,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
             var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider(), new NullLoggerFactory());
             var executionCompletion = new TaskCompletionSource();
 
             // Act
@@ -97,7 +98,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var eventsHub = new RuntimeEventsHub();
             var methodDataRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
-            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider());
+            using var scheduler = new HappensBeforeScheduler(pid, shadowCLR, eventsHub, methodDataRegistry, metadataContext, profilingClient, new UtcDateTimeProvider(), new NullLoggerFactory());
             var executionCompletion = new TaskCompletionSource();
 
             // Act

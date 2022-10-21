@@ -1,4 +1,5 @@
 ﻿using dnlib.DotNet;
+using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Interop;
@@ -30,8 +31,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
             IMethodDescriptorRegistry methodRegistry, 
             IMetadataContext metadataContext, 
             IProfilingClient profilingClient, 
-            IDateTimeProvider dateTimeProvider)
-            : base(processId, dateTimeProvider)
+            IDateTimeProvider dateTimeProvider,
+            ILoggerFactory loggerFactory)
+            : base(processId, dateTimeProvider, loggerFactory)
         {
             this.ShadowCLR = shadowCLR;
             this.RuntimeEventsHub = runtimeEventsHub;

@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common;
+﻿using Microsoft.Extensions.Logging;
+using SharpDetect.Common;
 using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Core.Runtime.Scheduling;
 using System.Collections.Concurrent;
@@ -16,6 +17,7 @@ namespace SharpDetect.Core.Runtime.Threads
         public OperationContext OperationContext { get; private set; }
 
         private ulong schedulerEpoch;
+        private readonly ILogger<ShadowThread> logger;
         private readonly SchedulerBase.SchedulerEpochChangeSignaller schedulerEpochChangeSignaler;
         private readonly BlockingCollection<(Task Job, ulong NotificationId, JobFlags Flags)> jobs;
         private readonly Queue<(Task Job, ulong NotificationId)> waitingJobs;
@@ -23,7 +25,7 @@ namespace SharpDetect.Core.Runtime.Threads
         private readonly Thread workerThread;
         private bool isDisposed;
 
-        public ShadowThread(int processId, UIntPtr threadId, int virtualThreadId, SchedulerBase.SchedulerEpochChangeSignaller schedulerEpochChangeSignaler)
+        public ShadowThread(int processId, UIntPtr threadId, int virtualThreadId, ILoggerFactory loggerFactory, SchedulerBase.SchedulerEpochChangeSignaller schedulerEpochChangeSignaler)
         {
             ProcessId = processId;
             Id = threadId;
@@ -34,6 +36,7 @@ namespace SharpDetect.Core.Runtime.Threads
             OperationContext = new OperationContext();
             callstack = new Stack<StackFrame>();
 
+            this.logger = loggerFactory.CreateLogger<ShadowThread>();
             this.schedulerEpochChangeSignaler = schedulerEpochChangeSignaler;
             this.schedulerEpochChangeSignaler.EpochChanged += OnSchedulerEpochChanged;
             this.schedulerEpoch = schedulerEpochChangeSignaler.Epoch;
@@ -69,11 +72,11 @@ namespace SharpDetect.Core.Runtime.Threads
                         while (waitingJobs.Count > 0)
                         {
                             var (waitingJob, _) = waitingJobs.Dequeue();
-                            waitingJob.RunSynchronously();
+                            ExecuteJobSynchronously(waitingJob);
                         }
 
                         // Execute this job
-                        job.RunSynchronously();
+                        ExecuteJobSynchronously(job);
                     }
                     else
                     {
@@ -125,6 +128,18 @@ namespace SharpDetect.Core.Runtime.Threads
                     while (schedulerEpoch < Epoch)
                         Monitor.Wait(schedulerEpochChangeSignaler);
                 }
+            }
+        }
+
+        private void ExecuteJobSynchronously(Task job)
+        {
+            try
+            {
+                job.RunSynchronously();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "[TID={tid}] An error occurred while processing a shadow task.", DisplayName);
             }
         }
 

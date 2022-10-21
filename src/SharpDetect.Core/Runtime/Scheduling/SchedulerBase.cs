@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common.Services;
+﻿using Microsoft.Extensions.Logging;
+using SharpDetect.Common.Services;
 using SharpDetect.Core.Runtime.Threads;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
@@ -16,19 +17,21 @@ namespace SharpDetect.Core.Runtime.Scheduling
         protected BlockingCollection<ShadowThread> ShadowThreadDestroyingQueue;
         protected readonly SchedulerEpochChangeSignaller EpochChangeSignaller;
         private readonly IDateTimeProvider dateTimeProvider;
+        private readonly ILoggerFactory loggerFactory;
         private volatile int virtualThreadsCounter;
         private DateTime lastHeartbeatTimeStamp;
         private Timer watchdog;
         private Task shadowThreadReaper;
         private bool isDisposed;
 
-        public SchedulerBase(int processId, IDateTimeProvider dateTimeProvider)
+        public SchedulerBase(int processId, IDateTimeProvider dateTimeProvider, ILoggerFactory loggerFactory)
         {
             this.ProcessId = processId;
             this.ThreadLookup = ImmutableDictionary.Create<UIntPtr, ShadowThread>();
             this.ShadowThreadDestroyingQueue = new BlockingCollection<ShadowThread>();
             this.EpochChangeSignaller = new SchedulerEpochChangeSignaller();
             this.dateTimeProvider = dateTimeProvider;
+            this.loggerFactory = loggerFactory;
             this.lastHeartbeatTimeStamp = dateTimeProvider.Now;
             this.watchdog = new Timer(
                 callback: CheckWatchdog, state: null, 
@@ -75,7 +78,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             ShadowThread newThread;
             lock (EpochChangeSignaller)
-                newThread = new ShadowThread(ProcessId, threadId, virtualThreadsCounter++, EpochChangeSignaller);
+                newThread = new ShadowThread(ProcessId, threadId, virtualThreadsCounter++, loggerFactory, EpochChangeSignaller);
 
             ImmutableDictionary<UIntPtr, ShadowThread>? newLookup;
             ImmutableDictionary<UIntPtr, ShadowThread>? oldLookup;
