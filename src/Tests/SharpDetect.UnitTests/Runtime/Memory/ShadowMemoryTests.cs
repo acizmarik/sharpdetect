@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common.Interop;
+﻿using Microsoft.Extensions.Logging.Abstractions;
+using SharpDetect.Common.Interop;
 using SharpDetect.Core.Runtime.Memory;
 using Xunit;
 
@@ -11,7 +12,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
         {
             // Prepare
             var ptr = new UIntPtr(123);
-            var shadowGC = new ShadowGC();
+            var shadowGC = new ShadowGC(new NullLoggerFactory());
 
             // Act
             var obj = shadowGC.GetObject(ptr);
@@ -27,7 +28,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
         {
             // Prepare
             var ptr = new UIntPtr(123);
-            var shadowGC = new ShadowGC();
+            var shadowGC = new ShadowGC(new NullLoggerFactory());
 
             // Act
             var obj1 = shadowGC.GetObject(ptr);
@@ -41,7 +42,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
         public static void ShadowMemory_GC_SimpleNonCompacting()
         {
             // Prepare
-            var shadowGC = new ShadowGC();
+            var shadowGC = new ShadowGC(new NullLoggerFactory());
             var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
             var bounds = new COR_PRF_GC_GENERATION_RANGE[]
             {
@@ -91,7 +92,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
         public static void ShadowMemory_GC_TrackingMovedObjects()
         {
             // Prepare
-            var shadowGC = new ShadowGC();
+            var shadowGC = new ShadowGC(new NullLoggerFactory());
             var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
             var bounds = new COR_PRF_GC_GENERATION_RANGE[]
             {

@@ -3,6 +3,7 @@ using dnlib.DotNet.MD;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SharpDetect.Common;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.LibraryDescriptors;
@@ -174,7 +175,7 @@ namespace SharpDetect.UnitTests
                 NotificationId = 2
             });
 
-            return new ShadowCLR(pid, metadataContext.GetResolver(pid), metadataContext.GetEmitter(pid), bindContext);
+            return new ShadowCLR(pid, metadataContext.GetResolver(pid), metadataContext.GetEmitter(pid), bindContext, new NullLoggerFactory());
         }
     }
 }

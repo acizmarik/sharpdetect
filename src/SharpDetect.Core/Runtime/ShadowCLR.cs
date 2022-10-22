@@ -1,4 +1,5 @@
 ﻿using dnlib.DotNet;
+using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Interop;
@@ -31,10 +32,10 @@ namespace SharpDetect.Core.Runtime
         private readonly IMetadataEmitter emitter;
         private volatile bool ongoingGarbageCollection;
 
-        public ShadowCLR(int processId, IMetadataResolver resolver, IMetadataEmitter emitter, IModuleBindContext moduleBindContext)
+        public ShadowCLR(int processId, IMetadataResolver resolver, IMetadataEmitter emitter, IModuleBindContext moduleBindContext, ILoggerFactory loggerFactory)
         {
             State = ShadowRuntimeState.Initiated;
-            this.ShadowGC = new ShadowGC();
+            this.ShadowGC = new ShadowGC(loggerFactory);
             this.ProcessId = processId;
             this.resolver = resolver;
             this.emitter = emitter;

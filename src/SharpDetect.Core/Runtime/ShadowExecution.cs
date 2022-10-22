@@ -100,7 +100,7 @@ namespace SharpDetect.Core.Runtime
         {
             var metadataResolver = metadataContext.GetResolver(processId);
             var metadataEmitter = metadataContext.GetEmitter(processId);
-            var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, moduleBindContext);
+            var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, moduleBindContext, loggerFactory);
             var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, methodRegistry, metadataContext, profilingClient, dateTimeProvider, loggerFactory);
             logger.LogInformation("[{class}] Process with PID={pid} started.", nameof(ShadowExecution), processId);
 

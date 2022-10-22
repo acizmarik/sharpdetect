@@ -1,4 +1,6 @@
-﻿using SharpDetect.Common;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using SharpDetect.Common;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Messages;
@@ -24,11 +26,12 @@ namespace SharpDetect.UnitTests.Instrumentation
             EventDescriptorRegistry EventRegistry,
             MethodDescriptorRegistry MethodsRegistry, 
             IMetadataContext MetadataContext,
-            IModuleBindContext ModuleBindContext)
+            IModuleBindContext ModuleBindContext,
+            ILoggerFactory loggerFactory)
         {
             public ShadowCLR CreateShadowCLR(int processId)
             {
-                return new ShadowCLR(processId, MetadataContext.GetResolver(processId), MetadataContext.GetEmitter(processId), ModuleBindContext);
+                return new ShadowCLR(processId, MetadataContext.GetResolver(processId), MetadataContext.GetEmitter(processId), ModuleBindContext, loggerFactory);
             }
         }
 
@@ -99,7 +102,8 @@ namespace SharpDetect.UnitTests.Instrumentation
                 eventDescriptorRegistry, 
                 methodDescriptorRegistry,
                 metadataContext,
-                moduleBindContext);
+                moduleBindContext,
+                new NullLoggerFactory());
         }
     }
 }

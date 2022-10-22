@@ -1,4 +1,5 @@
 ﻿using IntervalTree;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using GcGeneration = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION;
 using GcGenerationRange = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION_RANGE;
@@ -7,11 +8,13 @@ namespace SharpDetect.Core.Runtime.Memory
 {
     internal class ShadowMemory
     {
+        private readonly ILogger logger;
         private Dictionary<GcGeneration, ConcurrentDictionary<UIntPtr, ShadowObject>> objectsLookup;
         private IIntervalTree<UIntPtr, GcGeneration> memorySegments;
 
-        public ShadowMemory()
+        public ShadowMemory(ILoggerFactory loggerFactory)
         {
+            this.logger = loggerFactory.CreateLogger<ShadowMemory>();
             var objectsLookupInternal = new Dictionary<GcGeneration, ConcurrentDictionary<UIntPtr, ShadowObject>>();
             foreach (var item in Enum.GetValues(typeof(GcGeneration)))
                 objectsLookupInternal.Add((GcGeneration)item, new ConcurrentDictionary<UIntPtr, ShadowObject>());
@@ -38,6 +41,7 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, UIntPtr[] lengths)
         {
+            logger.LogDebug("GC (non-compacting) for {generation}", generation);
             var toCollect = objectsLookup[generation];
             var intervalTree = new IntervalTree<UIntPtr, bool>();
             for (var i = 0; i < survivingBlockStarts.Length; i++)
@@ -66,6 +70,7 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public void Collect(GcGeneration generation, UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, UIntPtr[] lengths)
         {
+            logger.LogDebug("GC (compacting) for {generation}", generation);
             var toCollect = objectsLookup[generation];
             var intervalTree = new IntervalTree<UIntPtr, uint?>();
             for (var i = 0u; i < oldBlockStarts.Length; i++)
@@ -96,6 +101,7 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public void PromoteSurvivors()
         {
+            logger.LogDebug("GC promoting survived objects");
             var internalCollection = objectsLookup;
             var gen0 = internalCollection[GcGeneration.COR_PRF_GC_GEN_0];
             var gen1 = internalCollection[GcGeneration.COR_PRF_GC_GEN_1];
