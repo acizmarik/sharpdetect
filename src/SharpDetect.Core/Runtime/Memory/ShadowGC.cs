@@ -1,11 +1,17 @@
-﻿using GcGenerationRange = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION_RANGE;
+﻿using Microsoft.Extensions.Logging;
+using GcGenerationRange = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION_RANGE;
 
 namespace SharpDetect.Core.Runtime.Memory
 {
     internal class ShadowGC
     {
         public volatile int GarbageCollectionsCount = 0;
-        private readonly ShadowMemory memory = new();
+        private readonly ShadowMemory memory;
+
+        public ShadowGC(ILoggerFactory loggerFactory)
+        {
+            memory = new(loggerFactory);
+        }
 
         public void ProcessGarbageCollectionStarted(GcGenerationRange[] ranges, bool[] generationsCollected)
         {
