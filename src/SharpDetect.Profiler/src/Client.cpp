@@ -42,9 +42,9 @@ Client::Client(el::Logger* pLogger)
 	signalsEndpoint = signalsProtocol + "://" + signalsAddress + ":" + signalsPort;
 
 	notificationsThread = std::thread(&Client::PushWorker, 
-		this, std::cref(notificationsEndpoint), std::ref(notificationsMutex), std::ref(queueNotifications), std::ref(cvNotifications));
+		this, std::cref(notificationsInternalEndpoint), std::cref(notificationsEndpoint));
 	responsesThread = std::thread(&Client::PushWorker, 
-		this, std::cref(responsesEndpoint), std::ref(responsesMutex), std::ref(queueResponses), std::ref(cvResponses));
+		this, std::cref(responsesInternalEndpoint), std::cref(responsesEndpoint));
 	requestsThread = std::thread(&Client::RequestsWorker, this);
 	signalsThread = std::thread(&Client::SignalsWorker, this);
 }
@@ -138,66 +138,45 @@ void Client::RequestsWorker()
 	}
 }
 
-void Client::PushWorker(const std::string& endpoint, std::mutex& queueMutex, std::queue<NotifyMessage>& queue, std::condition_variable& cv)
+void Client::PushWorker(const std::string& inEndpoint, const std::string& outEndpoint)
 {
-	auto length = 65536;
-	auto buffer = std::make_unique<char[]>(length);
+	zmq::socket_t inSocket(context, zmq::socket_type::pull);
+	zmq::socket_t outSocket(context, zmq::socket_type::push);
+	inSocket.bind(inEndpoint);
+	outSocket.connect(outEndpoint);
 
-	zmq::socket_t socket(context, zmq::socket_type::push);
-	socket.connect(endpoint);
+	// Prepare zmq_pollitem for poller
+	const auto pollTimeoutMillis = 1000;
+	auto zmqItem = zmq_pollitem_t();
+	zmqItem.socket = inSocket;
+	zmqItem.fd = 0;
+	zmqItem.revents = 0;
+	zmqItem.events = ZMQ_POLLIN;
 
 	while (!finish)
 	{
-		auto lock = std::unique_lock<std::mutex>(queueMutex);
-		// Wait while queue empty
-		while (queue.size() == 0 && !finish)
-			cv.wait(lock);
+		// Poll for items with fixed timeout
+		// TODO: change for C++ API once cppzmq supports it
+		zmq_poll(&zmqItem, 1, pollTimeoutMillis);
+		if (!(zmqItem.revents & ZMQ_POLLIN))
+			continue;
 
-		// Process enqueued notifications
-		while (queue.size() > 0)
+		// Forward notifications
+		zmq::message_t message;
+		if (inSocket.recv(message))
 		{
-			auto&& current = std::move(queue.front());
-
-			// Marshall to byte array
-			const auto size = current.ByteSizeLong();
-			if (size >= length)
-			{
-				length = GetNewBufferSize(length, size);
-				buffer = std::make_unique<char[]>(length);
-			}
-
-			current.SerializeToArray(buffer.get(), size);
-
-			// Send notification
-			socket.send(buffer.get(), size, 0);
-			queue.pop();
+			outSocket.send(message, zmq::send_flags::dontwait);
 		}
 	}
-}
-
-size_t Client::GetNewBufferSize(size_t current, size_t minRequestSize)
-{
-	do current *= 2;
-	while (current <= minRequestSize);
-	return current;
 }
 
 void Client::Shutdown()
 {
 	finish = true;
 
-	// Requests thread periodically unblocks to check finish flag
 	requestsThread.join();
-
-	// Responses thread needs to be notified to finish
-	cvResponses.notify_one();
 	responsesThread.join();
-
-	// Notifications thread needs to be notified to finish
-	cvNotifications.notify_one();
 	notificationsThread.join();
-
-	// Signals thread can be joined (analysis process already knows we are terminating)
 	signalsThread.join();
 }
 
@@ -208,25 +187,51 @@ const uint64_t Client::SendNotification(NotifyMessage&& message)
 
 const uint64_t Client::SendNotification(NotifyMessage&& message, uint64_t id)
 {
-	message.set_notificationid(id);
+	// Thread static socket
+	thread_local zmq::socket_t socket(context, zmq::socket_type::push);
+	thread_local bool connected;
+
+	// Ensure local (in-process) connection is established
+	if (!connected)
 	{
-		// Enqueue job & notify consumer
-		auto lock = std::unique_lock<std::mutex>(notificationsMutex);
-		queueNotifications.push(std::move(message));
-		cvNotifications.notify_one();
+		socket.connect(notificationsInternalEndpoint);
+		connected = true;
 	}
 
+	message.set_notificationid(id);
+
+	// Serialize message
+	const auto cbMessage = message.ByteSizeLong();
+	std::vector<char> buffer(cbMessage);
+	message.SerializeToArray(buffer.data(), cbMessage);
+
+	// Send response to responses worker
+	zmq::message_t msg(buffer.data(), cbMessage);
+	socket.send(std::move(msg), zmq::send_flags::dontwait);
 	return id;
 }
 
 void Client::SendResponse(SharpDetect::Common::Messages::NotifyMessage&& response, uint64_t requestId)
 {
+	// Thread static socket
+	thread_local zmq::socket_t socket(context, zmq::socket_type::push);
+	thread_local bool connected;
+
+	// Ensure local (in-process) connection is established
+	if (!connected)
 	{
-		// Enqueue response & notify consumer
-		auto lock = std::unique_lock<std::mutex>(responsesMutex);
-		queueResponses.push(std::move(response));
-		cvResponses.notify_one();
+		socket.connect(responsesInternalEndpoint);
+		connected = true;
 	}
+
+	// Serialize message
+	const auto cbResponse = response.ByteSizeLong();
+	std::vector<char> buffer(cbResponse);
+	response.SerializeToArray(buffer.data(), cbResponse);
+
+	// Send response to responses worker
+	zmq::message_t msg(buffer.data(), cbResponse);
+	socket.send(std::move(msg), zmq::send_flags::dontwait);
 }
 
 std::future<RequestMessage> Client::ReceiveRequest(uint64_t notificationId)

@@ -61,10 +61,12 @@ public:
 	std::future<SharpDetect::Common::Messages::RequestMessage> ReceiveRequest(uint64_t notificationId);
 
 private:
-	void PushWorker(const std::string& endpoint, std::mutex& queueMutex, std::queue<SharpDetect::Common::Messages::NotifyMessage>& queue, std::condition_variable& cv);
+	static inline const std::string notificationsInternalEndpoint = "inproc://profiling-notifications";
+	static inline const std::string responsesInternalEndpoint = "inproc://profiling-responses";
+
+	void PushWorker(const std::string& inEndpoint, const std::string& outEndpoint);
 	void RequestsWorker();
 	void SignalsWorker();
-	size_t GetNewBufferSize(size_t current, size_t minRequestSize);
 
 	std::string signalsEndpoint;
 	std::string notificationsEndpoint;
@@ -77,15 +79,8 @@ private:
 	std::thread requestsThread;
 	std::thread responsesThread;
 	std::thread signalsThread;
-	std::mutex notificationsMutex;
-	std::mutex responsesMutex;
 	std::mutex promisesMutex;
-	std::queue<SharpDetect::Common::Messages::NotifyMessage> queueNotifications;
-	std::queue<SharpDetect::Common::Messages::NotifyMessage> queueResponses;
 	std::unordered_map<uint64_t, std::promise<SharpDetect::Common::Messages::RequestMessage>> promises;
-	std::condition_variable cvNotifications;	
-	std::condition_variable cvResponses;
-
 	volatile bool finish = false;
 };
 
