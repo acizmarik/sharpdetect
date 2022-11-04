@@ -38,7 +38,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new RawEventInfo(2, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -73,7 +73,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_TypeInjected(new(moduleId, typeMDToken), new RawEventInfo(2, pid, threadId));
             scheduler.Schedule_MethodInjected(new(moduleId, typeMDToken, functionMDToken), Common.Messages.MethodType.FieldAccess, new RawEventInfo(3, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -108,7 +108,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             var mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_WrapperInjected(new(moduleId, typeMDToken, externFunctionMDToken), wrapperFunctionMDToken, new RawEventInfo(2, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert

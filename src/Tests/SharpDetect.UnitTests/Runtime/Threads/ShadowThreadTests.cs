@@ -96,14 +96,14 @@ namespace SharpDetect.UnitTests.Runtime.Threads
             using (var shadowThread = new ShadowThread(processId, threadId, virtualThreadId, new NullLoggerFactory(), new SchedulerBase.SchedulerEpochChangeSignaller()))
             {
                 shadowThread.Start();
-                shadowThread.Execute(notificationId: 0, flags: JobFlags.Concurrent, new Task(() =>
+                shadowThread.Execute(notificationId: 0, flags: JobFlags.Concurrent, () =>
                 {
                     task1Executed = true;
-                }));
-                shadowThread.Execute(notificationId: 1, flags: JobFlags.Concurrent, new Task(() =>
+                });
+                shadowThread.Execute(notificationId: 1, flags: JobFlags.Concurrent, () =>
                 {
                     task2Executed = true;
-                }));
+                });
             }
 
             // Assert
@@ -127,17 +127,17 @@ namespace SharpDetect.UnitTests.Runtime.Threads
                 shadowThread.Start();
 
                 // This should be executed right-away
-                shadowThread.Execute(notificationId: 0, flags: JobFlags.Concurrent, new Task(() =>
+                shadowThread.Execute(notificationId: 0, flags: JobFlags.Concurrent, () =>
                 {
                     task1Executed = true;
                     shadowThread.EnterNewEpoch();
-                }));
+                });
 
                 // This should not be executed (shadow thread is waiting for next epoch)
-                shadowThread.Execute(notificationId: 1, flags: JobFlags.Concurrent, new Task(() =>
+                shadowThread.Execute(notificationId: 1, flags: JobFlags.Concurrent, () =>
                 {
                     task2Executed = true;
-                }));
+                });
             }
 
             // Assert
@@ -162,17 +162,17 @@ namespace SharpDetect.UnitTests.Runtime.Threads
                 shadowThread.Start();
 
                 // This should be executed right-away
-                shadowThread.Execute(notificationId: 0, flags: JobFlags.Concurrent, new Task(() =>
+                shadowThread.Execute(notificationId: 0, flags: JobFlags.Concurrent, () =>
                 {
                     task1Executed = true;
                     shadowThread.EnterNewEpoch();
-                }));
+                });
 
                 // This should be executed after signallization of new global epoch
-                shadowThread.Execute(notificationId: 1, flags: JobFlags.Concurrent, new Task(() =>
+                shadowThread.Execute(notificationId: 1, flags: JobFlags.Concurrent, () =>
                 {
                     task2Executed = true;
-                }));
+                });
 
                 // Enter new global epoch
                 lock (signaller)

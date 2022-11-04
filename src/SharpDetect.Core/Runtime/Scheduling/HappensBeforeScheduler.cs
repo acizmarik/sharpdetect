@@ -58,7 +58,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             // Start new shadow executor
             newThread.Start();
 
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_ProfilerInitialized();
@@ -66,12 +66,12 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseProfilerInitialized(ShadowCLR, info);
-            }));
+            });
         }
 
         public void Schedule_ProfilerDestroyed(RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_ProfilerDestroyed();
@@ -81,12 +81,12 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 // Ensure scheduler exits properly
                 Terminate();
-            }));
+            });
         }
 
         public void Schedule_ModuleLoaded(UIntPtr moduleId, string path, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 var moduleInfo = new ModuleInfo(moduleId);
@@ -94,31 +94,31 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseModuleLoaded(ShadowCLR, moduleInfo, path, info);
-            }));
+            });
         }
 
         public void Schedule_TypeLoaded(TypeInfo typeInfo, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_TypeLoaded(typeInfo);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseTypeLoaded(ShadowCLR, typeInfo, info);
-            }));
+            });
         }
 
         public void Schedule_JITCompilationStarted(FunctionInfo functionInfo, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_JITCompilationStarted(functionInfo);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseJITCompilationStarted(ShadowCLR, functionInfo, info);
-            }));
+            });
         }
 
         public void Schedule_ThreadCreated(UIntPtr threadId, RawEventInfo info)
@@ -129,14 +129,14 @@ namespace SharpDetect.Core.Runtime.Scheduling
             // Start new shadow executor
             newThread.Start();
 
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_ThreadCreated(newThread);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseThreadCreated(ShadowCLR, threadId, info);
-            }));
+            });
         }
 
         public void Schedule_ThreadDestroyed(UIntPtr threadId, RawEventInfo info)
@@ -144,7 +144,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             // Create new thread
             var destroyedThread = ThreadLookup[threadId];
 
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Notify listeners
                 RuntimeEventsHub.RaiseThreadDestroyed(ShadowCLR, threadId, info);
@@ -154,24 +154,24 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 // Ensure thread terminates correctly
                 UnregisterThread(threadId);
-            }));
+            });
         }
         
         public void Schedule_RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_RuntimeSuspendStarted(reason);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseRuntimeSuspendStarted(ShadowCLR, reason, info);
-            }));
+            });
         }
 
         public void Schedule_RuntimeSuspendFinished(RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 if (ShadowCLR.SuspensionReason == COR_PRF_SUSPEND_REASON.GC)
                 {
@@ -192,76 +192,76 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseRuntimeSuspendFinished(ShadowCLR, info);
-            }));
+            });
         }
 
         public void Schedule_RuntimeResumeStarted(RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_RuntimeResumeStarted();
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseRuntimeResumeStarted(ShadowCLR, info);
-            }));
+            });
         }
 
         public void Schedule_RuntimeResumeFinished(RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_RuntimeResumeFinished();
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseRuntimeResumeFinished(ShadowCLR, info);
-            }));
+            });
         }
 
         public void Schedule_RuntimeThreadSuspended(UIntPtr threadId, RawEventInfo info)
         {
             var thread = ThreadLookup[threadId];
 
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_RuntimeThreadSuspended(thread);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseRuntimeThreadSuspended(ShadowCLR, threadId, info);
-            }));
+            });
         }
 
         public void Schedule_RuntimeThreadResumed(UIntPtr threadId, RawEventInfo info)
         {
             var thread = ThreadLookup[threadId];
 
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_RuntimeThreadResumed(thread);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseRuntimeThreadResumed(ShadowCLR, threadId, info);
-            }));
+            });
         }
 
         public void Schedule_GarbageCollectionStarted(bool[] generationsCollected, COR_PRF_GC_GENERATION_RANGE[] bounds, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_GarbageCollectionStarted(generationsCollected, bounds);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseGarbageCollectionStarted(ShadowCLR, generationsCollected, bounds, info);
-            }));
+            });
         }
 
         public void Schedule_GarbageCollectionFinished(COR_PRF_GC_GENERATION_RANGE[] bounds, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Adjust native epochs for native threads that were not suspended
                 var nextEpoch = EpochChangeSignaller.Epoch + 1;
@@ -282,31 +282,31 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 // Continue execution
                 ProfilingClient.IssueContinueExecutionRequestAsync(info).Wait();
-            }));
+            });
         }
 
         public void Schedule_SurvivingReferences(UIntPtr[] blockStarts, UIntPtr[] lengths, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_SurvivingReferences(blockStarts, lengths);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseSurvivingReferences(ShadowCLR, blockStarts, lengths, info);
-            }));
+            });
         }
 
         public void Schedule_MovedReferences(UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, UIntPtr[] lengths, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_MovedReferences(oldBlockStarts, newBlockStarts, lengths);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseMovedReferences(ShadowCLR, oldBlockStarts, newBlockStarts, lengths, info);
-            }));
+            });
         }
         #endregion
 
@@ -314,74 +314,74 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         public void Schedule_TypeInjected(TypeInfo type, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_TypeInjected(type);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseTypeInjected(ShadowCLR, type, info);
-            }));
+            });
         }
 
         public void Schedule_MethodInjected(FunctionInfo functionInfo, MethodType type, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_MethodInjected(functionInfo, type);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseMethodInjected(ShadowCLR, functionInfo, type, info);
-            }));
+            });
         }
 
         public void Schedule_TypeReferenced(TypeInfo typeInfo, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_TypeReferenced(typeInfo);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseTypeReferenced(ShadowCLR, typeInfo, info);
-            }));
+            });
         }
 
         public void Schedule_WrapperInjected(FunctionInfo functionInfo, MDToken wrapperToken, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_MethodWrapped(functionInfo, wrapperToken);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseMethodWrapperInjected(ShadowCLR, functionInfo, wrapperToken, info);
-            }));
+            });
         }
 
         public void Schedule_WrapperReferenced(FunctionInfo functionDef, FunctionInfo functionRef, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_WrapperMethodReferenced(functionDef, functionRef);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseWrapperMethodReferenced(ShadowCLR, functionDef, functionRef, info);
-            }));
+            });
         }
 
         public void Schedule_HelperReferenced(FunctionInfo functionRef, MethodType type, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 // Update ShadowCLR state
                 ShadowCLR.Process_HelperMethodReferenced(functionRef, type);
 
                 // Notify listeners
                 RuntimeEventsHub.RaiseHelperMethodReferenced(ShadowCLR, functionRef, type, info);
-            }));
+            });
         }
 
         #endregion
@@ -389,7 +389,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         #region EXECUTING_NOTIFICATIONS
         public void Schedule_MethodCalled(FunctionInfo function, RawArgumentsList? arguments, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 var thread = ThreadLookup[info.ThreadId];
 
@@ -516,12 +516,12 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 }
 
                 RuntimeEventsHub.RaiseMethodCalled(ShadowCLR, function, resolvedArgumentsList, info);
-            }));
+            });
         }
 
         public void Schedule_MethodReturned(FunctionInfo function, RawReturnValue? retValue, RawArgumentsList? byRefArgs, RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, new Task(() =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
                 var thread = ThreadLookup[info.ThreadId];
 
@@ -627,7 +627,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 }
 
                 RuntimeEventsHub.RaiseMethodReturned(ShadowCLR, function, resolvedReturnValue, resolvedByRefArgumentsList, info);
-            }));
+            });
         }
         #endregion
     }
