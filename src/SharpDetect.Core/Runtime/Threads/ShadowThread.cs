@@ -19,8 +19,8 @@ namespace SharpDetect.Core.Runtime.Threads
         private ulong schedulerEpoch;
         private readonly ILogger<ShadowThread> logger;
         private readonly SchedulerBase.SchedulerEpochChangeSignaller schedulerEpochChangeSignaler;
-        private readonly BlockingCollection<(Task Job, ulong NotificationId, JobFlags Flags)> jobs;
-        private readonly Queue<(Task Job, ulong NotificationId)> waitingJobs;
+        private readonly BlockingCollection<(Action Job, ulong NotificationId, JobFlags Flags)> jobs;
+        private readonly Queue<(Action Job, ulong NotificationId)> waitingJobs;
         private readonly Stack<StackFrame> callstack;
         private readonly Thread workerThread;
         private bool isDisposed;
@@ -41,8 +41,8 @@ namespace SharpDetect.Core.Runtime.Threads
             this.schedulerEpochChangeSignaler.EpochChanged += OnSchedulerEpochChanged;
             this.schedulerEpoch = schedulerEpochChangeSignaler.Epoch;
             
-            jobs = new BlockingCollection<(Task Job, ulong NotificationId, JobFlags Flags)>();
-            waitingJobs = new Queue<(Task Job, ulong NotificationId)>();
+            jobs = new BlockingCollection<(Action Job, ulong NotificationId, JobFlags Flags)>();
+            waitingJobs = new Queue<(Action Job, ulong NotificationId)>();
             workerThread = new Thread(WorkerThreadLoop) { Name = DisplayName };
             workerThread.Name = DisplayName;
         }
@@ -95,7 +95,7 @@ namespace SharpDetect.Core.Runtime.Threads
         public void Start()
             => workerThread.Start();
 
-        public void Execute(ulong notificationId, JobFlags flags, Task job)
+        public void Execute(ulong notificationId, JobFlags flags, Action job)
             => jobs.Add((job, notificationId, flags));
 
         public void SetName(string name)
@@ -131,11 +131,11 @@ namespace SharpDetect.Core.Runtime.Threads
             }
         }
 
-        private void ExecuteJobSynchronously(Task job)
+        private void ExecuteJobSynchronously(Action job)
         {
             try
             {
-                job.RunSynchronously();
+                job();
             }
             catch (Exception ex)
             {

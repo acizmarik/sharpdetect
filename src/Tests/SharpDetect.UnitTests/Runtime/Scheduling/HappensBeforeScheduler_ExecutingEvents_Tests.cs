@@ -44,7 +44,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new RawEventInfo(2, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -84,7 +84,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new RawEventInfo(2, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, null, new RawEventInfo(3, pid, threadId));
-            mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(4, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -153,7 +153,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new RawEventInfo(3, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -197,7 +197,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new RawEventInfo(3, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, null, new RawEventInfo(5, pid, threadId));
-            mainThread.Execute(6, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(6, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -243,7 +243,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new RawEventInfo(3, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, argslist, new RawEventInfo(5, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -294,7 +294,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Lock release
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, releaseFunctionMDToken),argslist, new RawEventInfo(7, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, releaseFunctionMDToken), null, null, new RawEventInfo(9, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -342,7 +342,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, acquireFunctionMDToken), null, null, new RawEventInfo(5, pid, threadId));
             // Object wait
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, waitFunctionMDToken), argslist, new RawEventInfo(7, pid, threadId));
-            mainThread.Execute(8, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(8, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -393,7 +393,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             // Object wait
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, waitFunctionMDToken), argslist, new RawEventInfo(7, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, waitFunctionMDToken), returnValue, null, new RawEventInfo(9, pid, threadId));
-            mainThread.Execute(10, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(10, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -434,7 +434,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             mainThread = scheduler.ShadowThreads.First();
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new RawEventInfo(3, pid, threadId));
-            mainThread.Execute(3, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(3, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
@@ -476,7 +476,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             scheduler.Schedule_ModuleLoaded(moduleId, modulePath, new RawEventInfo(1, pid, threadId));
             scheduler.Schedule_MethodCalled(new(moduleId, typeMDToken, functionMDToken), argslist, new RawEventInfo(3, pid, threadId));
             scheduler.Schedule_MethodReturned(new(moduleId, typeMDToken, functionMDToken), null, null, new RawEventInfo(4, pid, threadId));
-            mainThread.Execute(4, JobFlags.Concurrent, new Task(() => executionCompletion.SetResult()));
+            mainThread.Execute(4, JobFlags.Concurrent, () => executionCompletion.SetResult());
             await executionCompletion.Task;
 
             // Assert
