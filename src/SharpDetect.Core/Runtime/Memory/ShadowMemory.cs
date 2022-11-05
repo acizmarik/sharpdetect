@@ -1,5 +1,6 @@
 ﻿using IntervalTree;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Common.Exceptions;
 using System.Collections.Concurrent;
 using GcGeneration = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION;
 using GcGenerationRange = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION_RANGE;
@@ -11,6 +12,8 @@ namespace SharpDetect.Core.Runtime.Memory
         private readonly ILogger logger;
         private Dictionary<GcGeneration, ConcurrentDictionary<UIntPtr, ShadowObject>> objectsLookup;
         private IIntervalTree<UIntPtr, GcGeneration> memorySegments;
+        private bool[]? generationsCollected;
+        private bool[]? compactingCollections;
 
         public ShadowMemory(ILoggerFactory loggerFactory)
         {
@@ -25,6 +28,80 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public GcGeneration GetGeneration(UIntPtr pointer)
             => memorySegments.Query(pointer).FirstOrDefault();
+
+        public void StartGarbageCollection(bool[] generationsCollected)
+        {
+            logger.LogDebug("GC started for generations {gens}", generationsCollected);
+            this.generationsCollected = generationsCollected;
+            this.compactingCollections = new bool[generationsCollected.Length];
+
+            // Pre-mark all affected objects as dead
+            // During SurvivingReferences or MovedReferences, we will correct this
+            for (var genIndex = 0; genIndex < generationsCollected.Length; genIndex++)
+            {
+                if (!generationsCollected[genIndex])
+                {
+                    // All generations not affected by GC are automatically surviving
+                    // There is no action necessary to perform for this generation
+                    continue;
+                }
+
+                var trackedObjects = objectsLookup[(GcGeneration)genIndex];
+                foreach (var (_, trackedObject) in trackedObjects)
+                    trackedObject.IsAlive = false;
+            }
+        }
+
+        public void FinishGarbageCollection()
+        {
+            // Remove all dead objects
+            Guard.NotNull<bool[], ShadowRuntimeStateException>(generationsCollected);
+            Guard.NotNull<bool[], ShadowRuntimeStateException>(compactingCollections);
+            for (var genIndex = 0; genIndex < generationsCollected.Length; genIndex++)
+            {
+                if (!generationsCollected[genIndex])
+                {
+                    // All generations not affected by GC are automatically surviving
+                    // There is no action necessary to perform for this generation
+                    continue;
+                }
+
+                var isCompacting = compactingCollections[genIndex];
+                var collected = objectsLookup[(GcGeneration)genIndex];
+                var toRemove = new HashSet<UIntPtr>();
+                foreach (var (ptr, shadowObject) in collected.Where(static record => !record.Value.IsAlive))
+                    toRemove.Add(ptr);
+
+                logger.LogDebug("GC {type} on {gen} freed {count} of {total} tracked objects",
+                    (isCompacting) ? "compacting" : "non-compacting", (GcGeneration)genIndex, toRemove.Count, collected.Count);
+
+                if (!isCompacting)
+                {
+                    // GC was non-compacting
+                    // We must just remove all dead objects
+                    objectsLookup[(GcGeneration)genIndex] = new ConcurrentDictionary<UIntPtr, ShadowObject>(
+                        collection: collected.Where(e => !toRemove.Contains(e.Key)));
+                }
+                else
+                {
+                    // GC was compacting
+                    // We must rebuild the object lookup
+                    objectsLookup[(GcGeneration)genIndex] = new ConcurrentDictionary<UIntPtr, ShadowObject>(
+                        collection: collected.Where(e => !toRemove.Contains(e.Key))
+                            .Select(record => new KeyValuePair<UIntPtr, ShadowObject>(
+                                key: record.Value.ShadowPointer,
+                                value: record.Value)));
+                }
+            }
+
+            // TODO: notify plugins about generation sizes
+            // TODO: notify plugins about how many objects were collected
+
+            logger.LogDebug("GC finished for generations {gens}", generationsCollected);
+
+            this.compactingCollections = null;
+            this.generationsCollected = null;
+        }
 
         public void Reconstruct(GcGenerationRange[] ranges)
         {
@@ -41,67 +118,48 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, UIntPtr[] lengths)
         {
-            logger.LogDebug("GC (non-compacting) for {generation}", generation);
             var toCollect = objectsLookup[generation];
             var intervalTree = new IntervalTree<UIntPtr, bool>();
             for (var i = 0; i < survivingBlockStarts.Length; i++)
                 intervalTree.Add(survivingBlockStarts[i], new UIntPtr(survivingBlockStarts[i].ToUInt64() + lengths[i].ToUInt64() - 1), true);
 
-            // Mark objects for removing
-            var toRemove = new List<UIntPtr>();
+            // Mark all surviving objects as alive
             foreach (var (pointer, shadowObj) in toCollect)
             {
                 if (intervalTree.QuerySingle(pointer))
                 {
                     // This object is surviving
+                    shadowObj.IsAlive = true;
                     continue;
                 }
-
-                toRemove.Add(pointer);
-                shadowObj.IsAlive = false;
-            }
-
-            // Remove objects
-            foreach (var ptr in toRemove)
-            {
-                toCollect.Remove(ptr, out _);
             }
         }
 
         public void Collect(GcGeneration generation, UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, UIntPtr[] lengths)
         {
-            logger.LogDebug("GC (compacting) for {generation}", generation);
+            compactingCollections![(int)generation] = true;
             var toCollect = objectsLookup[generation];
             var intervalTree = new IntervalTree<UIntPtr, uint?>();
             for (var i = 0u; i < oldBlockStarts.Length; i++)
                 intervalTree.Add(oldBlockStarts[i], new UIntPtr(oldBlockStarts[i].ToUInt64() + lengths[i].ToUInt64() - 1), i);
 
-            // Mark objects for moving and deleting
-            var toMove = new List<KeyValuePair<UIntPtr, ShadowObject>>();
+            // Mark all surviving objects as alive and calculate their new locations
             foreach (var (pointer, shadowObj) in toCollect)
             {
                 var blockIndex = intervalTree.QuerySingle(pointer);
-                if (blockIndex == null)
+                if (blockIndex != null)
                 {
-                    // This object will be removed
-                    shadowObj.IsAlive = false;
-                    continue;
-                }
-
-                var offset = shadowObj.ShadowPointer.ToUInt64() - oldBlockStarts[blockIndex.Value].ToUInt64();
-                var newPointer = new UIntPtr(newBlockStarts[blockIndex.Value].ToUInt64() + offset);
-                toMove.Add(new KeyValuePair<UIntPtr, ShadowObject>(newPointer, shadowObj));
-                shadowObj.ShadowPointer = newPointer;
+                    // This object is surviving and might have been moved
+                    var offset = shadowObj.ShadowPointer.ToUInt64() - oldBlockStarts[blockIndex.Value].ToUInt64();
+                    var newPointer = new UIntPtr(newBlockStarts[blockIndex.Value].ToUInt64() + offset);
+                    shadowObj.ShadowPointer = newPointer;
+                    shadowObj.IsAlive = true;
+                }                
             }
-
-            // Create new collection by moving marked objects and dropping other
-            var internalObjectLookup = objectsLookup;
-            internalObjectLookup[generation] = new ConcurrentDictionary<UIntPtr, ShadowObject>(toMove);
         }
 
         public void PromoteSurvivors()
         {
-            logger.LogDebug("GC promoting survived objects");
             var internalCollection = objectsLookup;
             var gen0 = internalCollection[GcGeneration.COR_PRF_GC_GEN_0];
             var gen1 = internalCollection[GcGeneration.COR_PRF_GC_GEN_1];
@@ -134,9 +192,6 @@ namespace SharpDetect.Core.Runtime.Memory
                     internalCollection[GcGeneration.COR_PRF_GC_GEN_0] = gen0 = new ConcurrentDictionary<UIntPtr, ShadowObject>(/* empty */);
                 }
             }
-
-            // TODO: notify plugins about generation sizes
-            // TODO: notify plugins about how many objects were collected
         }
 
         public ShadowObject GetOrTrack(UIntPtr pointer)

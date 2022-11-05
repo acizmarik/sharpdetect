@@ -16,10 +16,12 @@ namespace SharpDetect.Core.Runtime.Memory
         public void ProcessGarbageCollectionStarted(GcGenerationRange[] ranges, bool[] generationsCollected)
         {
             memory.Reconstruct(ranges);
+            memory.StartGarbageCollection(generationsCollected);
         }
 
         public void ProcessGarbageCollectionFinished(GcGenerationRange[] ranges)
         {
+            memory.FinishGarbageCollection();
             memory.PromoteSurvivors();
             memory.Reconstruct(ranges);
         }
