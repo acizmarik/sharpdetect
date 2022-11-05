@@ -19,6 +19,14 @@ namespace SharpDetect.E2ETests
         [InlineData(nameof(Program.Test_Field_ReferenceType_Instance_Write), true)]
         [InlineData(nameof(Program.Test_Field_ValueType_Static_Write), true)]
         [InlineData(nameof(Program.Test_Field_ReferenceType_Static_Write), true)]
+        [InlineData(nameof(Program.Test_Property_ValueType_Instance_Read), false)]
+        [InlineData(nameof(Program.Test_Property_ReferenceType_Instance_Read), false)]
+        [InlineData(nameof(Program.Test_Property_ValueType_Static_Read), false)]
+        [InlineData(nameof(Program.Test_Property_ReferenceType_Static_Read), false)]
+        [InlineData(nameof(Program.Test_Property_ValueType_Instance_Write), true)]
+        [InlineData(nameof(Program.Test_Property_ReferenceType_Instance_Write), true)]
+        [InlineData(nameof(Program.Test_Property_ValueType_Static_Write), true)]
+        [InlineData(nameof(Program.Test_Property_ReferenceType_Static_Write), true)]
         public async Task FieldAccessTests_ReadWrite(string testName, bool isWrite)
         {
             // Prepare

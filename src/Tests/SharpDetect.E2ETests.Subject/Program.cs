@@ -43,7 +43,14 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_Field_ValueType_Instance_Read()
         {
-            var cpy = new InstanceFieldValueType().Test_Field_ValueType_Instance;
+            var instance = new InstanceFieldValueType();
+            _ = instance.Test_Field_ValueType_Instance;
+        }
+
+        public static void Test_Property_ValueType_Instance_Read()
+        {
+            var instance = new InstanceFieldValueType();
+            _ = instance.Test_Property_ValueType_Instance;
         }
 
         public static void Test_Field_ValueType_Instance_Write()
@@ -52,9 +59,23 @@ namespace SharpDetect.E2ETests.Subject
             instance.Test_Field_ValueType_Instance = 123;
         }
 
+        public static void Test_Property_ValueType_Instance_Write()
+        {
+            var instance = new InstanceFieldValueType();
+            instance.Test_Property_ValueType_Instance = 123;
+        }
+
         public static void Test_Field_ReferenceType_Instance_Read()
         {
-            var cpy = new InstanceFieldReferenceType().Test_Field_ReferenceType_Instance;
+            var instance = new InstanceFieldReferenceType();
+            _ = instance.Test_Field_ReferenceType_Instance;
+            
+        }
+
+        public static void Test_Property_ReferenceType_Instance_Read()
+        {
+            var instance = new InstanceFieldReferenceType();
+            _ = instance.Test_Property_ReferenceType_Instance;
         }
 
         public static void Test_Field_ReferenceType_Instance_Write()
@@ -63,24 +84,52 @@ namespace SharpDetect.E2ETests.Subject
             instance.Test_Field_ReferenceType_Instance = new object();
         }
 
+        public static void Test_Property_ReferenceType_Instance_Write()
+        {
+            var instance = new InstanceFieldReferenceType();
+            instance.Test_Property_ReferenceType_Instance = new object();
+        }
+
         public static void Test_Field_ValueType_Static_Read()
         {
-            var cpy = StaticFieldValueType.Test_Field_ValueType_Static;
+            _ = StaticFieldValueType.Test_Field_ValueType_Static;
+            
+        }
+
+        public static void Test_Property_ValueType_Static_Read()
+        {
+            _ = StaticFieldValueType.Test_Property_ValueType_Static;
         }
 
         public static void Test_Field_ValueType_Static_Write()
         {
             StaticFieldValueType.Test_Field_ValueType_Static = 123;
+            
+        }
+
+        public static void Test_Property_ValueType_Static_Write()
+        {
+            StaticFieldValueType.Test_Property_ValueType_Static = 123;
         }
 
         public static void Test_Field_ReferenceType_Static_Read()
         {
-            var cpy = StaticFieldReferenceType.Test_Field_ReferenceType_Static;
+            _ = StaticFieldReferenceType.Test_Field_ReferenceType_Static;
+        }
+
+        public static void Test_Property_ReferenceType_Static_Read()
+        {
+            _ = StaticFieldReferenceType.Test_Property_ReferenceType_Static;
         }
 
         public static void Test_Field_ReferenceType_Static_Write()
         {
             StaticFieldReferenceType.Test_Field_ReferenceType_Static = new object();
+        }
+
+        public static void Test_Property_ReferenceType_Static_Write()
+        {
+            StaticFieldReferenceType.Test_Property_ReferenceType_Static = new object();
         }
 
         public static void Test_Array_I_Read()
@@ -420,6 +469,7 @@ namespace SharpDetect.E2ETests.Subject
             // Field events
             switch (args[0])
             {
+                // Regular fields
                 case nameof(Test_Field_ValueType_Instance_Read):
                     Test_Field_ValueType_Instance_Read();
                     break;
@@ -443,6 +493,31 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_Field_ReferenceType_Static_Write):
                     Test_Field_ReferenceType_Static_Write();
+                    break;
+                // Properties
+                case nameof(Test_Property_ValueType_Instance_Read):
+                    Test_Property_ValueType_Instance_Read();
+                    break;
+                case nameof(Test_Property_ValueType_Instance_Write):
+                    Test_Property_ValueType_Instance_Write();
+                    break;
+                case nameof(Test_Property_ReferenceType_Instance_Read):
+                    Test_Property_ReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Property_ReferenceType_Instance_Write):
+                    Test_Property_ReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Property_ValueType_Static_Read):
+                    Test_Property_ValueType_Static_Read();
+                    break;
+                case nameof(Test_Property_ValueType_Static_Write):
+                    Test_Property_ValueType_Static_Write();
+                    break;
+                case nameof(Test_Property_ReferenceType_Static_Read):
+                    Test_Property_ReferenceType_Static_Read();
+                    break;
+                case nameof(Test_Property_ReferenceType_Static_Write):
+                    Test_Property_ReferenceType_Static_Write();
                     break;
             }
 
