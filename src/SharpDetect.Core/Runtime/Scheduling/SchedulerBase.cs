@@ -66,7 +66,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         protected void FeedWatchdog()
             => lastHeartbeatTimeStamp = dateTimeProvider.Now;
 
-        protected void Schedule(UIntPtr threadId, ulong taskId, JobFlags flags, Task job)
+        protected void Schedule(UIntPtr threadId, ulong taskId, JobFlags flags, Action job)
         {
             // Note: there is a possibility that a notification might arrive during termination
             // However, in this case we should probably just discard it
