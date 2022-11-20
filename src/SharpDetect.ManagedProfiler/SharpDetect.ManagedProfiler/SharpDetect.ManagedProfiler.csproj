@@ -3,7 +3,6 @@
   <PropertyGroup>
 	<TargetFramework>net7.0</TargetFramework>
 	<ImplicitUsings>enable</ImplicitUsings>
-	<Nullable>enable</Nullable>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	<RootNamespace>SharpDetect.Profiler</RootNamespace>
 	<PublishAot>true</PublishAot>
@@ -17,6 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+	<PackageReference Include="Iced" Version="1.17.0" />
 	<PackageReference Include="NetMQ" Version="4.0.1.10" />
   </ItemGroup>
 
@@ -29,6 +29,11 @@
 	<Using Include="System.UInt32" Alias="DWORD" />
 	<Using Include="System.Byte" Alias="COR_SIGNATURE" />
 	<Using Include="System.IntPtr" Alias="HCORENUM" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Hooks\Asm\" />
+    <Folder Include="Hooks\Platform\Linux\" />
   </ItemGroup>
 
 </Project>

@@ -1,17 +1,24 @@
-﻿using SharpDetect.Profiler.Logging;
+﻿using SharpDetect.Profiler.Hooks;
+using SharpDetect.Profiler.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 
 namespace SharpDetect.Profiler;
 
 internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 {
     public NativeObjects.ICorProfilerCallback2 Object { get; private set; }
+    public static CorProfilerCallback? Instance { get; private set; }
 
     private readonly ConcurrentDictionary<ModuleId, Module> moduleLookup;
     private readonly ConcurrentDictionary<AssemblyId, Assembly> assemblyLookup;
+    private readonly ConcurrentDictionary<FunctionId, Method> methodHooks;
+    private readonly AsmUtilities asmUtilities;
     private ICorProfilerInfo3 corProfilerInfo = null!;
     private InstrumentationContext? instrumentationContext;
     private ModuleId? coreLibraryModuleId;
+    
 
     public CorProfilerCallback()
     {
@@ -23,6 +30,9 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
         moduleLookup = new();
         assemblyLookup = new();
+        methodHooks = new();
+        asmUtilities = new();
+        Instance = this;
     }
 
     public HResult Initialize(nint pICorProfilerInfoUnk)
@@ -38,7 +48,24 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
             Logger.LogInformation($"RuntimeVersion: v{majorVer}.{minorVer}.{buildVer}.{qfVer}");
 
             // Initialize runtime profiling capabilities
-            corProfilerInfo.SetEventMask(COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS);
+            if (!corProfilerInfo.SetEventMask(
+                COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
+                COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+                COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+                COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL))
+            {
+                Logger.LogError($"Could not set profiling event mask");
+                return HResult.E_FAIL;
+            }
+
+            // Register method enter/leave hooks
+            if (!MethodHooks.Register(corProfilerInfo, asmUtilities))
+            {
+                Logger.LogError($"Could not register method enter/leave hooks");
+                return HResult.E_FAIL;
+            }
         }
 
         Logger.LogInformation($"Profiler initialized");
@@ -49,6 +76,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     {
         Logger.LogInformation("Profiler shutting down");
         Logger.Terminate();
+        asmUtilities.Dispose();
         return HResult.S_OK;
     }
 
@@ -509,6 +537,11 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     public HResult HandleDestroyed(GCHandleId handleId)
     {
         return HResult.S_OK;
+    }
+
+    public HResult TryGetMethodHookEntry(FunctionId functionId, [NotNullWhen(returnValue: default)] out Method? method)
+    {
+        return methodHooks.TryGetValue(functionId, out method) ? HResult.S_OK : HResult.E_FAIL;
     }
 
     #region COM_STUFF

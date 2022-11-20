@@ -1,6 +1,4 @@
-﻿using System.Collections.Immutable;
-
-namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler
 {
     internal record InstrumentationContext
     {

@@ -1,4 +1,6 @@
-﻿namespace SharpDetect.Profiler
+﻿using System.Runtime.InteropServices;
+
+namespace SharpDetect.Profiler
 {
     internal class ClassFactory : IClassFactory
     {
