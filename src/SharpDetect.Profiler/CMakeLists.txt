@@ -41,8 +41,8 @@ endif(UNIX)
 
 # Regenerate protocol buffer definitions
 find_package(Protobuf REQUIRED)
-protobuf_generate_cpp(PROTO_NTF_SRC PROTO_NTF_HDR "../SharpDetect.Common/Messages/profiler_notifications.proto")
-protobuf_generate_cpp(PROTO_REQ_SRC PROTO_REQ_HDR "../SharpDetect.Common/Messages/profiler_requests.proto")
+protobuf_generate_cpp(PROTO_NTF_SRC PROTO_NTF_HDR "../SharpDetect.ProtocolBuffers/profiler_notifications.proto")
+protobuf_generate_cpp(PROTO_REQ_SRC PROTO_REQ_HDR "../SharpDetect.ProtocolBuffers/profiler_requests.proto")
 
 # Common includes
 include_directories(

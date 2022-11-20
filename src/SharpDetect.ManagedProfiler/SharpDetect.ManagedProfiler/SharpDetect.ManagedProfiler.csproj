@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+	<ProjectReference Include="..\..\SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj" />
 	<ProjectReference Include="..\NativeObjectsSourceGenerator\NativeObjectsSourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
