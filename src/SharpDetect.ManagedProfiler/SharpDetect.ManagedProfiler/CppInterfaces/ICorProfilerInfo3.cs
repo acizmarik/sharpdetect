@@ -10,8 +10,8 @@ public unsafe interface ICorProfilerInfo3 : ICorProfilerInfo2
         int dwExpectedCompletionMilliseconds);
 
     HResult SetFunctionIDMapper2(
-        delegate* unmanaged[Stdcall]<FunctionId, void*, bool*, nint> pFunc,
-        void* clientData);
+        delegate* unmanaged[Stdcall]<FunctionId, IntPtr, bool*, IntPtr> pFunc,
+        IntPtr clientData);
 
     HResult GetStringLayout2(
         out uint pStringLengthOffset,
@@ -24,9 +24,9 @@ public unsafe interface ICorProfilerInfo3 : ICorProfilerInfo2
 
 
     HResult SetEnterLeaveFunctionHooks3WithInfo(
-        void* pFuncEnter3WithInfo,
-        void* pFuncLeave3WithInfo,
-        void* pFuncTailcall3WithInfo);
+        IntPtr pFuncEnter3WithInfo,
+        IntPtr pFuncLeave3WithInfo,
+        IntPtr pFuncTailcall3WithInfo);
 
     HResult GetFunctionEnter3Info(
         FunctionId functionId,
