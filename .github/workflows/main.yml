@@ -13,64 +13,29 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Setup .NET
-      uses: actions/setup-dotnet@v2
+      uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 7.0.x
     - name: Restore dependencies
       run: dotnet restore src/SharpDetect.sln
     - name: Build & Treat Warnings as Errors
       run: dotnet build src/SharpDetect.sln --no-restore --no-incremental /warnaserror
       
-  cpp-windows-build:
+  native-build-windows:
     runs-on: windows-2022
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
-    - name: Setup Python 3.x
-      uses: actions/setup-python@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
       with:
-        python-version: 3.x
-    - name: Setup Conan
+        dotnet-version: 7.0.x
+    - name: Restore dependencies
+      run: dotnet restore src/SharpDetect.sln
+    - name: Publish native AOT
       run: |
-        pip install conan --upgrade
-        conan config init --force
-        conan profile update settings.os="Windows" default
-        conan profile update settings.arch="x86_64" default
-        conan profile update settings.compiler="Visual Studio" default
-        conan profile update settings.compiler.version=17 default
-        conan profile update settings.compiler.cppstd=20 default
-        conan profile update settings.build_type="Debug" default
-    - name: Create output folder
-      run: mkdir src/SharpDetect.Profiler/build
-    - name: Cache native dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.conan
-          C:/.conan
-        key: ${{ runner.os }}-build-${{ env.cache-name }}
-        restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-    - name: Prepare dependencies
-      run: |
-        cd src/SharpDetect.Profiler/build
-        conan install .. --build=missing
-    - name: Run CMake generators
-      run: |
-        cd src/SharpDetect.Profiler/build
-        cmake ..
-    - name: Build
-      run: |
-        cd src/SharpDetect.Profiler/build
-        cmake --build .
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: windows-profiler
-        path: src/SharpDetect.Profiler/build/bin/SharpDetect.Profiler.dll
-        retention-days: 5
+        cd src/SharpDetect.ManagedProfiler/SharpDetect.ManagedProfiler/Scripts
+        ./publish-win-x64-aot-release.cmd
 
   dotnet-unit-tests:
     runs-on: ubuntu-latest
@@ -81,32 +46,10 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 7.0.x
     - name: Restore dependencies
       run: dotnet restore src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj
     - name: Build & Ignore Warnings
       run: dotnet build src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj --no-restore --no-incremental /property:WarningLevel=0
     - name: Test
       run: dotnet test src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj --no-build --verbosity normal --logger GitHubActions
-      
-  windows-e2e-tests:
-    runs-on: windows-2022
-    needs: [dotnet-build-no-warnings, cpp-windows-build]
-    timeout-minutes: 20
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: 6.0.x
-    - name: Restore dependencies
-      run: dotnet restore src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj
-    - name: Build & Ignore Warnings
-      run: dotnet build src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj --no-restore --no-incremental /property:WarningLevel=0
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: windows-profiler
-        path: src/SharpDetect.Profiler/build/bin
-    - name: Test
-      run: dotnet test src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj --no-build --verbosity normal --logger GitHubActions
