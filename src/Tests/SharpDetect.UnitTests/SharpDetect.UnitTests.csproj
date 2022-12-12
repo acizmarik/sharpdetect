@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Dnlib.Extensions\SharpDetect.Dnlib.Extensions.csproj" />
+    <ProjectReference Include="..\..\SharpDetect.ManagedProfiler\SharpDetect.ManagedProfiler\SharpDetect.ManagedProfiler.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
   </ItemGroup>
 
