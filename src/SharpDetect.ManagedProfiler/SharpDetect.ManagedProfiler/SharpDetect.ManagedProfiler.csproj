@@ -8,6 +8,7 @@
 	<PublishAot>true</PublishAot>
 	<NativeLib>Shared</NativeLib>
 	<SelfContained>true</SelfContained>
+	<EnableAOTAnalyzer>true</EnableAOTAnalyzer>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -32,8 +33,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Hooks\Asm\" />
-    <Folder Include="Hooks\Platform\Linux\" />
+	<Folder Include="Hooks\Asm\" />
+	<Folder Include="Hooks\Platform\Linux\" />
   </ItemGroup>
 
 </Project>
