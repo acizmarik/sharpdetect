@@ -33,7 +33,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.ManagedProfiler
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NativeObjectsSourceGenerator", "SharpDetect.ManagedProfiler\NativeObjectsSourceGenerator\NativeObjectsSourceGenerator.csproj", "{D271B8C7-5645-4402-A158-4D702CE1A45A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.ProtocolBuffers", "SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj", "{A3F37C0E-9E14-4E4C-B057-65E3D5F7CE20}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.ProtocolBuffers", "SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj", "{A3F37C0E-9E14-4E4C-B057-65E3D5F7CE20}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

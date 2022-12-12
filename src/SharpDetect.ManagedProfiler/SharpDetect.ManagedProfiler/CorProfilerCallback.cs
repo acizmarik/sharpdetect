@@ -1,8 +1,8 @@
-﻿using SharpDetect.Profiler.Hooks;
+﻿using SharpDetect.Profiler.Communication;
+using SharpDetect.Profiler.Hooks;
 using SharpDetect.Profiler.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 
 namespace SharpDetect.Profiler;
 
@@ -14,14 +14,15 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     private readonly ConcurrentDictionary<ModuleId, Module> moduleLookup;
     private readonly ConcurrentDictionary<AssemblyId, Assembly> assemblyLookup;
     private readonly ConcurrentDictionary<FunctionId, Method> methodHooks;
+    private readonly MessagingClient messagingClient;
     private readonly AsmUtilities asmUtilities;
     private ICorProfilerInfo3 corProfilerInfo = null!;
     private InstrumentationContext? instrumentationContext;
     private ModuleId? coreLibraryModuleId;
     
-
     public CorProfilerCallback()
     {
+        AsyncIO.ForceDotNet.Force();
         Object = NativeObjects.ICorProfilerCallback2.Wrap(this);
         Logger.Initialize(
             LogLevel.Debug,
@@ -31,6 +32,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         moduleLookup = new();
         assemblyLookup = new();
         methodHooks = new();
+        messagingClient = new();
         asmUtilities = new();
         Instance = this;
     }
@@ -42,6 +44,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         int result = iunknown.QueryInterface(in KnownGuids.ICorProfilerInfo3, out var ptr);
         if (result == 0)
         {
+            messagingClient.Start();
             corProfilerInfo = NativeObjects.ICorProfilerInfo3.Wrap(ptr);
             corProfilerInfo.GetRuntimeInformation(out _, out var runtimeType, out var majorVer, out var minorVer, out var buildVer, out var qfVer, 0, out _, null);
             Logger.LogInformation($"RuntimeType: {runtimeType}");
@@ -50,6 +53,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
             // Initialize runtime profiling capabilities
             if (!corProfilerInfo.SetEventMask(
                 COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
                 COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
                 COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
                 COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
@@ -68,12 +72,14 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
             }
         }
 
+        messagingClient.SendNotification(MessageFactory.CreateProfilerInitializedNotification());
         Logger.LogInformation($"Profiler initialized");
         return HResult.S_OK;
     }
 
     public HResult Shutdown()
     {
+        messagingClient.SendNotification(MessageFactory.CreateProfilerDestroyedNotification());
         Logger.LogInformation("Profiler shutting down");
         Logger.Terminate();
         asmUtilities.Dispose();
@@ -286,11 +292,14 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult ThreadCreated(ThreadId threadId)
     {
+        Logger.LogWarning(nameof(ThreadCreated) + $"; managed: {Environment.CurrentManagedThreadId}" + $"; native: {threadId.Value}");
+        messagingClient.SendNotification(MessageFactory.CreateThreadCreatedNotification(threadId));
         return HResult.S_OK;
     }
 
     public HResult ThreadDestroyed(ThreadId threadId)
     {
+        messagingClient.SendNotification(MessageFactory.CreateThreadDestroyedNotification(threadId));
         return HResult.S_OK;
     }
 
