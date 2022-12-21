@@ -4,6 +4,10 @@ using SharpDetect.Profiler.Hooks;
 using SharpDetect.Profiler.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Xml.Linq;
 
 namespace SharpDetect.Profiler;
 
@@ -325,6 +329,101 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult JITCompilationStarted(FunctionId functionId, bool fIsSafeToBlock)
     {
+        // Obtain information about the method
+        if (!corProfilerInfo.GetFunctionInfo2(functionId, default, out _, out var moduleId, out var token, 0, out _, null) ||
+            !moduleLookup[moduleId].GetMethodProps(new MdMethodDef(token.Value), out var typeDef, out var name, out _, out _))
+        {
+            Logger.LogError($"Could not load information about method with functionId {functionId}");
+            return HResult.E_FAIL;
+        }
+
+        // Make sure the client registers that we are waiting for a request
+        var message = messageFactory.CreateJITCompilationStartedNotification(moduleId, typeDef, new MdMethodDef(token.Value));
+        var newNotificationId = messagingClient.GetNewNotificationId();
+        var requestFuture = messagingClient.ReceiveRequest(newNotificationId);
+        messagingClient.SendNotification(message, newNotificationId);
+
+        // Wait for request
+        var result = HResult.S_OK;
+        var request = requestFuture.Result;
+        if (request.Instrumentation is Request_Instrumentation instrumentationRequest)
+        {
+            var module = moduleLookup[moduleId];
+            var methodDef = new MdMethodDef(token.Value);
+            result = HandleInstrumentationRequest(instrumentationRequest, module, functionId, name, typeDef, methodDef);
+        }
+
+        // Respond
+        var response = messageFactory.CreateResponse(request, result == HResult.S_OK);
+        messagingClient.SendNotification(response);
+
+        return HResult.S_OK;
+    }
+
+    private HResult HandleInstrumentationRequest(
+        Request_Instrumentation request, 
+        Module module, 
+        FunctionId functionId, 
+        string methodName, 
+        MdTypeDef typeDef, 
+        MdMethodDef methodDef)
+    {
+        if (request.InjectHooks)
+        {
+            // Prepare information about captured arguments, if available
+            var totalArgumentsSize = 0UL;
+            var totalIndirectArgumentsSize = 0UL;
+            var argumentInfos = new List<(ushort, ushort, bool)>();
+            if (request.ArgumentInfos.Span.Length > 0)
+            {
+                var data = request.ArgumentInfos;
+                var indirects = request.PassingByRefInfos;
+                for (var i = 0; i < data.Length; i += 4)
+                {
+                    ushort index = (ushort)(data[i + 1] << 8 | data[i]);
+                    ushort size = (ushort)(data[i + 3] << 8 | data[i + 2]);
+                    bool isIndirect = (indirects[index / 8] & (1 << index % 8)) != 0;
+                    totalArgumentsSize += size;
+                    if (isIndirect)
+                        totalIndirectArgumentsSize += size;
+
+                    argumentInfos.Add((index, size, isIndirect));
+                }
+            }
+
+            // Register method for entry/exit hooks
+            RegisterMethodHookEntry(functionId, new(
+                module.Id,
+                typeDef,
+                methodDef,
+                argumentInfos,
+                totalArgumentsSize,
+                totalIndirectArgumentsSize));
+        }
+
+        if (request.Bytecode.Span.Length > 0)
+        {
+            // Allocate memory for new method body
+            var size = request.Bytecode.Span.Length;
+            var memory = module.AllocMethodBody((ulong)size);
+            if (memory == IntPtr.Zero)
+            {
+                Logger.LogError($"Could not allocate memory for method body \"{methodName}\"");
+                return HResult.E_FAIL;
+            }
+
+            // Copy new IL to newly allocated method body
+            fixed (byte* ptr = request.Bytecode.Span)
+                Buffer.MemoryCopy(ptr, memory.ToPointer(), size, size);
+
+            // Swap method body (discard the original IL and use the instrumented version)
+            if (!corProfilerInfo.SetILFunctionBody(module.Id, methodDef, memory))
+            {
+                Logger.LogError($"Could not set method body for method \"{methodName}\"");
+                return HResult.E_FAIL;
+            }
+        }
+
         return HResult.S_OK;
     }
 
@@ -627,6 +726,11 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     public HResult TryGetMethodHookEntry(FunctionId functionId, [NotNullWhen(returnValue: default)] out Method? method)
     {
         return methodHooks.TryGetValue(functionId, out method) ? HResult.S_OK : HResult.E_FAIL;
+    }
+
+    public HResult RegisterMethodHookEntry(FunctionId functionId, Method method)
+    {
+        return methodHooks.TryAdd(functionId, method) ? HResult.S_OK : HResult.E_FAIL;
     }
 
     #region COM_STUFF

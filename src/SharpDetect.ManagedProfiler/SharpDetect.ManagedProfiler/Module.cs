@@ -169,16 +169,18 @@ namespace SharpDetect.Profiler
 
         public HResult GetMethodProps(
             MdMethodDef methodDef,
+            [NotNullWhen(returnValue: default)] out MdTypeDef typeDef,
             [NotNullWhen(returnValue: default)] out string? name,
             [NotNullWhen(returnValue: default)] out CorMethodAttr? flags, 
             [NotNullWhen(returnValue: default)] out ReadOnlySpan<COR_SIGNATURE> signature)
         {
+            typeDef = MdTypeDef.Nil;
             name = null;
             flags = null;
             signature = null;
 
             // Obtain method name and signature length
-            if (!metadataModuleImport.GetMethodProps(methodDef, out _, null, 0, out var nameLength, out _, out _, out var signatureLength, out _, out _))
+            if (!metadataModuleImport.GetMethodProps(methodDef, out typeDef, null, 0, out var nameLength, out _, out _, out var signatureLength, out _, out _))
                 return HResult.E_FAIL;
 
             // Retrieve data

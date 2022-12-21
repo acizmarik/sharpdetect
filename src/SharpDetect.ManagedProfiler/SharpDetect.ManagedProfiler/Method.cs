@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler
 {
-    internal class Method
-    {
-    }
+    internal record Method(
+        ModuleId ModuleId, 
+        MdTypeDef TypeDef, 
+        MdMethodDef MethodDef, 
+        List<(ushort, ushort, bool)> ArgumentInfos,
+        ulong TotalArgumentValuesSize,
+        ulong TotalIndirectArgumentValuesSize);
 }
