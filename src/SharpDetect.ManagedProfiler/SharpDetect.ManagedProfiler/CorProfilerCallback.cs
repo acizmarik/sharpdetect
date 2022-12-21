@@ -63,6 +63,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         // Initialize runtime profiling capabilities
         if (!corProfilerInfo.SetEventMask(
             COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+            COR_PRF_MONITOR.COR_PRF_MONITOR_CLASS_LOADS |
             COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
             COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
             COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
@@ -289,6 +290,21 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult ClassLoadFinished(ClassId classId, HResult hrStatus)
     {
+        // We are not interested in unsuccessful class loads
+        if (hrStatus != HResult.S_OK)
+            return HResult.S_OK;
+
+        // Get defining module and class token
+        if (!corProfilerInfo.GetClassIDInfo2(classId, out var moduleId, out var typeDef, out _, 0, out _, out _))
+        {
+            Logger.LogError($"Could not load information about loaded type with classId {classId}");
+            return HResult.E_FAIL;
+        }
+
+        // Pack information about class load
+        var message = messageFactory.CreateTypeLoadedNotification(moduleId, typeDef);
+        messagingClient.SendNotification(message);
+
         return HResult.S_OK;
     }
 
