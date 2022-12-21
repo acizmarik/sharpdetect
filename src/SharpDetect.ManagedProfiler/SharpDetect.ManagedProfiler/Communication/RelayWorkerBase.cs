@@ -1,5 +1,6 @@
 ﻿using NetMQ;
 using NetMQ.Sockets;
+using SharpDetect.Profiler.Logging;
 
 namespace SharpDetect.Profiler.Communication
 {
@@ -23,7 +24,7 @@ namespace SharpDetect.Profiler.Communication
             inSocket.ReceiveReady += OnNotificationReady;
         }
 
-        private void OnNotificationReady(object? _, NetMQSocketEventArgs e)
+        protected virtual void OnNotificationReady(object? _, NetMQSocketEventArgs e)
         {
             while (inSocket.HasIn)
             {

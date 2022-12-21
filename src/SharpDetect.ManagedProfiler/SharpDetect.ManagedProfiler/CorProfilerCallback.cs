@@ -1,4 +1,5 @@
-﻿using SharpDetect.Profiler.Communication;
+﻿using SharpDetect.Common.Messages;
+using SharpDetect.Profiler.Communication;
 using SharpDetect.Profiler.Hooks;
 using SharpDetect.Profiler.Logging;
 using System.Collections.Concurrent;
@@ -14,9 +15,10 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     private readonly ConcurrentDictionary<ModuleId, Module> moduleLookup;
     private readonly ConcurrentDictionary<AssemblyId, Assembly> assemblyLookup;
     private readonly ConcurrentDictionary<FunctionId, Method> methodHooks;
-    private readonly MessagingClient messagingClient;
     private readonly AsmUtilities asmUtilities;
-    private ICorProfilerInfo3 corProfilerInfo = null!;
+    private MessagingClient messagingClient;
+    private MessageFactory messageFactory;
+    private ICorProfilerInfo3 corProfilerInfo;
     private InstrumentationContext? instrumentationContext;
     private ModuleId? coreLibraryModuleId;
     
@@ -32,7 +34,9 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         moduleLookup = new();
         assemblyLookup = new();
         methodHooks = new();
-        messagingClient = new();
+        messagingClient = null!;
+        messageFactory = null!;
+        corProfilerInfo = null!;
         asmUtilities = new();
         Instance = this;
     }
@@ -41,45 +45,50 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     {
         // Obtain ICorProfilerInfo
         var iunknown = NativeObjects.IUnknown.Wrap(pICorProfilerInfoUnk);
-        int result = iunknown.QueryInterface(in KnownGuids.ICorProfilerInfo3, out var ptr);
-        if (result == 0)
+        if (iunknown.QueryInterface(in KnownGuids.ICorProfilerInfo3, out var ptr) != HResult.S_OK)
         {
-            messagingClient.Start();
-            corProfilerInfo = NativeObjects.ICorProfilerInfo3.Wrap(ptr);
-            corProfilerInfo.GetRuntimeInformation(out _, out var runtimeType, out var majorVer, out var minorVer, out var buildVer, out var qfVer, 0, out _, null);
-            Logger.LogInformation($"RuntimeType: {runtimeType}");
-            Logger.LogInformation($"RuntimeVersion: v{majorVer}.{minorVer}.{buildVer}.{qfVer}");
-
-            // Initialize runtime profiling capabilities
-            if (!corProfilerInfo.SetEventMask(
-                COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
-                COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
-                COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
-                COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
-                COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
-                COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
-                COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL))
-            {
-                Logger.LogError($"Could not set profiling event mask");
-                return HResult.E_FAIL;
-            }
-
-            // Register method enter/leave hooks
-            if (!MethodHooks.Register(corProfilerInfo, asmUtilities))
-            {
-                Logger.LogError($"Could not register method enter/leave hooks");
-                return HResult.E_FAIL;
-            }
+            Logger.LogError($"Could not retrieve {nameof(KnownGuids.ICorProfilerInfo3)}");
+            return HResult.E_FAIL;
         }
 
-        messagingClient.SendNotification(MessageFactory.CreateProfilerInitializedNotification());
+        corProfilerInfo = NativeObjects.ICorProfilerInfo3.Wrap(ptr);
+        messageFactory = new MessageFactory(corProfilerInfo);
+        messagingClient = new MessagingClient(messageFactory);
+        messagingClient.Start();
+
+        corProfilerInfo.GetRuntimeInformation(out _, out var runtimeType, out var majorVer, out var minorVer, out var buildVer, out var qfVer, 0, out _, null);
+        Logger.LogInformation($"RuntimeType: {runtimeType}");
+        Logger.LogInformation($"RuntimeVersion: v{majorVer}.{minorVer}.{buildVer}.{qfVer}");
+
+        // Initialize runtime profiling capabilities
+        if (!corProfilerInfo.SetEventMask(
+            COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+            COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
+            COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
+            COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+            COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+            COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+            COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL))
+        {
+            Logger.LogError($"Could not set profiling event mask");
+            return HResult.E_FAIL;
+        }
+
+        // Register method enter/leave hooks
+        if (!MethodHooks.Register(corProfilerInfo, asmUtilities))
+        {
+            Logger.LogError($"Could not register method enter/leave hooks");
+            return HResult.E_FAIL;
+        }
+
+        messagingClient.SendNotification(messageFactory.CreateProfilerInitializedNotification());
         Logger.LogInformation($"Profiler initialized");
         return HResult.S_OK;
     }
 
     public HResult Shutdown()
     {
-        messagingClient.SendNotification(MessageFactory.CreateProfilerDestroyedNotification());
+        messagingClient.SendNotification(messageFactory.CreateProfilerDestroyedNotification());
         Logger.LogInformation("Profiler shutting down");
         Logger.Terminate();
         asmUtilities.Dispose();
@@ -147,16 +156,33 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
             moduleLookup.AddOrUpdate(moduleId, module, (_, _) => module);
             assemblyLookup.AddOrUpdate(assembly.AssemblyId, assembly, (_, _) => assembly);
             Logger.LogDebug($"Loaded module {module.Name} from {module.FullPath}");
+            var newNotificationId = messagingClient.GetNewNotificationId();
+            var requestFuture = messagingClient.ReceiveRequest(newNotificationId);
+            messagingClient.SendNotification(messageFactory.CreateModuleLoadedNotification(moduleId, module.FullPath), newNotificationId);
+
+            // Check what kind of module this is (core module gets loaded always first)
+            Func<Module, Assembly, HResult> handler = (!coreLibraryModuleId.HasValue) ? HandleCoreModuleLoaded : HandleRegularModuleLoaded;
+            var result = handler(module, assembly);
+
+            // Wait for request (what to do with this module)
+            var request = requestFuture.Result;
+            if (result)
+            {
+                // Check if we need to wrap extern methods
+                result = (request.Wrapping is Request_Wrapping wrappingRequest) ?
+                    HandleExternMethodsWrapping(module, instrumentationContext!, wrappingRequest) :
+                    Instrumentation.ImportWrapperMethods(instrumentationContext!, assembly, module);
+            }
+
+            // Respond to module alternations request
+            messagingClient.SendResponse(messageFactory.CreateResponse(request, result == HResult.S_OK));
+            return HResult.S_OK;
         }
-        catch
+        catch (Exception ex)
         {
-            Logger.LogError("Could not construct metadata wrapper for module and/or assembly");
+            Logger.LogError($"Could not construct metadata wrapper for module and/or assembly due to: {ex}");
             return HResult.E_FAIL;
         }
-
-        // Check what kind of module this is (core module gets loaded always first)
-        return (!coreLibraryModuleId.HasValue) 
-            ? HandleCoreModuleLoaded(module, assembly) : HandleRegularModuleLoaded(module, assembly);
     }
 
     private HResult HandleCoreModuleLoaded(Module module, Assembly assembly)
@@ -213,6 +239,29 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         {
             Logger.LogError($"Could not import one or multiple methods from type \"{Instrumentation.DispatcherTypeName}\"");
             return HResult.E_FAIL;
+        }
+
+        return HResult.S_OK;
+    }
+
+    private HResult HandleExternMethodsWrapping(Module module, InstrumentationContext context, Request_Wrapping wrappingRequest)
+    {
+        foreach (var externInfo in wrappingRequest.MethodsToWrap)
+        {
+            var typeDef = new MdTypeDef((int)externInfo.TypeToken);
+            var methodDef = new MdMethodDef((int)externInfo.FunctionToken);
+
+            if (!Instrumentation.InjectWrapperMethod(
+                context,
+                module,
+                typeDef,
+                methodDef,
+                (ushort)externInfo.ParametersCount,
+                out var _))
+            {
+                Logger.LogError($"Could not wrap one or multiple requested methods for module {module.FullPath}");
+                return HResult.E_FAIL;
+            }
         }
 
         return HResult.S_OK;
@@ -292,14 +341,13 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult ThreadCreated(ThreadId threadId)
     {
-        Logger.LogWarning(nameof(ThreadCreated) + $"; managed: {Environment.CurrentManagedThreadId}" + $"; native: {threadId.Value}");
-        messagingClient.SendNotification(MessageFactory.CreateThreadCreatedNotification(threadId));
+        messagingClient.SendNotification(messageFactory.CreateThreadCreatedNotification(threadId));
         return HResult.S_OK;
     }
 
     public HResult ThreadDestroyed(ThreadId threadId)
     {
-        messagingClient.SendNotification(MessageFactory.CreateThreadDestroyedNotification(threadId));
+        messagingClient.SendNotification(messageFactory.CreateThreadDestroyedNotification(threadId));
         return HResult.S_OK;
     }
 

@@ -160,7 +160,7 @@ internal unsafe interface IMetaDataImport : IUnknown
         char* szMethod,
         uint cchMethod,
         out uint pchMethod,
-        out int pdwAttr,
+        out uint pdwAttr,
         out COR_SIGNATURE* ppvSigBlob,
         out uint pcbSigBlob,
         out uint pulCodeRVA,

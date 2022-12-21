@@ -23,7 +23,11 @@ namespace SharpDetect.Profiler.Communication
         private void ThreadLoop()
         {
             // Prepare static array of message bytes since it does not change
-            var message = new NotifyMessage() { Heartbeat = new Notify_Heartbeat() };
+            var message = new NotifyMessage()
+            {
+                Heartbeat = new Notify_Heartbeat(), 
+                ProcessId = Environment.ProcessId 
+            };
             var messageBytes = message.ToByteArray();
 
             while (!shouldTerminate)

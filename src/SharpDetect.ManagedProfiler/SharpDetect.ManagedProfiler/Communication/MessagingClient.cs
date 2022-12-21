@@ -31,15 +31,18 @@ namespace SharpDetect.Profiler.Communication
         private readonly NotificationsWorker notificationsWorker;
         private readonly RequestsWorker requestsWorker;
         private readonly ResponsesWorker responsesWorker;
+        private readonly MessageFactory messageFactory;
         private readonly int processId;
         private ulong notificationId;
         private bool isDisposed;
 
-        public MessagingClient()
+        public MessagingClient(MessageFactory messageFactory)
         {
             [DoesNotReturn]
             static void ThrowInvalidConfiguration(string argument)
                 => throw new Exception($"Invalid configuration: could not build {argument}");
+
+            this.messageFactory = messageFactory;
 
             // Prepare configuration strings
             if (!BuildConnectionString(signalsProtocolEnvironmentKey, signalsAddressEnvironmentKey, signalsPortEnvironmentKey, out signalsConnectionString!))
@@ -51,6 +54,8 @@ namespace SharpDetect.Profiler.Communication
             if (!BuildConnectionString(responsesProtocolEnvironmentKey, responsesAddressEnvironmentKey, responsesPortEnvironmentKey, out responsesConnectionString!))
                 ThrowInvalidConfiguration(nameof(responsesConnectionString));
 
+            RegisterInstrumentationEventHandlers();
+
             // Create communication workers
             signalsWorker = new SignalsWorker(signalsConnectionString);
             notificationsWorker = new NotificationsWorker(notificationsConnectionString);
@@ -61,6 +66,20 @@ namespace SharpDetect.Profiler.Communication
 
             processId = Environment.ProcessId;
             promises = new();
+        }
+
+        private void RegisterInstrumentationEventHandlers()
+        {
+            Instrumentation.TypeInjected +=
+                args => SendNotification(messageFactory.CreateTypeInjectedNotification(args.Module.Id, args.TypeDef));
+            Instrumentation.HelperMethodInjected +=
+                args => SendNotification(messageFactory.CreateMethodInjectedNotification(args.Module.Id, args.TypeDef, args.MethodDef, args.Type));
+            Instrumentation.HelperMethodImported +=
+                args => SendNotification(messageFactory.CreateHelperMethodReferencedNotification(args.Module.Id, args.TypeRef, args.MethodRef, args.Type));
+            Instrumentation.WrapperMethodInjected +=
+                args => SendNotification(messageFactory.CreateMethodWrappedNotification(args.Module.Id, args.TypeDef, args.OriginalMethodDef, args.WrapperMethodDef));
+            Instrumentation.WrapperMethodImported +=
+                args => SendNotification(messageFactory.CreateWrapperMethodReferencedNotification(args.DefModule.Id, args.DefTypeDef, args.DefMethodDef, args.RefModule.Id, args.DefTypeRef, args.RefMethodRef));
         }
 
         private static HResult BuildConnectionString(
@@ -87,7 +106,7 @@ namespace SharpDetect.Profiler.Communication
         [ThreadStatic]
         private static PushSocket? internalNotificationsSocket;
 
-        public ulong SendNotification(NotifyMessage message)
+        public ulong SendNotification(NotifyMessage message, ulong? id = null)
         {
             if (internalNotificationsSocket is null)
             {
@@ -95,7 +114,8 @@ namespace SharpDetect.Profiler.Communication
                 internalNotificationsSocket.Connect(NotificationsWorker.InternalNotificationsConnectionString);
             }
 
-            var notificationId = message.NotificationId = GetNewNotificationId();
+            var notificationId = (id != null) ? id.Value : GetNewNotificationId();
+            message.NotificationId = notificationId;
             internalNotificationsSocket.SendFrame(message.ToByteArray());
             return notificationId;
         }

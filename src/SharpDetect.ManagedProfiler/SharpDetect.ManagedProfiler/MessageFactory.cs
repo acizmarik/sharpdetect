@@ -1,26 +1,46 @@
 ﻿using Google.Protobuf;
 using SharpDetect.Common.Messages;
-using System;
 using System.Runtime.InteropServices;
 using MethodType = SharpDetect.Common.Messages.MethodType;
 
 namespace SharpDetect.Profiler
 {
-    internal static class MessageFactory
+    internal class MessageFactory
     {
-        public static NotifyMessage CreateProfilerInitializedNotification()
+        private readonly ICorProfilerInfo corProfilerInfo;
+
+        public MessageFactory(ICorProfilerInfo corProfilerInfo)
+        {
+            this.corProfilerInfo = corProfilerInfo;
+        }
+
+        public NotifyMessage CreateResponse(RequestMessage requestMessage, bool result)
+        {
+            var message = new NotifyMessage()
+            {
+                NotificationId = requestMessage.NotificationId,
+                Response = new Response()
+                {
+                    RequestId = requestMessage.RequestId,
+                    Result = result
+                }
+            };
+            return AddCommonMetadata(message);
+        }
+
+        public NotifyMessage CreateProfilerInitializedNotification()
         {
             var message = new NotifyMessage() { ProfilerInitialized = new Notify_ProfilerInitialized() };
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateProfilerDestroyedNotification()
+        public NotifyMessage CreateProfilerDestroyedNotification()
         {
             var message = new NotifyMessage() { ProfilerDestroyed = new Notify_ProfilerDestroyed() };
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateModuleLoadedNotification(ModuleId moduleId, string path)
+        public NotifyMessage CreateModuleLoadedNotification(ModuleId moduleId, string path)
         {
             var message = new NotifyMessage() { ModuleLoaded = new Notify_ModuleLoaded()
             {
@@ -30,7 +50,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateTypeLoadedNotification(ModuleId moduleId, MdTypeDef typeDef)
+        public NotifyMessage CreateTypeLoadedNotification(ModuleId moduleId, MdTypeDef typeDef)
         {
             var message = new NotifyMessage()
             {
@@ -43,7 +63,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateJITCompilationStartedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef)
+        public NotifyMessage CreateJITCompilationStartedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef)
         {
             var message = new NotifyMessage()
             {
@@ -57,7 +77,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateThreadCreatedNotification(ThreadId threadId)
+        public NotifyMessage CreateThreadCreatedNotification(ThreadId threadId)
         {
             var message = new NotifyMessage()
             {
@@ -69,7 +89,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateThreadDestroyedNotification(ThreadId threadId)
+        public NotifyMessage CreateThreadDestroyedNotification(ThreadId threadId)
         {
             var message = new NotifyMessage()
             {
@@ -81,7 +101,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateTypeInjectedNotification(ModuleId moduleId, MdTypeDef typeDef)
+        public NotifyMessage CreateTypeInjectedNotification(ModuleId moduleId, MdTypeDef typeDef)
         {
             var message = new NotifyMessage()
             {
@@ -94,7 +114,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateTypeReferencedNotification(ModuleId moduleId, MdTypeRef typeRef)
+        public NotifyMessage CreateTypeReferencedNotification(ModuleId moduleId, MdTypeRef typeRef)
         {
             var message = new NotifyMessage()
             {
@@ -107,7 +127,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateMethodInjectedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, MethodType type)
+        public NotifyMessage CreateMethodInjectedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, MethodType type)
         {
             var message = new NotifyMessage()
             {
@@ -122,7 +142,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateHelperMethodReferencedNotification(ModuleId moduleId, MdTypeRef typeRef, MdMemberRef methodRef, MethodType type)
+        public NotifyMessage CreateHelperMethodReferencedNotification(ModuleId moduleId, MdTypeRef typeRef, MdMemberRef methodRef, MethodType type)
         {
             var message = new NotifyMessage()
             {
@@ -137,7 +157,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateWrapperMethodReferencedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, ModuleId refModuleId, MdTypeRef typeRef, MdMemberRef methodRef)
+        public NotifyMessage CreateWrapperMethodReferencedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, ModuleId refModuleId, MdTypeRef typeRef, MdMemberRef methodRef)
         {
             var message = new NotifyMessage()
             {
@@ -154,7 +174,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateMethodWrappedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef nativeMethodDef, MdMethodDef wrapperMethodDef)
+        public NotifyMessage CreateMethodWrappedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef nativeMethodDef, MdMethodDef wrapperMethodDef)
         {
             var message = new NotifyMessage()
             {
@@ -169,7 +189,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateMethodCalledNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef)
+        public NotifyMessage CreateMethodCalledNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef)
         {
             var message = new NotifyMessage()
             {
@@ -183,7 +203,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateMethodCalledWithArgumentsNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, ReadOnlySpan<byte> argValues, ReadOnlySpan<byte> argOffsets)
+        public NotifyMessage CreateMethodCalledWithArgumentsNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, ReadOnlySpan<byte> argValues, ReadOnlySpan<byte> argOffsets)
         {
             var message = new NotifyMessage()
             {
@@ -199,7 +219,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateMethodReturnedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef)
+        public NotifyMessage CreateMethodReturnedNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef)
         {
             var message = new NotifyMessage()
             {
@@ -213,7 +233,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateMethodReturnedWithReturnValueNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, ReadOnlySpan<byte> returnValue, ReadOnlySpan<byte> byRefArgValues, ReadOnlySpan<byte> byRefArgOffsets)
+        public NotifyMessage CreateMethodReturnedWithReturnValueNotification(ModuleId moduleId, MdTypeDef typeDef, MdMethodDef methodDef, ReadOnlySpan<byte> returnValue, ReadOnlySpan<byte> byRefArgValues, ReadOnlySpan<byte> byRefArgOffsets)
         {
             var message = new NotifyMessage()
             {
@@ -230,7 +250,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateGarbageCollectionStartedNotification(ReadOnlySpan<bool> generations, ReadOnlySpan<COR_PRF_GC_GENERATION_RANGE> bounds)
+        public NotifyMessage CreateGarbageCollectionStartedNotification(ReadOnlySpan<bool> generations, ReadOnlySpan<COR_PRF_GC_GENERATION_RANGE> bounds)
         {
             var generationBytes = MemoryMarshal.Cast<bool, byte>(generations);
             var boundBytes = MemoryMarshal.Cast<COR_PRF_GC_GENERATION_RANGE, byte>(bounds);
@@ -246,7 +266,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateGarbageCollectionFinishedNotification(ReadOnlySpan<COR_PRF_GC_GENERATION_RANGE> bounds)
+        public NotifyMessage CreateGarbageCollectionFinishedNotification(ReadOnlySpan<COR_PRF_GC_GENERATION_RANGE> bounds)
         {
             var boundBytes = MemoryMarshal.Cast<COR_PRF_GC_GENERATION_RANGE, byte>(bounds);
 
@@ -260,7 +280,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateRuntimeSuspendStartedNotification(COR_PRF_SUSPEND_REASON reason)
+        public NotifyMessage CreateRuntimeSuspendStartedNotification(COR_PRF_SUSPEND_REASON reason)
         {
             var message = new NotifyMessage()
             {
@@ -272,25 +292,25 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateRuntimeSuspendFinishedNotification()
+        public NotifyMessage CreateRuntimeSuspendFinishedNotification()
         {
             var message = new NotifyMessage() { RuntimeSuspendFinished = new Notify_RuntimeSuspendFinished() };
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateRuntimeResumeStartedNotification()
+        public NotifyMessage CreateRuntimeResumeStartedNotification()
         {
             var message = new NotifyMessage() { RuntimeResumeStarted = new Notify_RuntimeResumeStarted() };
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateRuntimeResumeFinishedNotification()
+        public NotifyMessage CreateRuntimeResumeFinishedNotification()
         {
             var message = new NotifyMessage() { RuntimeResumeFinished = new Notify_RuntimeResumeFinished() };
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateRuntimeThreadSuspendedNotification(ThreadId threadId)
+        public NotifyMessage CreateRuntimeThreadSuspendedNotification(ThreadId threadId)
         {
             var message = new NotifyMessage()
             {
@@ -302,7 +322,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateRuntimeThreadResumedNotification(ThreadId threadId)
+        public NotifyMessage CreateRuntimeThreadResumedNotification(ThreadId threadId)
         {
             var message = new NotifyMessage()
             {
@@ -314,7 +334,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateSurvivingReferencesNotification(ReadOnlySpan<ObjectId> ranges, ReadOnlySpan<ObjectId> lengths)
+        public NotifyMessage CreateSurvivingReferencesNotification(ReadOnlySpan<ObjectId> ranges, ReadOnlySpan<ObjectId> lengths)
         {
             var rangesBytes = MemoryMarshal.Cast<ObjectId, byte>(ranges);
             var lengthsBytes = MemoryMarshal.Cast<ObjectId, byte>(lengths);
@@ -330,7 +350,7 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public static NotifyMessage CreateMovedReferencesNotification(ReadOnlySpan<ObjectId> oldRanges, ReadOnlySpan<ObjectId> newRanges, ReadOnlySpan<ObjectId> lengths)
+        public NotifyMessage CreateMovedReferencesNotification(ReadOnlySpan<ObjectId> oldRanges, ReadOnlySpan<ObjectId> newRanges, ReadOnlySpan<ObjectId> lengths)
         {
             var oldRangesBytes = MemoryMarshal.Cast<ObjectId, byte>(oldRanges);
             var newRangesBytes = MemoryMarshal.Cast<ObjectId, byte>(newRanges);
@@ -348,10 +368,11 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        private static NotifyMessage AddCommonMetadata(NotifyMessage message)
+        private NotifyMessage AddCommonMetadata(NotifyMessage message)
         {
             message.ProcessId = Environment.ProcessId;
-            message.ThreadId = (ulong)Environment.CurrentManagedThreadId;
+            corProfilerInfo.GetCurrentThreadId(out var threadId);
+            message.ThreadId = threadId.Value;
             return message;
         }
     }
