@@ -28,12 +28,10 @@ namespace SharpDetect.Profiler.Communication
             while (socket.HasIn)
             {
                 // Read topic
-                var topic = new Msg();
-                socket.Receive(ref topic);
+                _ = socket.ReceiveFrameBytes();
 
                 // Read payload
-                var payload = new Msg();
-                socket.Receive(ref payload);
+                var payload = socket.ReceiveFrameBytes();
 
                 var request = RequestMessage.Parser.ParseFrom(payload)!;
                 RequestReceived?.Invoke(request);

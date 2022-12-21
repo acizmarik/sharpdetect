@@ -6,13 +6,17 @@ namespace SharpDetect.Profiler
     internal unsafe class Assembly
     {
         public readonly AssemblyId AssemblyId;
+        public ISet<AssemblyRefProps> References => assemblyReferences;
+
         private readonly IMetaDataAssemblyImport metadataAssemblyImport;
         private readonly IMetaDataAssemblyEmit metadataAssemblyEmit;
-        private ImmutableArray<AssemblyRefProps> assemblyReferences;
+        private readonly HashSet<AssemblyRefProps> assemblyReferences;
         private const int maxNameCharactersCount = 1000;
 
         public Assembly(ModuleId moduleId, ICorProfilerInfo3 profilerInfo)
         {
+            assemblyReferences = new HashSet<AssemblyRefProps>();
+
             // Obtain IMetaDataAssemblyImport
             if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead, KnownGuids.IMetaDataAssemblyImport, out var ppOut))
                 throw new ArgumentException($"Could not obtain {nameof(KnownGuids.IMetaDataAssemblyImport)}");
@@ -113,7 +117,7 @@ namespace SharpDetect.Profiler
                 }
 
                 // Cache assembly reference
-                assemblyReferences = assemblyReferences.Add(new(
+                assemblyReferences.Add(new(
                     assemblyRef, 
                     assemblyName, 
                     publicKey, 
@@ -168,7 +172,6 @@ namespace SharpDetect.Profiler
             HResult hr;
             IntPtr enumerator;
             Span<char> nameBuffer = stackalloc char[maxNameCharactersCount];
-            var builder = ImmutableArray.CreateBuilder<AssemblyRefProps>();
             
             do
             {
@@ -190,12 +193,11 @@ namespace SharpDetect.Profiler
                         out _ /* hash byte length */, 
                         out var flags);
                     var name = new string(namePtr, 0, (int)nameLength - 1);
-                    builder.Add(new(currentAssemblyRef, name, publicKeyData, cbPublicKey, metadata, flags));
+                    assemblyReferences.Add(new(currentAssemblyRef, name, publicKeyData, cbPublicKey, metadata, flags));
                 }
 
             } while (hr == HResult.S_OK);
 
-            assemblyReferences = builder.ToImmutable();
             metadataAssemblyImport.CloseEnum(enumerator);
             return HResult.S_OK;
         }

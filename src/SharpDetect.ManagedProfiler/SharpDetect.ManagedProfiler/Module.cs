@@ -1,4 +1,5 @@
 ﻿using SharpDetect.Profiler.Logging;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace SharpDetect.Profiler
@@ -69,7 +70,7 @@ namespace SharpDetect.Profiler
             string name,
             CorMethodAttr flags,
             MdTypeDef typeDef,
-            in Span<COR_SIGNATURE> signature,
+            in ReadOnlySpan<COR_SIGNATURE> signature,
             CorMethodImpl implFlags,
             out MdMethodDef methodDefinition)
         {
@@ -164,6 +165,58 @@ namespace SharpDetect.Profiler
                     return metadataModuleImport.FindMemberRef(typeRef, namePtr, sigPtr, (ulong)signature.Length, out methodRef);
                 }
             }
+        }
+
+        public HResult GetMethodProps(
+            MdMethodDef methodDef,
+            [NotNullWhen(returnValue: default)] out string? name,
+            [NotNullWhen(returnValue: default)] out CorMethodAttr? flags, 
+            [NotNullWhen(returnValue: default)] out ReadOnlySpan<COR_SIGNATURE> signature)
+        {
+            name = null;
+            flags = null;
+            signature = null;
+
+            // Obtain method name and signature length
+            if (!metadataModuleImport.GetMethodProps(methodDef, out _, null, 0, out var nameLength, out _, out _, out var signatureLength, out _, out _))
+                return HResult.E_FAIL;
+
+            // Retrieve data
+            COR_SIGNATURE* signaturePtr = null;
+            Span<char> bufferName = stackalloc char[(int)nameLength];
+            fixed (char* namePtr = bufferName)
+            {
+                if (!metadataModuleImport.GetMethodProps(methodDef, out _, namePtr, nameLength, out _, out var methodFlags, out signaturePtr, out _, out _, out _))
+                    return HResult.E_FAIL;
+
+                flags = (CorMethodAttr?)methodFlags;
+            }
+
+            name = new string(bufferName);
+            signature = new ReadOnlySpan<COR_SIGNATURE>(signaturePtr, (int)signatureLength);
+            return HResult.S_OK;
+        }
+
+        public HResult GetTypeProps(
+            MdTypeDef typeDef,
+            [NotNullWhen(returnValue: true)] out string? name)
+        {
+            name = null;
+
+            // Obtain type name length
+            if (!metadataModuleImport.GetTypeDefProps(typeDef, null, 0, out var nameLength, out _, out _))
+                return HResult.E_FAIL;
+
+            // Retrieve data
+            Span<char> bufferName = stackalloc char[(int)nameLength];
+            fixed (char* namePtr = bufferName)
+            {
+                if (!metadataModuleImport.GetTypeDefProps(typeDef, namePtr, nameLength, out _, out _, out _))
+                    return HResult.E_FAIL;
+            }
+
+            name = new string(bufferName);
+            return HResult.S_OK;
         }
 
         private HResult GetPlaceHolderMethodRVA(out uint rva)
