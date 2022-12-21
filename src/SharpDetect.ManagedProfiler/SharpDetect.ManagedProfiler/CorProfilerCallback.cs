@@ -4,10 +4,6 @@ using SharpDetect.Profiler.Hooks;
 using SharpDetect.Profiler.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Xml.Linq;
 
 namespace SharpDetect.Profiler;
 
@@ -570,6 +566,11 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult MovedReferences(uint cMovedObjectIDRanges, ObjectId* oldObjectIDRangeStart, ObjectId* newObjectIDRangeStart, uint* cObjectIDRangeLength)
     {
+        var message = messageFactory.CreateMovedReferencesNotification(
+            new ReadOnlySpan<ObjectId>(oldObjectIDRangeStart, unchecked((int)cMovedObjectIDRanges)),
+            new ReadOnlySpan<ObjectId>(newObjectIDRangeStart, unchecked((int)cMovedObjectIDRanges)),
+            new ReadOnlySpan<uint>(cObjectIDRangeLength, unchecked((int)cMovedObjectIDRanges)));
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
@@ -690,16 +691,63 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult GarbageCollectionStarted(int cGenerations, bool* generationCollected, COR_PRF_GC_REASON reason)
     {
+        if (!GetGenerationBounds(out var bounds))
+        {
+            Logger.LogError($"Could not obtain GC generation ranges during {nameof(GarbageCollectionStarted)}");
+            return HResult.E_FAIL;
+        }
+
+        var message = messageFactory.CreateGarbageCollectionStartedNotification(
+            new ReadOnlySpan<bool>(generationCollected, cGenerations), bounds);
+        messagingClient.SendNotification(message);
+
+        return HResult.S_OK;
+    }
+
+    private HResult GetGenerationBounds(out COR_PRF_GC_GENERATION_RANGE[]? ranges)
+    {
+        ranges = null;
+        if (!corProfilerInfo.GetGenerationBounds(0, out var cBounds, null))
+        {
+            ranges = new COR_PRF_GC_GENERATION_RANGE[cBounds];
+            fixed (COR_PRF_GC_GENERATION_RANGE* ptr = ranges)
+            {
+                if (!corProfilerInfo.GetGenerationBounds(cBounds, out _, ptr))
+                    return HResult.E_FAIL;
+            }
+        }
+
         return HResult.S_OK;
     }
 
     public HResult SurvivingReferences(uint cSurvivingObjectIDRanges, ObjectId* objectIDRangeStart, uint* cObjectIDRangeLength)
     {
+        var message = messageFactory.CreateSurvivingReferencesNotification(
+            new ReadOnlySpan<ObjectId>(objectIDRangeStart, (int)cSurvivingObjectIDRanges),
+            new ReadOnlySpan<uint>(cObjectIDRangeLength, (int)cSurvivingObjectIDRanges));
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
     public HResult GarbageCollectionFinished()
     {
+        if (!GetGenerationBounds(out var bounds))
+        {
+            Logger.LogError($"Could not obtain GC generation ranges during {nameof(GarbageCollectionFinished)}");
+            return HResult.E_FAIL;
+        }
+
+        // Send notification and wait for request
+        var message = messageFactory.CreateGarbageCollectionFinishedNotification(bounds);
+        var newNotificationId = messagingClient.GetNewNotificationId();
+        var future = messagingClient.ReceiveRequest(newNotificationId);
+        messagingClient.SendNotification(message, newNotificationId);
+
+        var request = future.Result;
+        if (request.ContinueExecution == null)
+            Logger.LogWarning("Unexpected request. Continuing execution...");
+        var response = messageFactory.CreateResponse(request, true);
+        messagingClient.SendResponse(message);
         return HResult.S_OK;
     }
 

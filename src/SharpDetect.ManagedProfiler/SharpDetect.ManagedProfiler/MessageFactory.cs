@@ -334,10 +334,10 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public NotifyMessage CreateSurvivingReferencesNotification(ReadOnlySpan<ObjectId> ranges, ReadOnlySpan<ObjectId> lengths)
+        public NotifyMessage CreateSurvivingReferencesNotification(ReadOnlySpan<ObjectId> ranges, ReadOnlySpan<uint> lengths)
         {
             var rangesBytes = MemoryMarshal.Cast<ObjectId, byte>(ranges);
-            var lengthsBytes = MemoryMarshal.Cast<ObjectId, byte>(lengths);
+            var lengthsBytes = MemoryMarshal.Cast<uint, byte>(lengths);
 
             var message = new NotifyMessage()
             {
@@ -350,11 +350,11 @@ namespace SharpDetect.Profiler
             return AddCommonMetadata(message);
         }
 
-        public NotifyMessage CreateMovedReferencesNotification(ReadOnlySpan<ObjectId> oldRanges, ReadOnlySpan<ObjectId> newRanges, ReadOnlySpan<ObjectId> lengths)
+        public NotifyMessage CreateMovedReferencesNotification(ReadOnlySpan<ObjectId> oldRanges, ReadOnlySpan<ObjectId> newRanges, ReadOnlySpan<uint> lengths)
         {
             var oldRangesBytes = MemoryMarshal.Cast<ObjectId, byte>(oldRanges);
             var newRangesBytes = MemoryMarshal.Cast<ObjectId, byte>(newRanges);
-            var lengthsBytes = MemoryMarshal.Cast<ObjectId, byte>(lengths);
+            var lengthsBytes = MemoryMarshal.Cast<uint, byte>(lengths);
 
             var message = new NotifyMessage()
             {
