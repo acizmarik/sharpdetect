@@ -262,7 +262,7 @@ namespace SharpDetect.Profiler
             signature = default;
 
             // Read information about the extern method that is being wrapped
-            if (!module.GetMethodProps(externMethodDef, out name, out var flags, out signature))
+            if (!module.GetMethodProps(externMethodDef, out _, out name, out var flags, out signature))
             {
                 Logger.LogError("Could not retrieve method props about an extern method for wrapping");
                 return HResult.S_OK;
