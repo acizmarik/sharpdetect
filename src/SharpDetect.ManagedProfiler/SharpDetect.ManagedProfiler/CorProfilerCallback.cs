@@ -424,11 +424,15 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON suspendReason)
     {
+        var message = messageFactory.CreateRuntimeSuspendStartedNotification(suspendReason);
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
     public HResult RuntimeSuspendFinished()
     {
+        var message = messageFactory.CreateRuntimeSuspendFinishedNotification();
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
@@ -439,21 +443,29 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult RuntimeResumeStarted()
     {
+        var message = messageFactory.CreateRuntimeResumeStartedNotification();
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
     public HResult RuntimeResumeFinished()
     {
+        var message = messageFactory.CreateRuntimeResumeFinishedNotification();
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
     public HResult RuntimeThreadSuspended(ThreadId threadId)
     {
+        var message = messageFactory.CreateRuntimeThreadSuspendedNotification(threadId);
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
     public HResult RuntimeThreadResumed(ThreadId threadId)
     {
+        var message = messageFactory.CreateRuntimeThreadResumedNotification(threadId);
+        messagingClient.SendNotification(message);
         return HResult.S_OK;
     }
 
