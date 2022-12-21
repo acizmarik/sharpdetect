@@ -118,7 +118,7 @@ public unsafe interface ICorProfilerInfo2 : ICorProfilerInfo
     HResult GetGenerationBounds(
         uint cObjectRanges,
         out uint pcObjectRanges,
-        out COR_PRF_GC_GENERATION_RANGE* ranges);
+        COR_PRF_GC_GENERATION_RANGE* ranges);
 
     HResult GetObjectGeneration(
         ObjectId objectId,

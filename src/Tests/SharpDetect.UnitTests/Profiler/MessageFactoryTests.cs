@@ -1,21 +1,17 @@
-﻿using dnlib.DotNet;
-using Google.Protobuf;
-using SharpDetect.Common.Messages;
-using SharpDetect.Common.Unsafe;
+﻿using SharpDetect.Common.Messages;
 using SharpDetect.Profiler;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using Xunit;
 
 namespace SharpDetect.UnitTests.Profiler;
 
-public class MessageFactoryTests
+public class MessageFactoryTests : TestsBase
 {
     [Fact]
     public void MessageFactoryTests_ProfilerInitialized()
     {
         // Prepare
-        var message = MessageFactory.CreateProfilerInitializedNotification();
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateProfilerInitializedNotification();
 
         // Assert
         AssertCommonMetadata(message);
@@ -26,7 +22,7 @@ public class MessageFactoryTests
     public void MessageFactoryTests_ProfilerDestroyed()
     {
         // Prepare
-        var message = MessageFactory.CreateProfilerDestroyedNotification();
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateProfilerDestroyedNotification();
 
         // Assert
         AssertCommonMetadata(message);
@@ -39,7 +35,7 @@ public class MessageFactoryTests
         // Prepare
         var modulePath = "module.dll";
         var moduleId = new ModuleId(123);
-        var message = MessageFactory.CreateModuleLoadedNotification(moduleId, modulePath);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateModuleLoadedNotification(moduleId, modulePath);
 
         // Assert
         AssertCommonMetadata(message);
@@ -54,7 +50,7 @@ public class MessageFactoryTests
         // Prepare
         var moduleId = new ModuleId(123);
         var typeId = new MdTypeDef(456);
-        var message = MessageFactory.CreateTypeLoadedNotification(moduleId, typeId);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateTypeLoadedNotification(moduleId, typeId);
 
         // Assert
         AssertCommonMetadata(message);
@@ -70,7 +66,7 @@ public class MessageFactoryTests
         var moduleId = new ModuleId(123);
         var typeId = new MdTypeDef(456);
         var functionId = new MdMethodDef(789);
-        var message = MessageFactory.CreateJITCompilationStartedNotification(moduleId, typeId, functionId);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateJITCompilationStartedNotification(moduleId, typeId, functionId);
 
         // Assert
         AssertCommonMetadata(message);
@@ -86,7 +82,7 @@ public class MessageFactoryTests
     {
         // Prepare
         var threadId = new ThreadId(123);
-        var message = MessageFactory.CreateThreadCreatedNotification(threadId);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateThreadCreatedNotification(threadId);
 
         // Assert
         AssertCommonMetadata(message);
@@ -99,7 +95,7 @@ public class MessageFactoryTests
     {
         // Prepare
         var threadId = new ThreadId(123);
-        var message = MessageFactory.CreateThreadDestroyedNotification(threadId);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateThreadDestroyedNotification(threadId);
 
         // Assert
         AssertCommonMetadata(message);
@@ -113,7 +109,7 @@ public class MessageFactoryTests
         // Prepare
         var moduleId = new ModuleId(123);
         var typeDef = new MdTypeDef(456);
-        var message = MessageFactory.CreateTypeInjectedNotification(moduleId, typeDef);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateTypeInjectedNotification(moduleId, typeDef);
 
         // Assert
         AssertCommonMetadata(message);
@@ -128,7 +124,7 @@ public class MessageFactoryTests
         // Prepare
         var moduleId = new ModuleId(123);
         var typeRef = new MdTypeRef(456);
-        var message = MessageFactory.CreateTypeReferencedNotification(moduleId, typeRef);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateTypeReferencedNotification(moduleId, typeRef);
 
         // Assert
         AssertCommonMetadata(message);
@@ -145,7 +141,7 @@ public class MessageFactoryTests
         var typeDef = new MdTypeDef(456);
         var methodDef = new MdMethodDef(789);
         var type = MethodType.FieldAccess;
-        var message = MessageFactory.CreateMethodInjectedNotification(moduleId, typeDef, methodDef, type);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateMethodInjectedNotification(moduleId, typeDef, methodDef, type);
 
         // Assert
         AssertCommonMetadata(message);
@@ -164,7 +160,7 @@ public class MessageFactoryTests
         var typeRef = new MdTypeRef(456);
         var methodRef = new MdMemberRef(789);
         var type = MethodType.FieldAccess;
-        var message = MessageFactory.CreateHelperMethodReferencedNotification(moduleId, typeRef, methodRef, type);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateHelperMethodReferencedNotification(moduleId, typeRef, methodRef, type);
 
         // Assert
         AssertCommonMetadata(message);
@@ -185,7 +181,7 @@ public class MessageFactoryTests
         var refModuleId = new ModuleId(321);
         var typeRef = new MdTypeRef(654);
         var methodRef = new MdMemberRef(321);
-        var message = MessageFactory.CreateWrapperMethodReferencedNotification(moduleId, typeDef, methodDef, refModuleId, typeRef, methodRef);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateWrapperMethodReferencedNotification(moduleId, typeDef, methodDef, refModuleId, typeRef, methodRef);
 
         // Assert
         AssertCommonMetadata(message);
@@ -206,7 +202,7 @@ public class MessageFactoryTests
         var typeDef = new MdTypeDef(456);
         var nativeMethodDef = new MdMethodDef(789);
         var wrapperMethodDef = new MdMethodDef(987);
-        var message = MessageFactory.CreateMethodWrappedNotification(moduleId, typeDef, nativeMethodDef, wrapperMethodDef);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateMethodWrappedNotification(moduleId, typeDef, nativeMethodDef, wrapperMethodDef);
 
         // Assert
         AssertCommonMetadata(message);
@@ -224,7 +220,7 @@ public class MessageFactoryTests
         var moduleId = new ModuleId(123);
         var typeDef = new MdTypeDef(456);
         var methodDef = new MdMethodDef(789);
-        var message = MessageFactory.CreateMethodCalledNotification(moduleId, typeDef, methodDef);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateMethodCalledNotification(moduleId, typeDef, methodDef);
 
         // Assert
         AssertCommonMetadata(message);
@@ -243,7 +239,7 @@ public class MessageFactoryTests
         var methodDef = new MdMethodDef(789);
         var argumentValues = new byte[] { 1, 2, 3 };
         var argumentOffsets = new byte[] { 3, 2, 1 };
-        var message = MessageFactory.CreateMethodCalledWithArgumentsNotification(moduleId, typeDef, methodDef, argumentValues, argumentOffsets);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateMethodCalledWithArgumentsNotification(moduleId, typeDef, methodDef, argumentValues, argumentOffsets);
 
         // Assert
         AssertCommonMetadata(message);
@@ -262,7 +258,7 @@ public class MessageFactoryTests
         var moduleId = new ModuleId(123);
         var typeDef = new MdTypeDef(456);
         var methodDef = new MdMethodDef(789);
-        var message = MessageFactory.CreateMethodReturnedNotification(moduleId, typeDef, methodDef);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateMethodReturnedNotification(moduleId, typeDef, methodDef);
 
         // Assert
         AssertCommonMetadata(message);
@@ -282,7 +278,7 @@ public class MessageFactoryTests
         var returnValue = new byte[] { 1, 2, 3 };
         var byRefArgumentValues = new byte[] { 4, 5, 6 };
         var byRefArgumentOffsets = new byte[] { 7, 8, 9 };
-        var message = MessageFactory.CreateMethodReturnedWithReturnValueNotification(moduleId, typeDef, methodDef, returnValue, byRefArgumentValues, byRefArgumentOffsets);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateMethodReturnedWithReturnValueNotification(moduleId, typeDef, methodDef, returnValue, byRefArgumentValues, byRefArgumentOffsets);
 
         // Assert
         AssertCommonMetadata(message);
@@ -308,7 +304,7 @@ public class MessageFactoryTests
                 456,
                 789)
         };
-        var message = MessageFactory.CreateGarbageCollectionStartedNotification(generations, bounds);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateGarbageCollectionStartedNotification(generations, bounds);
 
         // Assert
         AssertCommonMetadata(message);
@@ -329,7 +325,7 @@ public class MessageFactoryTests
                 456,
                 789)
         };
-        var message = MessageFactory.CreateGarbageCollectionFinishedNotification(bounds);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateGarbageCollectionFinishedNotification(bounds);
 
         // Assert
         AssertCommonMetadata(message);
@@ -342,7 +338,7 @@ public class MessageFactoryTests
     {
         // Prepare
         var reason = COR_PRF_SUSPEND_REASON.COR_PRF_SUSPEND_FOR_GC;
-        var message = MessageFactory.CreateRuntimeSuspendStartedNotification(reason);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateRuntimeSuspendStartedNotification(reason);
 
         // Assert
         AssertCommonMetadata(message);
@@ -354,7 +350,7 @@ public class MessageFactoryTests
     public void MessageFactoryTests_RuntimeSuspendFinished()
     {
         // Prepare
-        var message = MessageFactory.CreateRuntimeSuspendFinishedNotification();
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateRuntimeSuspendFinishedNotification();
 
         // Assert
         AssertCommonMetadata(message);
@@ -365,7 +361,7 @@ public class MessageFactoryTests
     public void MessageFactoryTests_RuntimeResumeStarted()
     {
         // Prepare
-        var message = MessageFactory.CreateRuntimeResumeStartedNotification();
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateRuntimeResumeStartedNotification();
 
         // Assert
         AssertCommonMetadata(message);
@@ -376,7 +372,7 @@ public class MessageFactoryTests
     public void MessageFactoryTests_RuntimeResumeFinished()
     {
         // Prepare
-        var message = MessageFactory.CreateRuntimeResumeFinishedNotification();
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateRuntimeResumeFinishedNotification();
 
         // Assert
         AssertCommonMetadata(message);
@@ -388,7 +384,7 @@ public class MessageFactoryTests
     {
         // Prepare
         var threadId = new ThreadId(123);
-        var message = MessageFactory.CreateRuntimeThreadSuspendedNotification(threadId);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateRuntimeThreadSuspendedNotification(threadId);
 
         // Assert
         AssertCommonMetadata(message);
@@ -401,7 +397,7 @@ public class MessageFactoryTests
     {
         // Prepare
         var threadId = new ThreadId(123);
-        var message = MessageFactory.CreateRuntimeThreadResumedNotification(threadId);
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateRuntimeThreadResumedNotification(threadId);
 
         // Assert
         AssertCommonMetadata(message);
@@ -414,14 +410,14 @@ public class MessageFactoryTests
     {
         // Prepare
         var blocks = new ObjectId[] { new ObjectId(123), new ObjectId(456) };
-        var lengths = new ObjectId[] { new ObjectId(789), new ObjectId(987) };
-        var message = MessageFactory.CreateSurvivingReferencesNotification(blocks, lengths);
+        var lengths = new uint[] { 789, 987 };
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateSurvivingReferencesNotification(blocks, lengths);
 
         // Assert
         AssertCommonMetadata(message);
         Assert.NotNull(message.SurvivingReferences);
         Assert.Equal(blocks, MemoryMarshal.Cast<byte, ObjectId>(message.SurvivingReferences.Blocks.ToArray()).ToArray());
-        Assert.Equal(lengths, MemoryMarshal.Cast<byte, ObjectId>(message.SurvivingReferences.Lengths.ToArray()).ToArray());
+        Assert.Equal(lengths, MemoryMarshal.Cast<byte, uint>(message.SurvivingReferences.Lengths.ToArray()).ToArray());
     }
 
     [Fact]
@@ -430,15 +426,15 @@ public class MessageFactoryTests
         // Prepare
         var oldBlocks = new ObjectId[] { new ObjectId(123), new ObjectId(456) };
         var newBlocks = new ObjectId[] { new ObjectId(456), new ObjectId(789) };
-        var lengths = new ObjectId[] { new ObjectId(987), new ObjectId(654) };
-        var message = MessageFactory.CreateMovedReferencesNotification(oldBlocks, newBlocks, lengths);
+        var lengths = new uint[] { 987, 654 };
+        var message = new MessageFactory(CreateFakeICorProfilerInfo()).CreateMovedReferencesNotification(oldBlocks, newBlocks, lengths);
 
         // Assert
         AssertCommonMetadata(message);
         Assert.NotNull(message.MovedReferences);
         Assert.Equal(oldBlocks, MemoryMarshal.Cast<byte, ObjectId>(message.MovedReferences.OldBlocks.ToArray()).ToArray());
         Assert.Equal(newBlocks, MemoryMarshal.Cast<byte, ObjectId>(message.MovedReferences.NewBlocks.ToArray()).ToArray());
-        Assert.Equal(lengths, MemoryMarshal.Cast<byte, ObjectId>(message.MovedReferences.Lengths.ToArray()).ToArray());
+        Assert.Equal(lengths, MemoryMarshal.Cast<byte, uint>(message.MovedReferences.Lengths.ToArray()).ToArray());
     }
 
     private static void AssertCommonMetadata(NotifyMessage message)

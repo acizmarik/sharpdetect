@@ -1,9 +1,11 @@
 ﻿using dnlib.DotNet;
 using dnlib.DotNet.MD;
+using FakeItEasy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using NativeObjects;
 using SharpDetect.Common;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.LibraryDescriptors;
@@ -15,6 +17,7 @@ using SharpDetect.Core.Runtime;
 using SharpDetect.Core.Scripts;
 using SharpDetect.Loader;
 using SharpDetect.Metadata;
+using SharpDetect.Profiler;
 
 namespace SharpDetect.UnitTests
 {
@@ -59,6 +62,17 @@ namespace SharpDetect.UnitTests
                     { $"{Constants.ModuleDescriptors.CoreModulesPaths}:0", "Modules" },
                 })
                 .Build();
+        }
+
+        protected SharpDetect.Profiler.ICorProfilerInfo CreateFakeICorProfilerInfo()
+        {
+            ThreadId anOut;
+            var fake = A.Fake<SharpDetect.Profiler.ICorProfilerInfo>();
+            A.CallTo(() => fake.GetCurrentThreadId(out anOut))
+                .Returns(HResult.S_OK)
+                .AssignsOutAndRefParameters(new ThreadId((nuint)Environment.CurrentManagedThreadId));
+
+            return fake;
         }
 
         protected IConfiguration CreateInstrumentorConfiguration(bool enableInstrumentation, InstrumentationStrategy strategy, string[] patterns)
