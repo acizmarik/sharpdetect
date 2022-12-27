@@ -2,15 +2,19 @@
 using SharpDetect.Profiler.Communication;
 using SharpDetect.Profiler.Hooks;
 using SharpDetect.Profiler.Logging;
+using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace SharpDetect.Profiler;
 
 internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 {
     public NativeObjects.ICorProfilerCallback2 Object { get; private set; }
-    public static CorProfilerCallback? Instance { get; private set; }
+    public static CorProfilerCallback Instance { get; private set; } = null!;
 
     private readonly ConcurrentDictionary<ModuleId, Module> moduleLookup;
     private readonly ConcurrentDictionary<AssemblyId, Assembly> assemblyLookup;
@@ -57,6 +61,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         messagingClient.Start();
 
         corProfilerInfo.GetRuntimeInformation(out _, out var runtimeType, out var majorVer, out var minorVer, out var buildVer, out var qfVer, 0, out _, null);
+        Logger.LogInformation($"Architecture: {IntPtr.Size * 8}bit");
         Logger.LogInformation($"RuntimeType: {runtimeType}");
         Logger.LogInformation($"RuntimeVersion: v{majorVer}.{minorVer}.{buildVer}.{qfVer}");
 
@@ -346,7 +351,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         {
             var module = moduleLookup[moduleId];
             var methodDef = new MdMethodDef(token.Value);
-            result = HandleInstrumentationRequest(instrumentationRequest, module, functionId, name, typeDef, methodDef);
+            result = HandleInstrumentationRequest(instrumentationRequest, module, functionId, name!, typeDef, methodDef);
         }
 
         // Respond
@@ -394,7 +399,9 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
                 methodDef,
                 argumentInfos,
                 totalArgumentsSize,
-                totalIndirectArgumentsSize));
+                totalIndirectArgumentsSize,
+                request.CaptureArguments,
+                request.CaptureReturnValue));
         }
 
         if (request.Bytecode.Span.Length > 0)
@@ -769,6 +776,208 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     public HResult HandleDestroyed(GCHandleId handleId)
     {
         return HResult.S_OK;
+    }
+
+    public HResult EnterMethod(IntPtr functionIdOrClientId, COR_PRF_ELT_INFO eltInfo)
+    {
+        var byteArrayPool = ArrayPool<byte>.Shared;
+        var functionId = new FunctionId((nuint)functionIdOrClientId);
+        var methodHookInfo = methodHooks[functionId];
+
+        // If we do not track arguments, we can just notify about the call itself
+        if (!methodHookInfo.CaptureArguments)
+        {
+            var message = messageFactory.CreateMethodCalledNotification(
+                methodHookInfo.ModuleId, 
+                methodHookInfo.TypeDef, 
+                methodHookInfo.MethodDef);
+            messagingClient.SendNotification(message);
+        }
+
+        // Get information about arguments
+        var cbArgumentInfo = 0UL;
+        corProfilerInfo.GetFunctionEnter3Info(functionId, eltInfo, out var frameInfo, &cbArgumentInfo, null);
+
+        // Retrieve spilled argument values from memory
+        byte[] argumentValues;
+        byte[] argumentOffsets;
+        var indirectAddresses = new List<nint>();
+        var rawArgumentInfos = byteArrayPool.Rent((int)cbArgumentInfo);
+        fixed (byte* ptr = rawArgumentInfos)
+        {
+            if (!corProfilerInfo.GetFunctionEnter3Info(functionId, eltInfo, out _, &cbArgumentInfo, ptr))
+            {
+                Logger.LogError("Could not obtain method arguments");
+                byteArrayPool.Return(rawArgumentInfos);
+                return HResult.E_FAIL;
+            }
+        }
+
+        // Preprocess arguments (parse values and offsets)
+        var argumentInfos = new COR_PRF_FUNCTION_ARGUMENT_INFO(rawArgumentInfos);
+        var argumentValuesLength = (int)methodHookInfo.TotalArgumentValuesSize;
+        var argumentOffsetsLength = (int)(methodHookInfo.ArgumentInfos.Count * sizeof(uint));
+        argumentValues = byteArrayPool.Rent(argumentValuesLength);
+        argumentOffsets = byteArrayPool.Rent(argumentOffsetsLength);
+        GetArguments(methodHookInfo, indirectAddresses, argumentInfos, argumentValues, argumentOffsets);
+
+        if (methodHookInfo.CaptureReturnValue)
+        {
+            // Save information about indirects (by-ref args) for method leave callback
+            methodHookInfo.PushIndirects(indirectAddresses);
+        }
+
+        // Pack information and issue a notification
+        var messageWithArguments = messageFactory.CreateMethodCalledWithArgumentsNotification(
+            methodHookInfo.ModuleId,
+            methodHookInfo.TypeDef,
+            methodHookInfo.MethodDef,
+            new(argumentValues, 0, argumentValuesLength),
+            new(argumentOffsets, 0, argumentOffsetsLength));
+        messagingClient.SendNotification(messageWithArguments);
+
+        // Cleanup
+        byteArrayPool.Return(rawArgumentInfos);
+        byteArrayPool.Return(argumentValues);
+        byteArrayPool.Return(argumentOffsets);
+        return HResult.S_OK;
+    }
+
+    public HResult LeaveMethod(IntPtr functionIdOrClientId, COR_PRF_ELT_INFO eltInfo)
+    {
+        var byteArrayPool = ArrayPool<byte>.Shared;
+        var functionId = new FunctionId((nuint)functionIdOrClientId);
+        var methodHookInfo = methodHooks[functionId];
+
+        // If we do not track arguments, we can just notify about the call itself
+        if (!methodHookInfo.CaptureReturnValue)
+        {
+            var message = messageFactory.CreateMethodReturnedNotification(
+                methodHookInfo.ModuleId,
+                methodHookInfo.TypeDef,
+                methodHookInfo.MethodDef);
+            messagingClient.SendNotification(message);
+        }
+
+        // Get information about return value
+        if (!corProfilerInfo.GetFunctionLeave3Info(functionId, eltInfo, out var frameInfo, out var returnValueInfo))
+        {
+            Logger.LogError("Could not obtain information about method return value");
+            return HResult.E_FAIL;
+        }
+
+        // Retrieve spilled return value
+        var returnValueBytes = byteArrayPool.Rent((int)returnValueInfo.Length);
+        fixed (byte* ptr = returnValueBytes)
+            Buffer.MemoryCopy(returnValueInfo.StartAddress.ToPointer(), ptr, returnValueInfo.Length, returnValueInfo.Length);
+
+        // Get information about indirects
+        var indirects = methodHookInfo.PopIndirects();
+        var cbArgumentValues = 0;
+        var cbArgumentOffsets = 0;
+        byte[]? argumentValues = null;
+        byte[]? argumentOffsets = null;
+        if (indirects.Count > 0)
+        {
+            // Copy arguments
+            cbArgumentValues = (int)methodHookInfo.TotalIndirectArgumentValuesSize;
+            cbArgumentOffsets = indirects.Count * sizeof(uint);
+            argumentValues = byteArrayPool.Rent(cbArgumentValues);
+            argumentOffsets = byteArrayPool.Rent(cbArgumentOffsets);
+            GetByRefArguments(methodHookInfo, indirects, argumentValues, argumentOffsets);
+        }
+
+        // Pack information and issue a notification
+        var messageWithReturnValue = messageFactory.CreateMethodReturnedWithReturnValueNotification(
+            methodHookInfo.ModuleId,
+            methodHookInfo.TypeDef,
+            methodHookInfo.MethodDef,
+            returnValueBytes,
+            (argumentValues != null) ? new(argumentValues, 0, cbArgumentValues) : Span<byte>.Empty,
+            (argumentOffsets != null) ? new(argumentOffsets, 0, cbArgumentOffsets) : Span<byte>.Empty);
+        messagingClient.SendNotification(messageWithReturnValue);
+
+        // Cleanup
+        byteArrayPool.Return(returnValueBytes);
+        if (argumentValues != null)
+            byteArrayPool.Return(argumentValues);
+        if (argumentOffsets != null)
+            byteArrayPool.Return(argumentOffsets);
+
+        return HResult.S_OK;
+    }
+
+    private void GetArguments(
+        Method hookInfo, 
+        List<nint> indirects, 
+        COR_PRF_FUNCTION_ARGUMENT_INFO argumentInfos, 
+        Span<byte> argumentValues, 
+        Span<byte> argumentOffsets)
+    {
+        fixed (byte* pArgumentValues = argumentValues)
+        {
+            fixed (byte* pArgumentOffsets = argumentOffsets)
+            {
+                // Copy arguments
+                var pArgValue = pArgumentValues;
+                var pArgOffset = pArgumentOffsets;
+                foreach (var (argIndex, argSize, isIndirect) in hookInfo.ArgumentInfos)
+                {
+                    var range = argumentInfos.GetRange(argIndex);
+
+                    if (isIndirect)
+                    {
+                        // Get pointer to the value
+                        nint pointer = IntPtr.Zero;
+                        Buffer.MemoryCopy(range.StartAddress.ToPointer(), &pointer, sizeof(nint), sizeof(nint));
+                        indirects.Add(pointer);
+
+                        // Read the value
+                        Buffer.MemoryCopy(pointer.ToPointer(), pArgValue, argSize, argSize);
+                        var argInfo = (uint)((argIndex << 16) | (argSize));
+                        Buffer.MemoryCopy(&argInfo, pArgOffset, sizeof(uint), sizeof(uint));
+                        pArgValue += argSize;
+                    }
+                    else
+                    {
+                        // Directly read the value
+                        var argInfo = (uint)((argIndex << 16) | (int)(range.Length));
+                        Buffer.MemoryCopy(range.StartAddress.ToPointer(), pArgValue, range.Length, range.Length);
+                        Buffer.MemoryCopy(&argInfo, pArgOffset, sizeof(uint), sizeof(uint));
+                        pArgValue += range.Length;
+                    }
+
+                    pArgOffset += sizeof(uint);
+                }
+            }
+        }
+    }
+
+    private void GetByRefArguments(
+        Method hookInfo,
+        List<nint> indirects,
+        Span<byte> indirectValues,
+        Span<byte> indirectOffsets)
+    {
+        fixed (byte* pArgumentValues = indirectValues)
+        {
+            fixed (byte* pArgumentOffsets = indirectOffsets)
+            {
+                // Copy arguments
+                var pArgumentValue = pArgumentValues;
+                var pArgumentOffset = pArgumentOffsets;
+                var indirectsCount = 0;
+                foreach (var (argIndex, argSize, isIndirectLoad) in hookInfo.ArgumentInfos.Where(i => i.Item3))
+                {
+                    var argInfo = (uint)(argIndex << 16) | (argSize);
+                    Buffer.MemoryCopy(indirects[indirectsCount].ToPointer(), pArgumentValue, argSize, argSize);
+                    Buffer.MemoryCopy(&argInfo, pArgumentOffset, sizeof(uint), sizeof(uint));
+                    pArgumentValue += argSize;
+                    pArgumentOffset += sizeof(uint);
+                    indirectsCount++;
+                }
+            }
+        }
     }
 
     public HResult TryGetMethodHookEntry(FunctionId functionId, [NotNullWhen(returnValue: default)] out Method? method)
