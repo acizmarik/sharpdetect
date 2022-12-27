@@ -40,36 +40,22 @@ namespace SharpDetect.Profiler.Hooks
         public static IntPtr FunctionIdMapper2([In] FunctionId functionId, [In] IntPtr clientData, [Out] bool* pbHookFunction)
         {
             var corProfiler = CorProfilerCallback.Instance;
-            if (corProfiler == null)
-            {
-                Logger.LogWarning("Could not obtain CorProfilerCallback instance while mapping functions");
-                return Unsafe.As<FunctionId, IntPtr>(ref functionId);
-            }
 
-            if (corProfiler.TryGetMethodHookEntry(functionId, out var methodData))
-            {
-                // Inject entry/exit hooks
-                *pbHookFunction = true;
-                return Unsafe.As<FunctionId, IntPtr>(ref functionId);
-            }
-            else
-            {
-                // Do not hook this function
-                *pbHookFunction = false;
-                return Unsafe.As<FunctionId, IntPtr>(ref functionId);
-            }
+            // Note: set to true if we should inject hooks, false otherwise
+            *pbHookFunction = (corProfiler.TryGetMethodHookEntry(functionId, out _)) ? true : false;
+            return (nint)functionId.Value;
         }
 
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static void MethodEnterHook([In] IntPtr functionIdOrClientId, [In] COR_PRF_ELT_INFO eltInfo)
         {
-            Console.WriteLine($"Entered method {functionIdOrClientId}");
+            CorProfilerCallback.Instance.EnterMethod(functionIdOrClientId, eltInfo);
         }
 
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static void MethodLeaveHook([In] IntPtr functionIdOrClientId, [In] COR_PRF_ELT_INFO eltInfo)
         {
-            Console.WriteLine($"Exited method {functionIdOrClientId}");
+            CorProfilerCallback.Instance.LeaveMethod(functionIdOrClientId, eltInfo);
         }
 
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
