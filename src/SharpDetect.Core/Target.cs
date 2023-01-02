@@ -52,6 +52,8 @@ namespace SharpDetect.Core
             CompiledCommand = Cli.Wrap("dotnet")
                 .WithArguments($"{ExecutablePath} \"{CommandLineArguments}\"")
                 .WithWorkingDirectory(WorkingDirectory)
+                //.WithStandardOutputPipe(PipeTarget.ToFile("stdout.txt"))
+                //.WithStandardErrorPipe(PipeTarget.ToFile("stderr.txt"))
                 .WithEnvironmentVariables(builder =>
                 {
                     // Profiling flags

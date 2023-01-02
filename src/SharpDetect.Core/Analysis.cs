@@ -106,16 +106,16 @@ namespace SharpDetect.Core
                 requestsProducer.Start();
                 notificationsConsumer.Start();
                 start = dateTimeProvider.Now;
-                var wholeExecution = execution.GetAwaitableTaskAsync();
 
                 if (withTargetProgram)
                 {
                     var target = new Target(configuration);
                     logger.LogDebug("[{class}] Target program starting...", nameof(Analysis));
-                    wholeExecution = target.ExecuteAsync(ct).ContinueWith(_ => execution);
+                    var result = await target.ExecuteAsync(ct).ConfigureAwait(false);
+                    logger.LogDebug("[{class}] Target program returned {val}", nameof(Analysis), result.ExitCode);
                 }
 
-                await wholeExecution.ConfigureAwait(false);
+                await execution.GetAwaitableTaskAsync().ConfigureAwait(false);
                 return execution.ProcessesExitedWithErrorCodeCount == 0;
             }
             finally

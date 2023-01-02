@@ -30,10 +30,6 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     {
         AsyncIO.ForceDotNet.Force();
         Object = NativeObjects.ICorProfilerCallback2.Wrap(this);
-        Logger.Initialize(
-            LogLevel.Debug,
-            new ConsoleSink(),
-            new FileSink("profiler-log.txt", append: false));
 
         moduleLookup = new();
         assemblyLookup = new();
@@ -92,10 +88,12 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult Shutdown()
     {
-        messagingClient.SendNotification(messageFactory.CreateProfilerDestroyedNotification());
         Logger.LogInformation("Profiler shutting down");
-        Logger.Terminate();
+        messagingClient.SendNotification(messageFactory.CreateProfilerDestroyedNotification());
         asmUtilities.Dispose();
+        messagingClient.Terminate();
+        messagingClient.Dispose();
+        Logger.Terminate();
         return HResult.S_OK;
     }
 
