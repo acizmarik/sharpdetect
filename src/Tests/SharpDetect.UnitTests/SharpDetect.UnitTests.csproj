@@ -26,10 +26,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Generators\NativeObjectsSourceGenerator\NativeObjectsSourceGenerator.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Dnlib.Extensions\SharpDetect.Dnlib.Extensions.csproj" />
-    <ProjectReference Include="..\..\SharpDetect.ManagedProfiler\SharpDetect.ManagedProfiler\SharpDetect.ManagedProfiler.csproj" />
+    <ProjectReference Include="..\..\SharpDetect.Profiler\SharpDetect.Profiler.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
+    <ProjectReference Include="..\..\SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj" />
   </ItemGroup>
 
 </Project>
