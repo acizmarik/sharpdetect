@@ -4,31 +4,12 @@ This is an experimental dynamic analysis framework for .NET programs
 
 ## Build
 
-The following steps describe all dependencies and steps needed to perform in order to fully build SharpDetect, both its managed (.NET) and its unmanaged (C++) modules. In case something is not clear, also checkout pipeline `.github/main.yml`. All the steps mentioned below are implemented by the pipeline too.
+The following steps describe all dependencies and steps needed to perform in order to fully build SharpDetect, both its managed (.NET) and its unmanaged (.NET AOT-compiled) modules. In case something is not clear, also checkout pipeline `.github/main.yml`. All the steps mentioned below are implemented by the pipeline too.
 
 ### Prerequisites
 
-* .NET 6 SDK
-* Python 3.x
-* Conan 1.48+
+* .NET 7 SDK
 * Visual Studio 2022 Build Tools
-
-### Configuration
-
-```bash
-# Operating system (currently only "Windows" is tested)
-conan profile update settings.os="Windows" default
-# ISA (currently only 64-bit version of x86 is tested)
-conan profile update settings.arch="x86_64" default
-# Compiler (for Windows use Visual Studio; for Linux use Clang)
-conan profile update settings.compiler="Visual Studio" default
-# Compiler version (for Windows use 17 (VS2022), for Linux use TODO)
-conan profile update settings.compiler.version=17 default
-# Language standard (use >= 20)
-conan profile update settings.compiler.cppstd=20 default
-# Build type ("Debug" or "Release")
-conan profile update settings.build_type="Debug" default
-```
 
 ### Steps
 
@@ -38,17 +19,9 @@ cd src/SharpDetect.sln
 dotnet build
 
 # Unmanaged part
-cd src/SharpDetect.Profiler
-mkdir build
-cd build
-conan install .. -s build_type=Debug --build=missing
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-cmake --build . --config Debug
+cd src/SharpDetect.Profiler/Scripts
+./publish-win-x64-aot-debug.ps1
 ```
-
-### Troubleshooting
-* When building the unmanaged module and you get a lot of linker errors, make sure to build the same type as configured in conan (Debug/Release)
-* When building the unmanaged module on Windows and command `cmake --build` fails, either use VS command line (you are missing some environment variables), or open the solution `src/SharpDetect.Profiler/SharpDetect.Profiler.sln` in Visual Studio and build there
 
 ## Test
 
