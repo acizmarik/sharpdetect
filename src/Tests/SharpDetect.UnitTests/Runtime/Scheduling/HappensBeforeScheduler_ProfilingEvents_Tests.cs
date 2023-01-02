@@ -733,7 +733,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
                 }
             };
             var survivingStarts = new UIntPtr[] { new UIntPtr(0) };
-            var survivingLengths = new UIntPtr[] { new UIntPtr(8) };
+            var survivingLengths = new uint[] { 8 };
             var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var profilingClient = Moq.Mock.Of<IProfilingClient>();
@@ -802,7 +802,7 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
             };
             var oldStarts = new UIntPtr[] { new UIntPtr(8) };
             var newStarts = new UIntPtr[] { new UIntPtr(16) };
-            var lengths = new UIntPtr[] { new UIntPtr(8) };
+            var lengths = new uint[] { 8 };
             var moduleBindContext = CreateModuleBindContext();
             var profilingMessageHub = new ProfilingMessageHub(LoggerFactory);
             var profilingClient = Moq.Mock.Of<IProfilingClient>();

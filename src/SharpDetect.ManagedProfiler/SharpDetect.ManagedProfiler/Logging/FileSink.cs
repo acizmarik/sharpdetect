@@ -33,6 +33,7 @@
             if (!isDisposed)
             {
                 isDisposed = true;
+                Flush();
                 writer.Dispose();
                 GC.SuppressFinalize(this);
             }

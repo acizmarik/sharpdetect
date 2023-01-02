@@ -2,12 +2,9 @@
 using SharpDetect.Profiler.Communication;
 using SharpDetect.Profiler.Hooks;
 using SharpDetect.Profiler.Logging;
-using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace SharpDetect.Profiler;
 
@@ -711,15 +708,14 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     {
         ranges = null;
         if (!corProfilerInfo.GetGenerationBounds(0, out var cBounds, null))
-        {
-            ranges = new COR_PRF_GC_GENERATION_RANGE[cBounds];
-            fixed (COR_PRF_GC_GENERATION_RANGE* ptr = ranges)
-            {
-                if (!corProfilerInfo.GetGenerationBounds(cBounds, out _, ptr))
-                    return HResult.E_FAIL;
-            }
-        }
+            return HResult.E_FAIL;
 
+        ranges = new COR_PRF_GC_GENERATION_RANGE[cBounds];
+        fixed (COR_PRF_GC_GENERATION_RANGE* ptr = ranges)
+        {
+            if (!corProfilerInfo.GetGenerationBounds(cBounds, out _, ptr))
+                return HResult.E_FAIL;
+        }
         return HResult.S_OK;
     }
 
@@ -750,7 +746,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         if (request.ContinueExecution == null)
             Logger.LogWarning("Unexpected request. Continuing execution...");
         var response = messageFactory.CreateResponse(request, true);
-        messagingClient.SendResponse(message);
+        messagingClient.SendResponse(response);
         return HResult.S_OK;
     }
 

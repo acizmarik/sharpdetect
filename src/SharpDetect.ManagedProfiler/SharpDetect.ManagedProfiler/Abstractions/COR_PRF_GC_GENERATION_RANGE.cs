@@ -1,5 +1,8 @@
-﻿namespace SharpDetect.Profiler
+﻿using System.Runtime.InteropServices;
+
+namespace SharpDetect.Profiler
 {
+    [StructLayout(LayoutKind.Sequential, Pack = 8)]
     public readonly struct COR_PRF_GC_GENERATION_RANGE
     {
         public readonly COR_PRF_GC_GENERATION Generation;
