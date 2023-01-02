@@ -65,7 +65,7 @@ namespace SharpDetect.Profiler
                 wrapperSignature.ToArray(),
             parametersCount);
 
-            Logger.LogDebug($"Emitted wrapper method \".{name}\" into {context.CoreModule.Name}");
+            Logger.LogDebug($"Emitted wrapper method \"{name}\" into {context.CoreModule.Name}");
             context.AddWrapperMethod(module, typeName!, entry);
             WrapperMethodInjected?.Invoke((module, typeDef, externMethodDef, wrapperMethodDef));
             return HResult.S_OK;
@@ -80,15 +80,19 @@ namespace SharpDetect.Profiler
             foreach (var (fromModule, wrappers) in context.WrappedMethods)
             {
                 // Assembly is not referenced => skip
-                var assemblyRef = assembly.References.FirstOrDefault(r => r.Name == fromModule.FullPath)?.AssemblyRef;
+                var assemblyRef = assembly.References.FirstOrDefault(r => 
+                    fromModule.FullPath.Contains($"{r.Name}.dll", StringComparison.OrdinalIgnoreCase))?.AssemblyRef;
                 if (assemblyRef is null)
                     continue;
 
                 foreach (var (fromType, methods) in wrappers)
                 {
-                    // Declaring type is not referenced => skip
-                    if (!module.FindTypeRef(assemblyRef.Value, fromType, out var typeRef))
-                        continue;
+                    if (!module.FindTypeRef(assemblyRef.Value, fromType, out var typeRef) &&
+                        !module.AddTypeRef(assemblyRef.Value, fromType, out typeRef))
+                    {
+                        Logger.LogError($"Could not get or create a reference to type \"{fromType}\" for {module.Name}");
+                        return HResult.E_FAIL;
+                    }
 
                     foreach (var method in methods)
                     {
@@ -276,7 +280,9 @@ namespace SharpDetect.Profiler
             // Flags for a regular managed method
             const CorMethodImpl implFlags =
                 CorMethodImpl.miIL |
-                CorMethodImpl.miManaged;
+                CorMethodImpl.miManaged |
+                CorMethodImpl.miNoInlining |
+                CorMethodImpl.miNoOptimization;
 
             // Wrapper name will be prefixed with a dot
             name = '.' + name;
