@@ -61,7 +61,7 @@ namespace SharpDetect.Profiler.Hooks
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static void MethodTailcallHook([In] IntPtr functionIdOrClientId, [In] COR_PRF_ELT_INFO eltInfo)
         {
-            Console.WriteLine($"Tailcall method {functionIdOrClientId}");
+            CorProfilerCallback.Instance.Tailcall(functionIdOrClientId, eltInfo);
         }
     }
 }

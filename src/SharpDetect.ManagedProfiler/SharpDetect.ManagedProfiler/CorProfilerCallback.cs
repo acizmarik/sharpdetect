@@ -66,15 +66,13 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         Logger.LogInformation($"RuntimeVersion: v{majorVer}.{minorVer}.{buildVer}.{qfVer}");
 
         // Initialize runtime profiling capabilities
-        if (!corProfilerInfo.SetEventMask(
-            COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
-            COR_PRF_MONITOR.COR_PRF_MONITOR_CLASS_LOADS |
-            COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
-            COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
-            COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
-            COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
-            COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
-            COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL))
+        var flags = Environment.GetEnvironmentVariable("SHARPDETECT_Profiling_Flags");
+        if (!uint.TryParse(flags, out var parsedFlags))
+        {
+            Logger.LogError($"Invalid profiling configuration: \"{flags}\"");
+            return HResult.E_FAIL;
+        }
+        if (!corProfilerInfo.SetEventMask((COR_PRF_MONITOR)parsedFlags))
         {
             Logger.LogError($"Could not set profiling event mask");
             return HResult.E_FAIL;
@@ -225,7 +223,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
             Logger.LogError($"Could not obtain assembly props of core assembly {coreModule.Name}");
             return HResult.E_FAIL;
         }
-        if (!assembly.AddOrGetAssemblyRef($"{name}\0", publicKey, cbPublicKey, metadata, flags, out var assemblyRef))
+        if (!assembly.AddOrGetAssemblyRef(name!, publicKey, cbPublicKey, metadata, flags, out var assemblyRef))
         {
             Logger.LogError($"Could not add assembly reference for module {coreModule.Name} into {module.Name}");
             return HResult.E_FAIL;
@@ -792,6 +790,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
                 methodHookInfo.TypeDef, 
                 methodHookInfo.MethodDef);
             messagingClient.SendNotification(message);
+            return HResult.S_OK;
         }
 
         // Get information about arguments
@@ -857,6 +856,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
                 methodHookInfo.TypeDef,
                 methodHookInfo.MethodDef);
             messagingClient.SendNotification(message);
+            return HResult.S_OK;
         }
 
         // Get information about return value
@@ -905,6 +905,17 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
             byteArrayPool.Return(argumentOffsets);
 
         return HResult.S_OK;
+    }
+
+    public void Tailcall(IntPtr functionIdOrClientId, COR_PRF_ELT_INFO eltInfo)
+    {
+        corProfilerInfo.GetFunctionInfo(new FunctionId((nuint)functionIdOrClientId), out var classId, out var moduleId, out var methodDef);
+        corProfilerInfo.GetClassIdInfo(classId, out _, out var typeDef);
+        var module = moduleLookup[moduleId];
+
+        module.GetTypeProps(new MdTypeDef(typeDef.Value), out var typeName);
+        module.GetMethodProps(new MdMethodDef(methodDef.Value), out _, out var methodName, out _, out _);
+        Logger.LogWarning($"Tailcall on {typeName}::{methodName}");
     }
 
     private void GetArguments(
