@@ -178,7 +178,7 @@ namespace SharpDetect.Core.Runtime
             ongoingGarbageCollection = false;
         }
 
-        public void Process_SurvivingReferences(UIntPtr[] starts, UIntPtr[] lengths)
+        public void Process_SurvivingReferences(UIntPtr[] starts, uint[] lengths)
         {
             { // <Contracts>
                 Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
@@ -189,7 +189,7 @@ namespace SharpDetect.Core.Runtime
             ShadowGC.ProcessSurvivingReferences(starts, lengths);
         }
 
-        public void Process_MovedReferences(UIntPtr[] oldStarts, UIntPtr[] newStarts, UIntPtr[] lengths)
+        public void Process_MovedReferences(UIntPtr[] oldStarts, UIntPtr[] newStarts, uint[] lengths)
         {
             { // <Contracts>
                 Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
@@ -240,7 +240,7 @@ namespace SharpDetect.Core.Runtime
         {
             var wrappedMethod = default(MethodDef);
             { // <Contracts>
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionInfo, new ModuleInfo(functionInfo.ModuleId), resolveWrappers: false, out wrappedMethod));
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionInfo, new ModuleInfo(functionInfo.ModuleId), resolveWrappers: true, out wrappedMethod));
                 Guard.NotNull<MethodDef, ShadowRuntimeStateException>(wrappedMethod);
             } // </Contracts>
 
@@ -269,7 +269,7 @@ namespace SharpDetect.Core.Runtime
             var wrappedMethod = default(MethodDef);
             { // <Contracts>
                 // Resolve wrapper method reference
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionDef, new ModuleInfo(functionDef.ModuleId), resolveWrappers: false, out wrappedMethod));
+                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionDef, new ModuleInfo(functionDef.ModuleId), resolveWrappers: true, out wrappedMethod));
                 Guard.NotNull<MethodDef, ShadowRuntimeStateException>(wrappedMethod);
 
                 // Resolve wrapper method definition

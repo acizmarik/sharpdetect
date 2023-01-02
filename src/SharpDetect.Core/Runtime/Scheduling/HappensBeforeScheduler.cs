@@ -285,7 +285,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             });
         }
 
-        public void Schedule_SurvivingReferences(UIntPtr[] blockStarts, UIntPtr[] lengths, RawEventInfo info)
+        public void Schedule_SurvivingReferences(UIntPtr[] blockStarts, uint[] lengths, RawEventInfo info)
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
@@ -297,7 +297,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             });
         }
 
-        public void Schedule_MovedReferences(UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, UIntPtr[] lengths, RawEventInfo info)
+        public void Schedule_MovedReferences(UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, uint[] lengths, RawEventInfo info)
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {

@@ -29,8 +29,8 @@ namespace SharpDetect.Core.Runtime
         public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadResumed;
         public event Action<(IShadowCLR Runtime, bool[] Generations, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionStarted;
         public event Action<(IShadowCLR Runtime, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionFinished;
-        public event Action<(IShadowCLR Runtime, UIntPtr[] BlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? SurvivingReferences;
-        public event Action<(IShadowCLR Runtime, UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? MovedReferences;
+        public event Action<(IShadowCLR Runtime, UIntPtr[] BlockStarts, uint[] Lengths, RawEventInfo Info)>? SurvivingReferences;
+        public event Action<(IShadowCLR Runtime, UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, uint[] Lengths, RawEventInfo Info)>? MovedReferences;
         #endregion
 
         #region REWRITING_EVENTS
@@ -112,10 +112,10 @@ namespace SharpDetect.Core.Runtime
         internal void RaiseGarbageCollectionFinished(IShadowCLR runtime, COR_PRF_GC_GENERATION_RANGE[] bounds, RawEventInfo info)
             => GarbageCollectionFinished?.Invoke((runtime, bounds, info));
 
-        internal void RaiseSurvivingReferences(IShadowCLR runtime, UIntPtr[] starts, UIntPtr[] lengths, RawEventInfo info)
+        internal void RaiseSurvivingReferences(IShadowCLR runtime, UIntPtr[] starts, uint[] lengths, RawEventInfo info)
             => SurvivingReferences?.Invoke((runtime, starts, lengths, info));
 
-        internal void RaiseMovedReferences(IShadowCLR runtime, UIntPtr[] oldStarts, UIntPtr[] newStarts, UIntPtr[] lengths, RawEventInfo info)
+        internal void RaiseMovedReferences(IShadowCLR runtime, UIntPtr[] oldStarts, UIntPtr[] newStarts, uint[] lengths, RawEventInfo info)
             => MovedReferences?.Invoke((runtime, oldStarts, newStarts, lengths, info));
         #endregion
 

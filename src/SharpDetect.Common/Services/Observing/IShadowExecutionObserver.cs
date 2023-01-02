@@ -25,8 +25,8 @@ namespace SharpDetect.Common.Services
         event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadResumed;
         event Action<(IShadowCLR Runtime, bool[] Generations, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionStarted;
         event Action<(IShadowCLR Runtime, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionFinished;
-        event Action<(IShadowCLR Runtime, UIntPtr[] BlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? SurvivingReferences;
-        event Action<(IShadowCLR Runtime, UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? MovedReferences;
+        event Action<(IShadowCLR Runtime, UIntPtr[] BlockStarts, uint[] Lengths, RawEventInfo Info)>? SurvivingReferences;
+        event Action<(IShadowCLR Runtime, UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, uint[] Lengths, RawEventInfo Info)>? MovedReferences;
 
         event Action<(IShadowCLR Runtime, TypeInfo Type, RawEventInfo Info)>? TypeInjected;
         event Action<(IShadowCLR Runtime, FunctionInfo Function, MethodType Type, RawEventInfo Info)>? MethodInjected;

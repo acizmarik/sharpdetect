@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FakeItEasy" Version="7.3.1" />
     <PackageReference Include="GitHubActionsTestLogger" Version="2.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -25,9 +26,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Generators\NativeObjectsSourceGenerator\NativeObjectsSourceGenerator.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Dnlib.Extensions\SharpDetect.Dnlib.Extensions.csproj" />
+    <ProjectReference Include="..\..\SharpDetect.Profiler\SharpDetect.Profiler.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
+    <ProjectReference Include="..\..\SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj" />
   </ItemGroup>
 
 </Project>

@@ -13,7 +13,7 @@
 #elif RELEASE        
             var buildType = "Release";
 #endif
-            SubjectDllPath = SubjectCsprojPath + $"/bin/{buildType}/net6.0/" + $"{SubjectNamespace}.dll";
+            SubjectDllPath = SubjectCsprojPath + $"/bin/{buildType}/net7.0/" + $"{SubjectNamespace}.dll";
         }
     }
 }
