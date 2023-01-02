@@ -1,9 +1,8 @@
-﻿namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler;
+
+public readonly struct CorDebugILToNativeMap
 {
-    public readonly struct CorDebugILToNativeMap
-    {
-        public readonly uint IlOffset;
-        public readonly uint NativeStartOffset;
-        public readonly uint NativeEndOffset;
-    }
+    public readonly uint IlOffset;
+    public readonly uint NativeStartOffset;
+    public readonly uint NativeEndOffset;
 }

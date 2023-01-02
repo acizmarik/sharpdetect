@@ -3,64 +3,63 @@ using NetMQ.Sockets;
 using Google.Protobuf;
 using NetMQ;
 
-namespace SharpDetect.Profiler.Communication
+namespace SharpDetect.Profiler.Communication;
+
+internal class SignalsWorker : ICommunicationWorker
 {
-    internal class SignalsWorker : ICommunicationWorker
+    private readonly string connectionString;
+    private readonly PushSocket socket;
+    private readonly Thread thread;
+    private volatile bool shouldTerminate;
+    private bool isDisposed;
+
+    public SignalsWorker(string connectionString)
     {
-        private readonly string connectionString;
-        private readonly PushSocket socket;
-        private readonly Thread thread;
-        private volatile bool shouldTerminate;
-        private bool isDisposed;
+        this.connectionString = connectionString;
+        this.socket = new PushSocket();
+        this.thread = new Thread(ThreadLoop);
+    }
 
-        public SignalsWorker(string connectionString)
+    private void ThreadLoop()
+    {
+        // Prepare static array of message bytes since it does not change
+        var message = new NotifyMessage()
         {
-            this.connectionString = connectionString;
-            this.socket = new PushSocket();
-            this.thread = new Thread(ThreadLoop);
+            Heartbeat = new Notify_Heartbeat(), 
+            ProcessId = Environment.ProcessId 
+        };
+        var messageBytes = message.ToByteArray();
+
+        while (!shouldTerminate)
+        {
+            // Send heartbeat
+            socket.SendFrame(messageBytes);
+
+            // Put thread to sleep until next heartbeat
+            Thread.Sleep(TimeSpan.FromSeconds(2));
         }
+    }
 
-        private void ThreadLoop()
+    public void Start()
+    {
+        socket.Connect(connectionString);
+        thread.Start();
+    }
+
+    public void Terminate()
+    {
+        shouldTerminate = true;
+    }
+
+    public void Dispose()
+    {
+        if (!isDisposed)
         {
-            // Prepare static array of message bytes since it does not change
-            var message = new NotifyMessage()
-            {
-                Heartbeat = new Notify_Heartbeat(), 
-                ProcessId = Environment.ProcessId 
-            };
-            var messageBytes = message.ToByteArray();
-
-            while (!shouldTerminate)
-            {
-                // Send heartbeat
-                socket.SendFrame(messageBytes);
-
-                // Put thread to sleep until next heartbeat
-                Thread.Sleep(TimeSpan.FromSeconds(2));
-            }
-        }
-
-        public void Start()
-        {
-            socket.Connect(connectionString);
-            thread.Start();
-        }
-
-        public void Terminate()
-        {
-            shouldTerminate = true;
-        }
-
-        public void Dispose()
-        {
-            if (!isDisposed)
-            {
-                isDisposed = true;
-                if (thread.ThreadState != ThreadState.Unstarted)
-                    thread.Join();
-                socket.Dispose();
-                GC.SuppressFinalize(this);
-            }
+            isDisposed = true;
+            if (thread.ThreadState != ThreadState.Unstarted)
+                thread.Join();
+            socket.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

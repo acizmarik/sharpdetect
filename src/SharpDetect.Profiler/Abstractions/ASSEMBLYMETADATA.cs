@@ -1,38 +1,37 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace SharpDetect.Profiler
+namespace SharpDetect.Profiler;
+
+[StructLayout(LayoutKind.Sequential)]
+public readonly struct ASSEMBLYMETADATA
 {
-    [StructLayout(LayoutKind.Sequential)]
-    public readonly struct ASSEMBLYMETADATA
-    {
-        // USHORT  usMajorVersion;
-        public readonly ushort usMajorVersion;
+    // USHORT  usMajorVersion;
+    public readonly ushort usMajorVersion;
 
-        // USHORT  usMinorVersion;
-        public readonly ushort usMinorVersion;
+    // USHORT  usMinorVersion;
+    public readonly ushort usMinorVersion;
 
-        // USHORT  usBuildNumber;
-        public readonly ushort usBuildNumber;
+    // USHORT  usBuildNumber;
+    public readonly ushort usBuildNumber;
 
-        // USHORT  usRevisionNumber;
-        public readonly ushort usRevisionNumber;
+    // USHORT  usRevisionNumber;
+    public readonly ushort usRevisionNumber;
 
-        // LPWSTR  szLocale;
-        public readonly IntPtr szLocale;
+    // LPWSTR  szLocale;
+    public readonly IntPtr szLocale;
 
-        // ULONG   cbLocale;
-        public readonly uint cbLocale;
+    // ULONG   cbLocale;
+    public readonly uint cbLocale;
 
-        // DWORD*  rdwProcessor[];
-        public readonly IntPtr rdwProcessor;
+    // DWORD*  rdwProcessor[];
+    public readonly IntPtr rdwProcessor;
 
-        // ULONG   ulProcessor
-        public readonly int ulProcessor;
+    // ULONG   ulProcessor
+    public readonly int ulProcessor;
 
-        // OSINFO* rOS[];
-        public readonly IntPtr rOS;
+    // OSINFO* rOS[];
+    public readonly IntPtr rOS;
 
-        // ULONG   ulOS;
-        public readonly uint ulOS;
-    }
+    // ULONG   ulOS;
+    public readonly uint ulOS;
 }

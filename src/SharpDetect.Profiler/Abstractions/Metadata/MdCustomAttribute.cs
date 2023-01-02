@@ -1,7 +1,6 @@
-﻿namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler;
+
+public readonly struct MdCustomAttribute
 {
-    public readonly struct MdCustomAttribute
-    {
-        public readonly int Value;
-    }
+    public readonly int Value;
 }

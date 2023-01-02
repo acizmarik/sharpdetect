@@ -1,4 +1,4 @@
-﻿using SharpDetect.Profiler;
+﻿namespace SharpDetect.Profiler;
 
 public struct COR_DEBUG_IL_TO_NATIVE_MAP
 {

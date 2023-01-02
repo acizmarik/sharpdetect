@@ -1,10 +1,9 @@
-﻿namespace SharpDetect.Profiler.Logging
+﻿namespace SharpDetect.Profiler.Logging;
+
+internal enum LogLevel
 {
-    internal enum LogLevel
-    {
-        Debug,
-        Information,
-        Warning,
-        Error
-    }
+    Debug,
+    Information,
+    Warning,
+    Error
 }

@@ -1,11 +1,10 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace SharpDetect.Profiler
+namespace SharpDetect.Profiler;
+
+[NativeObject]
+internal unsafe interface IMethodAlloc : IUnknown
 {
-    [NativeObject]
-    internal unsafe interface IMethodAlloc : IUnknown
-    {
-        public IntPtr Alloc(
-            [In] ulong cb);
-    }
+    public IntPtr Alloc(
+        [In] ulong cb);
 }
