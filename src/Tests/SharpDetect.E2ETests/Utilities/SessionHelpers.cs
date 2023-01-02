@@ -6,18 +6,34 @@ namespace SharpDetect.E2ETests.Utilities
 {
     public static class SessionHelpers
     {
+        private const string Configuration =
+#if DEBUG
+            "Debug";
+#endif
+#if RELEASE
+            "Release";
+#endif
         private static readonly string ProfilerName;
         private static readonly string ProfilerDllPath;
 
         static SessionHelpers()
         {
+            var pathPrefix = Path.Combine("..", "..", "..", "..", "..", "SharpDetect.Profiler", "bin", Configuration, "net7.0");
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
                 ProfilerName = "SharpDetect.Profiler.dll";
+                ProfilerDllPath = Path.Combine(pathPrefix, "win-x64", "publish", ProfilerName);
+            }
             else if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
                 ProfilerName = "libSharpDetect.Profiler.so";
+                ProfilerDllPath = Path.Combine(pathPrefix, "linux-x64", "publish", ProfilerName);
+            }
             else
+            {
+                // Apple..
                 throw new PlatformNotSupportedException();
-            ProfilerDllPath = Path.Combine("..", "..", "..", "..", "..", "SharpDetect.Profiler", "build", "bin", ProfilerName);
+            }
         }
 
         public static AnalysisSession CreateAnalysisSession(string executablePath, string plugins, string? args = null)
