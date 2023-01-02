@@ -1,8 +1,7 @@
-﻿namespace SharpDetect.Profiler.Communication
+﻿namespace SharpDetect.Profiler.Communication;
+
+internal interface ICommunicationWorker : IDisposable
 {
-    internal interface ICommunicationWorker : IDisposable
-    {
-        void Start();
-        void Terminate();
-    }
+    void Start();
+    void Terminate();
 }

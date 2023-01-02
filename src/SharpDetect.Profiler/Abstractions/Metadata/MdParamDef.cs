@@ -1,7 +1,6 @@
-﻿namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler;
+
+public readonly struct MdParamDef
 {
-    public readonly struct MdParamDef
-    {
-        public readonly int Value;
-    }
+    public readonly int Value;
 }

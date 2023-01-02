@@ -1,7 +1,6 @@
-﻿namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler;
+
+public readonly struct COR_PRF_ELT_INFO
 {
-    public readonly struct COR_PRF_ELT_INFO
-    {
-        public readonly nuint Value;
-    }
+    public readonly nuint Value;
 }

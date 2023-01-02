@@ -1,7 +1,6 @@
-﻿namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler;
+
+public readonly struct COR_PRF_FRAME_INFO
 {
-    public readonly struct COR_PRF_FRAME_INFO
-    {
-        public readonly nint Value;
-    }
+    public readonly nint Value;
 }

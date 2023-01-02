@@ -1,7 +1,6 @@
-﻿namespace SharpDetect.Profiler.Hooks
-{
-    internal partial class AsmUtilities
-    {
+﻿namespace SharpDetect.Profiler.Hooks;
 
-    }
+internal partial class AsmUtilities
+{
+
 }

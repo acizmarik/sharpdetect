@@ -1,8 +1,7 @@
-﻿namespace SharpDetect.Profiler
+﻿namespace SharpDetect.Profiler;
+
+public enum COR_PRF_GC_REASON
 {
-    public enum COR_PRF_GC_REASON
-    {
-        COR_PRF_GC_INDUCED = 1,
-        COR_PRF_GC_OTHER = 0
-    }
+    COR_PRF_GC_INDUCED = 1,
+    COR_PRF_GC_OTHER = 0
 }

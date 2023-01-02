@@ -1,9 +1,8 @@
-﻿namespace SharpDetect.Profiler.Logging
+﻿namespace SharpDetect.Profiler.Logging;
+
+internal interface ILoggerSink : IDisposable
 {
-    internal interface ILoggerSink : IDisposable
-    {
-        void Write(string message);
-        void WriteLine(string message);
-        void Flush();
-    }
+    void Write(string message);
+    void WriteLine(string message);
+    void Flush();
 }
