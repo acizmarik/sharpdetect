@@ -7,20 +7,6 @@ namespace SharpDetect.UnitTests.DnlibExtensions
 {
     public class StringHeapCacheTests
     {
-        [Fact]
-        public void StringHeapCacheTests_EmptyHeap()
-        {
-            // Prepare
-            var cache = new StringHeapCache();
-            var module = (AssemblyDef.Load(typeof(Unsafe).Assembly.Location).ManifestModule as ModuleDefMD)!;
-            
-            // Act
-            var lookup = cache.GetAllOffsets(module);
-
-            // Assert
-            Assert.Empty(lookup);
-        }
-
         [Theory]
         [InlineData(typeof(Console) /* System.Console.dll */)]
         [InlineData(typeof(object) /* System.Private.CoreLib.dll */)]

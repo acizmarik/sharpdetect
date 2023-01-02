@@ -269,13 +269,13 @@ namespace SharpDetect.Core.Runtime
             scheduler.Schedule_GarbageCollectionFinished(args.Bounds, args.Info);
         }
 
-        private void ProfilingMessageHub_SurvivingReferences((UIntPtr[] BlockStarts, UIntPtr[] Lengths, RawEventInfo Info) args)
+        private void ProfilingMessageHub_SurvivingReferences((UIntPtr[] BlockStarts, uint[] Lengths, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_SurvivingReferences(args.BlockStarts, args.Lengths, args.Info);
         }
 
-        private void ProfilingMessageHub_MovedReferences((UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, RawEventInfo Info) args)
+        private void ProfilingMessageHub_MovedReferences((UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, uint[] Lengths, RawEventInfo Info) args)
         {
             var scheduler = GetScheduler(args.Info.ProcessId);
             scheduler.Schedule_MovedReferences(args.OldBlockStarts, args.NewBlockStarts, args.Lengths, args.Info);

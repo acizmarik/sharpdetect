@@ -557,13 +557,13 @@ namespace SharpDetect.UnitTests.Communication
             const int processId = 456;
             UIntPtr threadId = new(789);
             UIntPtr[] startIds = new UIntPtr[] { new(123), new(456) };
-            UIntPtr[] lengths = new UIntPtr[] { new(789), new(987) };
+            uint[] lengths = new uint[] { 789, 987 };
             var startIdsBytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref startIds[0], startIds.Length));
             var lengthsBytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref lengths[0], lengths.Length));
 
             var raised = false;
             var startInfos = default(UIntPtr[]);
-            var lengthInfos = default(UIntPtr[]);
+            var lengthInfos = default(uint[]);
             var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.SurvivingReferences += args =>
@@ -605,7 +605,7 @@ namespace SharpDetect.UnitTests.Communication
             UIntPtr threadId = new(789);
             UIntPtr[] oldStartIds = new UIntPtr[] { new(123), new(456) };
             UIntPtr[] newStartIds = new UIntPtr[] { new(234), new(567) };
-            UIntPtr[] lengths = new UIntPtr[] { new(789), new(987) };
+            uint[] lengths = new uint[] { 789, 987 };
             var oldStartIdsBytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref oldStartIds[0], oldStartIds.Length));
             var newStartIdsBytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref newStartIds[0], newStartIds.Length));
             var lengthsBytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref lengths[0], lengths.Length));
@@ -613,7 +613,7 @@ namespace SharpDetect.UnitTests.Communication
             var raised = false;
             var oldStartInfos = default(UIntPtr[]);
             var newStartInfos = default(UIntPtr[]);
-            var lengthInfos = default(UIntPtr[]);
+            var lengthInfos = default(uint[]);
             var eventInfo = default(RawEventInfo);
             var hub = new ProfilingMessageHub(LoggerFactory);
             hub.MovedReferences += args =>

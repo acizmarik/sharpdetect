@@ -75,10 +75,10 @@ namespace SharpDetect.UnitTests.Runtime.Memory
                     new UIntPtr(8),
                     new UIntPtr(24)
                 },
-                lengths: new[]
+                lengths: new uint[]
                 {
-                    new UIntPtr(8),
-                    new UIntPtr(8)
+                    8,
+                    8
                 });
             shadowGC.ProcessGarbageCollectionFinished(bounds);
 
@@ -140,11 +140,11 @@ namespace SharpDetect.UnitTests.Runtime.Memory
                     new UIntPtr(8),
                     new UIntPtr(11)
                 },
-                lengths: new[]
+                lengths: new uint[]
                 {
-                    new UIntPtr(1),
-                    new UIntPtr(3),
-                    new UIntPtr(4)
+                    1,
+                    3,
+                    4
                 }
             );
             bounds[0].generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1;

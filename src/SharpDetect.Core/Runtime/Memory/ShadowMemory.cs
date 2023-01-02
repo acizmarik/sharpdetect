@@ -116,12 +116,12 @@ namespace SharpDetect.Core.Runtime.Memory
             memorySegments = newIntervalTree;
         }
 
-        public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, UIntPtr[] lengths)
+        public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, uint[] lengths)
         {
             var toCollect = objectsLookup[generation];
             var intervalTree = new IntervalTree<UIntPtr, bool>();
             for (var i = 0; i < survivingBlockStarts.Length; i++)
-                intervalTree.Add(survivingBlockStarts[i], new UIntPtr(survivingBlockStarts[i].ToUInt64() + lengths[i].ToUInt64() - 1), true);
+                intervalTree.Add(survivingBlockStarts[i], new UIntPtr(survivingBlockStarts[i].ToUInt64() + lengths[i] - 1), true);
 
             // Mark all surviving objects as alive
             foreach (var (pointer, shadowObj) in toCollect)
@@ -135,13 +135,13 @@ namespace SharpDetect.Core.Runtime.Memory
             }
         }
 
-        public void Collect(GcGeneration generation, UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, UIntPtr[] lengths)
+        public void Collect(GcGeneration generation, UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, uint[] lengths)
         {
             compactingCollections![(int)generation] = true;
             var toCollect = objectsLookup[generation];
             var intervalTree = new IntervalTree<UIntPtr, uint?>();
             for (var i = 0u; i < oldBlockStarts.Length; i++)
-                intervalTree.Add(oldBlockStarts[i], new UIntPtr(oldBlockStarts[i].ToUInt64() + lengths[i].ToUInt64() - 1), i);
+                intervalTree.Add(oldBlockStarts[i], new UIntPtr(oldBlockStarts[i].ToUInt64() + lengths[i] - 1), i);
 
             // Mark all surviving objects as alive and calculate their new locations
             foreach (var (pointer, shadowObj) in toCollect)

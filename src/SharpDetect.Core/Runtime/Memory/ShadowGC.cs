@@ -26,13 +26,13 @@ namespace SharpDetect.Core.Runtime.Memory
             memory.Reconstruct(ranges);
         }
 
-        public void ProcessSurvivingReferences(UIntPtr[] survivingBlockStarts, UIntPtr[] lengths)
+        public void ProcessSurvivingReferences(UIntPtr[] survivingBlockStarts, uint[] lengths)
         {
             var generation = memory.GetGeneration(survivingBlockStarts[0]);
             memory.Collect(generation, survivingBlockStarts, lengths);
         }
 
-        public void ProcessMovedReferences(UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, UIntPtr[] lengths)
+        public void ProcessMovedReferences(UIntPtr[] oldBlockStarts, UIntPtr[] newBlockStarts, uint[] lengths)
         {
             var generation = memory.GetGeneration(oldBlockStarts[0]);
             memory.Collect(generation, oldBlockStarts, newBlockStarts, lengths);

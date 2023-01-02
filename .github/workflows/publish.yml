@@ -9,12 +9,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Setup .NET
-      uses: actions/setup-dotnet@v2
+      uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 7.0.x
     - name: Restore dependencies
       run: dotnet restore src/SharpDetect.sln
-    - name: Build
+    - name: Publish (dotnet)
       run: |
         dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true --self-contained false src/SharpDetect.Console
         dotnet publish -c Release src/SharpDetect.Plugins
@@ -23,44 +23,25 @@ jobs:
       with:
         name: sharpdetect-managed
         path: |
-          src/SharpDetect.Console/bin/Release/net6.0/win-x64/publish
-          src/SharpDetect.Plugins/bin/Release/net6.0/publish
+          src/SharpDetect.Console/bin/Release/net7.0/win-x64/publish
+          src/SharpDetect.Plugins/bin/Release/net7.0/publish
         
   build-native:
     runs-on: windows-2022
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
-    - name: Setup Python 3.x
-      uses: actions/setup-python@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
       with:
-        python-version: 3.x
-    - name: Setup Conan
+        dotnet-version: 7.0.x
+    - name: Publish (native)
       run: |
-        pip install conan --upgrade
-        conan config init --force
-        conan profile update settings.os="Windows" default
-        conan profile update settings.arch="x86_64" default
-        conan profile update settings.compiler="Visual Studio" default
-        conan profile update settings.compiler.version=17 default
-        conan profile update settings.compiler.cppstd=20 default
-        conan profile update settings.build_type="Release" default
-    - name: Prepare dependencies
-      run: |
-        mkdir src/SharpDetect.Profiler/build
-        cd src/SharpDetect.Profiler/build
-        conan install .. -s build_type=Release --build=missing
-    - name: Run CMake generators
-      run: |
-        cd src/SharpDetect.Profiler/build
-        cmake -DCMAKE_BUILD_TYPE=Release ..
-    - name: Build
-      run: |
-        cd src/SharpDetect.Profiler/build
-        cmake --build . --config Release
+        cd src/SharpDetect.Profiler/Scripts
+        ./publish-win-x64-aot-release.ps1
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
         name: windows-profiler
-        path: src/SharpDetect.Profiler/build/bin/SharpDetect.Profiler.dll
-    
+        path: |
+          src/SharpDetect.Profiler/bin/Release/net7.0/publish/SharpDetect.Profiler.dll

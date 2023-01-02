@@ -25,8 +25,8 @@ namespace SharpDetect.Core.Communication
         public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? RuntimeThreadResumed;
         public event Action<(bool[] GenerationsCollected, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionStarted;
         public event Action<(COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)>? GarbageCollectionFinished;
-        public event Action<(UIntPtr[] BlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? SurvivingReferences;
-        public event Action<(UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, RawEventInfo Info)>? MovedReferences;
+        public event Action<(UIntPtr[] BlockStarts, uint[] Lengths, RawEventInfo Info)>? SurvivingReferences;
+        public event Action<(UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, uint[] Lengths, RawEventInfo Info)>? MovedReferences;
 
         public ProfilingMessageHub(ILoggerFactory loggerFactory)
             : base(loggerFactory.CreateLogger<ProfilingMessageHub>(), new[]
@@ -185,7 +185,7 @@ namespace SharpDetect.Core.Communication
         {
             var info = CreateEventInfo(message);
             var gcStarted = message.GarbageCollectionStarted;
-            var generations = UnsafeHelpers.AsStructArray<bool>(gcStarted.GenerationsCollected.Span);
+            var generations = gcStarted.GenerationsCollected.Select(b => b != 0).ToArray();
             var bounds = UnsafeHelpers.AsStructArray<COR_PRF_GC_GENERATION_RANGE>(gcStarted.GenerationSegmentBounds.Span);
             GarbageCollectionStarted?.Invoke((generations, bounds, info));
         }
@@ -203,7 +203,7 @@ namespace SharpDetect.Core.Communication
             var info = CreateEventInfo(message);
             var survivingReferences = message.SurvivingReferences;
             var blockStarts = UnsafeHelpers.AsStructArray<UIntPtr>(survivingReferences.Blocks.Span);
-            var blockLengths = UnsafeHelpers.AsStructArray<UIntPtr>(survivingReferences.Lengths.Span);
+            var blockLengths = UnsafeHelpers.AsStructArray<uint>(survivingReferences.Lengths.Span);
             SurvivingReferences?.Invoke((blockStarts, blockLengths, info));
         }
 
@@ -213,7 +213,7 @@ namespace SharpDetect.Core.Communication
             var movedReferences = message.MovedReferences;
             var oldBlockStarts = UnsafeHelpers.AsStructArray<UIntPtr>(movedReferences.OldBlocks.Span);
             var newBlockStarts = UnsafeHelpers.AsStructArray<UIntPtr>(movedReferences.NewBlocks.Span);
-            var blockLengths = UnsafeHelpers.AsStructArray<UIntPtr>(movedReferences.Lengths.Span);
+            var blockLengths = UnsafeHelpers.AsStructArray<uint>(movedReferences.Lengths.Span);
             MovedReferences?.Invoke((oldBlockStarts, newBlockStarts, blockLengths, info));
         }
     }
