@@ -25,7 +25,7 @@ namespace SharpDetect.Common.Services
 
         event Action<(bool[] GenerationsCollected, COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)> GarbageCollectionStarted;
         event Action<(COR_PRF_GC_GENERATION_RANGE[] Bounds, RawEventInfo Info)> GarbageCollectionFinished;
-        event Action<(UIntPtr[] BlockStarts, UIntPtr[] Lengths, RawEventInfo Info)> SurvivingReferences;
-        event Action<(UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, UIntPtr[] Lengths, RawEventInfo Info)> MovedReferences;
+        event Action<(UIntPtr[] BlockStarts, uint[] Lengths, RawEventInfo Info)> SurvivingReferences;
+        event Action<(UIntPtr[] OldBlockStarts, UIntPtr[] NewBlockStarts, uint[] Lengths, RawEventInfo Info)> MovedReferences;
     }
 }
