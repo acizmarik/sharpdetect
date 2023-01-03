@@ -10,8 +10,17 @@ internal record Method(
     bool CaptureArguments, 
     bool CaptureReturnValue)
 {
-    private readonly Stack<List<nint>> indirectsCallstack = new();
+    private readonly ThreadLocal<Stack<List<nint>>> indirectsCallStack = new(() => new()); 
 
-    public List<nint> PopIndirects() => indirectsCallstack.Pop();
-    public void PushIndirects(List<nint> indirects) => indirectsCallstack.Push(indirects);
+    public List<nint> PopIndirects()
+    {
+        var threadLocal = indirectsCallStack.Value!;
+        return threadLocal.Pop();
+    }
+
+    public void PushIndirects(List<nint> indirects)
+    {
+        var threadLocal = indirectsCallStack.Value!;
+        threadLocal.Push(indirects);
+    }
 }
