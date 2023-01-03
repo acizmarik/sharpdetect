@@ -98,9 +98,6 @@ namespace SharpDetect.Core.Runtime.Memory
             // TODO: notify plugins about how many objects were collected
 
             logger.LogDebug("GC finished for generations {gens}", generationsCollected);
-
-            this.compactingCollections = null;
-            this.generationsCollected = null;
         }
 
         public void Reconstruct(GcGenerationRange[] ranges)
@@ -114,6 +111,9 @@ namespace SharpDetect.Core.Runtime.Memory
             }
             // Assign new memory segments lookup
             memorySegments = newIntervalTree;
+
+            this.compactingCollections = null;
+            this.generationsCollected = null;
         }
 
         public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, uint[] lengths)
@@ -168,17 +168,17 @@ namespace SharpDetect.Core.Runtime.Memory
             // Promotion is not relevant to other heap segments
             // There is nowhere to promote objects from LOH, pinned heap, nor the 2nd generation
 
-            if (gen1.Count > 0)
+            if (generationsCollected![(int)GcGeneration.COR_PRF_GC_GEN_1] && !gen1.IsEmpty)
             {
                 // Promote survivors from generation 1 to generation 2
                 var newGen2 = gen2.Concat(gen1);
                 internalCollection[GcGeneration.COR_PRF_GC_GEN_2] = gen2 = new ConcurrentDictionary<UIntPtr, ShadowObject>(newGen2);
                 internalCollection[GcGeneration.COR_PRF_GC_GEN_1] = gen1 = new ConcurrentDictionary<UIntPtr, ShadowObject>(/* empty */);
             }
-            if (gen0.Count > 0)
+            if (generationsCollected![(int)GcGeneration.COR_PRF_GC_GEN_0] && !gen0.IsEmpty)
             {
                 // Promote survivors from generation 0 to generation 1
-                if (gen1.Count == 0)
+                if (gen1.IsEmpty)
                 {
                     // Reassign generations
                     internalCollection[GcGeneration.COR_PRF_GC_GEN_1] = gen1 = gen0;
