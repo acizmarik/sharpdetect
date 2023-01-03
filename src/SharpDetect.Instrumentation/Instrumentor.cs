@@ -89,12 +89,12 @@ namespace SharpDetect.Instrumentation
             if (moduleBindContext.TryLoadModule(args.Info.ProcessId, args.Path, args.Module, out var moduleDef) && GetMethodsToWrap(moduleDef, args.Module.Id).Any())
             {
                 // Issue wrapping request
-                profilingClient.IssueEmitMethodWrappersRequestAsync(GetMethodsToWrap(moduleDef, args.Module.Id), args.Info).Wait();
+                profilingClient.IssueEmitMethodWrappersRequestAsync(GetMethodsToWrap(moduleDef, args.Module.Id), args.Info);
             }
             else
             {
                 // Issue no changes request (there was nothing to wrap)
-                profilingClient.IssueNoChangesRequestAsync(args.Info).Wait();
+                profilingClient.IssueNoChangesRequestAsync(args.Info);
             }
         }
 
@@ -111,7 +111,7 @@ namespace SharpDetect.Instrumentation
                 // If we were unable to resolve the method it was created dynamically:
                 // 1.) either is a profiler method TODO: recognize these
                 // 2.) program emitted a method through reflection or similar technique
-                profilingClient.IssueNoChangesRequestAsync(args.Info).Wait();
+                profilingClient.IssueNoChangesRequestAsync(args.Info);
                 return;
             }
 
@@ -119,7 +119,7 @@ namespace SharpDetect.Instrumentation
             if (method.Body is null)
             {
                 // There is nothing we can do about this method
-                profilingClient.IssueNoChangesRequestAsync(args.Info).Wait();
+                profilingClient.IssueNoChangesRequestAsync(args.Info);
                 return;
             }
 
