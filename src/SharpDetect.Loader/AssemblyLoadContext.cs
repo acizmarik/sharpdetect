@@ -41,6 +41,13 @@ namespace SharpDetect.Loader
 
             try
             {
+                if (!Path.IsPathFullyQualified(assemblyPath))
+                {
+                    logger.LogWarning("Could not load assembly {assembly}. It was probably emitted during runtime (this is not supported yet).", assemblyPath);
+                    assembly = null;
+                    return false;
+                }
+
                 assembly = AssemblyDef.Load(assemblyPath, moduleContext);
                 AssemblyResolver.AddToCache(assembly);
                 LogSuccessLoad(assemblyPath, assembly);
