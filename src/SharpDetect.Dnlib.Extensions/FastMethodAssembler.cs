@@ -1,11 +1,11 @@
 ﻿// The following code is heavily inspired and partially copied from the dnlib code base
 // Copyright (C) 2012-2019 de4dot@gmail.com under MIT license
 
+using CommunityToolkit.Diagnostics;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using dnlib.DotNet.MD;
 using dnlib.DotNet.Writer;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Dnlib.Extensions.Utilities;
 
@@ -44,7 +44,7 @@ namespace SharpDetect.Dnlib.Extensions
             this.bytecode = null!;
 
             // Prepare for writing
-            Guard.True<ArgumentException>(method.HasBody);
+            Guard.IsTrue(method.HasBody);
             Initialize(optimizeMacros, optimizeBranches);
         }
 
@@ -198,7 +198,7 @@ namespace SharpDetect.Dnlib.Extensions
                 case OperandType.InlinePhi:
                 case OperandType.NOT_USED_8:
                 default:
-                    Guard.NotReachable<InvalidProgramException>(); break;
+                    throw new InvalidProgramException($"Unrecognized {nameof(OperandType)} for OP code: {instruction.OpCode.Code}");
             }
         }
 
@@ -256,8 +256,7 @@ namespace SharpDetect.Dnlib.Extensions
                 return new MDToken(Table.StandAloneSig, 0);
             }
 
-            Guard.NotReachable<ArgumentException>();
-            return default;
+            throw new InvalidProgramException($"Unrecognized operand for OP code: {instruction.OpCode.Code}");
         }
 
         private void WriteExceptionHandlers()
@@ -312,12 +311,12 @@ namespace SharpDetect.Dnlib.Extensions
                 writer.WriteUInt32((uint)eh.HandlerType);
 
                 // Write try block
-                Guard.True<InvalidProgramException>(eh.TryEnd == null || eh.TryStart.Offset < eh.TryEnd.Offset);
+                Guard.IsTrue(eh.TryEnd == null || eh.TryStart.Offset < eh.TryEnd.Offset);
                 writer.WriteUInt32(eh.TryStart.Offset);
                 writer.WriteUInt32((eh.TryEnd?.Offset ?? methodEndOffset) - eh.TryStart.Offset);
 
                 // Write handler block
-                Guard.True<InvalidProgramException>(eh.HandlerEnd == null || eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
+                Guard.IsTrue(eh.HandlerEnd == null || eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
                 writer.WriteUInt32(eh.HandlerStart.Offset);
                 writer.WriteUInt32((eh.HandlerEnd?.Offset ?? methodEndOffset) - eh.HandlerStart.Offset);
 
@@ -330,7 +329,7 @@ namespace SharpDetect.Dnlib.Extensions
                     writer.WriteInt32(0);
             }
 
-            Guard.Equal<int, InvalidProgramException>(data.Length, writer.Position);
+            Guard.IsEqualTo(data.Length, writer.Position);
             return data;
         }
 
@@ -351,12 +350,12 @@ namespace SharpDetect.Dnlib.Extensions
                 writer.WriteUInt16((ushort)eh.HandlerType);
 
                 // Write try block
-                Guard.True<InvalidProgramException>(eh.TryEnd == null || eh.TryStart.Offset < eh.TryEnd.Offset);
+                Guard.IsTrue(eh.TryEnd == null || eh.TryStart.Offset < eh.TryEnd.Offset);
                 writer.WriteUInt16((ushort)eh.TryStart.Offset);
                 writer.WriteByte((byte)((eh.TryEnd?.Offset ?? methodEndOffset) - eh.TryStart.Offset));
 
                 // Write handler block
-                Guard.True<InvalidProgramException>(eh.HandlerEnd == null || eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
+                Guard.IsTrue(eh.HandlerEnd == null || eh.HandlerStart.Offset < eh.HandlerEnd.Offset);
                 writer.WriteUInt16((ushort)eh.HandlerStart.Offset);
                 writer.WriteByte((byte)((eh.HandlerEnd?.Offset ?? methodEndOffset) - eh.HandlerStart.Offset));
 

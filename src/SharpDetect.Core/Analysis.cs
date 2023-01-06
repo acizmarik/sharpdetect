@@ -109,7 +109,7 @@ namespace SharpDetect.Core
 
                 if (withTargetProgram)
                 {
-                    var target = new Target(configuration);
+                    var target = new Target(configuration, loggerFactory);
                     logger.LogDebug("[{class}] Target program starting...", nameof(Analysis));
                     var result = await target.ExecuteAsync(ct).ConfigureAwait(false);
                     logger.LogDebug("[{class}] Target program returned {val}", nameof(Analysis), result.ExitCode);

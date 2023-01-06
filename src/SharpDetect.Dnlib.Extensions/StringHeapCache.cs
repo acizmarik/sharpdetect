@@ -1,7 +1,7 @@
-﻿using dnlib.DotNet;
+﻿using CommunityToolkit.Diagnostics;
+using dnlib.DotNet;
 using dnlib.DotNet.MD;
 using dnlib.IO;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Services.Instrumentation;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
@@ -44,11 +44,15 @@ namespace SharpDetect.Dnlib.Extensions
                     if (signallers.TryGetValue(module, out var newRecord) && newRecord.State == ModuleCacheState.Constructing)
                     {
                         // We are the ones that should construct the cache
-                        var moduleDefMd = Guard.NotNull<ModuleDefMD, InvalidOperationException>(module as ModuleDefMD);
-                        var stringsHeap = ParseStringsHeap(moduleDefMd);
+                        var moduleDefMd = module as ModuleDefMD;
+                        Guard.IsNotNull(moduleDefMd);
+
                         // Update caches and ensure their integrity is intact
-                        Guard.True<InvalidOperationException>(cache.TryAdd(module, stringsHeap));
-                        Guard.True<InvalidOperationException>(signallers.TryUpdate(module, (signaller, ModuleCacheState.Ready), (signaller, ModuleCacheState.Constructing)));
+                        var stringsHeap = ParseStringsHeap(moduleDefMd);
+                        if (!cache.TryAdd(module, stringsHeap))
+                            throw new InvalidOperationException("Could not update cache");
+                        if (!signallers.TryUpdate(module, (signaller, ModuleCacheState.Ready), (signaller, ModuleCacheState.Constructing)))
+                            throw new InvalidOperationException("Could not update signallers about cache state");
                     }
                 }
             }

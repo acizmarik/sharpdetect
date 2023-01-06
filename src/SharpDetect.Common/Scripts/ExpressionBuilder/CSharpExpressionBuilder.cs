@@ -1,4 +1,4 @@
-﻿using SharpDetect.Common.Exceptions;
+﻿using CommunityToolkit.Diagnostics;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Runtime.Arguments;
 using System.Linq.Expressions;
@@ -32,8 +32,8 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
     public class CSharpExpressionBuilder
     {
         private readonly Stack<Expression> stack;
-        private ParameterExpression argumentsExpression;
-        private ParameterExpression returnValueExpression;
+        private readonly ParameterExpression argumentsExpression;
+        private readonly ParameterExpression returnValueExpression;
 
         public CSharpExpressionBuilder()
         {
@@ -44,7 +44,7 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
 
         public ResultChecker Compile()
         {
-            Guard.Equal<int, InvalidOperationException>(1, stack.Count);
+            Guard.IsEqualTo(1, stack.Count);
             return new ResultChecker(
                 (Func<IValueOrObject?, (ushort, IValueOrObject)[]?, bool>)Expression.Lambda(stack.Pop(), returnValueExpression, argumentsExpression).Compile());
         }
@@ -52,8 +52,8 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
         public CSharpExpressionBuilder Convert(string typeFullName)
         {
             var type = Type.GetType(typeFullName);
-            Guard.NotEmpty<Expression, InvalidOperationException>(stack);
-            Guard.NotNull<Type, ArgumentException>(type);
+            Guard.IsNotEmpty(stack);
+            Guard.IsNotNull(type);
 
             var argument = stack.Pop();
             stack.Push(Expression.Convert(argument, type));
@@ -75,7 +75,7 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
         public CSharpExpressionBuilder LoadConstant(object value, string typeFullName)
         {
             var type = Type.GetType(typeFullName);
-            Guard.NotNull<Type, ArgumentException>(type);
+            Guard.IsNotNull(type);
 
             stack.Push(Expression.Constant(value, type));
             return this;
@@ -83,11 +83,11 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
 
         public CSharpExpressionBuilder Member(string memberName)
         {
-            Guard.NotEmpty<Expression, InvalidOperationException>(stack);
+            Guard.IsNotEmpty(stack);
             var argument = stack.Pop();
             var candidateMembers = argument.Type.GetMember(memberName, MemberTypes.Field | MemberTypes.Property, BindingFlags.Public | BindingFlags.Instance);
-            Guard.NotNull<MemberInfo[], ArgumentException>(candidateMembers);
-            Guard.Single<ArgumentException>(candidateMembers);
+            Guard.IsNotNull(candidateMembers);
+            Guard.HasSizeEqualTo(candidateMembers, 1);
 
             stack.Push(Expression.MakeMemberAccess(argument, candidateMembers.First()));
             return this;
@@ -96,8 +96,8 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
         public CSharpExpressionBuilder Unbox(string typeFullName)
         {
             var type = Type.GetType(typeFullName);
-            Guard.NotEmpty<Expression, InvalidOperationException>(stack);
-            Guard.NotNull<Type, ArgumentException>(type);
+            Guard.IsNotEmpty(stack);
+            Guard.IsNotNull(type);
 
             var argument = stack.Pop();
             stack.Push(Expression.Unbox(argument, type));
@@ -106,7 +106,7 @@ namespace SharpDetect.Common.Scripts.ExpressionBuilder
 
         public CSharpExpressionBuilder BinaryOperation(BinaryOperationType type)
         {
-            Guard.GreaterOrEqual<int, InvalidOperationException>(stack.Count).Than(2);
+            Guard.HasSizeGreaterThanOrEqualTo(stack, 2);
 
             var right = stack.Pop();
             var left = stack.Pop();

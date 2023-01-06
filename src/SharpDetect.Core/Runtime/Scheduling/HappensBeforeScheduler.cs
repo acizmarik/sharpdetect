@@ -3,9 +3,7 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Interop;
-using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Messages;
-using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
@@ -427,7 +425,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.LockBlockingAcquire:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject;
-                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     thread.PushCallStack(function, interpretationData.Interpretation, instance);
                                     RuntimeEventsHub.RaiseLockAcquireAttempted(ShadowCLR, function, instance, info);
                                     break;
@@ -436,7 +434,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.LockRelease:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject;
-                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     thread.PushCallStack(function, interpretationData.Interpretation, instance);
                                     RuntimeEventsHub.RaiseLockReleaseCalled(ShadowCLR, function, instance, info);
                                     break;
@@ -446,7 +444,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.SignalBlockingWait:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject as ShadowObject;
-                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     var isAlreadyWaiting = (thread.GetCallstackDepth() != 0)
                                         && (thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait ||
                                             thread.PeekCallstack().Interpretation == MethodInterpretation.SignalBlockingWait);
@@ -461,7 +459,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.SignalPulseAll:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject;
-                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     thread.PushCallStack(function, interpretationData.Interpretation, instance);
                                     var isPulseAll = interpretationData.Interpretation == MethodInterpretation.SignalPulseAll;
                                     RuntimeEventsHub.RaiseObjectPulseCalled(ShadowCLR, function, isPulseAll, instance, info);
@@ -479,7 +477,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.FieldInstanceAccess:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject;
-                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     thread.OperationContext.SetFieldInstance(instance as ShadowObject);
                                     RuntimeEventsHub.RaiseFieldInstanceAccessed(ShadowCLR, instance, info);
                                     break;
@@ -491,15 +489,15 @@ namespace SharpDetect.Core.Runtime.Scheduling
                                     var identifier = (ulong)resolvedArgumentsList[1].Argument.BoxedValue!;
                                     var arrayInstance = thread.OperationContext.GetAndResetLastArrayInstance();
                                     var arrayIndex = thread.OperationContext.GetAndResetLastArrayIndex();
-                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(arrayInstance);
-                                    Guard.NotNull<int?, ShadowRuntimeStateException>(arrayIndex);
+                                    RuntimeContract.Assert(arrayInstance != null);
+                                    RuntimeContract.Assert(arrayIndex != null);
                                     RuntimeEventsHub.RaiseArrayElementAccessed(ShadowCLR, identifier, isWrite, arrayInstance, arrayIndex.Value, info);
                                     break;
                                 }
                             case MethodInterpretation.ArrayInstanceAccess:
                                 {
                                     var instance = resolvedArgumentsList[0].Argument.ShadowObject;
-                                    Guard.NotNull<IShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     thread.OperationContext.SetArrayInstance(instance as ShadowObject);
                                     RuntimeEventsHub.RaiseArrayInstanceAccessed(ShadowCLR, instance, info);
                                     break;
@@ -573,10 +571,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.LockTryAcquire:
                             case MethodInterpretation.LockBlockingAcquire:
                                 {
-                                    Guard.NotNull<ResultChecker, ArgumentException>(interpretationData.Checker);
-                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    RuntimeContract.Assert(thread.GetCallstackDepth() != 0);
                                     var instance = thread.PopCallStack().Arguments as ShadowObject;
-                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
+                                    RuntimeContract.Assert(interpretationData.Checker != null);
                                     var isSuccess = interpretationData.Checker(resolvedReturnValue, resolvedByRefArgumentsList.Raw);
                                     if (isSuccess)
                                         instance.SyncBlock.Acquire(thread);
@@ -586,9 +584,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             // Lock release returns
                             case MethodInterpretation.LockRelease:
                                 {
-                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    RuntimeContract.Assert(thread.GetCallstackDepth() != 0);
                                     var instance = thread.PopCallStack().Arguments as ShadowObject;
-                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     instance.SyncBlock.Release(thread);
                                     RuntimeEventsHub.RaiseLockReleaseReturned(ShadowCLR, function, instance, info);
                                     break;
@@ -597,8 +595,8 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.SignalTryWait:
                             case MethodInterpretation.SignalBlockingWait:
                                 {
-                                    Guard.NotNull<ResultChecker, ArgumentException>(interpretationData.Checker);
-                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    RuntimeContract.Assert(interpretationData.Checker != null);
+                                    RuntimeContract.Assert(thread.GetCallstackDepth() != 0);
                                     var instance = thread.PopCallStack().Arguments as ShadowObject;
                                     var isStillWaiting = (thread.GetCallstackDepth() != 0) && thread.PeekCallstack().Interpretation == MethodInterpretation.SignalTryWait;
                                     if (isStillWaiting)
@@ -615,9 +613,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
                             case MethodInterpretation.SignalPulseOne:
                             case MethodInterpretation.SignalPulseAll:
                                 {
-                                    Guard.NotEqual<int, ShadowRuntimeStateException>(0, thread.GetCallstackDepth());
+                                    RuntimeContract.Assert(thread.GetCallstackDepth() != 0);
                                     var instance = thread.PopCallStack().Arguments as ShadowObject;
-                                    Guard.NotNull<ShadowObject, ShadowRuntimeStateException>(instance);
+                                    RuntimeContract.Assert(instance != null);
                                     var isPulseAll = interpretationData.Interpretation == MethodInterpretation.SignalPulseAll;
                                     RuntimeEventsHub.RaiseObjectPulseReturned(ShadowCLR, function, isPulseAll, instance, info);
                                     break;

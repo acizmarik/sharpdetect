@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common.Exceptions;
+﻿using CommunityToolkit.Diagnostics;
+using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Threads;
 
@@ -50,8 +51,8 @@ namespace SharpDetect.Core.Runtime
         {
             lock (this)
             {
-                Guard.NotNull<IShadowThread?, ShadowRuntimeStateException>(lockOwner);
-                Guard.Equal<IShadowThread, ShadowRuntimeStateException>(lockOwner!, thread);
+                RuntimeContract.Assert(lockOwner != null);
+                RuntimeContract.Assert(lockOwner == thread);
 
                 // Check if the lock was locked multiple times
                 if (--reentrancyCounter != 0)

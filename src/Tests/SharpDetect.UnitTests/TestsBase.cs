@@ -58,8 +58,8 @@ namespace SharpDetect.UnitTests
         protected IConfiguration CreateModulesConfiguration()
         {
             return new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string> {
-                    { $"{Constants.ModuleDescriptors.CoreModulesPaths}:0", "Modules" },
+                .AddInMemoryCollection(new Dictionary<string, string?> {
+                    { $"{Constants.ModuleDescriptors.Core}:0", "Modules" },
                 })
                 .Build();
         }
@@ -78,14 +78,14 @@ namespace SharpDetect.UnitTests
         protected IConfiguration CreateInstrumentorConfiguration(bool enableInstrumentation, InstrumentationStrategy strategy, string[] patterns)
         {
             return new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>(
+                .AddInMemoryCollection(new Dictionary<string, string?>(
                     new[]
                     {
-                        new KeyValuePair<string, string>(Constants.Rewriting.Enabled, enableInstrumentation.ToString().ToLowerInvariant()),
-                        new KeyValuePair<string, string>(Constants.Rewriting.Strategy, strategy.ToString())
+                        new KeyValuePair<string, string?>(Constants.Rewriting.Enabled, enableInstrumentation.ToString().ToLowerInvariant()),
+                        new KeyValuePair<string, string?>(Constants.Rewriting.Strategy, strategy.ToString())
                     }
-                    .Concat(patterns.Select((p, i) => new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:{i}:Pattern", p)))
-                    .Concat(patterns.Select((p, i) => new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:{i}:Target", nameof(InstrumentationTarget.Method))))))
+                    .Concat(patterns.Select((p, i) => new KeyValuePair<string, string?>($"{Constants.Rewriting.Patterns}:{i}:Pattern", p)))
+                    .Concat(patterns.Select((p, i) => new KeyValuePair<string, string?>($"{Constants.Rewriting.Patterns}:{i}:Target", nameof(InstrumentationTarget.Method))))))
                 .Build();
         }
 

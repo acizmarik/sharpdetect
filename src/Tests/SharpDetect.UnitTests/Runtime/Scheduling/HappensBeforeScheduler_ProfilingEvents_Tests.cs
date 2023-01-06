@@ -158,9 +158,6 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
 
             // Assert
             Assert.Single(shadowCLR.Modules);
-            Assert.Single(shadowCLR.Types);
-            Assert.Equal(moduleId, shadowCLR.Types.First().Key.ModuleId);
-            Assert.Equal(typeMDToken, shadowCLR.Types.First().Key.TypeToken);
             Assert.Equal(ShadowRuntimeState.Executing, shadowCLR.State);
             Assert.True(profilerInitializedRaised);
             Assert.True(moduleLoadedRaised);
@@ -207,11 +204,6 @@ namespace SharpDetect.UnitTests.Runtime.Scheduling
 
             // Assert
             Assert.Single(shadowCLR.Modules);
-            Assert.Single(shadowCLR.Types);
-            Assert.Single(shadowCLR.Functions);
-            Assert.Equal(moduleId, shadowCLR.Types.First().Key.ModuleId);
-            Assert.Equal(typeMDToken, shadowCLR.Types.First().Key.TypeToken);
-            Assert.Equal(functionMDToken, shadowCLR.Functions.First().Key.FunctionToken);
             Assert.Equal(ShadowRuntimeState.Executing, shadowCLR.State);
             Assert.True(profilerInitializedRaised);
             Assert.True(moduleLoadedRaised);

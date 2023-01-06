@@ -45,6 +45,9 @@ namespace SharpDetect.Core.Runtime.Memory
         {
             // Pre-mark all affected objects as dead
             // During SurvivingReferences or MovedReferences, we will correct this
+            RuntimeContract.Assert(generationsCollected != null);
+            RuntimeContract.Assert(compactingCollections != null);
+
             for (var genIndex = 0; genIndex < generationsCollected!.Length; genIndex++)
             {
                 if (!generationsCollected![genIndex])
@@ -63,8 +66,9 @@ namespace SharpDetect.Core.Runtime.Memory
         public void FinishGarbageCollection()
         {
             // Remove all dead objects
-            Guard.NotNull<bool[], ShadowRuntimeStateException>(generationsCollected);
-            Guard.NotNull<bool[], ShadowRuntimeStateException>(compactingCollections);
+            RuntimeContract.Assert(generationsCollected != null);
+            RuntimeContract.Assert(compactingCollections != null);
+
             for (var genIndex = 0; genIndex < generationsCollected.Length; genIndex++)
             {
                 if (!generationsCollected[genIndex])

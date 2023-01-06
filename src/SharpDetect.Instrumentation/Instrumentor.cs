@@ -1,8 +1,8 @@
-﻿using dnlib.DotNet;
+﻿using CommunityToolkit.Diagnostics;
+using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using Microsoft.Extensions.Configuration;
 using SharpDetect.Common;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Metadata;
@@ -72,11 +72,11 @@ namespace SharpDetect.Instrumentation
             var rewritingOptions = new RewritingOptions(
                 configuration.GetSection(Constants.Rewriting.Enabled).Get<bool>(),
                 configuration.GetSection(Constants.Rewriting.Strategy).Get<InstrumentationStrategy>(),
-                configuration.GetSection(Constants.Rewriting.Patterns).Get<RewritingPattern[]>());
+                configuration.GetSection(Constants.Rewriting.Patterns).Get<RewritingPattern[]>() ?? Array.Empty<RewritingPattern>());
             var hookOptions = new EntryExitHookOptions(
                 configuration.GetSection(Constants.EntryExitHooks.Enabled).Get<bool>(),
                 configuration.GetSection(Constants.EntryExitHooks.Strategy).Get<InstrumentationStrategy>(),
-                configuration.GetSection(Constants.EntryExitHooks.Patterns).Get<string[]>());
+                configuration.GetSection(Constants.EntryExitHooks.Patterns).Get<string[]>() ?? Array.Empty<string>());
             options = new InstrumentationOptions(rewritingOptions, hookOptions);
         }
 
@@ -194,7 +194,8 @@ namespace SharpDetect.Instrumentation
                         }
 
                         // Cache 
-                        Guard.True<ArgumentException>(instrumentationCache.TryAdd(method, (methodInstrumented, (stubs.Count != 0) ? stubs : null)));
+                        if (!instrumentationCache.TryAdd(method, (methodInstrumented, (stubs.Count != 0) ? stubs : null)))
+                            throw new InvalidOperationException("Repeated method instrumentation attempt");
                         return (methodInstrumented, stubs);
                     }
                 }
@@ -291,7 +292,7 @@ namespace SharpDetect.Instrumentation
                     mdToken = helperMdToken.Token;
                 }
 
-                Guard.NotEqual<MDToken, ArgumentException>(default, mdToken);
+                Guard.IsNotEqualTo(default, mdToken);
                 resolvedStubs.Add(instruction, mdToken);
             }
 
@@ -375,7 +376,7 @@ namespace SharpDetect.Instrumentation
 
                 // Find extern method
                 var externMethodDef = declaringTypeDef.FindMethod(id.Name, externMethodSignature);
-                Guard.NotNull<MethodDef, ArgumentException>(externMethodDef);
+                Guard.IsNotNull(externMethodDef);
 
                 Interlocked.Increment(ref injectedMethodWrappersCount);
                 yield return (new FunctionInfo(moduleId, declaringTypeDef.MDToken, externMethodDef.MDToken), id.ArgsCount);

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
@@ -41,9 +42,14 @@ namespace SharpDetect.Core.Plugins
 
         public void Initialize()
         {
-            var pluginIdentifiers = configuration[Constants.Configuration.PluginsChain].Split('|');
+            var rawPluginsChain = configuration[Constants.Configuration.PluginsChain];
+            Guard.IsNotNullOrWhiteSpace(rawPluginsChain);
+
+            var pluginIdentifiers = rawPluginsChain.Split('|');
             var serviceProvider = CreatePluginServiceProvider();
-            Guard.True<ArgumentException>(pluginsManager.TryConstructPlugins(pluginIdentifiers, configuration, serviceProvider, out plugins));
+
+            if (!pluginsManager.TryConstructPlugins(pluginIdentifiers, configuration, serviceProvider, out plugins))
+                ThrowHelper.ThrowArgumentException($"Could not construct plugins based on provided arguments: {rawPluginsChain}");
 
             runtimeEventsHub.ProfilerInitialized += RuntimeEventsHub_ProfilerInitialized;
             runtimeEventsHub.ProfilerDestroyed += RuntimeEventsHub_ProfilerDestroyed;

@@ -1,6 +1,6 @@
-﻿using dnlib.DotNet;
+﻿using CommunityToolkit.Diagnostics;
+using dnlib.DotNet;
 using SharpDetect.Common;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Metadata;
 using SharpDetect.Common.Services.Metadata;
@@ -127,7 +127,7 @@ namespace SharpDetect.Metadata
 
         public bool TryResolveTypeDef(IType type, [NotNullWhen(returnValue: true)] out TypeDef? result)
         {
-            Guard.NotNull<IType, ArgumentNullException>(type);
+            Guard.IsNotNull(type);
 
             // We have directly the reference to the definition
             if (type is TypeDef typeDef)
@@ -164,7 +164,7 @@ namespace SharpDetect.Metadata
 
         public bool TryResolveMethodDef(IMethod method, [NotNullWhen(returnValue: true)] out MethodDef? result)
         {
-            Guard.NotNull<IMethod, ArgumentNullException>(method);
+            Guard.IsNotNull(method);
 
             // We have directly the reference to the definition
             if (method is MethodDef def)
@@ -219,7 +219,7 @@ namespace SharpDetect.Metadata
 
         public bool TryResolveFieldDef(IField field, [NotNullWhen(returnValue: true)] out FieldDef? result)
         {
-            Guard.NotNull<IField, ArgumentNullException>(field);
+            Guard.IsNotNull(field);
 
             if (field is FieldDef fieldDef)
             {

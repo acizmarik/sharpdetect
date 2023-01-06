@@ -1,4 +1,5 @@
-﻿using dnlib.DotNet;
+﻿using CommunityToolkit.Diagnostics;
+using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using dnlib.DotNet.Pdb;
 using SharpDetect.Common;
@@ -27,7 +28,8 @@ namespace SharpDetect.Instrumentation.SourceLinks
             // Otherwise the offset will get shifted after instrumentation
             var instructionClone = instruction.Clone();
             var sourceLink = new SourceLink(newId, type, method, instructionClone, sequencePoint);
-            Guard.True<ArgumentException>(sourceLinks.TryAdd(newId, sourceLink));
+            if (!sourceLinks.TryAdd(newId, sourceLink))
+                ThrowHelper.ThrowArgumentException($"Could not register source link {sourceLink}");
 
             return sourceLink;
         }

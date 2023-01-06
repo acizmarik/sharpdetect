@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
@@ -23,7 +24,7 @@ namespace SharpDetect.Console
 
         internal static IConfiguration CreateConfiguration(
             string? overridingYamlFile = null, 
-            params KeyValuePair<string, string>[] inMemoryConfig)
+            params KeyValuePair<string, string?>[] inMemoryConfig)
         {
             var builder = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -51,7 +52,9 @@ namespace SharpDetect.Console
             services.AddLogging(builder =>
             {
                 var eventFormat = configuration.GetRequiredSection(Constants.Serilog.Template).Value;
-                var minimumLevelRaw = configuration.GetRequiredSection(Constants.Serilog.Level).Value;
+                var minimumLevelRaw = configuration.GetRequiredSection(Constants.Serilog.MinimumLevel).Value;
+
+                Guard.IsNotNullOrEmpty(eventFormat, Constants.Serilog.Template);
                 if (!Enum.TryParse<LogEventLevel>(minimumLevelRaw, out var minimumLevel))
                     throw new ArgumentException($"Provided setting {minimumLevel} is not valid.");
 

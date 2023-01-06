@@ -1,9 +1,9 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Diagnostics;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Core;
 using System.CommandLine;
@@ -41,7 +41,7 @@ namespace SharpDetect.Console.Commands
 
                 var configuration = Program.CreateConfiguration(
                     overridingYamlFile: localConfiguration, /* local configuration */
-                    new KeyValuePair<string, string>(Constants.Configuration.PluginsChain, pluginsConfiguration /* plugins configuration */));
+                    new KeyValuePair<string, string?>(Constants.Configuration.PluginsChain, pluginsConfiguration /* plugins configuration */));
                 var serviceProvider = BuildServices(configuration);
                 var analysis = serviceProvider.GetRequiredService<IAnalysis>();
                 logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<RunAnalysisCommand>();
@@ -97,26 +97,33 @@ namespace SharpDetect.Console.Commands
         private void ValidateLocalConfiguration(string localConfigPath)
         {
             // Ensure path is valid
-            Guard.NotNull<string, ArgumentNullException>(localConfigPath);
-            Guard.True<FileNotFoundException>(File.Exists(localConfigPath));
+            Guard.IsNotNullOrEmpty(localConfigPath);
+            if (!File.Exists(localConfigPath))
+                ThrowHelper.ThrowArgumentException($"File {localConfigPath} does not exist.");
 
             // Ensure configuration is valid
             var localConfig = new ConfigurationBuilder()
                 .AddYamlFile(localConfigPath)
                 .Build();
-            // Target must be set
-            Guard.NotNull<string, ArgumentNullException>(localConfig.GetRequiredSection(Constants.Configuration.TargetAssembly).Value);
-            // Target must be a valid assembly
-            var rawTargetAssembly = localConfig.GetRequiredSection(Constants.Configuration.TargetAssembly).Value;
 
-            // Attempt to load target assembly
-            targetAssembly = AssemblyName.GetAssemblyName(rawTargetAssembly);
+            // Target must be set and be a valid assembly
+            var rawTargetAssembly = localConfig.GetRequiredSection(Constants.Configuration.TargetAssembly).Value;
+            Guard.IsNotNullOrWhiteSpace(rawTargetAssembly, Constants.Configuration.TargetAssembly);
+            try
+            {
+                // Attempt to load target assembly
+                targetAssembly = AssemblyName.GetAssemblyName(rawTargetAssembly);
+            }
+            catch (Exception ex)
+            {
+                ThrowHelper.ThrowArgumentException($"Could not load target assembly {rawTargetAssembly}.", ex);
+            }
         }
 
         private void ValidatePluginConfiguration(string pluginConfiguration)
         {
             // Ensure that plugins configuration is valid
-            Guard.NotEmpty<char, ArgumentException>(pluginConfiguration);
+            Guard.IsNotEmpty(pluginConfiguration);
         }
     }
 }
