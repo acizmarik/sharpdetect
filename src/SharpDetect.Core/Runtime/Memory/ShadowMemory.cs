@@ -29,17 +29,25 @@ namespace SharpDetect.Core.Runtime.Memory
         public GcGeneration GetGeneration(UIntPtr pointer)
             => memorySegments.Query(pointer).FirstOrDefault();
 
-        public void StartGarbageCollection(bool[] generationsCollected)
+        public void PrepareForGarbageCollection(bool[] generationsCollected)
         {
-            logger.LogDebug("GC started for generations {gens}", generationsCollected);
             this.generationsCollected = generationsCollected;
             this.compactingCollections = new bool[generationsCollected.Length];
+        }
 
+        public void TearDownGarbageCollection()
+        {
+            this.generationsCollected = null;
+            this.compactingCollections = null;
+        }
+
+        public void StartGarbageCollection()
+        {
             // Pre-mark all affected objects as dead
             // During SurvivingReferences or MovedReferences, we will correct this
-            for (var genIndex = 0; genIndex < generationsCollected.Length; genIndex++)
+            for (var genIndex = 0; genIndex < generationsCollected!.Length; genIndex++)
             {
-                if (!generationsCollected[genIndex])
+                if (!generationsCollected![genIndex])
                 {
                     // All generations not affected by GC are automatically surviving
                     // There is no action necessary to perform for this generation
@@ -96,8 +104,6 @@ namespace SharpDetect.Core.Runtime.Memory
 
             // TODO: notify plugins about generation sizes
             // TODO: notify plugins about how many objects were collected
-
-            logger.LogDebug("GC finished for generations {gens}", generationsCollected);
         }
 
         public void Reconstruct(GcGenerationRange[] ranges)
@@ -111,9 +117,6 @@ namespace SharpDetect.Core.Runtime.Memory
             }
             // Assign new memory segments lookup
             memorySegments = newIntervalTree;
-
-            this.compactingCollections = null;
-            this.generationsCollected = null;
         }
 
         public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, uint[] lengths)
@@ -160,38 +163,27 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public void PromoteSurvivors()
         {
-            var internalCollection = objectsLookup;
-            var gen0 = internalCollection[GcGeneration.COR_PRF_GC_GEN_0];
-            var gen1 = internalCollection[GcGeneration.COR_PRF_GC_GEN_1];
-            var gen2 = internalCollection[GcGeneration.COR_PRF_GC_GEN_2];
+            void PromoteImpl(GcGeneration from, GcGeneration to)
+            {
+                if (generationsCollected![(int)from])
+                {
+                    var generationFrom = objectsLookup![from];
+                    var generationTo = objectsLookup![to];
+                    foreach (var (ptr, obj) in generationFrom.Where(r => GetGeneration(r.Key) != from))
+                    {
+                        generationFrom.Remove(ptr, out _);
+                        generationTo.TryAdd(ptr, obj);
+                    }
+                }
+            }
 
             // Promotion is not relevant to other heap segments
             // There is nowhere to promote objects from LOH, pinned heap, nor the 2nd generation
+            PromoteImpl(GcGeneration.COR_PRF_GC_GEN_1, GcGeneration.COR_PRF_GC_GEN_2);
+            PromoteImpl(GcGeneration.COR_PRF_GC_GEN_0, GcGeneration.COR_PRF_GC_GEN_1);
 
-            if (generationsCollected![(int)GcGeneration.COR_PRF_GC_GEN_1] && !gen1.IsEmpty)
-            {
-                // Promote survivors from generation 1 to generation 2
-                var newGen2 = gen2.Concat(gen1);
-                internalCollection[GcGeneration.COR_PRF_GC_GEN_2] = gen2 = new ConcurrentDictionary<UIntPtr, ShadowObject>(newGen2);
-                internalCollection[GcGeneration.COR_PRF_GC_GEN_1] = gen1 = new ConcurrentDictionary<UIntPtr, ShadowObject>(/* empty */);
-            }
-            if (generationsCollected![(int)GcGeneration.COR_PRF_GC_GEN_0] && !gen0.IsEmpty)
-            {
-                // Promote survivors from generation 0 to generation 1
-                if (gen1.IsEmpty)
-                {
-                    // Reassign generations
-                    internalCollection[GcGeneration.COR_PRF_GC_GEN_1] = gen1 = gen0;
-                    internalCollection[GcGeneration.COR_PRF_GC_GEN_0] = gen0 = new ConcurrentDictionary<UIntPtr, ShadowObject>(/* empty */);
-                }
-                else
-                {
-                    // Merge generations
-                    var newGen1 = gen1.Concat(gen0);
-                    internalCollection[GcGeneration.COR_PRF_GC_GEN_1] = gen1 = new ConcurrentDictionary<UIntPtr, ShadowObject>(newGen1);
-                    internalCollection[GcGeneration.COR_PRF_GC_GEN_0] = gen0 = new ConcurrentDictionary<UIntPtr, ShadowObject>(/* empty */);
-                }
-            }
+            this.compactingCollections = null;
+            this.generationsCollected = null;
         }
 
         public ShadowObject GetOrTrack(UIntPtr pointer)
@@ -210,5 +202,8 @@ namespace SharpDetect.Core.Runtime.Memory
             // Solution: ensure that all threads use the same instance
             return generation.GetOrAdd(pointer, shadowObject);
         }
+
+        public int GetGenerationSize(GcGeneration generation)
+            => objectsLookup[generation].Count;
     }
 }

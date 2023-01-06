@@ -89,7 +89,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
         }
 
         [Fact]
-        public static void ShadowMemory_GC_TrackingMovedObjects()
+        public static void ShadowMemory_GC_TrackingMovedObjects_Liveness()
         {
             // Prepare
             var shadowGC = new ShadowGC(new NullLoggerFactory());
@@ -162,6 +162,71 @@ namespace SharpDetect.UnitTests.Runtime.Memory
             Assert.True(obj8.IsAlive);
             Assert.True(obj9.IsAlive);
             Assert.False(obj10.IsAlive);
+        }
+
+        [Fact]
+        public static void ShadowMemory_GC_TrackingMovedObjects_Movement()
+        {
+            // Prepare
+            var shadowGC = new ShadowGC(new NullLoggerFactory());
+            var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
+            var bounds = new COR_PRF_GC_GENERATION_RANGE[]
+            {
+                new()
+                {
+                    /*   We have a heap block:
+                     *   - starting at an address 8
+                     *   - with length 20
+                     *   - reserved length 64 (max size)
+                     */
+                    generation = 0,
+                    rangeStart = new(7),
+                    rangeLength = new(20),
+                    rangeLengthReserved = new(64)
+                }
+            };
+
+            // Act
+
+            // Step 1: fill heap
+            // Example from: https://github.com/dotnet/runtime/blob/main/docs/design/coreclr/botr/profiling.md
+            var obj1 = shadowGC.GetObject(new UIntPtr(8));
+            var obj2 = shadowGC.GetObject(new UIntPtr(9));
+            var obj3 = shadowGC.GetObject(new UIntPtr(10));
+            var obj4 = shadowGC.GetObject(new UIntPtr(12));
+            var obj5 = shadowGC.GetObject(new UIntPtr(13));
+            var obj6 = shadowGC.GetObject(new UIntPtr(15));
+            var obj7 = shadowGC.GetObject(new UIntPtr(16));
+            var obj8 = shadowGC.GetObject(new UIntPtr(17));
+            var obj9 = shadowGC.GetObject(new UIntPtr(18));
+            var obj10 = shadowGC.GetObject(new UIntPtr(19));
+
+            // Step 2: clear and move survivors objects
+            shadowGC.ProcessGarbageCollectionStarted(bounds, generations);
+            shadowGC.ProcessMovedReferences(
+                oldBlockStarts: new[]
+                {
+                    new UIntPtr(8),
+                    new UIntPtr(10),
+                    new UIntPtr(15)
+                },
+                newBlockStarts: new[]
+                {
+                    new UIntPtr(7),
+                    new UIntPtr(8),
+                    new UIntPtr(11)
+                },
+                lengths: new uint[]
+                {
+                    1,
+                    3,
+                    4
+                }
+            );
+            bounds[0].generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1;
+            shadowGC.ProcessGarbageCollectionFinished(bounds);
+
+            // Assert
             // Movement tracking
             Assert.Equal(new UIntPtr(7), obj1.ShadowPointer);
             Assert.Equal(new UIntPtr(8), obj3.ShadowPointer);
@@ -170,6 +235,146 @@ namespace SharpDetect.UnitTests.Runtime.Memory
             Assert.Equal(new UIntPtr(12), obj7.ShadowPointer);
             Assert.Equal(new UIntPtr(13), obj8.ShadowPointer);
             Assert.Equal(new UIntPtr(14), obj9.ShadowPointer);
+        }
+
+        [Theory]
+        [InlineData(COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_0, COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_0)]
+        [InlineData(COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1, COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1)]
+        public static void ShadowMemory_GC_TrackingMovedObjects_Generation(COR_PRF_GC_GENERATION generationFrom, COR_PRF_GC_GENERATION generationTo)
+        {
+            // Prepare
+            var shadowGC = new ShadowGC(new NullLoggerFactory());
+            var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
+            var bounds = new COR_PRF_GC_GENERATION_RANGE[]
+            {
+                new()
+                {
+                    /*   We have a heap block:
+                     *   - starting at an address 8
+                     *   - with length 20
+                     *   - reserved length 64 (max size)
+                     */
+                    generation = generationFrom,
+                    rangeStart = new(7),
+                    rangeLength = new(20),
+                    rangeLengthReserved = new(64)
+                }
+            };
+
+            // Act
+
+            // Step 1: fill heap
+            // Example from: https://github.com/dotnet/runtime/blob/main/docs/design/coreclr/botr/profiling.md
+            var obj1 = shadowGC.GetObject(new UIntPtr(8));
+            var obj2 = shadowGC.GetObject(new UIntPtr(9));
+            var obj3 = shadowGC.GetObject(new UIntPtr(10));
+            var obj4 = shadowGC.GetObject(new UIntPtr(12));
+            var obj5 = shadowGC.GetObject(new UIntPtr(13));
+            var obj6 = shadowGC.GetObject(new UIntPtr(15));
+            var obj7 = shadowGC.GetObject(new UIntPtr(16));
+            var obj8 = shadowGC.GetObject(new UIntPtr(17));
+            var obj9 = shadowGC.GetObject(new UIntPtr(18));
+            var obj10 = shadowGC.GetObject(new UIntPtr(19));
+
+            // Step 2: clear and move survivors objects
+            shadowGC.ProcessGarbageCollectionStarted(bounds, generations);
+            shadowGC.ProcessMovedReferences(
+                oldBlockStarts: new[]
+                {
+                    new UIntPtr(8),
+                    new UIntPtr(10),
+                    new UIntPtr(15)
+                },
+                newBlockStarts: new[]
+                {
+                    new UIntPtr(7),
+                    new UIntPtr(8),
+                    new UIntPtr(11)
+                },
+                lengths: new uint[]
+                {
+                    1,
+                    3,
+                    4
+                }
+            );
+            bounds[0].generation = generationTo;
+            shadowGC.ProcessGarbageCollectionFinished(bounds);
+
+            // Assert
+            // Movement tracking
+            Assert.Equal(generationTo, shadowGC.GetObjectGeneration(obj1));
+            Assert.Equal(generationTo, shadowGC.GetObjectGeneration(obj3));
+            Assert.Equal(generationTo, shadowGC.GetObjectGeneration(obj4));
+            Assert.Equal(generationTo, shadowGC.GetObjectGeneration(obj6));
+            Assert.Equal(generationTo, shadowGC.GetObjectGeneration(obj7));
+            Assert.Equal(generationTo, shadowGC.GetObjectGeneration(obj8));
+            Assert.Equal(generationTo, shadowGC.GetObjectGeneration(obj9));
+        }
+
+        [Fact]
+        public static void ShadowMemory_GC_TrackingMovedObjects_KeepsReferences()
+        {
+            // Prepare
+            var shadowGC = new ShadowGC(new NullLoggerFactory());
+            var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
+            var bounds = new COR_PRF_GC_GENERATION_RANGE[]
+            {
+                new()
+                {
+                    /*   We have a heap block:
+                     *   - starting at an address 8
+                     *   - with length 20
+                     *   - reserved length 64 (max size)
+                     */
+                    generation = 0,
+                    rangeStart = new(7),
+                    rangeLength = new(20),
+                    rangeLengthReserved = new(64)
+                }
+            };
+
+            // Act
+
+            // Step 1: fill heap
+            // Example from: https://github.com/dotnet/runtime/blob/main/docs/design/coreclr/botr/profiling.md
+            var obj1 = shadowGC.GetObject(new UIntPtr(8));
+            var obj2 = shadowGC.GetObject(new UIntPtr(9));
+            var obj3 = shadowGC.GetObject(new UIntPtr(10));
+            var obj4 = shadowGC.GetObject(new UIntPtr(12));
+            var obj5 = shadowGC.GetObject(new UIntPtr(13));
+            var obj6 = shadowGC.GetObject(new UIntPtr(15));
+            var obj7 = shadowGC.GetObject(new UIntPtr(16));
+            var obj8 = shadowGC.GetObject(new UIntPtr(17));
+            var obj9 = shadowGC.GetObject(new UIntPtr(18));
+            var obj10 = shadowGC.GetObject(new UIntPtr(19));
+
+            // Step 2: clear and move survivors objects
+            shadowGC.ProcessGarbageCollectionStarted(bounds, generations);
+            shadowGC.ProcessMovedReferences(
+                oldBlockStarts: new[]
+                {
+                    new UIntPtr(8),
+                    new UIntPtr(10),
+                    new UIntPtr(15)
+                },
+                newBlockStarts: new[]
+                {
+                    new UIntPtr(7),
+                    new UIntPtr(8),
+                    new UIntPtr(11)
+                },
+                lengths: new uint[]
+                {
+                    1,
+                    3,
+                    4
+                }
+            );
+            bounds[0].generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1;
+            shadowGC.ProcessGarbageCollectionFinished(bounds);
+
+            // Assert
             // Correct updates
             Assert.Equal(obj1, shadowGC.GetObject(new UIntPtr(7)));
             Assert.Equal(obj3, shadowGC.GetObject(new UIntPtr(8)));
