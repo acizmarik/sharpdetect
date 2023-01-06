@@ -2,7 +2,6 @@
 using dnlib.DotNet.Emit;
 using SharpDetect.Common;
 using SharpDetect.Common.ControlFlow;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
@@ -13,6 +12,7 @@ namespace SharpDetect.Instrumentation.Injectors
 {
     internal class FieldEventsInjector : InjectorBase
     {
+        private const string couldNotFindPushFieldInstanceInstructionError = "Could not find instruction that pushes field instance on evaluation stack.";
         internal enum AccessType { Instance, Static }
         internal Dictionary<Code, Action<MethodDef, int, ulong, UnresolvedMethodStubs>> OpCodeInjectors { get; }
         internal Dictionary<Code, (AnalysisEventType EventType, AccessType AccessType)> EventTypes { get; }
@@ -70,16 +70,16 @@ namespace SharpDetect.Instrumentation.Injectors
         private void InjectLoadStoreInstanceField(MethodDef method, int instructionIndex, ulong eventId, bool isWrite, UnresolvedMethodStubs stubs)
         {
             var instruction = method.Body.Instructions[instructionIndex];
-            Instruction? pushInstruction;
-            if (isWrite)
+            Instruction? pushInstruction = null;
+            if (isWrite && !EvaluationStackHelper.TryFindFieldWriteInstanceInfo(method, instructionIndex, out pushInstruction))
             {
                 // Stfld
-                Guard.True<InvalidProgramException>(EvaluationStackHelper.TryFindFieldWriteInstanceInfo(method, instructionIndex, out pushInstruction));
+                throw new InvalidProgramException(couldNotFindPushFieldInstanceInstructionError);
             }
-            else
+            else if (!isWrite && !EvaluationStackHelper.TryFindFieldReadInstanceInfo(method, instructionIndex, out pushInstruction))
             {
                 // Ldfld
-                Guard.True<InvalidProgramException>(EvaluationStackHelper.TryFindFieldReadInstanceInfo(method, instructionIndex, out pushInstruction));
+                throw new InvalidProgramException(couldNotFindPushFieldInstanceInstructionError);
             }
 
             // Capture instance

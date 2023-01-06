@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;
 using SharpDetect.Common.Services;
@@ -25,7 +25,6 @@ namespace SharpDetect.Core.Plugins
         public PluginsManager(IConfiguration configuration, ILoggerFactory loggerFactory)
         {
             this.configuration = configuration;
-            this.pluginsRootDirectory = new(configuration.GetRequiredSection(Constants.Configuration.PluginsRootFolder).Value);
             this.logger = loggerFactory.CreateLogger<PluginsManager>();
             this.loadedAssemblies = new();
             this.loadedPluginInfos = new();
@@ -33,7 +32,11 @@ namespace SharpDetect.Core.Plugins
             this.pluginActivators = new();
 
             // Ensure directory is valid
-            Guard.True<ArgumentException>(pluginsRootDirectory.Exists);
+            var rawPluginsRootDirectory = configuration.GetRequiredSection(Constants.Configuration.PluginsPath).Value;
+            Guard.IsNotNullOrWhiteSpace(rawPluginsRootDirectory, Constants.Configuration.PluginsPath);
+            pluginsRootDirectory = new DirectoryInfo(rawPluginsRootDirectory);
+            if (!pluginsRootDirectory.Exists)
+                ThrowHelper.ThrowArgumentException($"Provided plugins root directory {rawPluginsRootDirectory} does not exist.");
         }
 
         public IEnumerable<PluginInfo> GetLoadedPluginInfos()
@@ -104,11 +107,11 @@ namespace SharpDetect.Core.Plugins
                                 pluginActivators.Add(pluginInfo, (sp, conf) =>
                                 {
                                     var plugin = (IPlugin)ActivatorUtilities.CreateInstance(sp, pluginType);
-                                    var configurationEntry = $"{Constants.Configuration.PluginSettings}:{name}";
+                                    var configurationEntry = $"{Constants.Configuration.Plugins}:{name}";
                                     var configurationItems = conf.GetSection(configurationEntry).AsEnumerable();
                                     var configurationBuilder = new ConfigurationBuilder();
                                     configurationBuilder.AddInMemoryCollection(configurationItems
-                                        .Select(s => new KeyValuePair<string, string>(s.Key, s.Value))
+                                        .Select(s => new KeyValuePair<string, string?>(s.Key, s.Value))
                                         .Where(kv => kv.Value != null));
                                     plugin.Configure(configurationBuilder.Build());
                                     return plugin;

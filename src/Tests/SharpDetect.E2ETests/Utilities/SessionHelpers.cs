@@ -41,7 +41,7 @@ namespace SharpDetect.E2ETests.Utilities
             return new AnalysisSession(executablePath, new[]
             {
                 new KeyValuePair<string, string>(Constants.Configuration.PluginsChain, plugins),
-                new KeyValuePair<string, string>(Constants.Configuration.PluginsRootFolder, Directory.GetCurrentDirectory()),
+                new KeyValuePair<string, string>(Constants.Configuration.PluginsPath, Directory.GetCurrentDirectory()),
                 new KeyValuePair<string, string>(Constants.Configuration.ProfilerPath, ProfilerDllPath),
                 new KeyValuePair<string, string>(Constants.Configuration.CommandLineArgs, args ?? string.Empty),
 

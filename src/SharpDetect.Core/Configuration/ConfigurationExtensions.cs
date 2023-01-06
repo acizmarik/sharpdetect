@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.LibraryDescriptors;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
@@ -58,7 +58,9 @@ namespace SharpDetect.Core.Configuration
                 var registry = new MethodDescriptorRegistry();
                 foreach (var directory in luaBridge.ModuleDirectories)
                 {
-                    Guard.True<ArgumentException>(Directory.Exists(directory));
+                    if (!Directory.Exists(directory))
+                        ThrowHelper.ThrowArgumentException($"Specified module directory {directory} does not exist.");
+
                     foreach (var file in Directory.GetFiles(directory, "*.lua"))
                     {
                         var script = luaBridge.LoadModuleAsync(file).Result;

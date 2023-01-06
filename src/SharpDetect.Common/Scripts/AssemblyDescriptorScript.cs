@@ -1,4 +1,5 @@
-﻿using MoonSharp.Interpreter;
+﻿using CommunityToolkit.Diagnostics;
+using MoonSharp.Interpreter;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.LibraryDescriptors;
 
@@ -19,7 +20,7 @@ namespace SharpDetect.Common.Scripts
         public string GetAssemblyName()
         {
             var tableEntry = script.Globals.Get(assemblyNameIdentifier);
-            Guard.True<ArgumentException>(tableEntry.IsNotNil());
+            Guard.IsTrue(tableEntry.IsNotNil());
 
             return tableEntry.String;
         }
@@ -27,7 +28,7 @@ namespace SharpDetect.Common.Scripts
         public bool IsCoreLibrary()
         {
             var tableEntry = script.Globals.Get(isCoreLibraryIdentifier);
-            Guard.True<ArgumentException>(tableEntry.IsNotNil());
+            Guard.IsTrue(tableEntry.IsNotNil());
 
             return tableEntry.Boolean;
         }
@@ -35,7 +36,7 @@ namespace SharpDetect.Common.Scripts
         public void GetMethodDescriptors(List<(MethodIdentifier, MethodInterpretationData)> methods)
         {
             var tableEntry = script.Globals.Get(methodDescriptorsFillerIdentifier);
-            Guard.True<ArgumentException>(tableEntry.IsNotNil());
+            Guard.IsTrue(tableEntry.IsNotNil());
 
             tableEntry.Function.Call(methods);
         }

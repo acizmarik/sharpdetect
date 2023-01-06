@@ -1,20 +1,20 @@
-﻿using MoonSharp.Interpreter;
+﻿using CommunityToolkit.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using MoonSharp.Interpreter;
+using MoonSharp.Interpreter.Loaders;
 using SharpDetect.Common;
 using SharpDetect.Common.LibraryDescriptors;
+using SharpDetect.Common.Scripts;
 using SharpDetect.Common.Scripts.ExpressionBuilder;
 using SharpDetect.Common.Services.Scripts;
 using SharpDetect.Common.Utilities;
-using MethodRecord = System.ValueTuple<SharpDetect.Common.LibraryDescriptors.MethodIdentifier, SharpDetect.Common.LibraryDescriptors.MethodInterpretationData>;
+using CapturedParameterInfoFactory = System.Func<ushort, ushort, bool, SharpDetect.Common.LibraryDescriptors.CapturedParameterInfo>;
 using MethodIdentifierFactory = System.Func<string, string, bool, ushort,
     SharpDetect.Common.Utilities.ValueCollection<string>, bool,
     SharpDetect.Common.LibraryDescriptors.MethodIdentifier>;
+using MethodRecord = System.ValueTuple<SharpDetect.Common.LibraryDescriptors.MethodIdentifier, SharpDetect.Common.LibraryDescriptors.MethodInterpretationData>;
 using MethodRecordFactory = System.Func<SharpDetect.Common.LibraryDescriptors.MethodIdentifier, SharpDetect.Common.LibraryDescriptors.MethodInterpretationData,
     (SharpDetect.Common.LibraryDescriptors.MethodIdentifier, SharpDetect.Common.LibraryDescriptors.MethodInterpretationData)>;
-using CapturedParameterInfoFactory = System.Func<ushort, ushort, bool, SharpDetect.Common.LibraryDescriptors.CapturedParameterInfo>;
-using Microsoft.Extensions.Configuration;
-using SharpDetect.Common.Exceptions;
-using SharpDetect.Common.Scripts;
-using MoonSharp.Interpreter.Loaders;
 
 namespace SharpDetect.Core.Scripts
 {
@@ -63,8 +63,8 @@ namespace SharpDetect.Core.Scripts
 
         public LuaBridge(IConfiguration configuration)
         {
-            var coreModules = configuration.GetSection(Constants.ModuleDescriptors.CoreModulesPaths).Get<string[]>() ?? Enumerable.Empty<string>();
-            var extensionModules = configuration.GetSection(Constants.ModuleDescriptors.ExtensionModulePaths).Get<string[]>() ?? Enumerable.Empty<string>();
+            var coreModules = configuration.GetSection(Constants.ModuleDescriptors.Core).Get<string[]>() ?? Enumerable.Empty<string>();
+            var extensionModules = configuration.GetSection(Constants.ModuleDescriptors.Extensions).Get<string[]>() ?? Enumerable.Empty<string>();
             ModuleDirectories = coreModules.Concat(extensionModules).ToArray();
             luaPaths = ModuleDirectories.SelectMany(dir => { return new[] { $"{dir}/?", $"{dir}/?.lua" }; }).ToArray();
 
@@ -84,7 +84,8 @@ namespace SharpDetect.Core.Scripts
 
         public async Task<Script> LoadModuleAsync(string modulePath)
         {
-            Guard.True<ArgumentException>(File.Exists(modulePath));
+            if (!File.Exists(modulePath))
+                ThrowHelper.ThrowArgumentException($"Module with path {modulePath} does not exist.");
 
             var code = await File.ReadAllTextAsync(modulePath);
             return scriptFactory(code, luaPaths);

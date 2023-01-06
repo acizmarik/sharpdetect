@@ -2,7 +2,6 @@
 using dnlib.DotNet.Emit;
 using SharpDetect.Common;
 using SharpDetect.Common.ControlFlow;
-using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
@@ -13,6 +12,8 @@ namespace SharpDetect.Instrumentation.Injectors
 {
     internal class ArrayEventsInjector : InjectorBase
     {
+        private const string couldNotFindPushArrayInstanceInstructionError = "Could not find instruction that pushes array instance on evaluation stack.";
+        private const string couldNotFindPushArrayIndexInstructionError = "Could not find instruction that pushes array index on evaluation stack.";
         internal Dictionary<Code, (AnalysisEventType Type, bool IsWrite)> EventTypes { get; }
         private Action<MethodDef, int, ulong, bool, UnresolvedMethodStubs> injector;
         private IMethod? dummyArrayElementAccessRef;
@@ -57,18 +58,18 @@ namespace SharpDetect.Instrumentation.Injectors
             var arrayIndexAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.ArrayIndexAccess, ref dummyArrayIndexAccessRef));
             
             // Retrieve instruction where the array instance gets pushed onto evaluation stack
-            Instruction? pushArrayInstanceInstruction;
-            if (isWrite)
-                Guard.True<InvalidProgramException>(EvaluationStackHelper.TryFindArrayInstanceWriteElementInfo(method, instructionIndex, out pushArrayInstanceInstruction));
-            else
-                Guard.True<InvalidProgramException>(EvaluationStackHelper.TryFindArrayInstanceReadElementInfo(method, instructionIndex, out pushArrayInstanceInstruction));
+            Instruction? pushArrayInstanceInstruction = null;
+            if (isWrite && !EvaluationStackHelper.TryFindArrayInstanceWriteElementInfo(method, instructionIndex, out pushArrayInstanceInstruction))
+                throw new InvalidProgramException(couldNotFindPushArrayInstanceInstructionError);
+            if (!isWrite && !EvaluationStackHelper.TryFindArrayInstanceReadElementInfo(method, instructionIndex, out pushArrayInstanceInstruction))
+                throw new InvalidProgramException(couldNotFindPushArrayInstanceInstructionError);
 
             // Retrieve instruction where the array index gets pushed onto evaluation stack
-            Instruction? pushArrayIndexInstruction;
-            if (isWrite)
-                Guard.True<InvalidProgramException>(EvaluationStackHelper.TryFindArrayIndexWriteInfo(method, instructionIndex, out pushArrayIndexInstruction));
-            else
-                Guard.True<InvalidProgramException>(EvaluationStackHelper.TryFindArrayIndexReadInfo(method, instructionIndex, out pushArrayIndexInstruction));
+            Instruction? pushArrayIndexInstruction = null;
+            if (isWrite && !EvaluationStackHelper.TryFindArrayIndexWriteInfo(method, instructionIndex, out pushArrayIndexInstruction))
+                throw new InvalidProgramException(couldNotFindPushArrayIndexInstructionError);
+            if (!isWrite && !EvaluationStackHelper.TryFindArrayIndexReadInfo(method, instructionIndex, out pushArrayIndexInstruction))
+                throw new InvalidProgramException(couldNotFindPushArrayIndexInstructionError);
 
             // Pass information about array instance
             method.InjectAfter(pushArrayInstanceInstruction!, new Instruction[]

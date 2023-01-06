@@ -1,4 +1,6 @@
-﻿namespace SharpDetect.Common.Exceptions
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace SharpDetect.Common.Exceptions
 {
     public class ShadowRuntimeStateException : Exception
     {
@@ -7,5 +9,9 @@
         {
 
         }
+
+        [DoesNotReturn]
+        public static void Throw(string message)
+            => throw new ShadowRuntimeStateException(message);
     }
 }

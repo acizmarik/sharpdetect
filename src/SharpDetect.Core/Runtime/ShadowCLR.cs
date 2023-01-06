@@ -4,7 +4,6 @@ using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
 using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
-using SharpDetect.Common.Metadata;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Metadata;
@@ -12,7 +11,6 @@ using SharpDetect.Core.Runtime.Memory;
 using SharpDetect.Core.Runtime.Threads;
 using SharpDetect.Instrumentation.Utilities;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace SharpDetect.Core.Runtime
 {
@@ -25,8 +23,6 @@ namespace SharpDetect.Core.Runtime
         internal readonly ShadowGC ShadowGC;
         internal readonly ConcurrentDictionary<UIntPtr, ShadowThread> Threads;
         internal readonly ConcurrentDictionary<ModuleInfo, ModuleDef> Modules;
-        internal readonly ConcurrentDictionary<TypeInfo, TypeDef> Types;
-        internal readonly ConcurrentDictionary<FunctionInfo, MethodDef> Functions;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataResolver resolver;
         private readonly IMetadataEmitter emitter;
@@ -43,8 +39,6 @@ namespace SharpDetect.Core.Runtime
 
             Threads = new();
             Modules = new();
-            Types = new();
-            Functions = new();
         }
 
         public void Process_ProfilerInitialized()
@@ -66,30 +60,14 @@ namespace SharpDetect.Core.Runtime
             Modules.TryAdd(moduleInfo, module);
         }
 
-        [Conditional("DEBUG")]
         public void Process_TypeLoaded(TypeInfo typeInfo)
         {
-            // Fetch module from disk (this should have been already loaded)
-            if (!Modules.TryGetValue(new ModuleInfo(typeInfo.ModuleId), out var module))
-                return;
-
-            // Resolve metadata token as a type definition
-            var type = (TypeDef)module.ResolveToken(typeInfo.TypeToken);
-
-            Types.TryAdd(typeInfo, type);
+            /* Do nothing */
         }
 
-        [Conditional("DEBUG")]
         public void Process_JITCompilationStarted(FunctionInfo functionInfo)
         {
-            // Fetch module from disk (this should have been already loaded)
-            if (!Modules.TryGetValue(new ModuleInfo(functionInfo.ModuleId), out var module))
-                return;
-
-            // Resolve metadata token as a method definition
-            var function = (MethodDef)module.ResolveToken(functionInfo.FunctionToken);
-
-            Functions.TryAdd(functionInfo, function);
+            /* Do nothing */
         }
 
         public void Process_ThreadCreated(ShadowThread thread)
@@ -104,10 +82,8 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason)
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Executing, State);
-                Guard.Equal<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(null, SuspensionReason);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Executing);
+            RuntimeContract.Assert(SuspensionReason == null);
 
             State = ShadowRuntimeState.Suspending;
             SuspensionReason = reason;
@@ -115,30 +91,24 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_RuntimeSuspendFinished()
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspending, State);
-                Guard.NotEqual<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(null, SuspensionReason);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Suspending);
+            RuntimeContract.Assert(SuspensionReason != null);
 
             State = ShadowRuntimeState.Suspended;
         }
 
         public void Process_RuntimeResumeStarted()
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
-                Guard.NotNull<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(SuspensionReason);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
+            RuntimeContract.Assert(SuspensionReason != null);
 
             State = ShadowRuntimeState.Resuming;
         }
 
         public void Process_RuntimeResumeFinished()
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Resuming, State);
-                Guard.NotNull<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(SuspensionReason);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Resuming);
+            RuntimeContract.Assert(SuspensionReason != null);
 
             State = ShadowRuntimeState.Executing;
             SuspensionReason = null;
@@ -156,11 +126,9 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_GarbageCollectionStarted(bool[] generationsCollected, COR_PRF_GC_GENERATION_RANGE[] bounds)
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
-                Guard.Equal<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(COR_PRF_SUSPEND_REASON.GC, SuspensionReason);
-                Guard.False<ShadowRuntimeStateException>(ongoingGarbageCollection);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(!ongoingGarbageCollection);
 
             ShadowGC.ProcessGarbageCollectionStarted(bounds, generationsCollected);
             ongoingGarbageCollection = true;
@@ -168,11 +136,9 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_GarbageCollectionFinished(COR_PRF_GC_GENERATION_RANGE[] bounds)
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
-                Guard.Equal<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(COR_PRF_SUSPEND_REASON.GC, SuspensionReason);
-                Guard.True<ShadowRuntimeStateException>(ongoingGarbageCollection);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(ongoingGarbageCollection);
 
             ShadowGC.ProcessGarbageCollectionFinished(bounds);
             ongoingGarbageCollection = false;
@@ -180,22 +146,18 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_SurvivingReferences(UIntPtr[] starts, uint[] lengths)
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
-                Guard.Equal<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(COR_PRF_SUSPEND_REASON.GC, SuspensionReason);
-                Guard.True<ShadowRuntimeStateException>(ongoingGarbageCollection);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(ongoingGarbageCollection);
 
             ShadowGC.ProcessSurvivingReferences(starts, lengths);
         }
 
         public void Process_MovedReferences(UIntPtr[] oldStarts, UIntPtr[] newStarts, uint[] lengths)
         {
-            { // <Contracts>
-                Guard.Equal<ShadowRuntimeState, ShadowRuntimeStateException>(ShadowRuntimeState.Suspended, State);
-                Guard.Equal<COR_PRF_SUSPEND_REASON?, ShadowRuntimeStateException>(COR_PRF_SUSPEND_REASON.GC, SuspensionReason);
-                Guard.True<ShadowRuntimeStateException>(ongoingGarbageCollection);
-            } // </Contracts>
+            RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(ongoingGarbageCollection);
 
             ShadowGC.ProcessMovedReferences(oldStarts, newStarts, lengths);
         }
@@ -203,11 +165,9 @@ namespace SharpDetect.Core.Runtime
         public void Process_TypeInjected(TypeInfo typeInfo)
         {
             var moduleInfo = new ModuleInfo(typeInfo.ModuleId);
-            var injectedModule = default(ModuleDef);
-            { // <Contracts>
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetModuleDef(moduleInfo, out injectedModule));
-                Guard.NotNull<ModuleDef, ShadowRuntimeStateException>(injectedModule);
-            } // </Contracts>
+            if (!resolver.TryGetModuleDef(moduleInfo, out var injectedModule))
+                ShadowRuntimeStateException.Throw("Could not resolve module");
+            RuntimeContract.Assert(injectedModule != null);
 
             // Generate helper type
             var helper = MetadataGenerator.CreateHelperType(injectedModule.CorLibTypes);
@@ -219,14 +179,12 @@ namespace SharpDetect.Core.Runtime
         public void Process_MethodInjected(FunctionInfo functionInfo, MethodType type)
         {
             var moduleInfo = new ModuleInfo(functionInfo.ModuleId);
-            var injectedModule = default(ModuleDef);
-            var injectedType = default(TypeDef);
-            { // <Contracts>
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetModuleDef(moduleInfo, out injectedModule));
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetTypeDef(new(functionInfo.ModuleId, functionInfo.TypeToken), new(functionInfo.ModuleId), out injectedType));
-                Guard.NotNull<ModuleDef, ShadowRuntimeStateException>(injectedModule);
-                Guard.NotNull<TypeDef, ShadowRuntimeStateException>(injectedType);
-            } // </Contracts>
+            if (!resolver.TryGetModuleDef(moduleInfo, out var injectedModule))
+                ShadowRuntimeStateException.Throw("Could not resolve module");
+            if (!resolver.TryGetTypeDef(new(functionInfo.ModuleId, functionInfo.TypeToken), new(functionInfo.ModuleId), out var injectedType))
+                ShadowRuntimeStateException.Throw("Could not resolve type");
+            RuntimeContract.Assert(injectedModule != null);
+            RuntimeContract.Assert(injectedType != null);
 
             // Generate helper method
             var helper = MetadataGenerator.CreateHelperMethod(injectedType, type, injectedModule.CorLibTypes);
@@ -238,11 +196,10 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_MethodWrapped(FunctionInfo functionInfo, MDToken wrapperToken)
         {
-            var wrappedMethod = default(MethodDef);
-            { // <Contracts>
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionInfo, new ModuleInfo(functionInfo.ModuleId), resolveWrappers: true, out wrappedMethod));
-                Guard.NotNull<MethodDef, ShadowRuntimeStateException>(wrappedMethod);
-            } // </Contracts>
+            var moduleInfo = new ModuleInfo(functionInfo.ModuleId);
+            if (!resolver.TryGetMethodDef(functionInfo, moduleInfo, resolveWrappers: true, out var wrappedMethod))
+                ShadowRuntimeStateException.Throw("Could not resolve method");
+            RuntimeContract.Assert(wrappedMethod != null);
 
             // Generate method wrapper
             var wrapper = MetadataGenerator.CreateWrapper(wrappedMethod);
@@ -265,17 +222,12 @@ namespace SharpDetect.Core.Runtime
 
         public void Process_WrapperMethodReferenced(FunctionInfo functionDef, FunctionInfo functionRef)
         {
-            var wrapperMethod = default(WrapperMethodDef);
-            var wrappedMethod = default(MethodDef);
-            { // <Contracts>
-                // Resolve wrapper method reference
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetMethodDef(functionDef, new ModuleInfo(functionDef.ModuleId), resolveWrappers: true, out wrappedMethod));
-                Guard.NotNull<MethodDef, ShadowRuntimeStateException>(wrappedMethod);
-
-                // Resolve wrapper method definition
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetWrapperMethodReference(wrappedMethod, new(functionDef.ModuleId), out var wrapperReference));
-                Guard.True<ShadowRuntimeStateException>(resolver.TryGetWrapperMethodDefinition(wrapperReference, new(functionDef.ModuleId), out wrapperMethod));                
-            } // </Contract>
+            if (!resolver.TryGetMethodDef(functionDef, new ModuleInfo(functionDef.ModuleId), resolveWrappers: true, out var wrappedMethod))
+                ShadowRuntimeStateException.Throw("Could not resolve wrapped method.");
+            if (!resolver.TryGetWrapperMethodReference(wrappedMethod, new(functionDef.ModuleId), out var wrapperReference))
+                ShadowRuntimeStateException.Throw("Could not resolve reference to method wrapper.");
+            if (!resolver.TryGetWrapperMethodDefinition(wrapperReference, new(functionDef.ModuleId), out var wrapperMethod))
+                ShadowRuntimeStateException.Throw("Could not resolve wrapper method.");
 
             // Bind reference to the original definition
             emitter.Bind(new(wrappedMethod), wrapperMethod, functionRef);

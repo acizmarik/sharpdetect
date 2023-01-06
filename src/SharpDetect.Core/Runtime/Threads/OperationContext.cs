@@ -1,4 +1,5 @@
-﻿using SharpDetect.Common.Exceptions;
+﻿using CommunityToolkit.Diagnostics;
+using SharpDetect.Common.Exceptions;
 
 namespace SharpDetect.Core.Runtime.Threads
 {
@@ -17,7 +18,7 @@ namespace SharpDetect.Core.Runtime.Threads
 
         public ShadowObject? GetAndResetLastFieldInstance()
         {
-            Guard.NotEmpty<ShadowObject?, ShadowRuntimeStateException>(fieldInstances);
+            RuntimeContract.Assert(fieldInstances.Count != 0);
             return fieldInstances.Pop();
         }
 
@@ -28,7 +29,7 @@ namespace SharpDetect.Core.Runtime.Threads
 
         public ShadowObject? GetAndResetLastArrayInstance()
         {
-            Guard.NotEmpty<ShadowObject?, ShadowRuntimeStateException>(arrayInstances);
+            RuntimeContract.Assert(arrayInstances.Count != 0);
             return arrayInstances.Pop();
         }
 
@@ -39,7 +40,7 @@ namespace SharpDetect.Core.Runtime.Threads
 
         public int? GetAndResetLastArrayIndex()
         {
-            Guard.NotEmpty<int, ShadowRuntimeStateException>(arrayIndices);
+            RuntimeContract.Assert(arrayIndices.Count != 0);
             return arrayIndices.Pop();
         }
 
