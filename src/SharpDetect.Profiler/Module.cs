@@ -45,12 +45,12 @@ internal unsafe class Module
         {
             if (!profilerInfo.GetModuleInfo2(moduleId, out _, pathLength, out _, ptr, out _, out _))
                 throw new ArgumentException("Could not obtain full path of module");
+            FullPath = new string(ptr, 0, (int)(pathLength - 1));
         }
 
         // Store module information
         Id = moduleId;
         AssemblyId = assemblyId;
-        FullPath = new string(buffer);
         Name = Path.GetFileName(FullPath);
     }
 
