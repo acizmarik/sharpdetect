@@ -80,26 +80,23 @@ namespace SharpDetect.Core.Runtime.Memory
 
                 var isCompacting = compactingCollections[genIndex];
                 var collected = objectsLookup[(GcGeneration)genIndex];
-                var toRemove = new HashSet<UIntPtr>();
-                foreach (var (ptr, shadowObject) in collected.Where(static record => !record.Value.IsAlive))
-                    toRemove.Add(ptr);
 
-                logger.LogDebug("GC {type} on {gen} freed {count} of {total} tracked objects",
-                    (isCompacting) ? "compacting" : "non-compacting", (GcGeneration)genIndex, toRemove.Count, collected.Count);
+                logger.LogDebug("GC {type} on {gen} with {total} tracked objects",
+                    (isCompacting) ? "compacting" : "non-compacting", (GcGeneration)genIndex, collected.Count);
 
                 if (!isCompacting)
                 {
                     // GC was non-compacting
                     // We must just remove all dead objects
                     objectsLookup[(GcGeneration)genIndex] = new ConcurrentDictionary<UIntPtr, ShadowObject>(
-                        collection: collected.Where(e => !toRemove.Contains(e.Key)));
+                        collection: collected.Where(e => e.Value.IsAlive));
                 }
                 else
                 {
                     // GC was compacting
                     // We must rebuild the object lookup
                     objectsLookup[(GcGeneration)genIndex] = new ConcurrentDictionary<UIntPtr, ShadowObject>(
-                        collection: collected.Where(e => !toRemove.Contains(e.Key))
+                        collection: collected.Where(e => e.Value.IsAlive)
                             .Select(record => new KeyValuePair<UIntPtr, ShadowObject>(
                                 key: record.Value.ShadowPointer,
                                 value: record.Value)));
@@ -156,12 +153,15 @@ namespace SharpDetect.Core.Runtime.Memory
                 var blockIndex = intervalTree.QuerySingle(pointer);
                 if (blockIndex != null)
                 {
+                    if (shadowObj.IsAlive)
+                        continue;
+
                     // This object is surviving and might have been moved
-                    var offset = shadowObj.ShadowPointer.ToUInt64() - oldBlockStarts[blockIndex.Value].ToUInt64();
-                    var newPointer = new UIntPtr(newBlockStarts[blockIndex.Value].ToUInt64() + offset);
+                    var offset = pointer - oldBlockStarts[blockIndex.Value];
+                    var newPointer = newBlockStarts[blockIndex.Value] + offset;
                     shadowObj.ShadowPointer = newPointer;
                     shadowObj.IsAlive = true;
-                }                
+                }
             }
         }
 
