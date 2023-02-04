@@ -2,7 +2,6 @@
 using dnlib.DotNet.Emit;
 using dnlib.DotNet.Writer;
 using SharpDetect.Dnlib.Extensions;
-using SharpDetect.UnitTests.Runtime.Scheduling;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Xunit;
@@ -17,9 +16,6 @@ namespace SharpDetect.UnitTests.DnlibExtensions
         [InlineData(typeof(Monitor))]
         [InlineData(typeof(Unsafe))]
         [InlineData(typeof(AssemblerTestMethods))]
-        [InlineData(typeof(HappensBeforeScheduler_ProfilingEvents_Tests))]
-        [InlineData(typeof(HappensBeforeScheduler_RewritingEvents_Tests))]
-        [InlineData(typeof(HappensBeforeScheduler_ExecutingEvents_Tests))]
         public void FastMethodAssemblerTests_MethodsAreNotChanged_SingleTypes(Type typeRef)
         {
             var module = AssemblyDef.Load(typeRef.Assembly.Location).ManifestModule;
