@@ -7,6 +7,7 @@ using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Metadata;
+using SharpDetect.Core.Runtime.Executors;
 using SharpDetect.Core.Runtime.Scheduling;
 using System.Collections.Immutable;
 
@@ -101,7 +102,8 @@ namespace SharpDetect.Core.Runtime
             var metadataResolver = metadataContext.GetResolver(processId);
             var metadataEmitter = metadataContext.GetEmitter(processId);
             var shadowCLR = new ShadowCLR(processId, metadataResolver, metadataEmitter, moduleBindContext, loggerFactory);
-            var scheduler = new HappensBeforeScheduler(processId, shadowCLR, runtimeEventsHub, methodRegistry, metadataContext, profilingClient, dateTimeProvider, loggerFactory);
+            var executor = new RuntimeEventExecutor(processId, shadowCLR, runtimeEventsHub, metadataContext, profilingClient, methodRegistry);
+            var scheduler = new HappensBeforeScheduler(processId, executor, dateTimeProvider, loggerFactory);
             logger.LogInformation("[{class}] Process with PID={pid} started.", nameof(ShadowExecution), processId);
 
             scheduler.ProcessFinished += () =>
