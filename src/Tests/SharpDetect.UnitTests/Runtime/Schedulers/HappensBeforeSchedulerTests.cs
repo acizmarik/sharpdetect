@@ -148,7 +148,7 @@ namespace SharpDetect.UnitTests.Runtime.Schedulers
         }
 
         [Fact]
-        public async Task RuntimeEventExecutor_BringAllThreadsToGarbegCollection()
+        public async Task RuntimeEventExecutor_BringAllThreadsToGarbageCollection()
         {
             // Prepare
             const int pid = 123;
@@ -184,7 +184,7 @@ namespace SharpDetect.UnitTests.Runtime.Schedulers
         }
 
         [Fact]
-        public async Task RuntimeEventExecutor_BringAllThreadsToGarbegCollectionFinished()
+        public async Task RuntimeEventExecutor_BringAllThreadsToGarbageCollectionFinished()
         {
             // Prepare
             const int pid = 123;

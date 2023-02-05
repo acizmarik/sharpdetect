@@ -12,14 +12,17 @@ namespace SharpDetect.Core.Runtime
         public void Increment()
         {
             lock (lockObj)
+            {
                 CurrentEpoch = new(CurrentEpoch.Value + 1);
+                Monitor.PulseAll(lockObj);
+            }
         }
 
-        public void WaitForChange(ShadowThread thread)
+        public void WaitForNextEpoch(ShadowThread thread)
         {
             lock (lockObj)
             {
-                while (CurrentEpoch.Value < thread.Epoch.Value)
+                if (CurrentEpoch.Value < thread.Epoch.Value)
                     Monitor.Wait(lockObj);
             }
         }
