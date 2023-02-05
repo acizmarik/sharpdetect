@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SharpDetect.Core.Runtime.Scheduling
+﻿namespace SharpDetect.Core.Runtime.Scheduling
 {
     [Flags]
     internal enum JobFlags
     {
-        None,
-        Concurrent,
-        SynchronizedBlocking,
-        SynchronizedUnblocking,
-        OverrideSuspend
+        None = 0,
+        Concurrent = 1,
+        OverrideEpoch = 2,
+        OverrideSuspend = 4
     }
 }

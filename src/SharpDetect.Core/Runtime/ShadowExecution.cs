@@ -174,7 +174,7 @@ namespace SharpDetect.Core.Runtime
         private void ProfilingMessageHub_Heartbeat(RawEventInfo info)
         {
             // Note: some heartbeats might come earlier than the actual analysis starts
-            // Such heartbeats can be discarded (watchdog is not iinitialized yet)
+            // Such heartbeats can be discarded (watchdog is not initialized yet)
             if (schedulersLookup.TryGetValue(info.ProcessId, out var scheduler))
             {
                 scheduler.Schedule_Heartbeat(info);

@@ -5,5 +5,6 @@
         Unknown,
         Running,
         Suspended,
+        GarbageCollecting
     }
 }

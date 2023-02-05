@@ -129,6 +129,7 @@ namespace SharpDetect.Core.Runtime.Executors
         {
             runtime.Process_GarbageCollectionFinished(bounds);
             eventsHub.RaiseGarbageCollectionFinished(runtime, bounds, info);
+            profilingClient.IssueContinueExecutionRequestAsync(info);
         }
 
         public void ExecuteSurvivingReferences(UIntPtr[] blockStarts, uint[] lengths, RawEventInfo info)

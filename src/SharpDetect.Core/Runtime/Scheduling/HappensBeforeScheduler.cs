@@ -3,9 +3,9 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
+using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services;
 using SharpDetect.Core.Runtime.Executors;
-using SharpDetect.Core.Runtime.Threads;
 
 namespace SharpDetect.Core.Runtime.Scheduling
 {
@@ -31,7 +31,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         public void Schedule_ProfilerInitialized(Version? _, RawEventInfo info)
         {
-            var thread = StartNewThread(info.ThreadId);
+            var thread = Register(info.ThreadId);
 
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
@@ -75,7 +75,6 @@ namespace SharpDetect.Core.Runtime.Scheduling
         public void Schedule_ThreadCreated(UIntPtr threadId, RawEventInfo info)
         {
             var newThread = Register(threadId);
-            newThread.Start();
 
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
@@ -97,14 +96,27 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                {
+                    thread.Execute(
+                        info.Id,
+                        JobFlags.OverrideSuspend,
+                        () => thread.EnterState(ShadowThreadState.Suspended),
+                        highPriority: false);
+                }
+
                 Executor.ExecuteRuntimeSuspendStarted(reason, info);
             });
         }
 
         public void Schedule_RuntimeSuspendFinished(RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend | JobFlags.OverrideEpoch, () =>
             {
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                    thread.SuspensionSignal.WaitOne();
+
+                EpochSource.Increment();
                 Executor.ExecuteRuntimeSuspendFinished(info);
             });
         }
@@ -113,6 +125,15 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                {
+                    thread.Execute(
+                        info.Id,
+                        JobFlags.OverrideSuspend,
+                        () => thread.EnterState(ShadowThreadState.Running),
+                        highPriority: false);
+                }
+
                 Executor.ExecuteRuntimeResumeStarted(info);
             });
         }
@@ -121,6 +142,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                    thread.RunningSignal.WaitOne();
+
+                EpochSource.Increment();
                 Executor.ExecuteRuntimeResumeFinished(info);
             });
         }
@@ -130,6 +155,8 @@ namespace SharpDetect.Core.Runtime.Scheduling
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 var thread = ThreadLookup[threadId];
+                thread.EnterNewEpoch();
+
                 Executor.ExecuteRuntimeThreadSuspended(thread, info);
             });
         }
@@ -139,6 +166,8 @@ namespace SharpDetect.Core.Runtime.Scheduling
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
                 var thread = ThreadLookup[threadId];
+                thread.EnterNewEpoch();
+
                 Executor.ExecuteRuntimeThreadResumed(thread, info);
             });
         }
@@ -147,6 +176,19 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
+                ThreadLookup[info.ThreadId].EnterState(ShadowThreadState.GarbageCollecting);
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                {
+                    thread.Execute(
+                        info.Id,
+                        JobFlags.OverrideSuspend,
+                        () => thread.EnterState(ShadowThreadState.GarbageCollecting),
+                        highPriority: false);
+                }
+
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                    thread.GarbageCollectionSignal.WaitOne();
+
                 Executor.ExecuteGarbageCollectionStarted(generationsCollected, bounds, info);
             });
         }
@@ -155,6 +197,19 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
+                ThreadLookup[info.ThreadId].EnterState(ShadowThreadState.Suspended);
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                {
+                    thread.Execute(
+                        info.Id,
+                        JobFlags.OverrideSuspend,
+                        () => thread.EnterState(ShadowThreadState.Suspended),
+                        highPriority: false);
+                }
+
+                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                    thread.SuspensionSignal.WaitOne();
+
                 Executor.ExecuteGarbageCollectionFinished(bounds, info);
             });
         }
@@ -247,12 +302,5 @@ namespace SharpDetect.Core.Runtime.Scheduling
             });
         }
         #endregion
-
-        private ShadowThread StartNewThread(nuint threadId)
-        {
-            var newThread = Register(threadId);
-            newThread.Start();
-            return newThread;
-        }
     }
 }
