@@ -527,7 +527,15 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     public HResult RuntimeSuspendFinished()
     {
         var message = messageFactory.CreateRuntimeSuspendFinishedNotification();
-        messagingClient.SendNotification(message);
+        var notificationId = messagingClient.GetNewNotificationId();
+        var future = messagingClient.ReceiveRequest(notificationId);
+        messagingClient.SendNotification(message, notificationId);
+
+        var request = future.Result;
+        if (request.ContinueExecution == null)
+            Logger.LogWarning("Unexpected request. Continuing execution...");
+        var response = messageFactory.CreateResponse(request, true);
+        messagingClient.SendResponse(response);
         return HResult.S_OK;
     }
 

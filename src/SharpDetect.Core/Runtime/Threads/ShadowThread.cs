@@ -95,7 +95,7 @@ namespace SharpDetect.Core.Runtime.Threads
                     while (epochSource.CurrentEpoch.Value < Epoch.Value && !flags.HasFlag(JobFlags.OverrideSuspend))
                     {
                         // Wait for next epoch
-                        epochSource.WaitForChange(this);
+                        epochSource.WaitForNextEpoch(this);
                     }
 
                     job!.Invoke();

@@ -93,6 +93,7 @@ namespace SharpDetect.Core.Runtime.Executors
         {
             runtime.Process_RuntimeSuspendFinished();
             eventsHub.RaiseRuntimeSuspendFinished(runtime, info);
+            profilingClient.IssueContinueExecutionRequestAsync(info);
         }
 
         public void ExecuteRuntimeResumeStarted(RawEventInfo info)
