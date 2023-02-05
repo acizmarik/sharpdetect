@@ -8,14 +8,14 @@ namespace SharpDetect.Core.Runtime.Scheduling
 {
     internal abstract class SchedulerBase : IDisposable
     {
-        public static readonly TimeSpan MaximumDelayBetweenHeartbeats = TimeSpan.FromSeconds(value: 5);
+        public static readonly TimeSpan MaximumDelayBetweenHeartbeats = TimeSpan.FromSeconds(value: 10);
         public event Action? ProcessCrashed;
         public event Action? ProcessFinished;
 
         public int ProcessId { get; private set; }
         protected ImmutableDictionary<UIntPtr, ShadowThread> ThreadLookup;
         protected BlockingCollection<ShadowThread> ShadowThreadDestroyingQueue;
-        protected readonly SchedulerEpochChangeSignaller EpochChangeSignaller;
+        protected readonly EpochSource EpochSource;
         private readonly IDateTimeProvider dateTimeProvider;
         private readonly ILoggerFactory loggerFactory;
         private volatile int virtualThreadsCounter;
@@ -29,7 +29,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             this.ProcessId = processId;
             this.ThreadLookup = ImmutableDictionary.Create<UIntPtr, ShadowThread>();
             this.ShadowThreadDestroyingQueue = new BlockingCollection<ShadowThread>();
-            this.EpochChangeSignaller = new SchedulerEpochChangeSignaller();
+            this.EpochSource = new EpochSource();
             this.dateTimeProvider = dateTimeProvider;
             this.loggerFactory = loggerFactory;
             this.lastHeartbeatTimeStamp = dateTimeProvider.Now;
@@ -76,10 +76,11 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         protected ShadowThread Register(UIntPtr threadId)
         {
-            ShadowThread newThread;
-            lock (EpochChangeSignaller)
-                newThread = new ShadowThread(ProcessId, threadId, virtualThreadsCounter++, loggerFactory, EpochChangeSignaller);
+            if (ThreadLookup.TryGetValue(threadId, out var shadowThread))
+                return shadowThread;
 
+            ShadowThread newThread;
+            newThread = new ShadowThread(ProcessId, threadId, virtualThreadsCounter++, loggerFactory, EpochSource);
             ImmutableDictionary<UIntPtr, ShadowThread>? newLookup;
             ImmutableDictionary<UIntPtr, ShadowThread>? oldLookup;
             
@@ -90,6 +91,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             }
             while (Interlocked.CompareExchange(ref ThreadLookup, newLookup, oldLookup) != oldLookup);
 
+            newThread.Start();
             return newThread;
         }
 
@@ -124,7 +126,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 try
                 {
-                shadowThreadReaper.Wait();
+                    shadowThreadReaper.Wait();
                 }
                 catch (ThreadInterruptedException)
                 {
@@ -134,26 +136,6 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
                 GC.SuppressFinalize(this);
             }
-        }
-
-        internal class SchedulerEpochChangeSignaller
-        {
-            public event Action<ulong>? EpochChanged;
-
-            public ulong Epoch
-            {
-                get => epoch;
-                set
-                {
-                    lock (this)
-                    {
-                        epoch = value;
-                        EpochChanged?.Invoke(epoch);
-                    }
-                }
-            }
-
-            private ulong epoch;
         }
     }
 }

@@ -2,7 +2,7 @@
 using SharpDetect.Common;
 using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Core.Runtime.Scheduling;
-using System.Collections.Concurrent;
+using System.Threading.Channels;
 
 namespace SharpDetect.Core.Runtime.Threads
 {
@@ -11,25 +11,27 @@ namespace SharpDetect.Core.Runtime.Threads
         public UIntPtr Id { get; private set; }
         public int VirtualId { get; private set; }
         public int ProcessId { get; private set; }
-        public ulong Epoch { get; private set; }
+        public Epoch Epoch { get; private set; }
         public string DisplayName { get; private set; }
         public ShadowThreadState State { get; private set; }
         public OperationContext OperationContext { get; private set; }
 
-        private ulong schedulerEpoch;
+        internal readonly ManualResetEvent SuspensionSignal;
+        internal readonly ManualResetEvent GarbageCollectionSignal;
+        internal readonly ManualResetEvent RunningSignal;
+
         private readonly ILogger<ShadowThread> logger;
-        private readonly SchedulerBase.SchedulerEpochChangeSignaller schedulerEpochChangeSignaler;
-        private readonly BlockingCollection<(Action Job, ulong NotificationId, JobFlags Flags)> jobs;
-        private readonly Queue<(Action Job, ulong NotificationId)> waitingJobs;
+        private readonly Channel<(ulong Id, Action Job, JobFlags Flags)> highPriorityQueue;
+        private readonly Channel<(ulong Id, Action Job, JobFlags Flags)> lowPriorityQueue;
+        private readonly EpochSource epochSource;
         private readonly Stack<StackFrame> callstack;
         private readonly Thread workerThread;
         private bool isDisposed;
 
-        public ShadowThread(int processId, UIntPtr threadId, int virtualThreadId, ILoggerFactory loggerFactory, SchedulerBase.SchedulerEpochChangeSignaller schedulerEpochChangeSignaler)
+        public ShadowThread(int processId, UIntPtr threadId, int virtualThreadId, ILoggerFactory loggerFactory, EpochSource epochSource)
         {
             ProcessId = processId;
             Id = threadId;
-            Epoch = schedulerEpochChangeSignaler.Epoch;
             VirtualId = virtualThreadId;
             DisplayName = $"{nameof(ShadowThread)}-{virtualThreadId}";
             State = ShadowThreadState.Running;
@@ -37,66 +39,83 @@ namespace SharpDetect.Core.Runtime.Threads
             callstack = new Stack<StackFrame>();
 
             this.logger = loggerFactory.CreateLogger<ShadowThread>();
-            this.schedulerEpochChangeSignaler = schedulerEpochChangeSignaler;
-            this.schedulerEpochChangeSignaler.EpochChanged += OnSchedulerEpochChanged;
-            this.schedulerEpoch = schedulerEpochChangeSignaler.Epoch;
-            
-            jobs = new BlockingCollection<(Action Job, ulong NotificationId, JobFlags Flags)>();
-            waitingJobs = new Queue<(Action Job, ulong NotificationId)>();
+            this.epochSource = epochSource;
+            SuspensionSignal = new ManualResetEvent(false);
+            GarbageCollectionSignal = new ManualResetEvent(false);
+            RunningSignal = new ManualResetEvent(false);
+
+            highPriorityQueue = Channel.CreateUnbounded<(ulong Id, Action Job, JobFlags Flags)>();
+            lowPriorityQueue = Channel.CreateUnbounded<(ulong Id, Action Job, JobFlags Flags)>();
             workerThread = new Thread(WorkerThreadLoop) { Name = DisplayName };
             workerThread.Name = DisplayName;
-        }
-
-        private void OnSchedulerEpochChanged(ulong newEpoch)
-        {
-            schedulerEpoch = newEpoch;
         }
 
         private void WorkerThreadLoop()
         {
             try
             {
-                // Execute all received jobs until terminated
-                foreach (var (job, id, flags) in jobs.GetConsumingEnumerable())
+                EnterState(ShadowThreadState.Running);
+                var tasksArray = new Task<bool>[2];
+                var readers = new ChannelReader<(ulong, Action, JobFlags)>[2]
                 {
-                    if (schedulerEpoch < Epoch && (!flags.HasFlag(JobFlags.OverrideSuspend)))
+                    highPriorityQueue.Reader,
+                    lowPriorityQueue.Reader
+                };
+
+                while (true)
+                {
+                    var index = 0;
+                    var success = true;
+                    var jobInfo = default((ulong Id, Action Job, JobFlags Flags));
+                    for (index = 0; index < readers.Length; index++)
                     {
-                        // This thread needs to wait for other thread to enter next epoch
-                        WaitForNextEpoch();
+                        // Check if there is something available in a queue
+                        success = readers[index].TryRead(out jobInfo);
+                        if (success)
+                            break;
                     }
 
-                    var isBlocked = waitingJobs.Count > 0 && waitingJobs.Peek().NotificationId == id;
-                    if (!flags.HasFlag(JobFlags.SynchronizedBlocking) && !isBlocked)
+                    if (!success)
                     {
-                        // Execute waiting jobs first
-                        while (waitingJobs.Count > 0)
+                        // Wait until something becomes available in a queue
+                        for (index = 0; index < readers.Length; index++)
+                            tasksArray[index] = readers[index].WaitToReadAsync().AsTask();
+                        index = Task.WaitAny(tasksArray);
+                        success = tasksArray[index].Result;
+                        jobInfo = success ? readers[index].ReadAsync().AsTask().Result : jobInfo;
+
+                        if (!success)
                         {
-                            var (waitingJob, _) = waitingJobs.Dequeue();
-                            ExecuteJobSynchronously(waitingJob);
+                            // Queue is completed - terminating thread
+                            break;
                         }
+                    }
 
-                        // Execute this job
-                        ExecuteJobSynchronously(job);
-                    }
-                    else
+                    var (id, job, flags) = jobInfo;
+                    while (epochSource.CurrentEpoch.Value < Epoch.Value && !flags.HasFlag(JobFlags.OverrideSuspend))
                     {
-                        // This job can not be executed right now
-                        // We need to ensure there is a continuation available
-                        waitingJobs.Enqueue((job, id));
+                        // Wait for next epoch
+                        epochSource.WaitForChange(this);
                     }
+
+                    job!.Invoke();
                 }
             }
             catch (ThreadInterruptedException)
             {
                 // Do nothing - this is a way to terminate blocked threads
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Execution of shadow thread failed due to an unhandled exception.");
+            }
         }
 
         public void Start()
             => workerThread.Start();
 
-        public void Execute(ulong notificationId, JobFlags flags, Action job)
-            => jobs.Add((job, notificationId, flags));
+        public void Execute(ulong notificationId, JobFlags flags, Action job, bool highPriority = true)
+            => (highPriority ? highPriorityQueue.Writer : lowPriorityQueue.Writer).TryWrite((notificationId, job, flags));
 
         public void SetName(string name)
             => DisplayName = name;
@@ -111,25 +130,34 @@ namespace SharpDetect.Core.Runtime.Threads
             => callstack.Push(new(info, interpretation, args));
 
         public void EnterState(ShadowThreadState newState)
-            => State = newState;
+        {
+            switch (newState)
+            {
+                case ShadowThreadState.Running:
+                    SuspensionSignal.Reset();
+                    GarbageCollectionSignal.Reset();
+                    RunningSignal.Set();
+                    break;
+                case ShadowThreadState.Suspended:
+                    RunningSignal.Reset();
+                    GarbageCollectionSignal.Reset();
+                    SuspensionSignal.Set();
+                    break;
+                case ShadowThreadState.GarbageCollecting:
+                    RunningSignal.Reset();
+                    SuspensionSignal.Reset();
+                    GarbageCollectionSignal.Set();
+                    break;
+            }
+
+            State = newState;
+        }
 
         public StackFrame PopCallStack()
             => callstack.Pop();
 
         public void EnterNewEpoch(ulong? newValue = null)
-            => Epoch = (newValue.HasValue) ? newValue.Value : Epoch + 1;
-
-        private void WaitForNextEpoch()
-        {
-            if (schedulerEpoch < Epoch)
-            {
-                lock (schedulerEpochChangeSignaler)
-                {
-                    while (schedulerEpoch < Epoch)
-                        Monitor.Wait(schedulerEpochChangeSignaler);
-                }
-            }
-        }
+            => Epoch = new(newValue ?? Epoch.Value + 1);
 
         private void ExecuteJobSynchronously(Action job)
         {
@@ -148,7 +176,8 @@ namespace SharpDetect.Core.Runtime.Threads
             if (!isDisposed)
             {
                 isDisposed = true;
-                jobs.CompleteAdding();
+                highPriorityQueue.Writer.Complete();
+                lowPriorityQueue.Writer.Complete();
                 if (workerThread.ThreadState != ThreadState.Unstarted)
                 {
                     // Wait for some time
@@ -156,8 +185,7 @@ namespace SharpDetect.Core.Runtime.Threads
                     while (!workerThread.Join(timeout: TimeSpan.FromSeconds(3)))
                         workerThread.Interrupt();
                 }
-                // Unregister event handler
-                schedulerEpochChangeSignaler.EpochChanged -= OnSchedulerEpochChanged;
+
                 GC.SuppressFinalize(this);
             }
         }

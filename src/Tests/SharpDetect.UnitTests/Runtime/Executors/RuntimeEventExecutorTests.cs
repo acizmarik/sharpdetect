@@ -43,7 +43,7 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.ProfilerInitialized += (_) => evtRaised.SetResult();
 
@@ -70,7 +70,7 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.ProfilerDestroyed += (_) => evtRaised.SetResult();
 
@@ -99,7 +99,7 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.ModuleLoaded += (_) => evtRaised.SetResult();
 
@@ -131,7 +131,7 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.TypeLoaded += (_) => evtRaised.SetResult();
 
@@ -165,7 +165,7 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.JITCompilationStarted += (_) => evtRaised.SetResult();
 
@@ -200,7 +200,7 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread = new ShadowThread(pid, tid, 1, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.JITCompilationStarted += (_) => evtRaised.SetResult();
 
@@ -232,8 +232,8 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread1 = new ShadowThread(pid, tid1, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
-            var thread2 = new ShadowThread(pid, tid2, 2, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread1 = new ShadowThread(pid, tid1, 1, new NullLoggerFactory(), new EpochSource());
+            var thread2 = new ShadowThread(pid, tid2, 2, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.ThreadCreated += (_) => evtRaised.SetResult();
 
@@ -262,8 +262,8 @@ namespace SharpDetect.UnitTests.Runtime.Executors
             var shadowCLR = InitiateDotnetProcessProfiling(pid, profilingMessageHub, moduleBindContext, metadataContext);
             var methodRegistry = await CreateRegistryForModulesAsync("Modules/system.private.corelib.lua");
             var executor = new RuntimeEventExecutor(pid, shadowCLR, eventHub, metadataContext, profilingClient, methodRegistry);
-            var thread1 = new ShadowThread(pid, tid1, 1, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
-            var thread2 = new ShadowThread(pid, tid2, 2, new NullLoggerFactory(), new Core.Runtime.Scheduling.SchedulerBase.SchedulerEpochChangeSignaller());
+            var thread1 = new ShadowThread(pid, tid1, 1, new NullLoggerFactory(), new EpochSource());
+            var thread2 = new ShadowThread(pid, tid2, 2, new NullLoggerFactory(), new EpochSource());
             var evtRaised = new TaskCompletionSource();
             eventHub.ThreadDestroyed += (_) => evtRaised.SetResult();
 
