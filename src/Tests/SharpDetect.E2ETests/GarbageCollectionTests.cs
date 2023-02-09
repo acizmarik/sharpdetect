@@ -4,6 +4,7 @@ using SharpDetect.Common.Services.Reporting;
 using SharpDetect.E2ETests.Definitions;
 using SharpDetect.E2ETests.Subject;
 using SharpDetect.E2ETests.Utilities;
+using System.Collections.Concurrent;
 using Xunit;
 
 namespace SharpDetect.E2ETests
@@ -82,10 +83,10 @@ namespace SharpDetect.E2ETests
         }
 
         [Theory]
-        [InlineData(nameof(Program.Test_SingleGarbageCollection_ObjectTracking_Simple))]
-        [InlineData(nameof(Program.Test_MultipleGarbageCollection_ObjectTracking_Simple))]
-        [InlineData(nameof(Program.Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject))]
-        public async Task GarbageCollectionTests_ObjectTracking(string testName)
+        [InlineData(nameof(Program.Test_SingleGarbageCollection_ObjectTracking_Simple), 2)]
+        [InlineData(nameof(Program.Test_MultipleGarbageCollection_ObjectTracking_Simple), 3)]
+        [InlineData(nameof(Program.Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject), 2)]
+        public async Task GarbageCollectionTests_ObjectTracking(string testName, int expectedLockAcquiresCount)
         {
             // Prepare
             await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, "Reporter", testName);
@@ -102,7 +103,7 @@ namespace SharpDetect.E2ETests
             var garbageCollectionStarted = false;
             var garbageCollectionFinished = false;
             var lockAcquiresCount = 0;
-            var lockObjects = new HashSet<IShadowObject>();
+            var lockObjects = new ConcurrentDictionary<IShadowObject, int>();
             var reportsReader = session.GetRequiredService<IReportsReaderProvider>().GetReportsReader();
             await foreach (var report in reportsReader.ReadAllAsync())
             {
@@ -140,7 +141,7 @@ namespace SharpDetect.E2ETests
                 else if (report.Category == nameof(IPlugin.LockAcquireAttempted) && reachedTestMethod && !leftTestMethod)
                 {
                     lockAcquiresCount++;
-                    lockObjects.Add((report.Arguments![0] as IShadowObject)!);
+                    lockObjects.AddOrUpdate((report.Arguments![0] as IShadowObject)!, 1, (_, val) => val + 1);
                 }
             }
 
@@ -155,7 +156,7 @@ namespace SharpDetect.E2ETests
             Assert.True(leftTestMethod);
             Assert.True(leftEntryPoint);
             Assert.Single(lockObjects);
-            Assert.Equal(2, lockAcquiresCount);
+            Assert.Equal(expectedLockAcquiresCount, lockAcquiresCount);
         }
     }
 }

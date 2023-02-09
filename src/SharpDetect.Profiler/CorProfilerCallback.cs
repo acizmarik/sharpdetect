@@ -697,7 +697,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
         return HResult.S_OK;
     }
 
-    public HResult GarbageCollectionStarted(int cGenerations, bool* generationCollected, COR_PRF_GC_REASON reason)
+    public HResult GarbageCollectionStarted(int cGenerations, int* generationCollected, COR_PRF_GC_REASON reason)
     {
         if (!GetGenerationBounds(out var bounds))
         {
@@ -705,8 +705,12 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
             return HResult.E_FAIL;
         }
 
-        var message = messageFactory.CreateGarbageCollectionStartedNotification(
-            new ReadOnlySpan<bool>(generationCollected, cGenerations), bounds);
+        // Preprocess generations to bools
+        var generationFlags = new bool[cGenerations];
+        for (var index = 0; index < cGenerations; index++)
+            generationFlags[index] = (generationCollected[index] != 0);
+
+        var message = messageFactory.CreateGarbageCollectionStartedNotification(generationFlags, bounds);
         messagingClient.SendNotification(message);
 
         return HResult.S_OK;
