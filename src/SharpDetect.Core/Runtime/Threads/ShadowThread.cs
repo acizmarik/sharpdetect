@@ -13,7 +13,7 @@ namespace SharpDetect.Core.Runtime.Threads
         public int ProcessId { get; private set; }
         public Epoch Epoch { get; private set; }
         public string DisplayName { get; private set; }
-        public ShadowThreadState State { get; private set; }
+        public ShadowThreadState State { get { return state; } }
         public OperationContext OperationContext { get; private set; }
 
         internal readonly ManualResetEvent SuspensionSignal;
@@ -26,6 +26,7 @@ namespace SharpDetect.Core.Runtime.Threads
         private readonly EpochSource epochSource;
         private readonly Stack<StackFrame> callstack;
         private readonly Thread workerThread;
+        private volatile ShadowThreadState state;
         private bool isDisposed;
 
         public ShadowThread(int processId, UIntPtr threadId, int virtualThreadId, ILoggerFactory loggerFactory, EpochSource epochSource)
@@ -34,8 +35,8 @@ namespace SharpDetect.Core.Runtime.Threads
             Id = threadId;
             VirtualId = virtualThreadId;
             DisplayName = $"{nameof(ShadowThread)}-{virtualThreadId}";
-            State = ShadowThreadState.Running;
             OperationContext = new OperationContext();
+            state = ShadowThreadState.Running;
             callstack = new Stack<StackFrame>();
 
             this.logger = loggerFactory.CreateLogger<ShadowThread>();
@@ -131,6 +132,7 @@ namespace SharpDetect.Core.Runtime.Threads
 
         public void EnterState(ShadowThreadState newState)
         {
+            state = newState;
             switch (newState)
             {
                 case ShadowThreadState.Running:
@@ -149,8 +151,6 @@ namespace SharpDetect.Core.Runtime.Threads
                     GarbageCollectionSignal.Set();
                     break;
             }
-
-            State = newState;
         }
 
         public StackFrame PopCallStack()
