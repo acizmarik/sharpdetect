@@ -114,10 +114,8 @@ namespace SharpDetect.Core
             if (configuration.GetSection(redirectKey).Get<bool?>() is true)
             {
                 if (configuration.GetSection(fileKey).Get<string?>() is not string path)
-                {
-                    path = $"{executablePath}-{name}.txt";
-                    logger.LogWarning($"Requested redirection for {name} but file was not provided. Using {path} instead.");
-                }
+                    throw new ArgumentException($"Requested redirection for {name} but file was not provided. It is a mandatory parameter when redirecting {name}.");
+
                 compiledCommand = registrator(PipeSource.FromFile(path));
             }
         }

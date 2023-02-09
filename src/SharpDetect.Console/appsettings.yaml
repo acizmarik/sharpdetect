@@ -47,6 +47,20 @@
     # Paths to additional (extension) modules
     Extensions: []
 
+  # Input and output redirection settings
+  # Use 'Redirect' properties to specify what IO streams to redirect
+  # Use 'File' properties to specify paths to files to be used to read/write
+  TargetAssemblyIO:
+    Stdin:
+      Redirect: false
+      File: ''
+    Stdout:
+      Redirect: false
+      File: ''
+    Stderr:
+      Redirect: false
+      File: ''
+
 ########################################################
 #                                                      #
 #                 DANGER ZONE BELOW                    #
