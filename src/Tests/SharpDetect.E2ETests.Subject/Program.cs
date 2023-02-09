@@ -1,6 +1,7 @@
 ﻿using SharpDetect.E2ETests.Subject.Helpers.Arrays;
 using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
 using SharpDetect.E2ETests.Subject.Helpers.Fields;
+using System.Runtime.CompilerServices;
 
 namespace SharpDetect.E2ETests.Subject
 {
@@ -410,12 +411,22 @@ namespace SharpDetect.E2ETests.Subject
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_GarbageCollection_Simple()
+        public static void Test_SingleGarbageCollection_Simple()
         {
             GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
         }
 
-        public static void Test_GarbageCollection_ObjectTracking()
+        public static void Test_MultipleGarbageCollection_Simple()
+        {
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
+
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
+        }
+
+        public static void Test_SingleGarbageCollection_ObjectTracking_Simple()
         {
             // Generate garbage
             for (var i = 0; i < 1000; i++)
@@ -432,6 +443,7 @@ namespace SharpDetect.E2ETests.Subject
 
             // Perform compacting GC (lockObj should be moved)
             GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
 
             // Access the same object again
             lock (lockObj)
@@ -440,6 +452,82 @@ namespace SharpDetect.E2ETests.Subject
                 new object();
                 new object();
             }
+        }
+
+        public static void Test_MultipleGarbageCollection_ObjectTracking_Simple()
+        {
+            // Generate garbage
+            var garbage = new object();
+            for (var i = 0; i < 1000; i++)
+                new object();
+
+            // Create tracked object
+            var lockObj = new object();
+            lock (lockObj)
+            {
+                // Create some more garbage
+                new object();
+                new object();
+            }
+
+            // Perform compacting GC (lockObj should be moved)
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
+
+            // Access the same object again
+            lock (lockObj)
+            {
+                // Create some more garbage
+                new object();
+                new object();
+            }
+
+            // Generate garbage and release all
+            for (var i = 0; i < 1000; i++)
+                new object();
+            garbage = null;
+
+            // Perform another compacting GC (lockObj should be moved again)
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
+
+            // Access the same object again
+            lock (lockObj)
+            {
+                // Create some more garbage
+                new object();
+                new object();
+            }
+        }
+
+        public static void Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject()
+        {
+            // Generate garbage
+            for (var i = 0; i < 1000; i++)
+                new object();
+
+            // Create tracked object
+            var lockObj = new object();
+            lock (lockObj)
+            {
+                // Create some more garbage
+                new object();
+                new object();
+            }
+
+            bool lockTaken = false;
+            Monitor.Enter(lockObj, ref lockTaken);
+
+            // Perform compacting GC (lockObj should be moved)
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
+
+            if (lockTaken)
+                Monitor.Exit(lockObj);
+
+            // Create some more garbage
+            new object();
+            new object();
         }
 
         public static void Main(string[] args)
@@ -654,11 +742,20 @@ namespace SharpDetect.E2ETests.Subject
             // Garbage collection events
             switch (args[0])
             {
-                case nameof(Test_GarbageCollection_Simple):
-                    Test_GarbageCollection_Simple();
+                case nameof(Test_SingleGarbageCollection_Simple):
+                    Test_SingleGarbageCollection_Simple();
                     break;
-                case nameof(Test_GarbageCollection_ObjectTracking):
-                    Test_GarbageCollection_ObjectTracking();
+                case nameof(Test_SingleGarbageCollection_ObjectTracking_Simple):
+                    Test_SingleGarbageCollection_ObjectTracking_Simple();
+                    break;
+                case nameof(Test_MultipleGarbageCollection_Simple):
+                    Test_MultipleGarbageCollection_Simple();
+                    break;
+                case nameof(Test_MultipleGarbageCollection_ObjectTracking_Simple):
+                    Test_MultipleGarbageCollection_ObjectTracking_Simple();
+                    break;
+                case nameof(Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject):
+                    Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject();
                     break;
             }
         }
