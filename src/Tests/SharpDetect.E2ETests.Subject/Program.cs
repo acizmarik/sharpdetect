@@ -411,13 +411,28 @@ namespace SharpDetect.E2ETests.Subject
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_SingleGarbageCollection_Simple()
+        public static void Test_SingleGarbageCollection_NonCompacting_Simple()
+        {
+            GC.Collect(2, GCCollectionMode.Forced, true, false);
+            GC.WaitForPendingFinalizers();
+        }
+
+        public static void Test_SingleGarbageCollection_Compacting_Simple()
         {
             GC.Collect(2, GCCollectionMode.Forced, true, true);
             GC.WaitForPendingFinalizers();
         }
 
-        public static void Test_MultipleGarbageCollection_Simple()
+        public static void Test_MultipleGarbageCollection_NonCompacting_Simple()
+        {
+            GC.Collect(2, GCCollectionMode.Forced, true, false);
+            GC.WaitForPendingFinalizers();
+
+            GC.Collect(2, GCCollectionMode.Forced, true, false);
+            GC.WaitForPendingFinalizers();
+        }
+
+        public static void Test_MultipleGarbageCollection_Compacting_Simple()
         {
             GC.Collect(2, GCCollectionMode.Forced, true, true);
             GC.WaitForPendingFinalizers();
@@ -742,14 +757,20 @@ namespace SharpDetect.E2ETests.Subject
             // Garbage collection events
             switch (args[0])
             {
-                case nameof(Test_SingleGarbageCollection_Simple):
-                    Test_SingleGarbageCollection_Simple();
+                case nameof(Test_SingleGarbageCollection_NonCompacting_Simple):
+                    Test_SingleGarbageCollection_NonCompacting_Simple();
+                    break;
+                case nameof(Test_SingleGarbageCollection_Compacting_Simple):
+                    Test_SingleGarbageCollection_Compacting_Simple();
                     break;
                 case nameof(Test_SingleGarbageCollection_ObjectTracking_Simple):
                     Test_SingleGarbageCollection_ObjectTracking_Simple();
                     break;
-                case nameof(Test_MultipleGarbageCollection_Simple):
-                    Test_MultipleGarbageCollection_Simple();
+                case nameof(Test_MultipleGarbageCollection_NonCompacting_Simple):
+                    Test_MultipleGarbageCollection_NonCompacting_Simple();
+                    break;
+                case nameof(Test_MultipleGarbageCollection_Compacting_Simple):
+                    Test_MultipleGarbageCollection_Compacting_Simple();
                     break;
                 case nameof(Test_MultipleGarbageCollection_ObjectTracking_Simple):
                     Test_MultipleGarbageCollection_ObjectTracking_Simple();

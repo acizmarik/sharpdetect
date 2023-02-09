@@ -13,8 +13,10 @@ namespace SharpDetect.E2ETests
     public class GarbageCollectionTests
     {
         [Theory]
-        [InlineData(nameof(Program.Test_SingleGarbageCollection_Simple), 1)]
-        [InlineData(nameof(Program.Test_MultipleGarbageCollection_Simple), 2)]
+        [InlineData(nameof(Program.Test_SingleGarbageCollection_NonCompacting_Simple), 1)]
+        [InlineData(nameof(Program.Test_MultipleGarbageCollection_NonCompacting_Simple), 2)]
+        [InlineData(nameof(Program.Test_SingleGarbageCollection_Compacting_Simple), 1)]
+        [InlineData(nameof(Program.Test_MultipleGarbageCollection_Compacting_Simple), 2)]
         public async Task GarbageCollectionTests_Simple(string testName, int expectedGarbageCollectionsCount)
         {
             // Prepare
