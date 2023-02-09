@@ -12,8 +12,9 @@ namespace SharpDetect.E2ETests
     public class GarbageCollectionTests
     {
         [Theory]
-        [InlineData(nameof(Program.Test_GarbageCollection_Simple))]
-        public async Task GarbageCollectionTests_Simple(string testName)
+        [InlineData(nameof(Program.Test_SingleGarbageCollection_Simple), 1)]
+        [InlineData(nameof(Program.Test_MultipleGarbageCollection_Simple), 2)]
+        public async Task GarbageCollectionTests_Simple(string testName, int expectedGarbageCollectionsCount)
         {
             // Prepare
             await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, "Reporter", testName);
@@ -29,6 +30,7 @@ namespace SharpDetect.E2ETests
             var invalidProgramException = false;
             var garbageCollectionStarted = false;
             var garbageCollectionFinished = false;
+            var garbageCollectionsCount = 0;
             var reportsReader = session.GetRequiredService<IReportsReaderProvider>().GetReportsReader();
             await foreach (var report in reportsReader.ReadAllAsync())
             {
@@ -57,6 +59,7 @@ namespace SharpDetect.E2ETests
                 }
                 else if (report.Category == nameof(IPlugin.GarbageCollectionStarted))
                 {
+                    garbageCollectionsCount++;
                     garbageCollectionStarted = true;
                 }
                 else if (report.Category == nameof(IPlugin.GarbageCollectionFinished))
@@ -73,12 +76,15 @@ namespace SharpDetect.E2ETests
             Assert.True(reachedTestMethod);
             Assert.True(garbageCollectionStarted);
             Assert.True(garbageCollectionFinished);
+            Assert.Equal(expectedGarbageCollectionsCount, garbageCollectionsCount);
             Assert.True(leftTestMethod);
             Assert.True(leftEntryPoint);
         }
 
         [Theory]
-        [InlineData(nameof(Program.Test_GarbageCollection_ObjectTracking))]
+        [InlineData(nameof(Program.Test_SingleGarbageCollection_ObjectTracking_Simple))]
+        [InlineData(nameof(Program.Test_MultipleGarbageCollection_ObjectTracking_Simple))]
+        [InlineData(nameof(Program.Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject))]
         public async Task GarbageCollectionTests_ObjectTracking(string testName)
         {
             // Prepare
