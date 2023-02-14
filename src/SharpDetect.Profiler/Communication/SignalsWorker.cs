@@ -10,7 +10,7 @@ internal class SignalsWorker : ICommunicationWorker
     private readonly string connectionString;
     private readonly PushSocket socket;
     private readonly Thread thread;
-    private volatile bool shouldTerminate;
+    private readonly ManualResetEvent termination;
     private bool isDisposed;
 
     public SignalsWorker(string connectionString)
@@ -18,6 +18,7 @@ internal class SignalsWorker : ICommunicationWorker
         this.connectionString = connectionString;
         this.socket = new PushSocket();
         this.thread = new Thread(ThreadLoop);
+        this.termination = new(initialState: false);
     }
 
     private void ThreadLoop()
@@ -30,13 +31,14 @@ internal class SignalsWorker : ICommunicationWorker
         };
         var messageBytes = message.ToByteArray();
 
-        while (!shouldTerminate)
+        while (true)
         {
             // Send heartbeat
             socket.SendFrame(messageBytes);
 
-            // Put thread to sleep until next heartbeat
-            Thread.Sleep(TimeSpan.FromSeconds(25));
+            // Wait before sending next heartbeat or until we are terminated
+            if (termination.WaitOne(TimeSpan.FromSeconds(25)))
+                break;
         }
     }
 
@@ -48,7 +50,7 @@ internal class SignalsWorker : ICommunicationWorker
 
     public void Terminate()
     {
-        shouldTerminate = true;
+        termination.Set();
     }
 
     public void Dispose()
@@ -56,6 +58,7 @@ internal class SignalsWorker : ICommunicationWorker
         if (!isDisposed)
         {
             isDisposed = true;
+            Terminate();
             if (thread.ThreadState != ThreadState.Unstarted)
                 thread.Join();
             socket.Dispose();
