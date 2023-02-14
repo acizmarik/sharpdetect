@@ -36,7 +36,7 @@ internal class SignalsWorker : ICommunicationWorker
             socket.SendFrame(messageBytes);
 
             // Put thread to sleep until next heartbeat
-            Thread.Sleep(TimeSpan.FromSeconds(2));
+            Thread.Sleep(TimeSpan.FromSeconds(25));
         }
     }
 

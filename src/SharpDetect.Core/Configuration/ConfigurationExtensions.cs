@@ -13,7 +13,6 @@ using SharpDetect.Core.Models;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
 using SharpDetect.Core.Runtime;
-using SharpDetect.Core.Runtime.Monitoring;
 using SharpDetect.Core.Scripts;
 using SharpDetect.Instrumentation.Configuration;
 using SharpDetect.Loader.Configuration;
@@ -40,7 +39,6 @@ namespace SharpDetect.Core.Configuration
             services.AddScoped<INotificationsConsumer, NotificationServer>();
             services.AddScoped<IRequestsProducer, RequestServer>();
             services.AddScoped<IProfilingClient, ProfilingClient>();
-            services.AddScoped<IHealthMonitor, HealthMonitor>();
             services.AddScoped<IShadowExecutionObserver, RuntimeEventsHub>(p => p.GetRequiredService<RuntimeEventsHub>());
             services.AddScoped<ReportingService>();
             services.AddScoped<IReportingService>(p => p.GetRequiredService<ReportingService>());
