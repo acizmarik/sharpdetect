@@ -8,7 +8,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
 {
     internal abstract class SchedulerBase : IDisposable
     {
-        public static readonly TimeSpan MaximumDelayBetweenHeartbeats = TimeSpan.FromSeconds(value: 10);
+        public static readonly TimeSpan MaximumDelayBetweenHeartbeats = TimeSpan.FromSeconds(value: 30);
         public event Action? ProcessCrashed;
         public event Action? ProcessFinished;
 
