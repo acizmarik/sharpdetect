@@ -3,6 +3,7 @@ using SharpDetect.Common.Services;
 using SharpDetect.Core.Runtime.Threads;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SharpDetect.Core.Runtime.Scheduling
 {
@@ -13,9 +14,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
         public event Action? ProcessFinished;
 
         public int ProcessId { get; private set; }
-        protected ImmutableDictionary<UIntPtr, ShadowThread> ThreadLookup;
         protected BlockingCollection<ShadowThread> ShadowThreadDestroyingQueue;
         protected readonly EpochSource EpochSource;
+        private ImmutableDictionary<UIntPtr, ShadowThread> threadLookup;
         private readonly IDateTimeProvider dateTimeProvider;
         private readonly ILoggerFactory loggerFactory;
         private volatile int virtualThreadsCounter;
@@ -27,9 +28,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
         public SchedulerBase(int processId, IDateTimeProvider dateTimeProvider, ILoggerFactory loggerFactory)
         {
             this.ProcessId = processId;
-            this.ThreadLookup = ImmutableDictionary.Create<UIntPtr, ShadowThread>();
             this.ShadowThreadDestroyingQueue = new BlockingCollection<ShadowThread>();
             this.EpochSource = new EpochSource();
+            this.threadLookup = ImmutableDictionary.Create<UIntPtr, ShadowThread>();
             this.dateTimeProvider = dateTimeProvider;
             this.loggerFactory = loggerFactory;
             this.lastHeartbeatTimeStamp = dateTimeProvider.Now;
@@ -47,7 +48,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         internal IEnumerable<ShadowThread> ShadowThreads
         {
-            get => ThreadLookup.Values;
+            get => threadLookup.Values;
         }
 
         private void CheckWatchdog(object? _)
@@ -70,13 +71,13 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             // Note: there is a possibility that a notification might arrive during termination
             // However, in this case we should probably just discard it
-            if (ThreadLookup.TryGetValue(threadId, out var thread))
+            if (threadLookup.TryGetValue(threadId, out var thread))
                 thread.Execute(taskId, flags, job);
         }
 
         protected ShadowThread Register(UIntPtr threadId)
         {
-            if (ThreadLookup.TryGetValue(threadId, out var shadowThread))
+            if (threadLookup.TryGetValue(threadId, out var shadowThread))
                 return shadowThread;
 
             ShadowThread newThread;
@@ -86,10 +87,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
             
             do
             {
-                oldLookup = ThreadLookup;
+                oldLookup = threadLookup;
                 newLookup = oldLookup.Add(threadId, newThread);
             }
-            while (Interlocked.CompareExchange(ref ThreadLookup, newLookup, oldLookup) != oldLookup);
+            while (Interlocked.CompareExchange(ref threadLookup, newLookup, oldLookup) != oldLookup);
 
             newThread.Start();
             return newThread;
@@ -97,21 +98,31 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         protected ShadowThread UnregisterThread(UIntPtr threadId)
         {
-            var removedThread = ThreadLookup[threadId];
+            var removedThread = threadLookup[threadId];
             ImmutableDictionary<UIntPtr, ShadowThread>? newLookup;
             ImmutableDictionary<UIntPtr, ShadowThread>? oldLookup;
 
             do
             {
-                oldLookup = ThreadLookup;
+                oldLookup = threadLookup;
                 newLookup = oldLookup.Remove(threadId);
             }
-            while (Interlocked.CompareExchange(ref ThreadLookup, newLookup, oldLookup) != oldLookup);
+            while (Interlocked.CompareExchange(ref threadLookup, newLookup, oldLookup) != oldLookup);
 
             // Queue for destroying
             ShadowThreadDestroyingQueue.Add(removedThread);
 
             return removedThread;
+        }
+
+        protected bool TryGetShadowThread(UIntPtr threadId, [NotNullWhen(returnValue: true)] out ShadowThread? thread)
+        {
+            return threadLookup.TryGetValue(threadId, out thread);
+        }
+
+        protected IEnumerable<ShadowThread> GetAllThreads()
+        {
+            return threadLookup.Values;
         }
 
         public void Dispose()
@@ -120,7 +131,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             {
                 isDisposed = true;
                 watchdog.Dispose();
-                foreach (var (id, _) in ThreadLookup)
+                foreach (var (id, _) in threadLookup)
                     UnregisterThread(id);
                 ShadowThreadDestroyingQueue.CompleteAdding();
 
