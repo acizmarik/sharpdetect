@@ -84,7 +84,8 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         public void Schedule_ThreadDestroyed(UIntPtr threadId, RawEventInfo info)
         {
-            var destroyedThread = ThreadLookup[threadId];
+            if (!TryGetShadowThread(threadId, out var destroyedThread))
+                return;
 
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
@@ -96,7 +97,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                 {
                     thread.Execute(
                         info.Id,
@@ -113,7 +114,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend | JobFlags.OverrideEpoch, () =>
             {
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                     thread.SuspensionSignal.WaitOne();
 
                 EpochSource.Increment();
@@ -125,7 +126,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                 {
                     thread.Execute(
                         info.Id,
@@ -142,7 +143,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                     thread.RunningSignal.WaitOne();
 
                 EpochSource.Increment();
@@ -154,9 +155,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
-                var thread = ThreadLookup[threadId];
-                thread.EnterNewEpoch();
+                if (!TryGetShadowThread(threadId, out var thread))
+                    return;
 
+                thread.EnterNewEpoch();
                 Executor.ExecuteRuntimeThreadSuspended(thread, info);
             });
         }
@@ -165,9 +167,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
-                var thread = ThreadLookup[threadId];
-                thread.EnterNewEpoch();
+                if (!TryGetShadowThread(threadId, out var thread))
+                    return;
 
+                thread.EnterNewEpoch();
                 Executor.ExecuteRuntimeThreadResumed(thread, info);
             });
         }
@@ -176,17 +179,18 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
-                ThreadLookup[info.ThreadId].EnterState(ShadowThreadState.GarbageCollecting);
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                TryGetShadowThread(info.ThreadId, out var gcStartingThread);
+                gcStartingThread!.EnterState(ShadowThreadState.GarbageCollecting);
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                 {
                     thread.Execute(
-                        info.Id,
-                        JobFlags.OverrideSuspend,
-                        () => thread.EnterState(ShadowThreadState.GarbageCollecting),
+                        info.Id, 
+                        JobFlags.OverrideSuspend, 
+                        () => thread.EnterState(ShadowThreadState.GarbageCollecting), 
                         highPriority: false);
                 }
 
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                     thread.GarbageCollectionSignal.WaitOne();
 
                 Executor.ExecuteGarbageCollectionStarted(generationsCollected, bounds, info);
@@ -197,8 +201,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>
             {
-                ThreadLookup[info.ThreadId].EnterState(ShadowThreadState.Suspended);
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                TryGetShadowThread(info.ThreadId, out var gcFinishingThread);
+                gcFinishingThread!.EnterState(ShadowThreadState.Suspended);
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                 {
                     thread.Execute(
                         info.Id,
@@ -207,7 +212,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
                         highPriority: false);
                 }
 
-                foreach (var (_, thread) in ThreadLookup.Where(t => t.Key != info.ThreadId))
+                foreach (var thread in GetAllThreads().Where(t => t.Id != info.ThreadId))
                     thread.SuspensionSignal.WaitOne();
 
                 Executor.ExecuteGarbageCollectionFinished(bounds, info);
@@ -288,7 +293,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
-                var thread = ThreadLookup[info.ThreadId];
+                if (!TryGetShadowThread(info.ThreadId, out var thread))
+                    return;
+
                 Executor.ExecuteMethodCalled(thread, function, arguments, info);
             });
         }
@@ -297,7 +304,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
             {
-                var thread = ThreadLookup[info.ThreadId];
+                if (!TryGetShadowThread(info.ThreadId, out var thread))
+                    return;
+
                 Executor.ExecuteMethodReturned(thread, function, retValue, byRefArgs, info);
             });
         }
