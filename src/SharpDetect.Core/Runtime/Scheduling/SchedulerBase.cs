@@ -20,6 +20,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         private readonly IDateTimeProvider dateTimeProvider;
         private readonly ILoggerFactory loggerFactory;
         private volatile int virtualThreadsCounter;
+        private UIntPtr? terminatorThreadId;
         private DateTime lastHeartbeatTimeStamp;
         private Timer watchdog;
         private Task shadowThreadReaper;
@@ -61,8 +62,11 @@ namespace SharpDetect.Core.Runtime.Scheduling
             }
         }
 
-        protected void Terminate()
-            => ProcessFinished?.Invoke();
+        protected void Terminate(UIntPtr threadId)
+        {
+            terminatorThreadId = threadId;
+            ProcessFinished?.Invoke();
+        }
 
         protected void FeedWatchdog()
             => lastHeartbeatTimeStamp = dateTimeProvider.Now;
@@ -131,8 +135,13 @@ namespace SharpDetect.Core.Runtime.Scheduling
             {
                 isDisposed = true;
                 watchdog.Dispose();
-                foreach (var (id, _) in threadLookup)
-                    UnregisterThread(id);
+                foreach (var (id, thread) in threadLookup)
+                {
+                    thread.Execute(0, JobFlags.Poison, static () => { }, false);
+                    if (id != terminatorThreadId)
+                        UnregisterThread(id);
+                }
+
                 ShadowThreadDestroyingQueue.CompleteAdding();
 
                 try

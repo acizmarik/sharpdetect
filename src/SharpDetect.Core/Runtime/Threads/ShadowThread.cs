@@ -93,13 +93,20 @@ namespace SharpDetect.Core.Runtime.Threads
                     }
 
                     var (id, job, flags) = jobInfo;
-                    while (epochSource.CurrentEpoch.Value < Epoch.Value && !flags.HasFlag(JobFlags.OverrideSuspend))
+                    while (epochSource.CurrentEpoch.Value < Epoch.Value && !(flags.HasFlag(JobFlags.OverrideSuspend) || flags.HasFlag(JobFlags.Poison)))
                     {
                         // Wait for next epoch
                         epochSource.WaitForNextEpoch(this);
                     }
 
+                    // Execute the action
                     job!.Invoke();
+
+                    if (flags.HasFlag(JobFlags.Poison))
+                    {
+                        // Received poison pill - terminating thread
+                        break;
+                    }
                 }
             }
             catch (ThreadInterruptedException)
