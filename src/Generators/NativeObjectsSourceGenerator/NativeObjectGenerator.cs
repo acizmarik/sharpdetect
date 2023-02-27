@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace NativeObjectsSourceGenerator;
@@ -188,7 +189,7 @@ namespace NativeObjects
 
                 for (int i = 0; i < method.Parameters.Length; i++)
                 {
-                    sourceArgsList.Append($", {method.Parameters[i].OriginalDefinition} a{i}");
+                    sourceArgsList.Append($", {method.Parameters[i].OriginalDefinition}");
                 }
 
                 var destinationArgsList = new StringBuilder();
@@ -250,7 +251,7 @@ namespace NativeObjects
                         invokerFunctions.Append(", ");
                     }
 
-                    invokerFunctions.Append($"{method.Parameters[i].OriginalDefinition} a{i}");
+                    invokerFunctions.Append($"{method.Parameters[i].OriginalDefinition}");
                 }
 
                 invokerFunctions.AppendLine(")");
@@ -310,7 +311,10 @@ namespace NativeObjects
                             break;
                     }
 
-                    invokerFunctions.Append($"a{i}");
+                    var rawParameterName = method.Parameters[i].Name;
+                    var parameterName = SyntaxFacts.GetKeywordKind(rawParameterName) != SyntaxKind.None
+                        ? $"@{rawParameterName}" : rawParameterName;
+                    invokerFunctions.Append(parameterName);
                 }
 
                 invokerFunctions.AppendLine(");");
