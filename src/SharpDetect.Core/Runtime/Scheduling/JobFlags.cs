@@ -6,6 +6,7 @@
         None = 0,
         Concurrent = 1,
         OverrideEpoch = 2,
-        OverrideSuspend = 4
+        OverrideSuspend = 4,
+        Poison = 8
     }
 }

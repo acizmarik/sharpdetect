@@ -1,4 +1,4 @@
-name: Github Actions
+name: CI
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 7.0.102
+        dotnet-version: 7.0.*
     - name: Restore dependencies
       run: dotnet restore src/SharpDetect.sln
     - name: Build & Treat Warnings as Errors
@@ -29,7 +29,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 7.0.102
+        dotnet-version: 7.0.*
     - name: Publish native AOT
       run: |
         cd src/SharpDetect.Profiler/Scripts
@@ -44,7 +44,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 7.0.102
+        dotnet-version: 7.0.*
     - name: Restore dependencies
       run: dotnet restore src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj
     - name: Build (dotnet)
@@ -61,7 +61,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 7.0.102
+        dotnet-version: 7.0.*
     - name: Restore dependencies
       run: dotnet restore src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj
     - name: Build (dotnet)

@@ -41,10 +41,10 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
         public void Schedule_ProfilerDestroyed(RawEventInfo info)
         {
-            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent, () =>
+            Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.Poison, () =>
             {
                 Executor.ExecuteProfilerDestroyed(info);
-                Terminate();
+                Terminate(info.ThreadId);
             });
         }
 

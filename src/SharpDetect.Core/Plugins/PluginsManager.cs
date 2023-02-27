@@ -188,7 +188,7 @@ namespace SharpDetect.Core.Plugins
             }
             catch (Exception e)
             {
-                logger.LogError(e, "[{class}] Could not load assembly due to an error.", nameof(PluginsManager));
+                logger.LogError("[{class}] Could not load assembly due to {exception}: {message}.", nameof(PluginsManager), e.GetType(), e.Message);
                 assembly = null;
                 return false;
             }
