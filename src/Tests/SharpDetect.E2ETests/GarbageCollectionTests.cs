@@ -74,7 +74,6 @@ namespace SharpDetect.E2ETests
             // Assert
             Assert.False(invalidProgramException);
             Assert.True(analysisStarted);
-            Assert.True(analysisEnded);
             Assert.True(reachedEntryPoint);
             Assert.True(reachedTestMethod);
             Assert.True(garbageCollectionStarted);
@@ -82,6 +81,7 @@ namespace SharpDetect.E2ETests
             Assert.Equal(expectedGarbageCollectionsCount, garbageCollectionsCount);
             Assert.True(leftTestMethod);
             Assert.True(leftEntryPoint);
+            Assert.True(analysisEnded);
         }
 
         [Theory]
@@ -150,7 +150,6 @@ namespace SharpDetect.E2ETests
             // Assert
             Assert.False(invalidProgramException);
             Assert.True(analysisStarted);
-            Assert.True(analysisEnded);
             Assert.True(reachedEntryPoint);
             Assert.True(reachedTestMethod);
             Assert.True(garbageCollectionStarted);
@@ -159,6 +158,7 @@ namespace SharpDetect.E2ETests
             Assert.True(leftEntryPoint);
             Assert.Single(lockObjects);
             Assert.Equal(expectedLockAcquiresCount, lockAcquiresCount);
+            Assert.True(analysisEnded);
         }
     }
 }

@@ -81,12 +81,12 @@ namespace SharpDetect.E2ETests
             // Assert
             Assert.False(invalidProgramException);
             Assert.True(analysisStarted);
-            Assert.True(analysisEnded);
             Assert.True(reachedEntryPoint);
             Assert.True(reachedTestMethod);
             Assert.True(fieldAccess);
             Assert.True(leftTestMethod);
             Assert.True(leftEntryPoint);
+            Assert.True(analysisEnded);
         }
     }
 }

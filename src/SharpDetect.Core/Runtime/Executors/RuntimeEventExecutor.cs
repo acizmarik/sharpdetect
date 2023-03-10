@@ -50,6 +50,7 @@ namespace SharpDetect.Core.Runtime.Executors
         {
             runtime.Process_ProfilerDestroyed();
             eventsHub.RaiseProfilerDestroyed(runtime, info);
+            profilingClient.IssueTerminationRequestAsync(info);
         }
 
         public void ExecuteModuleLoaded(UIntPtr moduleId, string path, RawEventInfo info)

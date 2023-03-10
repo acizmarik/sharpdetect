@@ -29,6 +29,7 @@ message RequestMessage
 		Request_Instrumentation		Instrumentation = 5;
 		Request_Wrapping			Wrapping = 6;
 		Request_ContinueExecution   ContinueExecution = 7;
+		Request_Termination			Termination = 8;
 	}
 }
 
@@ -75,6 +76,11 @@ message Request_Wrapping
 }
 
 message Request_ContinueExecution
+{
+	// No additional parameters
+}
+
+message Request_Termination
 {
 	// No additional parameters
 }
