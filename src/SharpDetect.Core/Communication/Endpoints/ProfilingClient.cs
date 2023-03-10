@@ -38,7 +38,7 @@ namespace SharpDetect.Core.Communication.Endpoints
         /// <summary>
         /// Send request to continue with execution based on the provided info
         /// </summary>
-        /// <param name="info">Event we are respondint to</param>
+        /// <param name="info">Event we are responding to</param>
         /// <returns>Request response</returns>
         public Task<Response> IssueContinueExecutionRequestAsync(RawEventInfo info)
         {
@@ -47,6 +47,23 @@ namespace SharpDetect.Core.Communication.Endpoints
                 NotificationId = info.Id,
                 RequestId = Interlocked.Increment(ref requestCounter),
                 ContinueExecution = new Request_ContinueExecution()
+            };
+
+            return requestsProducer.SendAsync(info.ProcessId, request);
+        }
+
+        /// <summary>
+        /// Send request to terminate execution
+        /// </summary>
+        /// <param name="info">Event we are responding to</param>
+        /// <returns>Request response</returns>
+        public Task<Response> IssueTerminationRequestAsync(RawEventInfo info)
+        {
+            var request = new RequestMessage()
+            {
+                NotificationId = info.Id,
+                RequestId = Interlocked.Increment(ref requestCounter),
+                Termination = new Request_Termination()
             };
 
             return requestsProducer.SendAsync(info.ProcessId, request);

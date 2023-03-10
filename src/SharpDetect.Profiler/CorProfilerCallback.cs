@@ -4,6 +4,7 @@ using SharpDetect.Profiler.Hooks;
 using SharpDetect.Profiler.Logging;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace SharpDetect.Profiler;
@@ -22,6 +23,7 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
     private ICorProfilerInfo3 corProfilerInfo;
     private InstrumentationContext? instrumentationContext;
     private ModuleId? coreLibraryModuleId;
+    private int terminated;
     
     public CorProfilerCallback()
     {
@@ -85,12 +87,25 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult Shutdown()
     {
-        Logger.LogInformation("Profiler shutting down");
-        messagingClient.SendNotification(messageFactory.CreateProfilerDestroyedNotification());
-        asmUtilities.Dispose();
-        messagingClient.Terminate();
-        messagingClient.Dispose();
-        Logger.Terminate();
+        if (Interlocked.CompareExchange(ref terminated, 1, 0) == 0)
+        {
+            Logger.LogInformation("Profiler shutting down");
+
+            var notificationId = messagingClient.GetNewNotificationId();
+            var future = messagingClient.ReceiveRequest(notificationId);
+            messagingClient.SendNotification(messageFactory.CreateProfilerDestroyedNotification(), notificationId);
+
+            // Wait for confirmation before terminating communication
+            var request = future.Result;
+            Debug.Assert(request.Termination != null);
+            messagingClient.SendResponse(messageFactory.CreateResponse(request, true));
+
+            asmUtilities.Dispose();
+            messagingClient.Terminate();
+            messagingClient.Dispose();
+            Logger.Terminate();
+        }
+
         return HResult.S_OK;
     }
 

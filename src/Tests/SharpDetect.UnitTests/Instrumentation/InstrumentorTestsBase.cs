@@ -41,6 +41,7 @@ namespace SharpDetect.UnitTests.Instrumentation
             public event Action<IEnumerable<(FunctionInfo Function, ushort Argc)>, RawEventInfo>? IssuedEmitMethodWrappersRequest;
             public event Action<RawEventInfo>? IssuedNoChangesRequest;
             public event Action<byte[]?, MethodInterpretationData?, bool?, RawEventInfo>? IssuedRewriteMethodBodyRequest;
+            public event Action<RawEventInfo>? IssuedTerminationRequest;
 
             public Task<Response> IssueContinueExecutionRequestAsync(RawEventInfo info)
             {
@@ -63,6 +64,12 @@ namespace SharpDetect.UnitTests.Instrumentation
             public Task<Response> IssueRewriteMethodBodyAsync(byte[]? bytecode, MethodInterpretationData? methodData, bool overrideIssueHooks, RawEventInfo info)
             {
                 IssuedRewriteMethodBodyRequest?.Invoke(bytecode, methodData, overrideIssueHooks, info);
+                return Task.FromResult(new Response() { Result = true });
+            }
+
+            public Task<Response> IssueTerminationRequestAsync(RawEventInfo info)
+            {
+                IssuedTerminationRequest?.Invoke(info);
                 return Task.FromResult(new Response() { Result = true });
             }
         }
