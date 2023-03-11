@@ -1,5 +1,6 @@
-﻿// The following code is heavily inspired and partially copied from the dnlib code base
-// Copyright (C) 2012-2019 de4dot@gmail.com under MIT license
+﻿// The following code is heavily inspired and copied from the dnlib's code base: https://github.com/0xd4d/dnlib
+// Licensed under MIT license
+// Copyright (C) 2012-2019 de4dot@gmail.com
 
 using CommunityToolkit.Diagnostics;
 using dnlib.DotNet;
