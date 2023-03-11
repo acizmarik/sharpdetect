@@ -1,4 +1,7 @@
-﻿using dnlib.DotNet;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common.Services.Metadata;
 using System.Collections.Concurrent;

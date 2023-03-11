@@ -1,4 +1,7 @@
-﻿using IntervalTree;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using IntervalTree;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common.Exceptions;
 using System.Collections.Concurrent;

@@ -1,4 +1,7 @@
-﻿using SharpDetect.Common.Runtime;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.Common.Runtime;
 
 namespace SharpDetect.Core.Runtime
 {

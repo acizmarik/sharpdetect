@@ -1,10 +1,13 @@
-﻿using System.Collections;
+﻿// The following code is from Nemesis.Essentials: https://github.com/nemesissoft/Nemesis.Essentials
+// Licensed under MIT license
+// Copyright (c) 2011-2021 Nemesis
+
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.Globalization;
 
 namespace SharpDetect.Common.Utilities
 {
-    // https://github.com/nemesissoft/Nemesis.Essentials/blob/93cd17d37569e49028d7f8154f84d89692502d7d/Nemesis.Essentials/Design/ValueCollection.cs
     public class ValueCollection<T> : Collection<T>, IEquatable<ValueCollection<T>>, IFormattable
     {
         private readonly IEqualityComparer<T> _equalityComparer;

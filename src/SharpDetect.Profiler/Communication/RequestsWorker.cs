@@ -1,4 +1,7 @@
-﻿using NetMQ;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using NetMQ;
 using NetMQ.Sockets;
 using SharpDetect.Common.Messages;
 

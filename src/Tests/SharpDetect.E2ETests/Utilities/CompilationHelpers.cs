@@ -1,4 +1,7 @@
-﻿using CliWrap;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using CliWrap;
 using System.Text;
 
 namespace SharpDetect.E2ETests.Utilities

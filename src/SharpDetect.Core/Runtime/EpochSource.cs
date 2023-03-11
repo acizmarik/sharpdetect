@@ -1,4 +1,7 @@
-﻿using SharpDetect.Core.Runtime.Threads;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.Core.Runtime.Threads;
 
 namespace SharpDetect.Core.Runtime
 {

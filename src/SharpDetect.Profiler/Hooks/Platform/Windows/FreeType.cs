@@ -1,4 +1,7 @@
-﻿namespace SharpDetect.Profiler.Hooks.PAL.Windows;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+namespace SharpDetect.Profiler.Hooks.PAL.Windows;
 
 [Flags]
 public enum FreeType

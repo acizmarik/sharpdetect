@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Common.Services;
 using System.CommandLine;
 using System.CommandLine.Invocation;

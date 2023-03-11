@@ -1,4 +1,7 @@
-﻿using SharpDetect.Common.Plugins;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Services.Reporting;
 using SharpDetect.E2ETests.Definitions;

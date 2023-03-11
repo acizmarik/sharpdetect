@@ -1,4 +1,7 @@
-﻿using SharpDetect.Common.Runtime.Arguments;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Scripts.ExpressionBuilder;
 using SharpDetect.Core.Runtime.Arguments;
 using Xunit;

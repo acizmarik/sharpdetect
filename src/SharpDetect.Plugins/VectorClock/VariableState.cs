@@ -1,4 +1,7 @@
-﻿namespace SharpDetect.Plugins.VectorClock
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+namespace SharpDetect.Plugins.VectorClock
 {
     internal class VariableState
     {

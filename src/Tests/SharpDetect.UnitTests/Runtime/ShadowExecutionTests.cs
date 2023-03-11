@@ -1,4 +1,7 @@
-﻿using SharpDetect.Common.Messages;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Core.Communication;
