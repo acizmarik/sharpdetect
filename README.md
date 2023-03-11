@@ -45,4 +45,4 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for a guide on how to contribute 
 
 ## License
 
-This project is licensed under the Apache-2.0 license, unless specified otherwise in a file header.
+This project is licensed under the [Apache-2.0 license](LICENSE.md), unless specified otherwise in a file header.
