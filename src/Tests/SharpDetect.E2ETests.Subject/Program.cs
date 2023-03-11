@@ -1,4 +1,7 @@
-﻿using SharpDetect.E2ETests.Subject.Helpers.Arrays;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.E2ETests.Subject.Helpers.Arrays;
 using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
 using SharpDetect.E2ETests.Subject.Helpers.Fields;
 using System.Runtime.CompilerServices;

@@ -20,3 +20,10 @@ In this case the PR might get finished by the maintainer of the repository.
 SharpDetect is licensed under the [Apache-2.0 license](LICENSE.md) except for a few portions of the code that have their own license headers. Third-party libraries used by SharpDetect are distributed under their own licenses.
 
 By submitting a PR you agree to distribute your work under the repository license. For more information, see also Github's terms of service ("inbound=outbound") rule.
+
+When adding new files, use the license header template below. Just don't forget to substitute [yyyy] with the current year.
+
+```CSHARP
+// Copyright [yyyy] Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+```

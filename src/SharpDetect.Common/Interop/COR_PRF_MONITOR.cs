@@ -1,4 +1,7 @@
-﻿namespace SharpDetect.Common.Interop
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+namespace SharpDetect.Common.Interop
 {
     /// <summary>
     /// Flags used to setup profiling capabilities and some runtime features.

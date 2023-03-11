@@ -1,4 +1,7 @@
-﻿using Iced.Intel;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using Iced.Intel;
 using SharpDetect.Profiler.Hooks.PAL.Windows;
 using static Iced.Intel.AssemblerRegisters;
 

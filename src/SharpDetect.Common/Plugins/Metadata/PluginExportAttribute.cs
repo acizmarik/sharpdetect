@@ -1,4 +1,7 @@
-﻿namespace SharpDetect.Common.Plugins.Metadata
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+namespace SharpDetect.Common.Plugins.Metadata
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class PluginExportAttribute : Attribute

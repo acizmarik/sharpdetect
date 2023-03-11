@@ -1,4 +1,7 @@
-﻿namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
 {
     public class DataRace
     {
