@@ -1,10 +1,20 @@
 <Project>
     <!-- Basic metadata -->
     <PropertyGroup>
-        <Authors>Andrej Cizmarik</Authors>
-        <Copyright>Andrej Cizmarik (c) $([System.DateTime]::Now.ToString(yyyy))</Copyright>
+        <Authors>Andrej Čižmárik</Authors>
+        <Copyright>Andrej Čižmárik and Contributors $([System.DateTime]::Now.ToString(yyyy))</Copyright>
+        <Description>SharpDetect is a dynamic analysis framework for .NET programs</Description>
+        <PackageTags>dotnet;c-sharp;code-analysis;dynamic-code-analysis</PackageTags>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/acizmarik/sharpdetect</RepositoryUrl>
     </PropertyGroup>
 
+    <!-- Licensing -->
+    <PropertyGroup>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    </PropertyGroup>
+  
     <!-- Compilation -->
     <PropertyGroup>
         <Deterministic>true</Deterministic>
@@ -24,6 +34,6 @@
 
     <!-- Static analysis -->
     <PropertyGroup>
-         <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
     </PropertyGroup>
 </Project>

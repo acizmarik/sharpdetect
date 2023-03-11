@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using Microsoft.Extensions.Configuration;
 using SharpDetect.Common;
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Plugins.Metadata;

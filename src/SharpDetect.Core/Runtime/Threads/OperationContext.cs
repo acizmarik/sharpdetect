@@ -1,4 +1,7 @@
-﻿using CommunityToolkit.Diagnostics;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using CommunityToolkit.Diagnostics;
 using SharpDetect.Common.Exceptions;
 
 namespace SharpDetect.Core.Runtime.Threads

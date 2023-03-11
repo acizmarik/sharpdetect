@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using Microsoft.Extensions.Logging.Abstractions;
 using SharpDetect.Common;
 using SharpDetect.Core.Runtime;
 using SharpDetect.Core.Runtime.Scheduling;

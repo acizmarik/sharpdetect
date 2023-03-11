@@ -1,4 +1,7 @@
-﻿-- This file describes System.Private.CoreLib
+﻿-- Copyright 2023 Andrej Čižmárik and Contributors
+-- SPDX-License-Identifier: Apache-2.0
+
+-- This file describes System.Private.CoreLib
 local sd = require("Imports/sharpdetect")
 
 assemblyName = "System.Private.CoreLib"

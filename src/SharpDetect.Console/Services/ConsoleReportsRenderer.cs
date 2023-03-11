@@ -1,4 +1,7 @@
-﻿using CliWrap.Builders;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using CliWrap.Builders;
 using dnlib.DotNet.Pdb;
 using Serilog;
 using SharpDetect.Common.Diagnostics;

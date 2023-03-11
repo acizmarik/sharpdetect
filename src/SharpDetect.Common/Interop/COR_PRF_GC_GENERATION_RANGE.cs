@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using System;
 using System.Runtime.InteropServices;
 
 namespace SharpDetect.Common.Interop

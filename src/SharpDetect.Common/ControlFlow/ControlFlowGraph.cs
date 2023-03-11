@@ -1,11 +1,10 @@
 ﻿#nullable disable
-// Copyright (c) 2014 yck1509. Project: ConfuserEx
+// The following code is copied from yck1509's https://github.com/yck1509/ConfuserEx project
+// Licensed under MIT license
+// Copyright (c) 2014 yck1509
 
 using dnlib.DotNet.Emit;
 using System.Collections;
-using System.Runtime.CompilerServices;
-
-[assembly: InternalsVisibleTo("SharpDetect.UnitTests")]
 
 namespace SharpDetect.Common.ControlFlow
 {

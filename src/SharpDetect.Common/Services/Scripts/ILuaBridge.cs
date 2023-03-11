@@ -1,4 +1,7 @@
-﻿using MoonSharp.Interpreter;
+﻿// Copyright 2023 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using MoonSharp.Interpreter;
 using SharpDetect.Common.Scripts;
 
 namespace SharpDetect.Common.Services.Scripts
