@@ -1,4 +1,8 @@
-﻿using System.Text;
+﻿// The following code is copied and slightly modified from Kevin Gosse's https://github.com/kevingosse/Dotnetos2022 samples
+// Licensed under MIT license
+// Copyright (c) 2022 Kevin Gosse
+
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;

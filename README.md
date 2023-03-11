@@ -105,3 +105,7 @@ Currently, the following plugins can be used:
 * `Echo` - Logs events to console on the `Information` level. It is very verbose.
 * `Eraser` - Basic implementation of the lock-set data-race detector
 * `FastTrack` - Basic implementation of the happens-before data-race detector
+
+## License
+
+This project is licensed under the Apache-2.0 license, unless specified otherwise in a file header.
