@@ -17,7 +17,7 @@ In this case the PR might get finished by the maintainer of the repository.
 
 ## Licensing
 
-SharpDetect is licensed under the [Apache-2.0 license](LICENSE.md) except for a few portions of the code that have their own license headers. Third-party libraries used by SharpDetect are distributed under their own licenses.
+SharpDetect is licensed under the [Apache-2.0 license](LICENSE) except for a few portions of the code that have their own license headers. Third-party libraries used by SharpDetect are distributed under their own licenses.
 
 By submitting a PR you agree to distribute your work under the repository license. For more information, see also Github's terms of service ("inbound=outbound") rule.
 
