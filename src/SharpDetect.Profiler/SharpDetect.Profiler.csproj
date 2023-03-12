@@ -1,40 +1,41 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-	<TargetFramework>net7.0</TargetFramework>
-	<ImplicitUsings>enable</ImplicitUsings>
-	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<RootNamespace>SharpDetect.Profiler</RootNamespace>
-	<PublishAot>true</PublishAot>
-	<NativeLib>Shared</NativeLib>
-	<SelfContained>true</SelfContained>
-	<EnableAOTAnalyzer>true</EnableAOTAnalyzer>
+		<TargetFramework>net7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<RootNamespace>SharpDetect.Profiler</RootNamespace>
+		<PublishAot>true</PublishAot>
+		<NativeLib>Shared</NativeLib>
+		<SelfContained>true</SelfContained>
+		<EnableAOTAnalyzer>true</EnableAOTAnalyzer>
 	</PropertyGroup>
 
 	<PropertyGroup>
-	<IlcDisableReflection>false</IlcDisableReflection>
-	<IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+		<IlcDisableReflection>false</IlcDisableReflection>
+		<IlcOptimizationPreference>Speed</IlcOptimizationPreference>
 	</PropertyGroup>
 
 	<ItemGroup>
-	<PackageReference Include="Iced" Version="1.18.0" />
-	<PackageReference Include="NetMQ" Version="4.0.1.10" />
+		<PackageReference Include="Iced" Version="1.18.0" />
+		<PackageReference Include="NetMQ" Version="4.0.1.10" />
 	</ItemGroup>
 
 	<ItemGroup>
-	<ProjectReference Include="..\Generators\NativeObjectsSourceGenerator\NativeObjectsSourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-	<ProjectReference Include="..\SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj" />
+		<ProjectReference Include="..\Generators\NativeObjectsSourceGenerator\NativeObjectsSourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\SharpDetect.Profiler.Common\SharpDetect.Profiler.Common.csproj" />
+		<ProjectReference Include="..\SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-	<Using Include="System.UInt32" Alias="DWORD" />
-	<Using Include="System.Byte" Alias="COR_SIGNATURE" />
-	<Using Include="System.IntPtr" Alias="HCORENUM" />
+		<Using Include="System.UInt32" Alias="DWORD" />
+		<Using Include="System.Byte" Alias="COR_SIGNATURE" />
+		<Using Include="System.IntPtr" Alias="HCORENUM" />
 	</ItemGroup>
 
 	<ItemGroup>
-	<Folder Include="Hooks\Asm\" />
-	<Folder Include="Hooks\Platform\Linux\" />
+		<Folder Include="Hooks\Asm\" />
+		<Folder Include="Hooks\Platform\Linux\" />
 	</ItemGroup>
 
 </Project>

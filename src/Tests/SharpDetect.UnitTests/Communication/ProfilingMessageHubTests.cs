@@ -4,9 +4,9 @@
 using dnlib.DotNet;
 using Google.Protobuf;
 using SharpDetect.Common;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Core.Communication;
+using SharpDetect.Profiler;
 using System.Runtime.InteropServices;
 using Xunit;
 
@@ -317,7 +317,7 @@ namespace SharpDetect.UnitTests.Communication
             const ulong notificationId = 123;
             const int processId = 456;
             UIntPtr threadId = new(789);
-            const COR_PRF_SUSPEND_REASON reason = COR_PRF_SUSPEND_REASON.GC;
+            const COR_PRF_SUSPEND_REASON reason = COR_PRF_SUSPEND_REASON.COR_PRF_SUSPEND_FOR_GC;
 
             var raised = false;
             var reasonInfo = default(COR_PRF_SUSPEND_REASON);
@@ -461,13 +461,11 @@ namespace SharpDetect.UnitTests.Communication
             const ulong notificationId = 123;
             const int processId = 456;
             UIntPtr threadId = new(789);
-            var range = new COR_PRF_GC_GENERATION_RANGE
-            {
-                generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_2,
-                rangeStart = new(123),
-                rangeLength = new(456),
-                rangeLengthReserved = new(789)
-            };
+            var range = new COR_PRF_GC_GENERATION_RANGE(
+                generation: COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_2,
+                rangeStart: new(123),
+                rangeLength: new(456),
+                rangeLengthReserved: new(789));
             var bounds = new COR_PRF_GC_GENERATION_RANGE[] { range };
             var boundsBytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref bounds[0], bounds.Length));
 
@@ -511,13 +509,11 @@ namespace SharpDetect.UnitTests.Communication
             const ulong notificationId = 123;
             const int processId = 456;
             UIntPtr threadId = new(789);
-            var range = new COR_PRF_GC_GENERATION_RANGE
-            {
-                generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_2,
-                rangeStart = new(123),
-                rangeLength = new(456),
-                rangeLengthReserved = new(789)
-            };
+            var range = new COR_PRF_GC_GENERATION_RANGE(
+                generation: COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_2,
+                rangeStart: new(123),
+                rangeLength: new(456),
+                rangeLengthReserved: new(789));
             var bounds = new COR_PRF_GC_GENERATION_RANGE[] { range };
             var boundsBytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref bounds[0], bounds.Length));
 

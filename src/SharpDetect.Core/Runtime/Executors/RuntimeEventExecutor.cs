@@ -4,7 +4,6 @@
 using dnlib.DotNet;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
@@ -14,6 +13,7 @@ using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Arguments;
 using SharpDetect.Core.Runtime.Threads;
 using SharpDetect.Core.Utilities;
+using SharpDetect.Profiler;
 
 namespace SharpDetect.Core.Runtime.Executors
 {

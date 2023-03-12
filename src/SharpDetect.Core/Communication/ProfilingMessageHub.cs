@@ -3,10 +3,10 @@
 
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Unsafe;
+using SharpDetect.Profiler;
 
 namespace SharpDetect.Core.Communication
 {

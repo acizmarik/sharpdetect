@@ -4,11 +4,11 @@
 using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services;
 using SharpDetect.Core.Runtime.Executors;
+using SharpDetect.Profiler;
 
 namespace SharpDetect.Core.Runtime.Scheduling
 {

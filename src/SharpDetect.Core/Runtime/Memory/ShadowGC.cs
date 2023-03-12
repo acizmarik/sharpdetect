@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.Logging;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Runtime;
-using GcGenerationRange = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION_RANGE;
+using SharpDetect.Profiler;
+using GcGenerationRange = SharpDetect.Profiler.COR_PRF_GC_GENERATION_RANGE;
 
 namespace SharpDetect.Core.Runtime.Memory
 {

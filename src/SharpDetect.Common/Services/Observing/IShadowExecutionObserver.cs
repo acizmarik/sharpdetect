@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using dnlib.DotNet;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
+using SharpDetect.Profiler;
 
 namespace SharpDetect.Common.Services
 {

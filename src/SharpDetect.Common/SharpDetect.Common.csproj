@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SharpDetect.Profiler.Common\SharpDetect.Profiler.Common.csproj" />
     <ProjectReference Include="..\SharpDetect.ProtocolBuffers\SharpDetect.ProtocolBuffers.csproj" />
   </ItemGroup>
 

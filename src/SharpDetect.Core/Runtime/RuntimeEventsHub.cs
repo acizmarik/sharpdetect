@@ -3,12 +3,12 @@
 
 using dnlib.DotNet;
 using SharpDetect.Common;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Arguments;
 using SharpDetect.Common.Services;
 using SharpDetect.Core.Runtime.Arguments;
+using SharpDetect.Profiler;
 
 namespace SharpDetect.Core.Runtime
 {

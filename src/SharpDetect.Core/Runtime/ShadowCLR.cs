@@ -5,7 +5,6 @@ using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Threads;
@@ -13,6 +12,7 @@ using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Memory;
 using SharpDetect.Core.Runtime.Threads;
 using SharpDetect.Instrumentation.Utilities;
+using SharpDetect.Profiler;
 using System.Collections.Concurrent;
 
 namespace SharpDetect.Core.Runtime
@@ -130,7 +130,7 @@ namespace SharpDetect.Core.Runtime
         public void Process_GarbageCollectionStarted(bool[] generationsCollected, COR_PRF_GC_GENERATION_RANGE[] bounds)
         {
             RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
-            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.COR_PRF_SUSPEND_FOR_GC);
             RuntimeContract.Assert(!ongoingGarbageCollection);
 
             ShadowGC.ProcessGarbageCollectionStarted(bounds, generationsCollected);
@@ -140,7 +140,7 @@ namespace SharpDetect.Core.Runtime
         public void Process_GarbageCollectionFinished(COR_PRF_GC_GENERATION_RANGE[] bounds)
         {
             RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
-            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.COR_PRF_SUSPEND_FOR_GC);
             RuntimeContract.Assert(ongoingGarbageCollection);
 
             ShadowGC.ProcessGarbageCollectionFinished(bounds);
@@ -150,7 +150,7 @@ namespace SharpDetect.Core.Runtime
         public void Process_SurvivingReferences(UIntPtr[] starts, uint[] lengths)
         {
             RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
-            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.COR_PRF_SUSPEND_FOR_GC);
             RuntimeContract.Assert(ongoingGarbageCollection);
 
             ShadowGC.ProcessSurvivingReferences(starts, lengths);
@@ -159,7 +159,7 @@ namespace SharpDetect.Core.Runtime
         public void Process_MovedReferences(UIntPtr[] oldStarts, UIntPtr[] newStarts, uint[] lengths)
         {
             RuntimeContract.Assert(State == ShadowRuntimeState.Suspended);
-            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.GC);
+            RuntimeContract.Assert(SuspensionReason == COR_PRF_SUSPEND_REASON.COR_PRF_SUSPEND_FOR_GC);
             RuntimeContract.Assert(ongoingGarbageCollection);
 
             ShadowGC.ProcessMovedReferences(oldStarts, newStarts, lengths);

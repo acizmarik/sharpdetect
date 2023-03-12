@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.Logging.Abstractions;
-using SharpDetect.Common.Interop;
 using SharpDetect.Core.Runtime.Memory;
+using SharpDetect.Profiler;
 using Xunit;
 
 namespace SharpDetect.UnitTests.Runtime.Memory
@@ -49,18 +49,15 @@ namespace SharpDetect.UnitTests.Runtime.Memory
             var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
             var bounds = new COR_PRF_GC_GENERATION_RANGE[]
             {
-                new() 
-                {
-                    /*   We have a heap block:
-                     *   - starting at an address 8
-                     *   - with length 32
-                     *   - reserved length 64 (max size)
-                     */
-                    generation = 0, 
-                    rangeStart = new(8), 
-                    rangeLength = new(32),
-                    rangeLengthReserved = new(64)
-                }
+                /*   We have a heap block:
+                 *   - starting at an address 8
+                 *   - with length 32
+                 *   - reserved length 64 (max size)
+                 */
+                new(generation: 0, 
+                    rangeStart: new(8), 
+                    rangeLength: new(32),
+                    rangeLengthReserved: new(64))
             };
 
             // Act
@@ -99,18 +96,15 @@ namespace SharpDetect.UnitTests.Runtime.Memory
             var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
             var bounds = new COR_PRF_GC_GENERATION_RANGE[]
             {
-                new()
-                {
-                    /*   We have a heap block:
-                     *   - starting at an address 8
-                     *   - with length 20
-                     *   - reserved length 64 (max size)
-                     */
-                    generation = 0,
-                    rangeStart = new(7),
-                    rangeLength = new(20),
-                    rangeLengthReserved = new(64)
-                }
+                /*   We have a heap block:
+                 *   - starting at an address 8
+                 *   - with length 20
+                 *   - reserved length 64 (max size)
+                 */
+                new(generation: 0,
+                    rangeStart: new(7),
+                    rangeLength: new(20),
+                    rangeLengthReserved: new(64))
             };
 
             // Act
@@ -150,7 +144,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
                     4
                 }
             );
-            bounds[0].generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1;
+            bounds[0] = new(COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1, bounds[0].RangeStart, bounds[0].RangeLength, bounds[0].RangeLengthReserved);
             shadowGC.ProcessGarbageCollectionFinished(bounds);
 
             // Assert
@@ -175,18 +169,15 @@ namespace SharpDetect.UnitTests.Runtime.Memory
             var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
             var bounds = new COR_PRF_GC_GENERATION_RANGE[]
             {
-                new()
-                {
-                    /*   We have a heap block:
-                     *   - starting at an address 8
-                     *   - with length 20
-                     *   - reserved length 64 (max size)
-                     */
-                    generation = 0,
-                    rangeStart = new(7),
-                    rangeLength = new(20),
-                    rangeLengthReserved = new(64)
-                }
+                /*   We have a heap block:
+                 *   - starting at an address 8
+                 *   - with length 20
+                 *   - reserved length 64 (max size)
+                 */
+                new(generation: 0,
+                    rangeStart: new(7),
+                    rangeLength: new(20),
+                    rangeLengthReserved: new(64))
             };
 
             // Act
@@ -226,7 +217,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
                     4
                 }
             );
-            bounds[0].generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1;
+            bounds[0] = new(COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1, bounds[0].RangeStart, bounds[0].RangeLength, bounds[0].RangeLengthReserved);
             shadowGC.ProcessGarbageCollectionFinished(bounds);
 
             // Assert
@@ -250,18 +241,15 @@ namespace SharpDetect.UnitTests.Runtime.Memory
             var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
             var bounds = new COR_PRF_GC_GENERATION_RANGE[]
             {
-                new()
-                {
-                    /*   We have a heap block:
-                     *   - starting at an address 8
-                     *   - with length 20
-                     *   - reserved length 64 (max size)
-                     */
-                    generation = generationFrom,
-                    rangeStart = new(7),
-                    rangeLength = new(20),
-                    rangeLengthReserved = new(64)
-                }
+                /*   We have a heap block:
+                 *   - starting at an address 8
+                 *   - with length 20
+                 *   - reserved length 64 (max size)
+                 */
+                new(generation: generationFrom,
+                    rangeStart: new(7),
+                    rangeLength: new(20),
+                    rangeLengthReserved: new(64))
             };
 
             // Act
@@ -301,7 +289,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
                     4
                 }
             );
-            bounds[0].generation = generationTo;
+            bounds[0] = new(generationTo, bounds[0].RangeStart, bounds[0].RangeLength, bounds[0].RangeLengthReserved);
             shadowGC.ProcessGarbageCollectionFinished(bounds);
 
             // Assert
@@ -323,18 +311,15 @@ namespace SharpDetect.UnitTests.Runtime.Memory
             var generations = new bool[3] { true /* GEN0 */, false /* GEN1 */, false /* GEN2 */ };
             var bounds = new COR_PRF_GC_GENERATION_RANGE[]
             {
-                new()
-                {
-                    /*   We have a heap block:
-                     *   - starting at an address 8
-                     *   - with length 20
-                     *   - reserved length 64 (max size)
-                     */
-                    generation = 0,
-                    rangeStart = new(7),
-                    rangeLength = new(20),
-                    rangeLengthReserved = new(64)
-                }
+                /*   We have a heap block:
+                 *   - starting at an address 8
+                 *   - with length 20
+                 *   - reserved length 64 (max size)
+                 */
+                new(generation: 0,
+                    rangeStart: new(7),
+                    rangeLength: new(20),
+                    rangeLengthReserved: new(64))
             };
 
             // Act
@@ -374,7 +359,7 @@ namespace SharpDetect.UnitTests.Runtime.Memory
                     4
                 }
             );
-            bounds[0].generation = COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1;
+            bounds[0] = new(COR_PRF_GC_GENERATION.COR_PRF_GC_GEN_1, bounds[0].RangeStart, bounds[0].RangeLength, bounds[0].RangeLengthReserved);
             shadowGC.ProcessGarbageCollectionFinished(bounds);
 
             // Assert

@@ -4,7 +4,6 @@
 using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
-using SharpDetect.Common.Interop;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services;
 using SharpDetect.Common.Services.Descriptors;
@@ -12,6 +11,7 @@ using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Executors;
 using SharpDetect.Core.Runtime.Scheduling;
+using SharpDetect.Profiler;
 using System.Collections.Immutable;
 
 namespace SharpDetect.Core.Runtime

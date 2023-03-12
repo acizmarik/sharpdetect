@@ -3,7 +3,7 @@ using CommunityToolkit.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
-using SharpDetect.Common.Interop;
+using SharpDetect.Profiler;
 using static SharpDetect.Common.Constants;
 
 namespace SharpDetect.Core

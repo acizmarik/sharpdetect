@@ -41,6 +41,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{4022
 		..\.github\workflows\publish.yml = ..\.github\workflows\publish.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.Profiler.Common", "SharpDetect.Profiler.Common\SharpDetect.Profiler.Common.csproj", "{DB846EBF-151F-41B9-828D-50BF4C1DCA07}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -277,6 +279,22 @@ Global
 		{3604911F-C80E-405F-B034-75AE21A5B203}.RelWithDebInfo|Any CPU.Build.0 = Release|Any CPU
 		{3604911F-C80E-405F-B034-75AE21A5B203}.RelWithDebInfo|x64.ActiveCfg = Release|Any CPU
 		{3604911F-C80E-405F-B034-75AE21A5B203}.RelWithDebInfo|x64.Build.0 = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Debug|x64.Build.0 = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.MinSizeRel|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.MinSizeRel|Any CPU.Build.0 = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.MinSizeRel|x64.ActiveCfg = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.MinSizeRel|x64.Build.0 = Debug|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Release|x64.ActiveCfg = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.Release|x64.Build.0 = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.RelWithDebInfo|Any CPU.ActiveCfg = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.RelWithDebInfo|Any CPU.Build.0 = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.RelWithDebInfo|x64.ActiveCfg = Release|Any CPU
+		{DB846EBF-151F-41B9-828D-50BF4C1DCA07}.RelWithDebInfo|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

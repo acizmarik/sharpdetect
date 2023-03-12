@@ -5,8 +5,8 @@ using IntervalTree;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common.Exceptions;
 using System.Collections.Concurrent;
-using GcGeneration = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION;
-using GcGenerationRange = SharpDetect.Common.Interop.COR_PRF_GC_GENERATION_RANGE;
+using GcGeneration = SharpDetect.Profiler.COR_PRF_GC_GENERATION;
+using GcGenerationRange = SharpDetect.Profiler.COR_PRF_GC_GENERATION_RANGE;
 
 namespace SharpDetect.Core.Runtime.Memory
 {
@@ -115,9 +115,9 @@ namespace SharpDetect.Core.Runtime.Memory
             var newIntervalTree = new IntervalTree<UIntPtr, GcGeneration>();
             foreach (var range in ranges)
             {
-                var start = range.rangeStart;
-                var end = new UIntPtr(start.ToUInt64() + range.rangeLength.ToUInt64());
-                newIntervalTree.Add(start, end, range.generation);
+                var start = range.RangeStart;
+                var end = new UIntPtr(start.Value.ToUInt64() + range.RangeLength.ToUInt64());
+                newIntervalTree.Add(start.Value, end, range.Generation);
             }
             // Assign new memory segments lookup
             memorySegments = newIntervalTree;
