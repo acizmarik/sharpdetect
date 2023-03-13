@@ -1,75 +1,19 @@
 ﻿// Copyright 2023 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using Iced.Intel;
-using SharpDetect.Profiler.Hooks.PAL.Windows;
-using static Iced.Intel.AssemblerRegisters;
+using SharpDetect.Profiler.Hooks.Platform.Windows;
 
 namespace SharpDetect.Profiler.Hooks;
 
 internal partial class AsmUtilities
 {
     private static NakedEntryStub EmitStubForNakedCall_Windows_X64(IntPtr nakedFunctionPtr)
-    {
-        // We are on a 64-bit architecture (x86-64)
-        // 1) save registers from call clobbering (RAX-RDX, R8 - R11)
-        // 2) store target function pointer as R11
-        // 3) call hook (indirect call based on R11)
-        // 4) restore registers (RAX-RDX, R8 - R11)
-        // 5) return
-
-        var assembler = new Assembler(64);
-        assembler.push(rax);
-        assembler.push(rcx);
-        assembler.push(rdx);
-        assembler.push(r8);
-        assembler.push(r9);
-        assembler.push(r10);
-        assembler.push(r11);
-        assembler.mov(r11, nakedFunctionPtr);
-        assembler.sub(rsp, 0x20);
-        assembler.call(r11);
-        assembler.add(rsp, 0x20);
-        assembler.pop(r11);
-        assembler.pop(r10);
-        assembler.pop(r9);
-        assembler.pop(r8);
-        assembler.pop(rdx);
-        assembler.pop(rcx);
-        assembler.pop(rax);
-        assembler.ret();
-
-        return EmitStubForNakedCall_Windows(CompileAsm(assembler));
-    }
+        => EmitStubForNakedCall_Windows(Architecture.Intel.AssemblerX64.Instance.Assemble(nakedFunctionPtr));
 
     private static NakedEntryStub EmitStubForNakedCall_Windows_X86(IntPtr nakedFunctionPtr)
-    {
-        // TODO: x86 was not tested during development
-        // -- I am actually not sure whether I am coordinated with calling conventions
+        => EmitStubForNakedCall_Windows(Architecture.Intel.AssemblerX86.Instance.Assemble(nakedFunctionPtr));
 
-        // We are on a 32-bit architecture (x86)
-        // 1) save registers from call clobbering (EAX-EDX)
-        // 2) store target function pointer as EDX
-        // 3) call hook (indirect call based on EDX)
-        // 4) restore registers (RAX-RDX, R8 - R11)
-        // 5) return
-
-        var assembler = new Assembler(32);
-        assembler.push(eax);
-        assembler.push(ecx);
-        assembler.push(edx);
-        assembler.sub(esp, 0x10);
-        assembler.mov(edx, (uint)nakedFunctionPtr);
-        assembler.add(esp, 0x10);
-        assembler.pop(edx);
-        assembler.pop(ecx);
-        assembler.pop(eax);
-        assembler.ret();
-
-        return EmitStubForNakedCall_Windows(CompileAsm(assembler));
-    }
-
-    private static NakedEntryStub EmitStubForNakedCall_Windows(byte[] code)
+    private unsafe static NakedEntryStub EmitStubForNakedCall_Windows(byte[] code)
     {
         /*  TODO: This implementation is wasteful
          *  -- It is badly documented but it seems like each call allocates 64KiB virtual address space (1 page)
@@ -91,10 +35,14 @@ internal partial class AsmUtilities
 
         var codeSize = (DWORD)code.Length;
         // Allocate memory
-        var ptr = WindowsNativeFunctions.VirtualAlloc(IntPtr.Zero, codeSize, allocationType, protectionType);
-        // Fill it with machine code
-        FillMemory(code, ptr, codeSize);
+        var ptrDest = WindowsNativeFunctions.VirtualAlloc(IntPtr.Zero, codeSize, allocationType, protectionType);
+        if (ptrDest == IntPtr.Zero)
+            throw new InvalidOperationException("Could not allocate memory for method hook.");
 
-        return new(ptr, codeSize, () => WindowsNativeFunctions.VirtualFree(ptr, codeSize, freeType));
+        // Fill it with machine code
+        fixed (byte* ptrSrc = code)
+            Buffer.MemoryCopy(ptrSrc, (void*)ptrDest, codeSize, codeSize);
+
+        return new(ptrDest, codeSize, () => WindowsNativeFunctions.VirtualFree(ptrDest, codeSize, freeType));
     }
 }

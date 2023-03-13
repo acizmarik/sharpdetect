@@ -29,7 +29,7 @@ namespace SharpDetect.E2ETests.Utilities
             }
             else if (Environment.OSVersion.Platform == PlatformID.Unix)
             {
-                ProfilerName = "libSharpDetect.Profiler.so";
+                ProfilerName = "SharpDetect.Profiler.so";
                 ProfilerDllPath = Path.Combine(pathPrefix, "linux-x64", "publish", ProfilerName);
             }
             else

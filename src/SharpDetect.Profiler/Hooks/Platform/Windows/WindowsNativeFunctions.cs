@@ -3,7 +3,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace SharpDetect.Profiler.Hooks.PAL.Windows
+namespace SharpDetect.Profiler.Hooks.Platform.Windows
 {
     internal static partial class WindowsNativeFunctions
     {
