@@ -32,9 +32,9 @@ internal partial class AsmUtilities
             MmapProtectionType.PROT_WRITE | 
             MmapProtectionType.PROT_EXEC;
 
-        var codeSize = (DWORD)code.Length;
+        var codeSize = code.Length;
         // Allocate memory
-        var ptrDest = LinuxNativeFunctions.mmap(IntPtr.Zero, codeSize, protection, flags, 0, 0);
+        var ptrDest = LinuxNativeFunctions.mmap(IntPtr.Zero, (nuint)codeSize, protection, flags, 0, 0);
         if (ptrDest == IntPtr.Zero)
             throw new InvalidOperationException("Could not allocate memory for method hook.");
 
@@ -42,6 +42,6 @@ internal partial class AsmUtilities
         fixed (byte* ptrSrc = code)
             Buffer.MemoryCopy(ptrSrc, (void*)ptrDest, codeSize, codeSize);
 
-        return new(ptrDest, codeSize, () => LinuxNativeFunctions.munmap(ptrDest, codeSize));
+        return new(ptrDest, (uint)codeSize, () => LinuxNativeFunctions.munmap(ptrDest, (nuint)codeSize));
     }
 }
