@@ -7,7 +7,7 @@ namespace SharpDetect.Profiler.Hooks.Platform.Linux
 {
     internal static partial class LinuxNativeFunctions
     {
-        private const string Library = "libc.so";
+        private const string Library = "libc";
 
         [LibraryImport(Library)]
         public static partial IntPtr mmap(
