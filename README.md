@@ -46,7 +46,7 @@ SharpDetect is still in development and not production ready. The following runt
 | --------- | ----------------------------- | ---------------------------- |
 | win-x64   | :white_check_mark:            | :construction: (in-progress) |
 | win-x86   | :x:                           | :x:                          |
-| linux-x64 | :construction: (in-progress)  | (not applicable)             |
+| linux-x64 | :white_check_mark:            | (not applicable)             |
 | linux-x86 | :x:                           | (not applicable)             |
 | osx-x64   | :x:                           | (not applicable)             |
 
