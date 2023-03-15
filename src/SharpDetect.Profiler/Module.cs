@@ -23,12 +23,14 @@ internal unsafe class Module
     public Module(ModuleId moduleId, ICorProfilerInfo3 profilerInfo)
     {
         // Obtain IMetaDataImport2
-        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead, KnownGuids.IMetaDataImport2, out var ppOut))
+        var imetadataImport2Guid = KnownGuids.IMetaDataImport2;
+        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead, &imetadataImport2Guid, out var ppOut))
             throw new ArgumentException($"Could not obtain {nameof(KnownGuids.IMetaDataImport2)}");
         metadataModuleImport = NativeObjects.IMetaDataImport2.Wrap(ppOut);
 
         // Obtain IMetaDataEmit2
-        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead | CorOpenFlags.ofWrite, KnownGuids.IMetaDataEmit2, out ppOut))
+        var imetadataEmit2Guid = KnownGuids.IMetaDataEmit2;
+        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead | CorOpenFlags.ofWrite, &imetadataEmit2Guid, out ppOut))
             throw new ArgumentException($"Could not obtain {nameof(KnownGuids.IMetaDataEmit2)}");
         metadataModuleEmit = NativeObjects.IMetaDataEmit2.Wrap(ppOut);
 

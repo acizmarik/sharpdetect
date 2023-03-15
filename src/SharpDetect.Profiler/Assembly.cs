@@ -20,12 +20,14 @@ internal unsafe class Assembly
         assemblyReferences = new HashSet<AssemblyRefProps>();
 
         // Obtain IMetaDataAssemblyImport
-        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead, KnownGuids.IMetaDataAssemblyImport, out var ppOut))
+        var imetadataAssemblyImportGuid = KnownGuids.IMetaDataAssemblyImport;
+        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead, &imetadataAssemblyImportGuid, out var ppOut))
             throw new ArgumentException($"Could not obtain {nameof(KnownGuids.IMetaDataAssemblyImport)}");
         metadataAssemblyImport = NativeObjects.IMetaDataAssemblyImport.Wrap(ppOut);
 
         // Obtain IMetaDataAssemblyEmit
-        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead | CorOpenFlags.ofWrite, KnownGuids.IMetaDataAssemblyEmit, out ppOut))
+        var imetadataAssemblyEmitGuid = KnownGuids.IMetaDataAssemblyEmit;
+        if (!profilerInfo.GetModuleMetaData(moduleId, CorOpenFlags.ofRead | CorOpenFlags.ofWrite, &imetadataAssemblyEmitGuid, out ppOut))
             throw new ArgumentException($"Could not obtain {KnownGuids.IMetaDataAssemblyEmit}");
         metadataAssemblyEmit = NativeObjects.IMetaDataAssemblyEmit.Wrap(ppOut);
 
