@@ -4,6 +4,7 @@
 using SharpDetect.Common;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.E2ETests.Definitions;
+using System.Runtime.CompilerServices;
 
 namespace SharpDetect.E2ETests.Utilities
 {
@@ -29,7 +30,7 @@ namespace SharpDetect.E2ETests.Utilities
             }
             else if (Environment.OSVersion.Platform == PlatformID.Unix)
             {
-                ProfilerName = "libSharpDetect.Profiler.so";
+                ProfilerName = "SharpDetect.Profiler.so";
                 ProfilerDllPath = Path.Combine(pathPrefix, "linux-x64", "publish", ProfilerName);
             }
             else
@@ -39,8 +40,10 @@ namespace SharpDetect.E2ETests.Utilities
             }
         }
 
-        public static AnalysisSession CreateAnalysisSession(string executablePath, string plugins, string? args = null)
+        public static AnalysisSession CreateAnalysisSession(string executablePath, string plugins, string? args = null,
+            [CallerFilePath] string? filePath = null, [CallerMemberName] string? callerMemberName = null)
         {
+            var fileNameSuffix = $"{Path.GetFileNameWithoutExtension(filePath)}-{callerMemberName}";
             return new AnalysisSession(executablePath, new[]
             {
                 new KeyValuePair<string, string>(Constants.Configuration.PluginsChain, plugins),
@@ -59,7 +62,13 @@ namespace SharpDetect.E2ETests.Utilities
                 // Hook options
                 new KeyValuePair<string, string>(Constants.EntryExitHooks.Enabled, "True"),
                 new KeyValuePair<string, string>(Constants.EntryExitHooks.Strategy, nameof(InstrumentationStrategy.OnlyPatterns)),
-                new KeyValuePair<string, string>($"{Constants.EntryExitHooks.Patterns}:0", TestsConfiguration.SubjectNamespace)
+                new KeyValuePair<string, string>($"{Constants.EntryExitHooks.Patterns}:0", TestsConfiguration.SubjectNamespace),
+
+                // Stdout, Stderr redirections
+                new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stdout.Redirect, "True"),
+                new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stdout.File, $"stdout-{fileNameSuffix}.txt"),
+                new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stderr.Redirect, "True"),
+                new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stderr.File, $"stderr-{fileNameSuffix}.txt")
             });
         }
     }

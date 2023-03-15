@@ -33,9 +33,4 @@
 		<Using Include="System.IntPtr" Alias="HCORENUM" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<Folder Include="Hooks\Asm\" />
-		<Folder Include="Hooks\Platform\Linux\" />
-	</ItemGroup>
-
 </Project>

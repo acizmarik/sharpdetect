@@ -29,27 +29,16 @@ internal unsafe partial class AsmUtilities : IDisposable
         }
         else if (Environment.OSVersion.Platform == PlatformID.Unix)
         {
-            // TODO: Linux support
-            throw new PlatformNotSupportedException();
+            var stub = (is64Bit) ?
+                EmitStubForNakedCall_Linux_X64(nakedMethodPtr) :
+                EmitStubForNakedCall_Linux_X86(nakedMethodPtr);
+            generatedStubs.Add(stub);
+            return stub.Pointer;
         }
         else
         {
-            throw new PlatformNotSupportedException();
+            throw new PlatformNotSupportedException(Environment.OSVersion.Platform.ToString());
         }
-    }
-
-    private static byte[] CompileAsm(Assembler assembler)
-    {
-        using var memoryStream = new MemoryStream();
-        var codeWriter = new StreamCodeWriter(memoryStream);
-        assembler.Assemble(codeWriter, 0);
-        return memoryStream.ToArray();
-    }
-
-    private static void FillMemory(byte[] code, IntPtr memoryPtr, DWORD memorySize)
-    {
-        fixed (byte* codePtr = code)
-            Buffer.MemoryCopy(codePtr, memoryPtr.ToPointer(), memorySize, code.Length);
     }
 
     public void Dispose()

@@ -94,7 +94,7 @@ public unsafe interface ICorProfilerInfo : IUnknown
     HResult GetModuleMetaData(
         ModuleId ModuleId,
         CorOpenFlags dwOpenFlags,
-        Guid riid,
+        Guid* riid,
         out IntPtr ppOut);
 
     HResult GetILFunctionBody(
