@@ -7,12 +7,16 @@ A work-in-progress, experimental dynamic analysis framework for .NET programs.
 
 ## Getting Started
 
-The following steps describe all dependencies and steps to build SharpDetect, both its managed (.NET) and its unmanaged (.NET AOT-compiled) modules.
+The following steps describe all dependencies and steps to build SharpDetect, both its managed (.NET) and its unmanaged (.NET AOT-compiled) modules. Cross-compilation is not supported - install required dependencies for your current platform.
 
 ### Prerequisites
 
-* .NET 7 SDK
-* Visual Studio 2022 Build Tools
+* **.NET 7 SDK**
+* **Windows dependencies**
+   * Visual Studio 2022 Build Tools
+* **Linux dependencies**
+   * clang
+   * zlib1g-dev
 
 ### Steps
 
@@ -21,9 +25,13 @@ The following steps describe all dependencies and steps to build SharpDetect, bo
 cd src/SharpDetect.sln
 dotnet build
 
-# Unmanaged part
+# Unmanaged part (Windows)
 cd src/SharpDetect.Profiler/Scripts
 ./publish-win-x64-aot-debug.ps1
+
+# Unmanaged part (Linux)
+cd src/SharpDetect.Profiler/Scripts
+./publish-linux-x64-aot-debug.sh
 ```
 
 ## Running Tests
