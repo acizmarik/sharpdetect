@@ -9,6 +9,7 @@
 		<NativeLib>Shared</NativeLib>
 		<SelfContained>true</SelfContained>
 		<EnableAOTAnalyzer>true</EnableAOTAnalyzer>
+		<StripSymbols>true</StripSymbols>
 	</PropertyGroup>
 
 	<PropertyGroup>
