@@ -30,6 +30,12 @@ namespace SharpDetect.Common.Instrumentation
             return helper;
         }
 
+        public static TypeRef CreateHelperTypeRef(ModuleDef owner)
+        {
+            var assemblyRef = new AssemblyRefUser(name: "System.Private.CoreLib");
+            return new TypeRefUser(owner, helperTypeNamespace, helperTypeName, assemblyRef);
+        }
+
         public static MethodDef CreateWrapper(MethodDef externMethod)
         {
             var wrapper = new MethodDefUser($".{externMethod.Name}", externMethod.MethodSig, MethodImplAttributes.IL | MethodImplAttributes.Managed,
