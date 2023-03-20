@@ -30,6 +30,7 @@ namespace SharpDetect.Core
         private readonly IMethodDescriptorRegistry methodRegistry;
         private readonly IReportsReaderProvider reportsReaderProvider;
         private readonly IReportingServiceController reportingController;
+        private readonly IInstrumentationHistory metadataChangeHistory;
         private readonly ILoggerFactory loggerFactory;
         private readonly ILogger<Analysis> logger;
 
@@ -49,6 +50,7 @@ namespace SharpDetect.Core
             IMethodDescriptorRegistry methodRegistry,
             IReportsReaderProvider reportsReaderProvider,
             IReportingServiceController reportingController,
+            IInstrumentationHistory metadataChangeHistory,
             IDateTimeProvider dateTimeProvider,
             IServiceProvider serviceProvider,
             ILoggerFactory loggerFactory)
@@ -68,6 +70,7 @@ namespace SharpDetect.Core
             this.reportsReaderProvider = reportsReaderProvider;
             this.methodRegistry = methodRegistry;
             this.reportingController = reportingController;
+            this.metadataChangeHistory = metadataChangeHistory;
             this.dateTimeProvider = dateTimeProvider;
             this.serviceProvider = serviceProvider;
             this.loggerFactory = loggerFactory;
@@ -125,6 +128,13 @@ namespace SharpDetect.Core
                 stop = dateTimeProvider.Now;
                 reportingController.Complete();
                 logger.LogDebug("[{class}] Analysis ended.", nameof(Analysis));
+
+                if (metadataChangeHistory.Enabled)
+                {
+                    logger.LogInformation("[{class}] Preparing for IL verification", nameof(Analysis));
+                    metadataChangeHistory.ApplyChanges();
+                    metadataChangeHistory.SaveAssemblies();
+                }
             }
         }
     }

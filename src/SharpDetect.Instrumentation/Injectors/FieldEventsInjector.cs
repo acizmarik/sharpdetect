@@ -5,6 +5,7 @@ using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using SharpDetect.Common;
 using SharpDetect.Common.ControlFlow;
+using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;

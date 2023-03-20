@@ -17,6 +17,7 @@ namespace SharpDetect.Instrumentation.Configuration
             services.AddScoped<IInstrumentor, Instrumentor>();
             services.AddScoped<IEventDescriptorRegistry, EventDescriptorRegistry>();
             services.AddInjectors();
+            services.AddSingleton<IInstrumentationHistory, InstrumentationHistory>();
         }
 
         private static void AddInjectors(this IServiceCollection services)

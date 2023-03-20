@@ -37,6 +37,7 @@ namespace SharpDetect.Instrumentation
         private readonly IStringHeapCache stringHeapCache;
         private readonly IEventDescriptorRegistry eventDescriptorRegistry;
         private readonly IMethodDescriptorRegistry methodDescriptorRegistry;
+        private readonly IInstrumentationHistory instrumentationHistory;
         private InstrumentationOptions options;
         private volatile int instrumentedMethodsCount;
         private volatile int injectedMethodWrappersCount;
@@ -55,6 +56,7 @@ namespace SharpDetect.Instrumentation
             IStringHeapCache stringHeapCache,
             IEventDescriptorRegistry eventDescriptorRegistry,
             IMethodDescriptorRegistry methodDescriptorRegistry,
+            IInstrumentationHistory instrumentationHistory,
             IEnumerable<InjectorBase> registeredInjectors)
         {
             this.profilingClient = profilingClient;
@@ -63,6 +65,7 @@ namespace SharpDetect.Instrumentation
             this.stringHeapCache = stringHeapCache;
             this.eventDescriptorRegistry = eventDescriptorRegistry;
             this.methodDescriptorRegistry = methodDescriptorRegistry;
+            this.instrumentationHistory = instrumentationHistory;
             this.registeredInjectors = registeredInjectors.ToArray();
 
             instrumentationCache = new();
@@ -145,7 +148,10 @@ namespace SharpDetect.Instrumentation
             if (injectHooks)
                 Interlocked.Increment(ref injectedMethodHooksCount);
             if (bytecode is not null)
+            {
                 Interlocked.Increment(ref instrumentedMethodsCount);
+                instrumentationHistory.MarkAsDirty(method.Module.Assembly);
+            }
 
             IssueJITCompilationResponse(method, bytecode, injectHooks, args.Info);
         }
