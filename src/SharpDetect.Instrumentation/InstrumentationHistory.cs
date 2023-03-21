@@ -67,7 +67,10 @@ namespace SharpDetect.Instrumentation
             {
                 var module = moduleBindContext.GetModule(args.Info.ProcessId, new(args.Type.ModuleId));
                 var types = injectedTypes.GetOrAdd(module.Assembly, (_) => new ConcurrentQueue<TypeDef>());
-                types.Enqueue(MetadataGenerator.CreateHelperType(module.CorLibTypes));
+
+                var moduleInfo = new ModuleInfo(args.Type.ModuleId);
+                metadataContext.GetResolver(args.Info.ProcessId).TryGetTypeDef(args.Type, moduleInfo, out var typeDef);
+                types.Enqueue(typeDef!);
             };
 
             executionObserver.MethodInjected += args =>
