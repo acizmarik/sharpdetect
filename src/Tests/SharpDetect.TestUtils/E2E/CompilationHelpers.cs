@@ -4,7 +4,7 @@
 using CliWrap;
 using System.Text;
 
-namespace SharpDetect.E2ETests.Utilities
+namespace SharpDetect.TestUtils.E2E
 {
     public static class CompilationHelpers
     {

@@ -1,15 +1,15 @@
 ﻿// Copyright 2023 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-namespace SharpDetect.E2ETests.Definitions
+namespace SharpDetect.TestUtils
 {
-    internal static class TestsConfiguration
+    public static class E2ETestsConfiguration
     {
         public const string SubjectNamespace = "SharpDetect.E2ETests.Subject";
         public const string SubjectCsprojPath = "../../../../" + SubjectNamespace;
         public static readonly string SubjectDllPath;
 
-        static TestsConfiguration()
+        static E2ETestsConfiguration()
         {
 #if DEBUG
             var buildType = "Debug";

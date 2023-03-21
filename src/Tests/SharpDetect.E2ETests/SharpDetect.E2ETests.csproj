@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\SharpDetect.Console\SharpDetect.Console.csproj" />
     <ProjectReference Include="..\SharpDetect.E2ETests.Subject\SharpDetect.E2ETests.Subject.csproj" />
+    <ProjectReference Include="..\SharpDetect.TestUtils\SharpDetect.TestUtils.csproj" />
   </ItemGroup>
 
 </Project>

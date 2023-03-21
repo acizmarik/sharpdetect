@@ -13,7 +13,7 @@ using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Common.Services.Reporting;
 using SharpDetect.Plugins;
 
-namespace SharpDetect.E2ETests.Utilities
+namespace SharpDetect.TestUtils.E2E
 {
     [PluginExport("Reporter", "1.0.0")]
     public class ReporterPlugin : NopPlugin

@@ -3,9 +3,9 @@
 
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Services.Reporting;
-using SharpDetect.E2ETests.Definitions;
 using SharpDetect.E2ETests.Subject;
-using SharpDetect.E2ETests.Utilities;
+using SharpDetect.TestUtils;
+using SharpDetect.TestUtils.E2E;
 using Xunit;
 
 namespace SharpDetect.E2ETests
@@ -33,7 +33,7 @@ namespace SharpDetect.E2ETests
         public async Task FieldAccessTests_ReadWrite(string testName, bool isWrite)
         {
             // Prepare
-            await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, "Reporter", testName);
+            await using var session = SessionHelpers.CreateAnalysisSession(E2ETestsConfiguration.SubjectDllPath, "Reporter", testName);
             var fieldName = testName.Substring(0, testName.LastIndexOf('_'));
 
             // Act
@@ -60,16 +60,16 @@ namespace SharpDetect.E2ETests
                 }
                 else if (report.Category == nameof(IPlugin.MethodCalled))
                 {
-                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {E2ETestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         reachedEntryPoint = true;
-                    else if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
+                    else if (report.MessageFormat == $"{typeof(void).FullName} {E2ETestsConfiguration.SubjectNamespace}.Program::{testName}()")
                         reachedTestMethod = true;
                 }
                 else if (report.Category == nameof(IPlugin.MethodReturned))
                 {
-                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {E2ETestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         leftEntryPoint = true;
-                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::{testName}()")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {E2ETestsConfiguration.SubjectNamespace}.Program::{testName}()")
                         leftTestMethod = true;
                 }
                 else if ((!isWrite && report.Category == nameof(IPlugin.FieldRead)) || (isWrite && report.Category == nameof(IPlugin.FieldWritten)))
