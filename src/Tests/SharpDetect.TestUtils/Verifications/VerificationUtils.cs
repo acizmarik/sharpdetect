@@ -22,7 +22,7 @@ namespace SharpDetect.TestUtils.Verifications
         public static async Task AssertAllMethodsAndTypesVerified(string analysisTarget, string publishDirectory)
         {
             var stdoutSb = new StringBuilder();
-            var verificationResult = await Cli.Wrap("ILVerify")
+            var verificationResult = await Cli.Wrap("ilverify")
                 .WithArguments($"{analysisTarget} -r *.dll")
                 .WithValidation(CommandResultValidation.None)
                 .WithWorkingDirectory(publishDirectory)
