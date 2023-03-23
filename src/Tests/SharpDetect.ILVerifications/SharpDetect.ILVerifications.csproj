@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SharpDetect.E2ETests.Subject\SharpDetect.E2ETests.Subject.csproj" />
     <ProjectReference Include="..\SharpDetect.TestUtils\SharpDetect.TestUtils.csproj" />
   </ItemGroup>
 

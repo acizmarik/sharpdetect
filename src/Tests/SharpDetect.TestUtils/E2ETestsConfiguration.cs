@@ -6,7 +6,8 @@ namespace SharpDetect.TestUtils
     public static class E2ETestsConfiguration
     {
         public const string SubjectNamespace = "SharpDetect.E2ETests.Subject";
-        public const string SubjectCsprojPath = "../../../../" + SubjectNamespace;
+        public static readonly string SubjectCsprojPath;
+        public static readonly string ILVerificationPath;
         public static readonly string SubjectDllPath;
 
         static E2ETestsConfiguration()
@@ -16,7 +17,9 @@ namespace SharpDetect.TestUtils
 #elif RELEASE        
             var buildType = "Release";
 #endif
-            SubjectDllPath = SubjectCsprojPath + $"/bin/{buildType}/net7.0/" + $"{SubjectNamespace}.dll";
+            SubjectCsprojPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "../../../..", SubjectNamespace));
+            SubjectDllPath = Path.GetFullPath(Path.Combine(SubjectCsprojPath, $"bin/{buildType}/net7.0/", $"{SubjectNamespace}.dll"));
+            ILVerificationPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SubjectDllPath)!, "_ilverify"));
         }
     }
 }
