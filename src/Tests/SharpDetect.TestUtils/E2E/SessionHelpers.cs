@@ -39,8 +39,13 @@ namespace SharpDetect.TestUtils.E2E
             }
         }
 
-        public static AnalysisSession CreateAnalysisSession(string executablePath, string plugins, string? args = null,
-            [CallerFilePath] string? filePath = null, [CallerMemberName] string? callerMemberName = null)
+        public static AnalysisSession CreateAnalysisSession(
+            string executablePath, 
+            string plugins,
+            string? args = null,
+            IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null,
+            [CallerFilePath] string? filePath = null, 
+            [CallerMemberName] string? callerMemberName = null)
         {
             var fileNameSuffix = $"{Path.GetFileNameWithoutExtension(filePath)}-{callerMemberName}";
             return new AnalysisSession(executablePath, new[]
@@ -68,7 +73,7 @@ namespace SharpDetect.TestUtils.E2E
                 new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stdout.File, $"stdout-{fileNameSuffix}.txt"),
                 new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stderr.Redirect, "True"),
                 new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stderr.File, $"stderr-{fileNameSuffix}.txt")
-            });
+            }.Concat(additionalConfiguration ?? Enumerable.Empty<KeyValuePair<string, string>>()).ToArray());
         }
     }
 }
