@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\SharpDetect.Common\SharpDetect.Common.csproj" />
     <ProjectReference Include="..\SharpDetect.Dnlib.Extensions\SharpDetect.Dnlib.Extensions.csproj" />

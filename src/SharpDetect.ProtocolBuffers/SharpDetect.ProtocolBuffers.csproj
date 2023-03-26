@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	<TargetFramework>net7.0</TargetFramework>
 	<RootNamespace>SharpDetect.Common.Messages</RootNamespace>
 	<WarningLevel>0</WarningLevel>
   </PropertyGroup>
