@@ -12,6 +12,7 @@ The following steps describe all dependencies and steps to build SharpDetect, bo
 ### Prerequisites
 
 * **.NET 7 SDK**
+* **ILVerify tool**
 * **Windows dependencies**
    * Visual Studio 2022 Build Tools
 * **Linux dependencies**
@@ -36,14 +37,15 @@ cd src/SharpDetect.Profiler/Scripts
 
 ## Running Tests
 
-Project contains either unit tests (.NET only), or end-2-end tests. Both test categories are implemented in .NET solutions. Keep in mind that end-2-end tests can take some time, as there is a lot of IO going on and many processes are being spawned as well.
-
 ```bash
 # Unit tests
 dotnet test src/Tests/SharpDetect.UnitTests/SharpDetect.UnitTests.csproj
 
 # End-2-end tests
 dotnet test src/Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj
+
+# IL verification tests
+dotnet test src/Tests/SharpDetect.ILVerifications/SharpDetect.ILVerifications.csproj
 ```
 
 ## State of Development

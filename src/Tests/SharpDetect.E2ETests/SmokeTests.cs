@@ -3,8 +3,8 @@
 
 using SharpDetect.Common.Plugins;
 using SharpDetect.Common.Services.Reporting;
-using SharpDetect.E2ETests.Definitions;
-using SharpDetect.E2ETests.Utilities;
+using SharpDetect.TestUtils;
+using SharpDetect.TestUtils.E2E;
 using Xunit;
 
 namespace SharpDetect.E2ETests
@@ -16,7 +16,7 @@ namespace SharpDetect.E2ETests
         public async Task SmokeTests_HelloWorld_RunsToCompletion()
         {
             // Prepare
-            await using var session = SessionHelpers.CreateAnalysisSession(TestsConfiguration.SubjectDllPath, "Reporter");
+            await using var session = SessionHelpers.CreateAnalysisSession(E2ETestsConfiguration.SubjectDllPath, "Reporter");
 
             // Act
             await session.Start();
@@ -38,7 +38,7 @@ namespace SharpDetect.E2ETests
                 }
                 else if (report.Category == nameof(IPlugin.MethodCalled))
                 {
-                    if (report.MessageFormat == $"{typeof(void).FullName} {TestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
+                    if (report.MessageFormat == $"{typeof(void).FullName} {E2ETestsConfiguration.SubjectNamespace}.Program::Main(System.String[])")
                         reachedEntryPoint = true;
                 }
             }

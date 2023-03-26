@@ -3,7 +3,7 @@
 
 using Xunit;
 
-namespace SharpDetect.E2ETests.Definitions
+namespace SharpDetect.TestUtils.E2E
 {
     [CollectionDefinition("E2E")]
     public class E2ETestCollection : ICollectionFixture<CompilationFixture>

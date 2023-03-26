@@ -49,6 +49,12 @@ namespace SharpDetect.Common
             public static readonly string Plugins = nameof(Plugins);
         }
 
+        public static class Verification
+        {
+            public static readonly string Enabled = string.Join(':', nameof(Verification), nameof(Enabled));
+            public static readonly string AssembliesOutputFolder = string.Join(':', nameof(Verification), nameof(AssembliesOutputFolder));
+        }
+
         public static class Communication
         {
             public static class Signals

@@ -1,15 +1,13 @@
 ﻿// Copyright 2023 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using SharpDetect.E2ETests.Utilities;
-
-namespace SharpDetect.E2ETests.Definitions
+namespace SharpDetect.TestUtils.E2E
 {
     public class CompilationFixture
     {
         public CompilationFixture()
         {
-            Task.Run(() => CompilationHelpers.CompileTestAsync(TestsConfiguration.SubjectCsprojPath)).Wait();
+            Task.Run(() => CompilationHelpers.CompileTestAsync(E2ETestsConfiguration.SubjectCsprojPath)).Wait();
         }
     }
 }

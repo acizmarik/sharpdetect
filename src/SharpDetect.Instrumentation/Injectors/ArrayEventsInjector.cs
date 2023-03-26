@@ -56,9 +56,9 @@ namespace SharpDetect.Instrumentation.Injectors
         private void InjectLoadStoreArrayElement(MethodDef method, int instructionIndex, ulong eventId, bool isWrite, UnresolvedMethodStubs stubs)
         {
             var instruction = method.Body.Instructions[instructionIndex];
-            var arrayElementAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.ArrayElementAccess, ref dummyArrayElementAccessRef));
-            var arrayInstanceAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.ArrayInstanceAccess, ref dummyArrayInstanceAccessRef));
-            var arrayIndexAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.ArrayIndexAccess, ref dummyArrayIndexAccessRef));
+            var arrayElementAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.ArrayElementAccess, ref dummyArrayElementAccessRef));
+            var arrayInstanceAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.ArrayInstanceAccess, ref dummyArrayInstanceAccessRef));
+            var arrayIndexAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.ArrayIndexAccess, ref dummyArrayIndexAccessRef));
             
             // Retrieve instruction where the array instance gets pushed onto evaluation stack
             Instruction? pushArrayInstanceInstruction = null;
@@ -106,20 +106,6 @@ namespace SharpDetect.Instrumentation.Injectors
             stubs.Add(arrayElementAccessInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.ArrayElementAccess));
             stubs.Add(arrayInstanceAccessInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.ArrayInstanceAccess));
             stubs.Add(arrayIndexAccessInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.ArrayIndexAccess));
-        }
-
-        private IMethod CreateStub(MethodType type, ref IMethod? methodRef)
-        {
-            if (methodRef is null)
-            {
-                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().Methods
-                    .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == Enum.GetName(typeof(MethodType), type)).Identifier;
-                var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
-                var coreLibTypes = coreLibModule.CorLibTypes;
-                methodRef = new MemberRefUser(coreLibModule, identifier.Name, MetadataGenerator.GetHelperMethodSig(type, coreLibTypes));
-            }
-
-            return methodRef;
         }
 
         public override AnalysisEventType? CanInject(MethodDef methodDef, Instruction instruction)

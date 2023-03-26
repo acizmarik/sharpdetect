@@ -5,13 +5,13 @@ using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common;
 using SharpDetect.Common.Exceptions;
+using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Runtime;
 using SharpDetect.Common.Runtime.Threads;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Core.Runtime.Memory;
 using SharpDetect.Core.Runtime.Threads;
-using SharpDetect.Instrumentation.Utilities;
 using SharpDetect.Profiler;
 using System.Collections.Concurrent;
 

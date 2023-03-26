@@ -5,6 +5,7 @@ using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using SharpDetect.Common;
 using SharpDetect.Common.ControlFlow;
+using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
@@ -49,8 +50,8 @@ namespace SharpDetect.Instrumentation.Injectors
         private void InjectLoadStoreStaticField(MethodDef method, int instructionIndex, ulong eventId, bool isWrite, UnresolvedMethodStubs stubs)
         {
             var instruction = method.Body.Instructions[instructionIndex];
-            var pushInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldInstanceAccess, ref dummyFieldInstanceAccessRef));
-            var callInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldAccess, ref dummyFieldAccessRef));
+            var pushInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.FieldInstanceAccess, ref dummyFieldInstanceAccessRef));
+            var callInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.FieldAccess, ref dummyFieldAccessRef));
             method.InjectAfter(instruction, new Instruction[]
             {
                 // Load null as instance
@@ -86,7 +87,7 @@ namespace SharpDetect.Instrumentation.Injectors
             }
 
             // Capture instance
-            var fieldInstanceAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldInstanceAccess, ref dummyFieldInstanceAccessRef));
+            var fieldInstanceAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.FieldInstanceAccess, ref dummyFieldInstanceAccessRef));
             method.InjectAfter(pushInstruction!, new Instruction[]
             {
                 // Duplicate
@@ -95,7 +96,7 @@ namespace SharpDetect.Instrumentation.Injectors
                 fieldInstanceAccessInstruction
             });
             // Capture field information
-            var fieldAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(MethodType.FieldAccess, ref dummyFieldAccessRef));
+            var fieldAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.FieldAccess, ref dummyFieldAccessRef));
             method.InjectAfter(instruction, new Instruction[]
             {
                 // Load flag (READ/WRITE)
@@ -108,20 +109,6 @@ namespace SharpDetect.Instrumentation.Injectors
 
             stubs.Add(fieldAccessInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.FieldAccess));
             stubs.Add(fieldInstanceAccessInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.FieldInstanceAccess));
-        }
-
-        private IMethod CreateStub(MethodType type, ref IMethod? methodRef)
-        {
-            if (methodRef is null)
-            {
-                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().Methods
-                    .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == Enum.GetName(typeof(MethodType), type)).Identifier;
-                var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
-                var coreLibTypes = coreLibModule.CorLibTypes;
-                methodRef = new MemberRefUser(coreLibModule, identifier.Name, MetadataGenerator.GetHelperMethodSig(type, coreLibTypes));
-            }
-
-            return methodRef;
         }
 
         public override AnalysisEventType? CanInject(MethodDef methodDef, Instruction instruction)

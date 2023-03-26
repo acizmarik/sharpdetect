@@ -16,6 +16,7 @@ using SharpDetect.Dnlib.Extensions;
 using SharpDetect.Instrumentation;
 using SharpDetect.Instrumentation.Injectors;
 using SharpDetect.Instrumentation.SourceLinks;
+using SharpDetect.Metadata;
 
 namespace SharpDetect.UnitTests.Instrumentation
 {
@@ -92,6 +93,7 @@ namespace SharpDetect.UnitTests.Instrumentation
             var stringHeapCache = new StringHeapCache();
             var eventDescriptorRegistry = new EventDescriptorRegistry();
             var methodDescriptorRegistry = CreateRegistryForModulesAsync("Modules/system.private.corelib.lua").Result;
+            var instrumentationHistory = new InstrumentationHistory(configuration, metadataContext, moduleBindContext, runtimeEventsHub, new NullLoggerFactory());
             var instrumentor = new Instrumentor(
                 configuration,
                 runtimeEventsHub,
@@ -101,6 +103,7 @@ namespace SharpDetect.UnitTests.Instrumentation
                 stringHeapCache,
                 eventDescriptorRegistry,
                 methodDescriptorRegistry,
+                instrumentationHistory,
                 injectors.Select(t =>
                     (t.GetConstructors().First().Invoke(new object[] { moduleBindContext, methodDescriptorRegistry }) as InjectorBase)!).ToArray());
 

@@ -3,10 +3,9 @@
 
 using SharpDetect.Common;
 using SharpDetect.Common.Instrumentation;
-using SharpDetect.E2ETests.Definitions;
 using System.Runtime.CompilerServices;
 
-namespace SharpDetect.E2ETests.Utilities
+namespace SharpDetect.TestUtils.E2E
 {
     public static class SessionHelpers
     {
@@ -40,8 +39,13 @@ namespace SharpDetect.E2ETests.Utilities
             }
         }
 
-        public static AnalysisSession CreateAnalysisSession(string executablePath, string plugins, string? args = null,
-            [CallerFilePath] string? filePath = null, [CallerMemberName] string? callerMemberName = null)
+        public static AnalysisSession CreateAnalysisSession(
+            string executablePath, 
+            string plugins,
+            string? args = null,
+            IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null,
+            [CallerFilePath] string? filePath = null, 
+            [CallerMemberName] string? callerMemberName = null)
         {
             var fileNameSuffix = $"{Path.GetFileNameWithoutExtension(filePath)}-{callerMemberName}";
             return new AnalysisSession(executablePath, new[]
@@ -54,22 +58,22 @@ namespace SharpDetect.E2ETests.Utilities
                 // Rewriting options
                 new KeyValuePair<string, string>(Constants.Rewriting.Enabled, "True"),
                 new KeyValuePair<string, string>(Constants.Rewriting.Strategy, nameof(InstrumentationStrategy.OnlyPatterns)),
-                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:0:Pattern", TestsConfiguration.SubjectNamespace),
+                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:0:Pattern", E2ETestsConfiguration.SubjectNamespace),
                 new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:0:Target", nameof(InstrumentationTarget.Method)),
-                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:1:Pattern", TestsConfiguration.SubjectNamespace),
+                new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:1:Pattern", E2ETestsConfiguration.SubjectNamespace),
                 new KeyValuePair<string, string>($"{Constants.Rewriting.Patterns}:1:Target", nameof(InstrumentationTarget.Field)),
 
                 // Hook options
                 new KeyValuePair<string, string>(Constants.EntryExitHooks.Enabled, "True"),
                 new KeyValuePair<string, string>(Constants.EntryExitHooks.Strategy, nameof(InstrumentationStrategy.OnlyPatterns)),
-                new KeyValuePair<string, string>($"{Constants.EntryExitHooks.Patterns}:0", TestsConfiguration.SubjectNamespace),
+                new KeyValuePair<string, string>($"{Constants.EntryExitHooks.Patterns}:0", E2ETestsConfiguration.SubjectNamespace),
 
                 // Stdout, Stderr redirections
                 new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stdout.Redirect, "True"),
                 new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stdout.File, $"stdout-{fileNameSuffix}.txt"),
                 new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stderr.Redirect, "True"),
                 new KeyValuePair<string, string>(Constants.TargetAssemblyIO.Stderr.File, $"stderr-{fileNameSuffix}.txt")
-            });
+            }.Concat(additionalConfiguration ?? Enumerable.Empty<KeyValuePair<string, string>>()).ToArray());
         }
     }
 }

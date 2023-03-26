@@ -5,7 +5,7 @@ using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using SharpDetect.Common.Messages;
 
-namespace SharpDetect.Instrumentation.Utilities
+namespace SharpDetect.Common.Instrumentation
 {
     public static class MetadataGenerator
     {
@@ -30,10 +30,18 @@ namespace SharpDetect.Instrumentation.Utilities
             return helper;
         }
 
+        public static TypeRef CreateHelperTypeRef(ModuleDef owner)
+        {
+            var assemblyRef = new AssemblyRefUser(name: "System.Private.CoreLib");
+            return new TypeRefUser(owner, helperTypeNamespace, helperTypeName, assemblyRef);
+        }
+
         public static MethodDef CreateWrapper(MethodDef externMethod)
         {
             var wrapper = new MethodDefUser($".{externMethod.Name}", externMethod.MethodSig, MethodImplAttributes.IL | MethodImplAttributes.Managed,
                 MethodAttributes.SpecialName | MethodAttributes.RTSpecialName | externMethod.Attributes);
+            // Note this is only a dummy implementation (this is a shadow metadata entry)
+            // The real implementation is supplied by profiler
             wrapper.Body = new CilBody();
             wrapper.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
             wrapper.DeclaringType = externMethod.DeclaringType;

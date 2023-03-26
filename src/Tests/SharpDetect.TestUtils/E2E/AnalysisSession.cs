@@ -7,7 +7,7 @@ using SharpDetect.Common.Services;
 using SharpDetect.Console;
 using SharpDetect.Core;
 
-namespace SharpDetect.E2ETests.Utilities
+namespace SharpDetect.TestUtils.E2E
 {
     public record class AnalysisSession(
         string TargetAssembly,

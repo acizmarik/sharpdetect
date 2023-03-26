@@ -4,9 +4,10 @@
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 using SharpDetect.Common;
+using SharpDetect.Common.Instrumentation;
+using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
-using SharpDetect.Common.SourceLinks;
 using SharpDetect.Instrumentation.Stubs;
 
 namespace SharpDetect.Instrumentation.Injectors
@@ -21,6 +22,22 @@ namespace SharpDetect.Instrumentation.Injectors
         {
             ModuleBindContext = moduleBindContext;
             MethodDescriptorRegistry = methodDescriptorRegistry;
+        }
+
+        protected virtual IMethod CreateStub(ModuleDef module, MethodType type, ref IMethod? methodRef)
+        {
+            if (methodRef is null)
+            {
+                var identifier = MethodDescriptorRegistry.GetCoreLibraryDescriptor().Methods
+                    .SingleOrDefault(record => record.Identifier.IsInjected && record.Identifier.Name == Enum.GetName(typeof(MethodType), type)).Identifier;
+                var coreLibModule = ModuleBindContext.GetCoreLibModule(ProcessId);
+                var coreLibTypes = coreLibModule.CorLibTypes;
+                var typeRef = MetadataGenerator.CreateHelperTypeRef(module);
+                var methodSig = MetadataGenerator.GetHelperMethodSig(type, coreLibTypes);
+                methodRef = new MemberRefUser(module, identifier.Name, methodSig, typeRef);
+            }
+
+            return methodRef;
         }
 
         public abstract AnalysisEventType? CanInject(MethodDef methodDef, Instruction instruction);
