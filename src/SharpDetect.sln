@@ -37,15 +37,16 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Profiler", "Sha
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{402265AE-A8DF-4567-A2F0-5F196E488766}"
 	ProjectSection(SolutionItems) = preProject
+		..\.github\dependabot.yml = ..\.github\dependabot.yml
 		..\.github\workflows\main.yml = ..\.github\workflows\main.yml
 		..\.github\workflows\publish.yml = ..\.github\workflows\publish.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Profiler.Common", "SharpDetect.Profiler.Common\SharpDetect.Profiler.Common.csproj", "{DB846EBF-151F-41B9-828D-50BF4C1DCA07}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.ILVerifications", "Tests\SharpDetect.ILVerifications\SharpDetect.ILVerifications.csproj", "{9EB05DA2-1E46-4DB2-BA37-B9EF55F075E2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.ILVerifications", "Tests\SharpDetect.ILVerifications\SharpDetect.ILVerifications.csproj", "{9EB05DA2-1E46-4DB2-BA37-B9EF55F075E2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.TestUtils", "Tests\SharpDetect.TestUtils\SharpDetect.TestUtils.csproj", "{2FD234C1-1275-450E-8F9F-582745AAD8EB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.TestUtils", "Tests\SharpDetect.TestUtils\SharpDetect.TestUtils.csproj", "{2FD234C1-1275-450E-8F9F-582745AAD8EB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
