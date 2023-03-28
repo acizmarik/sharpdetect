@@ -1,10 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
     <RootNamespace>SharpDetect.Profiler</RootNamespace>
-    <Nullable>enable</Nullable>
-    <EnableAOTAnalyzer>true</EnableAOTAnalyzer>
   </PropertyGroup>
 
 </Project>

@@ -1,22 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-	<TargetFramework>net7.0</TargetFramework>
-	<RootNamespace>SharpDetect.Common.Messages</RootNamespace>
-	<WarningLevel>0</WarningLevel>
-  </PropertyGroup>
+	<PropertyGroup>
+		<RootNamespace>SharpDetect.Common.Messages</RootNamespace>
+		<WarningLevel>0</WarningLevel>
+	</PropertyGroup>
 
-  <ItemGroup>
-	<PackageReference Include="Google.Protobuf" Version="3.21.12" />
-	<PackageReference Include="Grpc" Version="2.46.5" />
-	<PackageReference Include="Grpc.Tools" Version="2.51.0">
-	  <PrivateAssets>all</PrivateAssets>
-	  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	</PackageReference>
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Google.Protobuf" Version="3.22.1" />
+		<PackageReference Include="Grpc" Version="2.46.6" />
+		<PackageReference Include="Grpc.Tools" Version="2.53.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 
-  <ItemGroup>
-	<Protobuf Include="**/*.proto" />
-  </ItemGroup>
+	<ItemGroup>
+		<Protobuf Include="**/*.proto" />
+	</ItemGroup>
 
 </Project>

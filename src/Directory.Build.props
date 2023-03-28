@@ -17,6 +17,7 @@
   
     <!-- Compilation -->
     <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
         <Deterministic>true</Deterministic>
         <Nullable>enable</Nullable>
         <ImplicitUsings>true</ImplicitUsings>

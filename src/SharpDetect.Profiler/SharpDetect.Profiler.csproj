@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<RootNamespace>SharpDetect.Profiler</RootNamespace>
@@ -19,7 +18,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Iced" Version="1.18.0" />
-		<PackageReference Include="NetMQ" Version="4.0.1.10" />
+		<PackageReference Include="NetMQ" Version="4.0.1.11" />
 	</ItemGroup>
 
 	<ItemGroup>
