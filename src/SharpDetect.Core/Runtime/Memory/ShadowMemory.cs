@@ -1,10 +1,10 @@
 ﻿// Copyright 2023 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using IntervalTree;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Common.Exceptions;
 using System.Collections.Concurrent;
+using System.Xml.Linq;
 using GcGeneration = SharpDetect.Profiler.COR_PRF_GC_GENERATION;
 using GcGenerationRange = SharpDetect.Profiler.COR_PRF_GC_GENERATION_RANGE;
 
@@ -14,7 +14,7 @@ namespace SharpDetect.Core.Runtime.Memory
     {
         private readonly ILogger logger;
         private Dictionary<GcGeneration, ConcurrentDictionary<UIntPtr, ShadowObject>> objectsLookup;
-        private IIntervalTree<UIntPtr, GcGeneration> memorySegments;
+        private GcGenerationRange[] memorySegments;
         private bool[]? generationsCollected;
         private bool[]? compactingCollections;
 
@@ -25,12 +25,21 @@ namespace SharpDetect.Core.Runtime.Memory
             foreach (var item in Enum.GetValues(typeof(GcGeneration)))
                 objectsLookupInternal.Add((GcGeneration)item, new ConcurrentDictionary<UIntPtr, ShadowObject>());
             objectsLookup = objectsLookupInternal;
-
-            memorySegments = new IntervalTree<UIntPtr, GcGeneration>();
+            memorySegments = Array.Empty<GcGenerationRange>();
         }
 
         public GcGeneration GetGeneration(UIntPtr pointer)
-            => memorySegments.Query(pointer).FirstOrDefault();
+        {
+            // If the object is outside of a known segments, assume it is GEN 0
+            var index = BinarySearch(memorySegments.Length, index =>
+            {
+                var blockStart = memorySegments[index].RangeStart.Value;
+                var blockLength = (uint)memorySegments[index].RangeLength;
+                return IsPointerInMemorySegment(pointer, blockStart, blockLength);
+            });
+
+            return (index >= 0) ? memorySegments[index].Generation : GcGeneration.COR_PRF_GC_GEN_0;
+        }
 
         public void PrepareForGarbageCollection(bool[] generationsCollected)
         {
@@ -112,28 +121,34 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public void Reconstruct(GcGenerationRange[] ranges)
         {
-            var newIntervalTree = new IntervalTree<UIntPtr, GcGeneration>();
-            foreach (var range in ranges)
+            // Sort memory segments by 
+            Array.Sort(ranges, static (a, b) =>
             {
-                var start = range.RangeStart;
-                var end = new UIntPtr(start.Value.ToUInt64() + range.RangeLength.ToUInt64());
-                newIntervalTree.Add(start.Value, end, range.Generation);
-            }
-            // Assign new memory segments lookup
-            memorySegments = newIntervalTree;
+                if (a.RangeStart.Value < b.RangeStart.Value)
+                    return -1;
+                else if (a.RangeStart.Value > b.RangeStart.Value)
+                    return 1;
+                return 0;
+            });
+
+            memorySegments = ranges;
         }
 
         public void Collect(GcGeneration generation, UIntPtr[] survivingBlockStarts, uint[] lengths)
         {
             var toCollect = objectsLookup[generation];
-            var intervalTree = new IntervalTree<UIntPtr, bool>();
-            for (var i = 0; i < survivingBlockStarts.Length; i++)
-                intervalTree.Add(survivingBlockStarts[i], new UIntPtr(survivingBlockStarts[i].ToUInt64() + lengths[i] - 1), true);
 
             // Mark all surviving objects as alive
             foreach (var (pointer, shadowObj) in toCollect)
             {
-                if (intervalTree.QuerySingle(pointer))
+                var index = BinarySearch(survivingBlockStarts.Length, index =>
+                {
+                    var blockStart = survivingBlockStarts[index];
+                    var blockLength = lengths[index];
+                    return IsPointerInMemorySegment(pointer, blockStart, blockLength);
+                });
+
+                if (index >= 0)
                 {
                     // This object is surviving
                     shadowObj.IsAlive = true;
@@ -146,22 +161,25 @@ namespace SharpDetect.Core.Runtime.Memory
         {
             compactingCollections![(int)generation] = true;
             var toCollect = objectsLookup[generation];
-            var intervalTree = new IntervalTree<UIntPtr, uint?>();
-            for (var i = 0u; i < oldBlockStarts.Length; i++)
-                intervalTree.Add(oldBlockStarts[i], new UIntPtr(oldBlockStarts[i].ToUInt64() + lengths[i] - 1), i);
 
             // Mark all surviving objects as alive and calculate their new locations
             foreach (var (pointer, shadowObj) in toCollect)
             {
-                var blockIndex = intervalTree.QuerySingle(pointer);
-                if (blockIndex != null)
+                var index = BinarySearch(oldBlockStarts.Length, index =>
+                {
+                    var blockStart = oldBlockStarts[index];
+                    var blockLength = lengths[index];
+                    return IsPointerInMemorySegment(pointer, blockStart, blockLength);
+                });
+
+                if (index >= 0)
                 {
                     if (shadowObj.IsAlive)
                         continue;
 
                     // This object is surviving and might have been moved
-                    var offset = pointer - oldBlockStarts[blockIndex.Value];
-                    var newPointer = newBlockStarts[blockIndex.Value] + offset;
+                    var offset = pointer - oldBlockStarts[index];
+                    var newPointer = newBlockStarts[index] + offset;
                     shadowObj.ShadowPointer = newPointer;
                     shadowObj.IsAlive = true;
                 }
@@ -212,5 +230,37 @@ namespace SharpDetect.Core.Runtime.Memory
 
         public int GetGenerationSize(GcGeneration generation)
             => objectsLookup[generation].Count;
+
+
+        private static int BinarySearch(int blockCount, Func<int, int> blockComparer)
+        {
+            var low = 0;
+            var high = blockCount - 1;
+
+            while (low <= high)
+            {
+                var mid = (low + high) / 2;
+                var result = blockComparer(mid);
+                if (result == 0)
+                    return mid;
+                else if (result < 0)
+                    high = mid - 1;
+                else
+                    low = mid + 1;
+            }
+
+            return -1;
+        }
+
+        private static int IsPointerInMemorySegment(UIntPtr target, UIntPtr blockStart, uint blockLength)
+        {
+            var blockEnd = blockStart + blockLength;
+            if (target >= blockStart && target < blockEnd)
+                return 0;
+            else if (target < blockStart)
+                return -1;
+            else
+                return 1;
+        }
     }
 }
