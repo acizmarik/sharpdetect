@@ -592,11 +592,22 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult MovedReferences(uint cMovedObjectIDRanges, ObjectId* oldObjectIDRangeStart, ObjectId* newObjectIDRangeStart, uint* cObjectIDRangeLength)
     {
-        var message = messageFactory.CreateMovedReferencesNotification(
-            new ReadOnlySpan<ObjectId>(oldObjectIDRangeStart, unchecked((int)cMovedObjectIDRanges)),
-            new ReadOnlySpan<ObjectId>(newObjectIDRangeStart, unchecked((int)cMovedObjectIDRanges)),
-            new ReadOnlySpan<uint>(cObjectIDRangeLength, unchecked((int)cMovedObjectIDRanges)));
-        messagingClient.SendNotification(message);
+        const int maxBatchSize = 5000;
+        var sentElements = 0;
+
+        while (sentElements < cMovedObjectIDRanges)
+        {
+            var start = sentElements;
+            var size = (int)Math.Min(maxBatchSize, cMovedObjectIDRanges - sentElements);
+
+            var message = messageFactory.CreateMovedReferencesNotification(
+                new ReadOnlySpan<ObjectId>(oldObjectIDRangeStart + start, size),
+                new ReadOnlySpan<ObjectId>(newObjectIDRangeStart + start, size),
+                new ReadOnlySpan<uint>(cObjectIDRangeLength + start, size));
+            messagingClient.SendNotification(message);
+            sentElements += size;
+        }
+
         return HResult.S_OK;
     }
 
@@ -751,10 +762,21 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult SurvivingReferences(uint cSurvivingObjectIDRanges, ObjectId* objectIDRangeStart, uint* cObjectIDRangeLength)
     {
-        var message = messageFactory.CreateSurvivingReferencesNotification(
-            new ReadOnlySpan<ObjectId>(objectIDRangeStart, (int)cSurvivingObjectIDRanges),
-            new ReadOnlySpan<uint>(cObjectIDRangeLength, (int)cSurvivingObjectIDRanges));
-        messagingClient.SendNotification(message);
+        const int maxBatchSize = 5000;
+        var sentElements = 0;
+
+        while (sentElements < cSurvivingObjectIDRanges)
+        {
+            var start = sentElements;
+            var size = (int)Math.Min(maxBatchSize, cSurvivingObjectIDRanges - sentElements);
+
+            var message = messageFactory.CreateSurvivingReferencesNotification(
+                new ReadOnlySpan<ObjectId>(objectIDRangeStart + start, size),
+                new ReadOnlySpan<uint>(cObjectIDRangeLength + start, size));
+            messagingClient.SendNotification(message);
+            sentElements += size;
+        }
+
         return HResult.S_OK;
     }
 
