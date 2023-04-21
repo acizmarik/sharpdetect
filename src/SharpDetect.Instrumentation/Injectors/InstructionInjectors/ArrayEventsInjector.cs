@@ -11,9 +11,9 @@ using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Instrumentation.Stubs;
 using SharpDetect.Instrumentation.Utilities;
 
-namespace SharpDetect.Instrumentation.Injectors
+namespace SharpDetect.Instrumentation.Injectors.InstructionInjectors
 {
-    internal class ArrayEventsInjector : InjectorBase
+    internal class ArrayEventsInjector : InstructionInjectorBase
     {
         private const string couldNotFindPushArrayInstanceInstructionError = "Could not find instruction that pushes array instance on evaluation stack.";
         private const string couldNotFindPushArrayIndexInstructionError = "Could not find instruction that pushes array index on evaluation stack.";
@@ -59,7 +59,7 @@ namespace SharpDetect.Instrumentation.Injectors
             var arrayElementAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.ArrayElementAccess, ref dummyArrayElementAccessRef));
             var arrayInstanceAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.ArrayInstanceAccess, ref dummyArrayInstanceAccessRef));
             var arrayIndexAccessInstruction = Instruction.Create(OpCodes.Call, CreateStub(method.Module, MethodType.ArrayIndexAccess, ref dummyArrayIndexAccessRef));
-            
+
             // Retrieve instruction where the array instance gets pushed onto evaluation stack
             Instruction? pushArrayInstanceInstruction = null;
             if (isWrite && !EvaluationStackHelper.TryFindArrayInstanceWriteElementInfo(method, instructionIndex, out pushArrayInstanceInstruction))
@@ -96,7 +96,7 @@ namespace SharpDetect.Instrumentation.Injectors
             method.InjectAfter(instruction, new Instruction[]
             {
                 // Load flag (READ/WRITE)
-                Instruction.Create((isWrite) ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0),
+                Instruction.Create(isWrite ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0),
                 // Load event id
                 Instruction.Create(OpCodes.Ldc_I8, (long)eventId),
                 // Call
@@ -108,7 +108,7 @@ namespace SharpDetect.Instrumentation.Injectors
             stubs.Add(arrayIndexAccessInstruction, HelperOrWrapperReferenceStub.CreateHelperMethodReferenceStub(MethodType.ArrayIndexAccess));
         }
 
-        public override AnalysisEventType? CanInject(MethodDef methodDef, Instruction instruction)
+        public override AnalysisEventType? CanInject(Instruction instruction)
         {
             var opcode = instruction.OpCode.Code;
             if (!EventTypes.TryGetValue(opcode, out var item))

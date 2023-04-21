@@ -110,7 +110,7 @@ namespace SharpDetect.Plugins.LockSet
         {
             var result = false;
             var sourceLink = eventRegistry.Get(srcMappingId);
-            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var fieldRef = (IField)sourceLink.Instruction!.Operand;
             var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
             if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
@@ -139,7 +139,7 @@ namespace SharpDetect.Plugins.LockSet
         {
             var result = false;
             var sourceLink = eventRegistry.Get(srcMappingId);
-            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var fieldRef = (IField)sourceLink.Instruction!.Operand;
             var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
             if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;

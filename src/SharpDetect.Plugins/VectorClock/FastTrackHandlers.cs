@@ -171,7 +171,7 @@ namespace SharpDetect.Plugins.VectorClock
         public override void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var sourceLink = eventRegistry.Get(srcMappingId);
-            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var fieldRef = (IField)sourceLink.Instruction!.Operand;
             var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
             if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;
@@ -197,7 +197,7 @@ namespace SharpDetect.Plugins.VectorClock
         public override void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var sourceLink = eventRegistry.Get(srcMappingId);
-            var fieldRef = (IField)sourceLink.Instruction.Operand;
+            var fieldRef = (IField)sourceLink.Instruction!.Operand;
             var resolver = metadataContext.GetResolver(info.Runtime.ProcessId);
             if (!resolver.TryResolveFieldDef(fieldRef, out var fieldDef) || !fieldDef.ShouldAnalyzeForDataRaces(threadStaticAttribute!))
                 return;

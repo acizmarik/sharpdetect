@@ -270,17 +270,4 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void SharpDetect::ThreadAllocated(System.IntPtr)
-	list.add(
-		sd.createMethodRecord(
-			sd.createMethodIdentifier("ThreadAllocated", declaringType, "System.Void", true, 1, { "System.IntPtr" }, true),
-			sd.createMethodInterpretation(
-				MethodInterpretation.ThreadAllocation,
-				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
-				{
-					sd.createCapturedParameterInfo(0, UIntPtr.Size, false)
-				}, nil
-			)
-		)
-	)
 end

@@ -14,9 +14,9 @@ using SharpDetect.Core.Models;
 using SharpDetect.Core.Runtime;
 using SharpDetect.Dnlib.Extensions;
 using SharpDetect.Instrumentation;
-using SharpDetect.Instrumentation.Injectors;
+using SharpDetect.Instrumentation.Injectors.InstructionInjectors;
+using SharpDetect.Instrumentation.Injectors.MethodInjectors;
 using SharpDetect.Instrumentation.SourceLinks;
-using SharpDetect.Metadata;
 
 namespace SharpDetect.UnitTests.Instrumentation
 {
@@ -82,7 +82,8 @@ namespace SharpDetect.UnitTests.Instrumentation
             bool enableInstrumentation, 
             InstrumentationStrategy strategy, 
             string[] patterns, 
-            Type[] injectors)
+            Type[] instructionInjectors,
+            Type[] methodInjectors)
         {
             var configuration = CreateInstrumentorConfiguration(enableInstrumentation, strategy, patterns);
             var runtimeEventsHub = new RuntimeEventsHub();
@@ -104,8 +105,10 @@ namespace SharpDetect.UnitTests.Instrumentation
                 eventDescriptorRegistry,
                 methodDescriptorRegistry,
                 instrumentationHistory,
-                injectors.Select(t =>
-                    (t.GetConstructors().First().Invoke(new object[] { moduleBindContext, methodDescriptorRegistry }) as InjectorBase)!).ToArray());
+                instructionInjectors.Select(t =>
+                    (t.GetConstructors().First().Invoke(new object[] { moduleBindContext, methodDescriptorRegistry }) as InstructionInjectorBase)!).ToArray(),
+                instructionInjectors.Select(t =>
+                    (t.GetConstructors().First().Invoke(new object[] { moduleBindContext, methodDescriptorRegistry }) as MethodInjectorBase)!).ToArray());
 
             return new InstrumentorContext(
                 instrumentor, 

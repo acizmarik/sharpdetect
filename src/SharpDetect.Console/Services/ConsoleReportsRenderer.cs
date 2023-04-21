@@ -77,8 +77,11 @@ namespace SharpDetect.Console.Services
                             messageBuilder.AppendLine();
                             messageBuilder.Append($"\t at {{{argumentsBuilder.Count}}}");
                             argumentsBuilder.Add(entry.SourceLink.Method);
-                            messageBuilder.Append($" on offset {{{argumentsBuilder.Count}}} occurred ");
-                            argumentsBuilder.Add($"IL_{entry.SourceLink.Instruction.Offset:X4}");
+                            if (entry.SourceLink.Instruction != null)
+                            {
+                                messageBuilder.Append($" on offset {{{argumentsBuilder.Count}}} occurred ");
+                                argumentsBuilder.Add($"IL_{entry.SourceLink.Instruction.Offset:X4}");
+                            }
                         }
 
                         // Common info about threads

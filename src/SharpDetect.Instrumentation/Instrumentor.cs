@@ -16,10 +16,10 @@ using SharpDetect.Common.Services.Endpoints;
 using SharpDetect.Common.Services.Instrumentation;
 using SharpDetect.Common.Services.Metadata;
 using SharpDetect.Dnlib.Extensions;
-using SharpDetect.Instrumentation.Injectors;
+using SharpDetect.Instrumentation.Injectors.InstructionInjectors;
+using SharpDetect.Instrumentation.Injectors.MethodInjectors;
 using SharpDetect.Instrumentation.Options;
 using SharpDetect.Instrumentation.Stubs;
-using SharpDetect.Instrumentation.Utilities;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 
@@ -28,7 +28,8 @@ namespace SharpDetect.Instrumentation
     internal class Instrumentor : IInstrumentor
     {
         private readonly ConcurrentDictionary<MethodDef, (bool IsDirty, UnresolvedMethodStubs? Stubs)> instrumentationCache;
-        private readonly InjectorBase[] registeredInjectors;
+        private readonly InstructionInjectorBase[] registeredInstructionInjectors;
+        private readonly MethodInjectorBase[] registeredMethodInjectors;
         private readonly ResolvedMethodStubs emptyResolvedMethodStubs;
         private ImmutableDictionary<int, CodeInjector> codeInjectors;
         private readonly IProfilingClient profilingClient;
@@ -57,7 +58,8 @@ namespace SharpDetect.Instrumentation
             IEventDescriptorRegistry eventDescriptorRegistry,
             IMethodDescriptorRegistry methodDescriptorRegistry,
             IInstrumentationHistory instrumentationHistory,
-            IEnumerable<InjectorBase> registeredInjectors)
+            IEnumerable<InstructionInjectorBase> registeredInstructionInjectors,
+            IEnumerable<MethodInjectorBase> registeredMethodInjectors)
         {
             this.profilingClient = profilingClient;
             this.moduleBindContext = moduleBindContext;
@@ -66,7 +68,8 @@ namespace SharpDetect.Instrumentation
             this.eventDescriptorRegistry = eventDescriptorRegistry;
             this.methodDescriptorRegistry = methodDescriptorRegistry;
             this.instrumentationHistory = instrumentationHistory;
-            this.registeredInjectors = registeredInjectors.ToArray();
+            this.registeredInstructionInjectors = registeredInstructionInjectors.ToArray();
+            this.registeredMethodInjectors = registeredMethodInjectors.ToArray();
 
             instrumentationCache = new();
             emptyResolvedMethodStubs = new();
@@ -195,10 +198,11 @@ namespace SharpDetect.Instrumentation
                         // Check if user requested instrumentation for this method
                         if (options.RewritingOptions.Enabled)
                         {
-                            if (ShouldRewriteMethod(method))
+                            var codeInjector = GetCodeInjector(info.ProcessId);
+                            if (ShouldRewriteMethod(method, codeInjector))
                             {
                                 // Perform instrumenation
-                                methodInstrumented = GetCodeInjector(info.ProcessId).TryInject(method, stubs);
+                                methodInstrumented = codeInjector.TryInject(method, stubs);
                             }
                         }
 
@@ -213,13 +217,18 @@ namespace SharpDetect.Instrumentation
             return item;
         }
 
-        private bool ShouldRewriteMethod(MethodDef method)
+        private bool ShouldRewriteMethod(MethodDef method, CodeInjector injector)
         {
+            // Check if user turned off rewriting
             if (!options.RewritingOptions.Enabled)
                 return false;
 
-            var patterns = options.RewritingOptions.Patterns.Where(p => p.Target.HasFlag(InstrumentationTarget.Method));
+            // Check if we have a specific method injector
+            if (injector.HasMethodInjector(method))
+                return true;
 
+            // Otherwise check if method matches any user-supplied pattern
+            var patterns = options.RewritingOptions.Patterns.Where(p => p.Target.HasFlag(InstrumentationTarget.Method));
             if (options.RewritingOptions.Strategy == InstrumentationStrategy.OnlyPatterns)
                 return patterns.FirstOrDefault(p => method.FullName.Contains(p.Pattern)) != default;
             else if (options.RewritingOptions.Strategy == InstrumentationStrategy.AllExcludingPatterns)
@@ -338,7 +347,11 @@ namespace SharpDetect.Instrumentation
 
         private CodeInjector Register(int processId)
         {
-            var newInjector = new CodeInjector(processId, registeredInjectors, eventDescriptorRegistry);
+            var newInjector = new CodeInjector(
+                processId, 
+                registeredInstructionInjectors, 
+                registeredMethodInjectors, 
+                eventDescriptorRegistry);
 
             codeInjectors = codeInjectors.Add(processId, newInjector);
             return newInjector;

@@ -24,12 +24,12 @@ namespace SharpDetect.Instrumentation.SourceLinks
             this.idCounter = 0;
         }
 
-        public SourceLink Create(AnalysisEventType type, MethodDef method, Instruction instruction, SequencePoint? sequencePoint = null)
+        public SourceLink Create(AnalysisEventType type, MethodDef method, Instruction? instruction, SequencePoint? sequencePoint = null)
         {
             var newId = Interlocked.Increment(ref idCounter);
             // At this point we need to clone the instruction
             // Otherwise the offset will get shifted after instrumentation
-            var instructionClone = instruction.Clone();
+            var instructionClone = instruction?.Clone();
             var sourceLink = new SourceLink(newId, type, method, instructionClone, sequencePoint);
             if (!sourceLinks.TryAdd(newId, sourceLink))
                 ThrowHelper.ThrowArgumentException($"Could not register source link {sourceLink}");

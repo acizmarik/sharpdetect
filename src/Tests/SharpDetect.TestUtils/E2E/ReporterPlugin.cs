@@ -50,12 +50,12 @@ namespace SharpDetect.TestUtils.E2E
         public override void FieldRead(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var mapping = eventRegistry.Get(srcMappingId);
-            reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(FieldRead), ((IField)mapping.Instruction.Operand).FullName, new[] { instance }, default));
+            reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(FieldRead), ((IField)mapping.Instruction!.Operand).FullName, new[] { instance }, default));
         }
         public override void FieldWritten(ulong srcMappingId, IShadowObject? instance, bool isVolatile, EventInfo info)
         {
             var mapping = eventRegistry.Get(srcMappingId);
-            reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(FieldWritten), ((IField)mapping.Instruction.Operand).FullName, new[] { instance }, default));
+            reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(FieldWritten), ((IField)mapping.Instruction!.Operand).FullName, new[] { instance }, default));
         }
         public override void ArrayElementRead(ulong srcMappingId, IShadowObject instance, int index, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(ArrayElementRead), string.Empty, new object[] { instance, index }, default));
         public override void ArrayElementWritten(ulong srcMappingId, IShadowObject instance, int index, EventInfo info) => reportingService.Report(new InformationReport(nameof(ReporterPlugin), nameof(ArrayElementWritten), string.Empty, new object[] { instance, index }, default));

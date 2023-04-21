@@ -2,13 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using dnlib.DotNet;
-using dnlib.DotNet.Emit;
-using SharpDetect.Common;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.Messages;
 using SharpDetect.Common.Services.Descriptors;
 using SharpDetect.Common.Services.Metadata;
-using SharpDetect.Instrumentation.Stubs;
 
 namespace SharpDetect.Instrumentation.Injectors
 {
@@ -39,8 +36,5 @@ namespace SharpDetect.Instrumentation.Injectors
 
             return methodRef;
         }
-
-        public abstract AnalysisEventType? CanInject(MethodDef methodDef, Instruction instruction);
-        public abstract void Inject(MethodDef methodDef, int instructionIndex, ulong eventId, UnresolvedMethodStubs stubs);
     }
 }

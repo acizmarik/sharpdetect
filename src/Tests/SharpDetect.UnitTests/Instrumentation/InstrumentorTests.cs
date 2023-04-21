@@ -5,7 +5,7 @@ using dnlib.DotNet;
 using SharpDetect.Common;
 using SharpDetect.Common.Instrumentation;
 using SharpDetect.Common.Messages;
-using SharpDetect.Instrumentation.Injectors;
+using SharpDetect.Instrumentation.Injectors.InstructionInjectors;
 using Xunit;
 
 namespace SharpDetect.UnitTests.Instrumentation
@@ -18,7 +18,7 @@ namespace SharpDetect.UnitTests.Instrumentation
         public void InstrumentorTests_EnableAndDisableInstrumentationGlobally(bool isEnabled)
         {
             // Prepare
-            var context = CreateInstrumentor(isEnabled, InstrumentationStrategy.OnlyPatterns, new[] { nameof(InstrumentorTestTarget) }, new[] { typeof(FieldEventsInjector) });
+            var context = CreateInstrumentor(isEnabled, InstrumentationStrategy.OnlyPatterns, new[] { nameof(InstrumentorTestTarget) }, new[] { typeof(FieldEventsInjector) }, Array.Empty<Type>());
             var processId = 123;
             var threadId = 456ul;
             var moduleId = 789ul;
@@ -71,7 +71,7 @@ namespace SharpDetect.UnitTests.Instrumentation
         public void InstrumentorTests_InstrumentOnlyPatterns(InstrumentationStrategy strategy, string[] patterns, int skipped, int instrumented)
         {
             // Prepare
-            var context = CreateInstrumentor(true, strategy, patterns, new[] { typeof(FieldEventsInjector) });
+            var context = CreateInstrumentor(true, strategy, patterns, new[] { typeof(FieldEventsInjector) }, Array.Empty<Type>());
             var processId = 123;
             var threadId = 456ul;
             var moduleId = 789ul;
