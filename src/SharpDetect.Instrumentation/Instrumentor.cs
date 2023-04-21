@@ -366,9 +366,13 @@ namespace SharpDetect.Instrumentation
             {
                 // Find declaring type of the extern method
                 var declaringTypeDef = moduleDef.Find(id.DeclaringType, isReflectionName: true);
+
+                // Find return type of the extern method
+                var returnTypeDef = moduleDef.Find(id.ReturnType, isReflectionName: true);
+
                 // Resolve method signature
                 var externMethodSignature = MethodSig.CreateStatic(
-                    retType: moduleDef.CorLibTypes.Void,
+                    retType: returnTypeDef.ToTypeSig(),
                     argTypes: id.ArgumentTypes.Select(a =>
                     {
                         if (a.EndsWith('&'))

@@ -9,7 +9,7 @@ using SharpDetect.Common.Scripts.ExpressionBuilder;
 using SharpDetect.Common.Services.Scripts;
 using SharpDetect.Common.Utilities;
 using CapturedParameterInfoFactory = System.Func<ushort, ushort, bool, SharpDetect.Common.LibraryDescriptors.CapturedParameterInfo>;
-using MethodIdentifierFactory = System.Func<string, string, bool, ushort,
+using MethodIdentifierFactory = System.Func<string, string, string, bool, ushort,
     SharpDetect.Common.Utilities.ValueCollection<string>, bool,
     SharpDetect.Common.LibraryDescriptors.MethodIdentifier>;
 using MethodRecord = System.ValueTuple<SharpDetect.Common.LibraryDescriptors.MethodIdentifier, SharpDetect.Common.LibraryDescriptors.MethodInterpretationData>;
@@ -51,7 +51,7 @@ namespace SharpDetect.Core.Scripts
                 script.Globals[nameof(CSharpExpressionBuilder)] = typeof(CSharpExpressionBuilder);
                 script.Globals[nameof(MethodInterpretationData)] = typeof(MethodInterpretationData);
                 // Accessible value types
-                script.Globals[nameof(MethodIdentifier)] = (MethodIdentifierFactory)((n, d, s, argc, args, i) => new MethodIdentifier(n, d, s, argc, args, i));
+                script.Globals[nameof(MethodIdentifier)] = (MethodIdentifierFactory)((n, d, r, s, argc, args, i) => new MethodIdentifier(n, d, r, s, argc, args, i));
                 script.Globals[nameof(CapturedParameterInfo)] = (CapturedParameterInfoFactory)((i, s, d) => new CapturedParameterInfo(i, s, d));
                 script.Globals[nameof(MethodRecord)] = (MethodRecordFactory)((i, d) => (i, d));
                 script.Globals[nameof(UIntPtr)] = UserData.CreateStatic<UIntPtr>();

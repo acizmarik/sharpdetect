@@ -19,8 +19,8 @@ function sd.createMethodRecord(identifier, interpretation)
 	return MethodRecord(identifier, interpretation)
 end
 
-function sd.createMethodIdentifier(name, declaringType, isStatic, argc, argTypes, isInjected)
-	return MethodIdentifier(name, declaringType, isStatic, argc, argTypes, isInjected)
+function sd.createMethodIdentifier(name, declaringType, returnType, isStatic, argc, argTypes, isInjected)
+	return MethodIdentifier(name, declaringType, returnType, isStatic, argc, argTypes, isInjected)
 end
 
 function sd.createMethodInterpretation(type, flags, capturedArgs, checker)

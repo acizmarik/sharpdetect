@@ -19,7 +19,7 @@ function getMonitorLockMethods(list)
 	-- System.Void System.Threading.Monitor::Enter(System.Object)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Enter", declaringType, true, 1, { "System.Object" }, false),
+			sd.createMethodIdentifier("Enter", declaringType, "System.Void", true, 1, { "System.Object" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.LockBlockingAcquire, 
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.InjectManagedWrapper },
@@ -35,7 +35,7 @@ function getMonitorLockMethods(list)
 	-- System.Void System.Threading.Monitor::Enter(System.Object,System.Boolean&)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Enter", declaringType, true, 2, { "System.Object", "System.Boolean&" }, false),
+			sd.createMethodIdentifier("Enter", declaringType, "System.Void", true, 2, { "System.Object", "System.Boolean&" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.LockBlockingAcquire,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
@@ -55,7 +55,7 @@ function getMonitorLockMethods(list)
 	-- System.Void System.Threading.Monitor::ReliableEnterTimeout(System.Object,System.Int32,System.Boolean&)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("ReliableEnterTimeout", declaringType, true, 3, { "System.Object", "System.Int32", "System.Boolean&" }, false),
+			sd.createMethodIdentifier("ReliableEnterTimeout", declaringType, "System.Void", true, 3, { "System.Object", "System.Int32", "System.Boolean&" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.LockTryAcquire,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.InjectManagedWrapper },
@@ -76,7 +76,7 @@ function getMonitorLockMethods(list)
 	-- System.Void System.Threading.Monitor::Exit(System.Object)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Exit", declaringType, true, 1, { "System.Object" }, false),
+			sd.createMethodIdentifier("Exit", declaringType, "System.Void", true, 1, { "System.Object" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.LockRelease,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.InjectManagedWrapper },
@@ -97,7 +97,7 @@ function getMonitorSignalMethods(list)
 	-- System.Boolean System.Threading.Monitor::Wait(System.Object)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Wait", declaringType, true, 1, { "System.Object" }, false),
+			sd.createMethodIdentifier("Wait", declaringType, "System.Boolean", true, 1, { "System.Object" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.SignalBlockingWait,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.CaptureReturnValue },
@@ -115,7 +115,7 @@ function getMonitorSignalMethods(list)
 	-- System.Boolean System.Threading.Monitor::Wait(System.Object,System.TimeSpan)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Wait", declaringType, true, 2, { "System.Object", "System.TimeSpan" }, false),
+			sd.createMethodIdentifier("Wait", declaringType, "System.Boolean", true, 2, { "System.Object", "System.TimeSpan" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.SignalTryWait,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.CaptureReturnValue },
@@ -133,7 +133,7 @@ function getMonitorSignalMethods(list)
 	-- System.Boolean System.Threading.Monitor::Wait(System.Object,System.Int32)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Wait", declaringType, true, 2, { "System.Object", "System.Int32" }, false),
+			sd.createMethodIdentifier("Wait", declaringType, "System.Boolean", true, 2, { "System.Object", "System.Int32" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.SignalTryWait,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.CaptureReturnValue },
@@ -151,7 +151,7 @@ function getMonitorSignalMethods(list)
 	-- System.Boolean System.Threading.Monitor::Wait(System.Object,System.Int32,System.Boolean)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Wait", declaringType, true, 3, { "System.Object", "System.Int32", "System.Boolean" }, false),
+			sd.createMethodIdentifier("Wait", declaringType, "System.Boolean", true, 3, { "System.Object", "System.Int32", "System.Boolean" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.SignalTryWait,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.CaptureReturnValue },
@@ -169,7 +169,7 @@ function getMonitorSignalMethods(list)
 	-- System.Void System.Threading.Monitor::Pulse(System.Object)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("Pulse", declaringType, true, 1, { "System.Object" }, false),
+			sd.createMethodIdentifier("Pulse", declaringType, "System.Void", true, 1, { "System.Object" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.SignalPulseOne,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
@@ -185,7 +185,7 @@ function getMonitorSignalMethods(list)
 	-- System.Void System.Threading.Monitor::PulseAll(System.Object)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("PulseAll", declaringType, true, 1, { "System.Object" }, false),
+			sd.createMethodIdentifier("PulseAll", declaringType, "System.Void", true, 1, { "System.Object" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.SignalPulseAll,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
@@ -203,10 +203,10 @@ end
 -- Get descriptors necessary to capture all injected helper methods
 function getInjectedHelpers(list)
 	local declaringType = "SharpDetect.EventDispatcher"
-	-- System.Void System.SharpDetect::FieldAccess(System.Boolean,System.UInt64)
+	-- System.Void SharpDetect::FieldAccess(System.Boolean,System.UInt64)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("FieldAccess", declaringType, true, 2, { "System.Boolean", "System.UInt64" }, true),
+			sd.createMethodIdentifier("FieldAccess", declaringType, "System.Void", true, 2, { "System.Boolean", "System.UInt64" }, true),
 			sd.createMethodInterpretation(
 				MethodInterpretation.FieldAccess,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
@@ -217,10 +217,10 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void System.SharpDetect::FieldInstanceAccess(System.Object)
+	-- System.Void SharpDetect::FieldInstanceAccess(System.Object)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("FieldInstanceAccess", declaringType, true, 1, { "System.Object" }, true),
+			sd.createMethodIdentifier("FieldInstanceAccess", declaringType, "System.Void", true, 1, { "System.Object" }, true),
 			sd.createMethodInterpretation(
 				MethodInterpretation.FieldInstanceAccess,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
@@ -230,10 +230,10 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void System.SharpDetect::ArrayElementAccess(System.Boolean,System.UInt64)
+	-- System.Void SharpDetect::ArrayElementAccess(System.Boolean,System.UInt64)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("ArrayElementAccess", declaringType, true, 2, { "System.Boolean", "System.UInt64" }, true),
+			sd.createMethodIdentifier("ArrayElementAccess", declaringType, "System.Void", true, 2, { "System.Boolean", "System.UInt64" }, true),
 			sd.createMethodInterpretation(
 				MethodInterpretation.ArrayElementAccess,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
@@ -244,10 +244,10 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void System.SharpDetect::ArrayInstanceAccess(System.Object)
+	-- System.Void SharpDetect::ArrayInstanceAccess(System.Object)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("ArrayInstanceAccess", declaringType, true, 1, { "System.Object" }, true),
+			sd.createMethodIdentifier("ArrayInstanceAccess", declaringType, "System.Void", true, 1, { "System.Object" }, true),
 			sd.createMethodInterpretation(
 				MethodInterpretation.ArrayInstanceAccess,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
@@ -257,15 +257,28 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void System.SharpDetect::ArrayIndexAccess(System.Int32)
+	-- System.Void SharpDetect::ArrayIndexAccess(System.Int32)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("ArrayIndexAccess", declaringType, true, 1, { "System.Int32" }, true),
+			sd.createMethodIdentifier("ArrayIndexAccess", declaringType, "System.Void", true, 1, { "System.Int32" }, true),
 			sd.createMethodInterpretation(
 				MethodInterpretation.ArrayIndexAccess,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
 				{
 					sd.createCapturedParameterInfo(0, 4, false)
+				}, nil
+			)
+		)
+	)
+	-- System.Void SharpDetect::ThreadAllocated(System.IntPtr)
+	list.add(
+		sd.createMethodRecord(
+			sd.createMethodIdentifier("ThreadAllocated", declaringType, "System.Void", true, 1, { "System.IntPtr" }, true),
+			sd.createMethodInterpretation(
+				MethodInterpretation.ThreadAllocation,
+				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
+				{
+					sd.createCapturedParameterInfo(0, UIntPtr.Size, false)
 				}, nil
 			)
 		)

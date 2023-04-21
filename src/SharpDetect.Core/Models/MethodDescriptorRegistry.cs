@@ -72,6 +72,7 @@ namespace SharpDetect.Core.Models
             var identifier = new MethodIdentifier(
                 method.Name,
                 method.DeclaringType.FullName,
+                method.ReturnType.FullName,
                 method.IsStatic,
                 (ushort)method.Parameters.Count,
                 new(method.Parameters.Select(p => p.Type.FullName).ToList()),
