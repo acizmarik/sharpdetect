@@ -21,6 +21,8 @@ namespace SharpDetect.Common
         SignalBlockingWait,
         SignalTryWait,
         SignalPulseOne,
-        SignalPulseAll
+        SignalPulseAll,
+
+        ThreadAllocation
     }
 }

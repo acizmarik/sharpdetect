@@ -136,6 +136,9 @@ internal static class Instrumentation
         if (!InjectArrayIndexAccessHelperMethod(context))
             return HResult.E_FAIL;
 
+        if (!InjectThreadAllocationHelperMethod(context))
+            return HResult.E_FAIL;
+
         return HResult.S_OK;
     }
 
@@ -252,6 +255,25 @@ internal static class Instrumentation
         Logger.LogDebug($"Emitted helper method \"{name}\" ({methodDef.Value}) into {context.CoreModule.Name}");
         context.AddHelperMethod(new(name, MethodType.ArrayIndexAccess, methodDef, signature));
         HelperMethodInjected?.Invoke((context.CoreModule, context.EventDispatcherTypeDef, methodDef, MethodType.ArrayIndexAccess));
+        return HResult.S_OK;
+    }
+
+    private static HResult InjectThreadAllocationHelperMethod(InstrumentationContext context)
+    {
+        const string name = "ThreadAllocation";
+        var signature = new COR_SIGNATURE[]
+        {
+            (byte)CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+            1,
+            (byte)CorElementType.ELEMENT_TYPE_VOID,
+            (byte)CorElementType.ELEMENT_TYPE_I
+        };
+        if (!CreateHelperMethod(context, name, signature, out var methodDef))
+            return HResult.E_FAIL;
+
+        Logger.LogDebug($"Emitted helper method \"{name}\" ({methodDef.Value}) into {context.CoreModule.Name}");
+        context.AddHelperMethod(new(name, MethodType.ThreadAllocation, methodDef, signature));
+        HelperMethodInjected?.Invoke((context.CoreModule, context.EventDispatcherTypeDef, methodDef, MethodType.ThreadAllocation));
         return HResult.S_OK;
     }
 

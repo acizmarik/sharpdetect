@@ -10,6 +10,7 @@ namespace SharpDetect.Common
         ArrayElementWrite,
         FieldRead,
         FieldWrite,
+        ThreadAllocation,
         ObjectCreation
     }
 }

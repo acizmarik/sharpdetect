@@ -71,6 +71,7 @@ namespace SharpDetect.Common.Instrumentation
                 MethodType.ArrayElementAccess => MethodSig.CreateStatic(corLibTypes.Void, corLibTypes.Boolean, corLibTypes.UInt64),
                 MethodType.ArrayInstanceAccess => MethodSig.CreateStatic(corLibTypes.Void, corLibTypes.Object),
                 MethodType.ArrayIndexAccess => MethodSig.CreateStatic(corLibTypes.Void, corLibTypes.Int32),
+                MethodType.ThreadAllocation => MethodSig.CreateStatic(corLibTypes.Void, corLibTypes.IntPtr),
                 _ => throw new NotSupportedException($"Method signature for helper method {Enum.GetName(type)} is not supported."),
             };
         }

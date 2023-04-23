@@ -51,36 +51,24 @@ namespace SharpDetect.Core.Utilities
             }
 
             // Otherwise try parse value type
-            switch (paramSig.ElementType)
+            return paramSig.ElementType switch
             {
-                case ElementType.Boolean:
-                    return new(MemoryMarshal.Read<bool>(value));
-                case ElementType.Char:
-                    return new(MemoryMarshal.Read<char>(value));
-                case ElementType.I1:
-                    return new(MemoryMarshal.Read<sbyte>(value));
-                case ElementType.U1:
-                    return new(MemoryMarshal.Read<byte>(value));
-                case ElementType.I2:
-                    return new(MemoryMarshal.Read<short>(value));
-                case ElementType.U2:
-                    return new(MemoryMarshal.Read<ushort>(value));
-                case ElementType.I4:
-                    return new(MemoryMarshal.Read<int>(value));
-                case ElementType.U4:
-                    return new(MemoryMarshal.Read<uint>(value));
-                case ElementType.I8:
-                    return new(MemoryMarshal.Read<long>(value));
-                case ElementType.U8:
-                    return new(MemoryMarshal.Read<ulong>(value));
-                case ElementType.R4:
-                    return new(MemoryMarshal.Read<float>(value));
-                case ElementType.R8:
-                    return new(MemoryMarshal.Read<double>(value));
-
-                default:
-                    throw new NotSupportedException($"Could not parse parameter {paramSig}.");
-            }
+                ElementType.Boolean => new(MemoryMarshal.Read<bool>(value)),
+                ElementType.Char => new(MemoryMarshal.Read<char>(value)),
+                ElementType.I1 => new(MemoryMarshal.Read<sbyte>(value)),
+                ElementType.U1 => new(MemoryMarshal.Read<byte>(value)),
+                ElementType.I2 => new(MemoryMarshal.Read<short>(value)),
+                ElementType.U2 => new(MemoryMarshal.Read<ushort>(value)),
+                ElementType.I4 => new(MemoryMarshal.Read<int>(value)),
+                ElementType.U4 => new(MemoryMarshal.Read<uint>(value)),
+                ElementType.I8 => new(MemoryMarshal.Read<long>(value)),
+                ElementType.U8 => new(MemoryMarshal.Read<ulong>(value)),
+                ElementType.R4 => new(MemoryMarshal.Read<float>(value)),
+                ElementType.R8 => new(MemoryMarshal.Read<double>(value)),
+                ElementType.I => new(MemoryMarshal.Read<IntPtr>(value)),
+                ElementType.U => new(MemoryMarshal.Read<UIntPtr>(value)),
+                _ => throw new NotSupportedException($"Could not parse parameter {paramSig}."),
+            };
         }
     }
 }
