@@ -29,6 +29,7 @@ namespace SharpDetect.Core.Runtime
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataResolver resolver;
         private readonly IMetadataEmitter emitter;
+        private readonly Microsoft.Extensions.Logging.ILogger logger;
         private volatile bool ongoingGarbageCollection;
 
         public ShadowCLR(int processId, IMetadataResolver resolver, IMetadataEmitter emitter, IModuleBindContext moduleBindContext, ILoggerFactory loggerFactory)
@@ -39,6 +40,7 @@ namespace SharpDetect.Core.Runtime
             this.resolver = resolver;
             this.emitter = emitter;
             this.moduleBindContext = moduleBindContext;
+            this.logger = loggerFactory.CreateLogger<ShadowCLR>();
 
             Threads = new();
             Modules = new();
@@ -76,11 +78,13 @@ namespace SharpDetect.Core.Runtime
         public void Process_ThreadCreated(ShadowThread thread)
         {
             Threads.TryAdd(thread.Id, thread);
+            logger.LogDebug("Thread created: {thread}", thread.DisplayName);
         }
 
         public void Process_ThreadDestroyed(ShadowThread thread)
         {
             Threads.TryRemove(new KeyValuePair<UIntPtr, ShadowThread>(thread.Id, thread));
+            logger.LogDebug("Thread destroyed: {thread}", thread.DisplayName);
         }
 
         public void Process_RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason)

@@ -191,11 +191,9 @@ namespace SharpDetect.Instrumentation
                         // Check if we need to patch any calls to wrapped extern methods
                         var stubs = new UnresolvedMethodStubs();
                         WrapAnalyzedExternMethodCalls(method, moduleInfo, stubs, info);
-                        
-                        var methodInstrumented = default(bool);
-                        // Apply actions defined by method descriptors
-                        methodDescriptorRegistry.TryGetMethodInterpretationData(method, out var data);
+
                         // Check if user requested instrumentation for this method
+                        var methodInstrumented = default(bool);
                         if (options.RewritingOptions.Enabled)
                         {
                             var codeInjector = GetCodeInjector(info.ProcessId);

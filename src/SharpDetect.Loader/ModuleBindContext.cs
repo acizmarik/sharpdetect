@@ -73,7 +73,6 @@ namespace SharpDetect.Loader
                 modules.TryAdd((processId, moduleInfo), module);
                 Monitor.PulseAll(moduleLoadedSignalizer);
             }
-            LogSuccessBind(moduleInfo, module);
             return module;
         }
 
@@ -115,13 +114,6 @@ namespace SharpDetect.Loader
         {
             assemblyLoadContext.UnloadAll();
             modules.Clear();
-        }
-
-        [Conditional("DEBUG")]
-        [DebuggerStepThrough]
-        private void LogSuccessBind(ModuleInfo moduleInfo, ModuleDef module)
-        {
-            logger.LogDebug("Bound module: {module} to handle: {id}.", module.FullName, moduleInfo.Id);
         }
     }
 }
