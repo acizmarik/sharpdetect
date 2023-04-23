@@ -38,7 +38,7 @@ function getMonitorLockMethods(list)
 			sd.createMethodIdentifier("Enter", declaringType, "System.Void", true, 2, { "System.Object", "System.Boolean&" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.LockBlockingAcquire,
-				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },
+				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.CaptureReturnValue },
 				{
 					sd.createCapturedParameterInfo(0, UIntPtr.Size, false),
 					sd.createCapturedParameterInfo(1, 1, true)
@@ -58,7 +58,7 @@ function getMonitorLockMethods(list)
 			sd.createMethodIdentifier("ReliableEnterTimeout", declaringType, "System.Void", true, 3, { "System.Object", "System.Int32", "System.Boolean&" }, false),
 			sd.createMethodInterpretation(
 				MethodInterpretation.LockTryAcquire,
-				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.InjectManagedWrapper },
+				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments, MethodRewritingFlags.CaptureReturnValue, MethodRewritingFlags.InjectManagedWrapper },
 				{
 					sd.createCapturedParameterInfo(0, UIntPtr.Size, false),
 					sd.createCapturedParameterInfo(1, 4, false),

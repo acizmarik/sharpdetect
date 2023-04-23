@@ -6,10 +6,10 @@ namespace SharpDetect.Common.LibraryDescriptors
     [Flags]
     public enum MethodRewritingFlags
     {
-        None,
-        InjectEntryExitHooks,
-        CaptureArguments,
-        CaptureReturnValue,
-        InjectManagedWrapper
+        None = 0,
+        InjectEntryExitHooks = 1,
+        CaptureArguments = 2,
+        CaptureReturnValue = 4,
+        InjectManagedWrapper = 8
     }
 }
