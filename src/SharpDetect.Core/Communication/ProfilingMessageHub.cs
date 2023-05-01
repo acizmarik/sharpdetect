@@ -20,6 +20,7 @@ namespace SharpDetect.Core.Communication
         public event Action<(FunctionInfo FunctionInfo, RawEventInfo Info)>? JITCompilationStarted;
         public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? ThreadCreated;
         public event Action<(UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
+        public event Action<(UIntPtr ThreadId, string Name, RawEventInfo Info)>? ThreadNameChanged;
         public event Action<(COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
         public event Action<RawEventInfo>? RuntimeSuspendFinished;
         public event Action<RawEventInfo>? RuntimeResumeStarted;
@@ -42,6 +43,7 @@ namespace SharpDetect.Core.Communication
                 NotifyMessage.PayloadOneofCase.JITCompilationStarted,
                 NotifyMessage.PayloadOneofCase.ThreadCreated,
                 NotifyMessage.PayloadOneofCase.ThreadDestroyed,
+                NotifyMessage.PayloadOneofCase.ThreadNameChanged,
                 NotifyMessage.PayloadOneofCase.RuntimeSuspendStarted,
                 NotifyMessage.PayloadOneofCase.RuntimeSuspendFinished,
                 NotifyMessage.PayloadOneofCase.RuntimeResumeStarted,
@@ -69,6 +71,7 @@ namespace SharpDetect.Core.Communication
                 case NotifyMessage.PayloadOneofCase.JITCompilationStarted: DispatchJITCompilationStarted(message); break;
                 case NotifyMessage.PayloadOneofCase.ThreadCreated: DispatchThreadCreated(message); break;
                 case NotifyMessage.PayloadOneofCase.ThreadDestroyed: DispatchThreadDestroyed(message); break;
+                case NotifyMessage.PayloadOneofCase.ThreadNameChanged: DispatchThreadNameChanged(message); break;
                 case NotifyMessage.PayloadOneofCase.RuntimeSuspendStarted: DispatchRuntimeSuspendStarted(message); break;
                 case NotifyMessage.PayloadOneofCase.RuntimeSuspendFinished: DispatchRuntimeSuspendFinished(message); break;
                 case NotifyMessage.PayloadOneofCase.RuntimeResumeStarted: DispatchRuntimeResumeStarted(message); break;
@@ -143,6 +146,13 @@ namespace SharpDetect.Core.Communication
             var info = CreateEventInfo(message);
             var threadDestroyed = message.ThreadDestroyed;
             ThreadDestroyed?.Invoke((new(threadDestroyed.ThreadId), info));
+        }
+
+        private void DispatchThreadNameChanged(NotifyMessage message)
+        {
+            var info = CreateEventInfo(message);
+            var threadNameChanged = message.ThreadNameChanged;
+            ThreadNameChanged?.Invoke(new(new(threadNameChanged.ThreadId), threadNameChanged.Name, info));
         }
 
         private void DispatchRuntimeSuspendStarted(NotifyMessage message)

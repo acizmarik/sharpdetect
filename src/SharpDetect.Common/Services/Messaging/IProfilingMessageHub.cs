@@ -18,6 +18,7 @@ namespace SharpDetect.Common.Services
 
         event Action<(UIntPtr ThreadId, RawEventInfo Info)> ThreadCreated;
         event Action<(UIntPtr ThreadId, RawEventInfo Info)> ThreadDestroyed;
+        event Action<(UIntPtr ThreadId, string Name, RawEventInfo Info)> ThreadNameChanged;
 
         event Action<(COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)> RuntimeSuspendStarted;
         event Action<RawEventInfo> RuntimeSuspendFinished;

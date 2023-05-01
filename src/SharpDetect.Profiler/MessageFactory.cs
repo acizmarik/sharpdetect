@@ -104,6 +104,19 @@ internal class MessageFactory
         return AddCommonMetadata(message);
     }
 
+    public NotifyMessage CreateThreadNameChangedNotification(ThreadId threadId, string name)
+    {
+        var message = new NotifyMessage()
+        {
+            ThreadNameChanged = new Notify_ThreadNameChanged()
+            {
+                ThreadId = threadId.Value,
+                Name = name
+            }
+        };
+        return AddCommonMetadata(message);
+    }
+
     public NotifyMessage CreateTypeInjectedNotification(ModuleId moduleId, MdTypeDef typeDef)
     {
         var message = new NotifyMessage()

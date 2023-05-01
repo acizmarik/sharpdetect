@@ -129,7 +129,10 @@ namespace SharpDetect.Core.Runtime.Threads
             => (highPriority ? highPriorityQueue.Writer : lowPriorityQueue.Writer).TryWrite((notificationId, job, flags));
 
         public void SetName(string name)
-            => DisplayName = name;
+        {
+            DisplayName = name;
+            workerThread.Name = name;
+        }
 
         public StackFrame PeekCallstack()
             => callstack.Peek();

@@ -21,26 +21,27 @@ message NotifyMessage
 		Notify_JITCompilationStarted			JITCompilationStarted = 10;
 		Notify_ThreadCreated					ThreadCreated = 11;
 		Notify_ThreadDestroyed					ThreadDestroyed = 12;
-		Notify_TypeInjected						TypeInjected = 13;
-		Notify_TypeReferenced					TypeReferenced = 14;
-		Notify_MethodInjected					MethodInjected = 15;
-		Notify_HelperMethodReferenced			HelperMethodReferenced = 16;
-		Notify_WrapperMethodReferenced			WrapperMethodReferenced = 17;
-		Notify_MethodCalled						MethodCalled = 18;
-		Notify_MethodReturned					MethodReturned = 19;
-		Notify_MethodWrapperInjected			MethodWrapperInjected = 20;
+		Notify_ThreadNameChanged				ThreadNameChanged = 13;
+		Notify_TypeInjected						TypeInjected = 14;
+		Notify_TypeReferenced					TypeReferenced = 15;
+		Notify_MethodInjected					MethodInjected = 16;
+		Notify_HelperMethodReferenced			HelperMethodReferenced = 17;
+		Notify_WrapperMethodReferenced			WrapperMethodReferenced = 18;
+		Notify_MethodCalled						MethodCalled = 19;
+		Notify_MethodReturned					MethodReturned = 20;
+		Notify_MethodWrapperInjected			MethodWrapperInjected = 21;
 		
-		Notify_GarbageCollectionStarted			GarbageCollectionStarted = 21;
-		Notify_GarbageCollectionFinished		GarbageCollectionFinished = 22;
-		Notify_RuntimeSuspendStarted			RuntimeSuspendStarted = 23;
-		Notify_RuntimeSuspendFinished			RuntimeSuspendFinished = 24;
-		Notify_RuntimeResumeStarted				RuntimeResumeStarted = 25;
-		Notify_RuntimeResumeFinished			RuntimeResumeFinished = 26;
-		Notify_RuntimeThreadSuspended			RuntimeThreadSuspended = 27;
-		Notify_RuntimeThreadResumed				RuntimeThreadResumed = 28;
+		Notify_GarbageCollectionStarted			GarbageCollectionStarted = 22;
+		Notify_GarbageCollectionFinished		GarbageCollectionFinished = 23;
+		Notify_RuntimeSuspendStarted			RuntimeSuspendStarted = 24;
+		Notify_RuntimeSuspendFinished			RuntimeSuspendFinished = 25;
+		Notify_RuntimeResumeStarted				RuntimeResumeStarted = 26;
+		Notify_RuntimeResumeFinished			RuntimeResumeFinished = 27;
+		Notify_RuntimeThreadSuspended			RuntimeThreadSuspended = 28;
+		Notify_RuntimeThreadResumed				RuntimeThreadResumed = 29;
 
-		Notify_SurvivingReferences				SurvivingReferences = 29;
-		Notify_MovedReferences					MovedReferences = 30;
+		Notify_SurvivingReferences				SurvivingReferences = 30;
+		Notify_MovedReferences					MovedReferences = 31;
 	}
 }
 
@@ -116,6 +117,12 @@ message Notify_ThreadCreated
 message Notify_ThreadDestroyed
 {
 	uint64		ThreadId = 1;
+}
+
+message Notify_ThreadNameChanged
+{
+	uint64		ThreadId = 1;
+	string		Name = 2;
 }
 
 message Notify_TypeInjected

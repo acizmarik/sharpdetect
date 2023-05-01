@@ -107,7 +107,7 @@ namespace SharpDetect.UnitTests.Instrumentation
                 instrumentationHistory,
                 instructionInjectors.Select(t =>
                     (t.GetConstructors().First().Invoke(new object[] { moduleBindContext, methodDescriptorRegistry }) as InstructionInjectorBase)!).ToArray(),
-                instructionInjectors.Select(t =>
+                methodInjectors.Select(t =>
                     (t.GetConstructors().First().Invoke(new object[] { moduleBindContext, methodDescriptorRegistry }) as MethodInjectorBase)!).ToArray());
 
             return new InstrumentorContext(

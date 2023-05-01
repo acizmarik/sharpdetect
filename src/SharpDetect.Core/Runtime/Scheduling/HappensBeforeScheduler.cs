@@ -96,6 +96,12 @@ namespace SharpDetect.Core.Runtime.Scheduling
             });
         }
         
+        public void Schedule_ThreadNameChanged(UIntPtr threadId, string name, RawEventInfo info)
+        {
+            TryGetShadowThread(threadId, out var thread);
+            thread!.SetName($"{thread.DisplayName}({name})");
+        }
+        
         public void Schedule_RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason, RawEventInfo info)
         {
             Schedule(info.ThreadId, info.Id, JobFlags.Concurrent | JobFlags.OverrideSuspend, () =>

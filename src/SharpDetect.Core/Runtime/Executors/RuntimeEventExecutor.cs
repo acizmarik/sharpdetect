@@ -88,6 +88,11 @@ namespace SharpDetect.Core.Runtime.Executors
             runtime.Process_ThreadDestroyed(shadowThread);
         }
 
+        public void ExecuteThreadNameChanged(ShadowThread shadowThread, string name, RawEventInfo info)
+        {
+            shadowThread.SetName($"ShadowThread-{shadowThread.VirtualId} \"{name}\"");
+        }
+
         public void ExecuteRuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason, RawEventInfo info)
         {
             runtime.Process_RuntimeSuspendStarted(reason);

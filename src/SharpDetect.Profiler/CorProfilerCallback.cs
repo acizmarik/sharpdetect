@@ -712,6 +712,8 @@ internal unsafe class CorProfilerCallback : ICorProfilerCallback2
 
     public HResult ThreadNameChanged(ThreadId threadId, uint cchName, char* name)
     {
+        var threadName = new string(name, 0, (int)cchName);
+        messagingClient.SendNotification(messageFactory.CreateThreadNameChangedNotification(threadId, threadName));
         return HResult.S_OK;
     }
 

@@ -271,6 +271,13 @@ namespace SharpDetect.Core.Runtime
                 });
 
             // Wait for 'ThreadAllocated' notification
+            if (!forker.Wait(timeout: TimeSpan.FromSeconds(2)))
+            {
+                // In some cases, the forker can not be determined
+                // This is especially the case for IOCP (ThreadPool's IO Completion Port threads)
+                return null;
+            }
+
             var result = forker.Result;
             forks.Remove(thread.Id, out _);
             return result;
