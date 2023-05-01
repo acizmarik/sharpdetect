@@ -203,7 +203,7 @@ end
 -- Get descriptors necessary to capture all injected helper methods
 function getInjectedHelpers(list)
 	local declaringType = "SharpDetect.EventDispatcher"
-	-- System.Void SharpDetect::FieldAccess(System.Boolean,System.UInt64)
+	-- System.Void SharpDetect.EventDispatcher::FieldAccess(System.Boolean,System.UInt64)
 	list.add(
 		sd.createMethodRecord(
 			sd.createMethodIdentifier("FieldAccess", declaringType, "System.Void", true, 2, { "System.Boolean", "System.UInt64" }, true),
@@ -217,7 +217,7 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void SharpDetect::FieldInstanceAccess(System.Object)
+	-- System.Void SharpDetect.EventDispatcher::FieldInstanceAccess(System.Object)
 	list.add(
 		sd.createMethodRecord(
 			sd.createMethodIdentifier("FieldInstanceAccess", declaringType, "System.Void", true, 1, { "System.Object" }, true),
@@ -230,7 +230,7 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void SharpDetect::ArrayElementAccess(System.Boolean,System.UInt64)
+	-- System.Void SharpDetect.EventDispatcher::ArrayElementAccess(System.Boolean,System.UInt64)
 	list.add(
 		sd.createMethodRecord(
 			sd.createMethodIdentifier("ArrayElementAccess", declaringType, "System.Void", true, 2, { "System.Boolean", "System.UInt64" }, true),
@@ -244,7 +244,7 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void SharpDetect::ArrayInstanceAccess(System.Object)
+	-- System.Void SharpDetect.EventDispatcher::ArrayInstanceAccess(System.Object)
 	list.add(
 		sd.createMethodRecord(
 			sd.createMethodIdentifier("ArrayInstanceAccess", declaringType, "System.Void", true, 1, { "System.Object" }, true),
@@ -257,7 +257,7 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void SharpDetect::ArrayIndexAccess(System.Int32)
+	-- System.Void SharpDetect.EventDispatcher::ArrayIndexAccess(System.Int32)
 	list.add(
 		sd.createMethodRecord(
 			sd.createMethodIdentifier("ArrayIndexAccess", declaringType, "System.Void", true, 1, { "System.Int32" }, true),
@@ -270,10 +270,10 @@ function getInjectedHelpers(list)
 			)
 		)
 	)
-	-- System.Void SharpDetect::ThreadAllocated(System.IntPtr)
+	-- System.Void SharpDetect.EventDispatcher::ThreadAllocation(System.IntPtr)
 	list.add(
 		sd.createMethodRecord(
-			sd.createMethodIdentifier("ThreadAllocated", declaringType, "System.Void", true, 1, { "System.IntPtr" }, true),
+			sd.createMethodIdentifier("ThreadAllocation", declaringType, "System.Void", true, 1, { "System.IntPtr" }, true),
 			sd.createMethodInterpretation(
 				MethodInterpretation.ThreadAllocation,
 				sd.flagsOr{ MethodRewritingFlags.InjectEntryExitHooks, MethodRewritingFlags.CaptureArguments },

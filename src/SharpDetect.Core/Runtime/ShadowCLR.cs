@@ -26,6 +26,7 @@ namespace SharpDetect.Core.Runtime
         internal readonly ShadowGC ShadowGC;
         internal readonly ConcurrentDictionary<UIntPtr, ShadowThread> Threads;
         internal readonly ConcurrentDictionary<ModuleInfo, ModuleDef> Modules;
+        private readonly ConcurrentDictionary<UIntPtr, (TaskCompletionSource<ShadowThread>? Tcs, Task<ShadowThread> Allocated)> forks;
         private readonly IModuleBindContext moduleBindContext;
         private readonly IMetadataResolver resolver;
         private readonly IMetadataEmitter emitter;
@@ -42,6 +43,7 @@ namespace SharpDetect.Core.Runtime
             this.moduleBindContext = moduleBindContext;
             this.logger = loggerFactory.CreateLogger<ShadowCLR>();
 
+            this.forks = new();
             Threads = new();
             Modules = new();
         }
@@ -75,16 +77,27 @@ namespace SharpDetect.Core.Runtime
             /* Do nothing */
         }
 
+        public void Process_ThreadAllocated(ShadowThread currentThread, IntPtr allocatedHandle)
+        {
+            // Add value if 'ThreadCreated' was not called yet
+            // Update 'TaskCompletionSource' as completed otherwise
+            forks.AddOrUpdate(
+                key: (nuint)allocatedHandle,
+                addValueFactory: _ => (null, Task.FromResult(currentThread)),
+                updateValueFactory: (_, record) => { record.Tcs?.SetResult(currentThread); return record; });
+            logger.LogDebug("Thread allocated: {thread} ({handle}) allocated ({forkHandle})", currentThread, currentThread.Id, allocatedHandle);
+        }
+
         public void Process_ThreadCreated(ShadowThread thread)
         {
             Threads.TryAdd(thread.Id, thread);
-            logger.LogDebug("Thread created: {thread}", thread.DisplayName);
+            logger.LogDebug("Thread created: {thread} ({handle})", thread.DisplayName, thread.Id);
         }
 
         public void Process_ThreadDestroyed(ShadowThread thread)
         {
             Threads.TryRemove(new KeyValuePair<UIntPtr, ShadowThread>(thread.Id, thread));
-            logger.LogDebug("Thread destroyed: {thread}", thread.DisplayName);
+            logger.LogDebug("Thread destroyed: {thread} ({handle})", thread.DisplayName, thread.Id);
         }
 
         public void Process_RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason)
@@ -238,6 +251,29 @@ namespace SharpDetect.Core.Runtime
 
             // Bind reference to the original definition
             emitter.Bind(new(wrappedMethod), wrapperMethod, functionRef);
+        }
+
+        public ShadowThread? GetThreadForker(ShadowThread thread)
+        {
+            if (Modules.IsEmpty)
+            {
+                // Some initial threads are created by runtime
+                // We can not determined forker for these threads
+                return null;
+            }
+
+            var (_, forker) = forks.GetOrAdd(
+                key: thread.Id,
+                valueFactory: _ =>
+                {
+                    var tcs = new TaskCompletionSource<ShadowThread>();
+                    return (tcs, tcs.Task);
+                });
+
+            // Wait for 'ThreadAllocated' notification
+            var result = forker.Result;
+            forks.Remove(thread.Id, out _);
+            return result;
         }
     }
 }

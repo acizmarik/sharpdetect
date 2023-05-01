@@ -77,8 +77,9 @@ namespace SharpDetect.Core.Runtime.Executors
 
         public void ExecuteThreadCreated(ShadowThread shadowThread, RawEventInfo info)
         {
+            var forkerThread = runtime.GetThreadForker(shadowThread);
             runtime.Process_ThreadCreated(shadowThread);
-            eventsHub.RaiseThreadCreated(runtime, shadowThread.Id, info);
+            eventsHub.RaiseThreadCreated(runtime, shadowThread.Id, forkerThread?.Id ?? null, info);
         }
 
         public void ExecuteThreadDestroyed(ShadowThread shadowThread, RawEventInfo info)
@@ -303,6 +304,14 @@ namespace SharpDetect.Core.Runtime.Executors
                                 var index = (int)resolvedArgumentsList[0].Argument.BoxedValue!;
                                 thread.OperationContext.SetArrayIndex(index);
                                 eventsHub.RaiseArrayIndexAccessed(runtime, index, info);
+                                break;
+                            }
+                        // Threads
+                        case MethodInterpretation.ThreadAllocation:
+                            {
+                                var handle = (IntPtr)resolvedArgumentsList[0].Argument.BoxedValue!;
+                                runtime.Process_ThreadAllocated(thread, handle);
+                                eventsHub.RaiseThreadAllocated(runtime, (UIntPtr)handle, info);
                                 break;
                             }
                     }

@@ -18,7 +18,7 @@ namespace SharpDetect.Common.Services
         event Action<(IShadowCLR Runtime, ModuleInfo Module, string Path, RawEventInfo Info)>? ModuleLoaded;
         event Action<(IShadowCLR Runtime, TypeInfo Type, RawEventInfo Info)>? TypeLoaded;
         event Action<(IShadowCLR Runtime, FunctionInfo Function, RawEventInfo Info)>? JITCompilationStarted;
-        event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadCreated;
+        event Action<(IShadowCLR Runtime, UIntPtr NewThreadId, UIntPtr? ForkerThreadId, RawEventInfo Info)>? ThreadCreated;
         event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
         event Action<(IShadowCLR Runtime, COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
         event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeSuspendFinished;
@@ -43,6 +43,7 @@ namespace SharpDetect.Common.Services
         event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, int Index, RawEventInfo Info)>? ArrayElementAccessed;
         event Action<(IShadowCLR Runtime, IShadowObject Object, RawEventInfo Info)>? ArrayInstanceAccessed;
         event Action<(IShadowCLR Runtime, int Index, RawEventInfo Info)>? ArrayIndexAccessed;
+        event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadAllocated;
         event Action<(IShadowCLR Runtime, FunctionInfo Function, IArgumentsList? Arguments, RawEventInfo Info)>? MethodCalled;
         event Action<(IShadowCLR Runtime, FunctionInfo Function, IValueOrObject? returnValue, IArgumentsList? ByRefArguments, RawEventInfo Info)>? MethodReturned;
         event Action<(IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, RawEventInfo Info)>? LockAcquireAttempted;

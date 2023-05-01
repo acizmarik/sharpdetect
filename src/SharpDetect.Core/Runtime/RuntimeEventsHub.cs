@@ -22,7 +22,7 @@ namespace SharpDetect.Core.Runtime
         public event Action<(IShadowCLR Runtime, ModuleInfo Module, string Path, RawEventInfo Info)>? ModuleLoaded;
         public event Action<(IShadowCLR Runtime, TypeInfo Type, RawEventInfo Info)>? TypeLoaded;
         public event Action<(IShadowCLR Runtime, FunctionInfo Function, RawEventInfo Info)>? JITCompilationStarted;
-        public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadCreated;
+        public event Action<(IShadowCLR Runtime, UIntPtr NewThreadId, UIntPtr? ForkerThreadId, RawEventInfo Info)>? ThreadCreated;
         public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
         public event Action<(IShadowCLR Runtime, COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
         public event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeSuspendFinished;
@@ -51,6 +51,7 @@ namespace SharpDetect.Core.Runtime
         public event Action<(IShadowCLR Runtime, ulong Identifier, bool IsWrite, IShadowObject Instance, int Index, RawEventInfo Info)>? ArrayElementAccessed;
         public event Action<(IShadowCLR Runtime, IShadowObject Object, RawEventInfo Info)>? ArrayInstanceAccessed;
         public event Action<(IShadowCLR Runtime, int Index, RawEventInfo Info)>? ArrayIndexAccessed;
+        public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadAllocated;
         public event Action<(IShadowCLR Runtime, FunctionInfo Function, IArgumentsList? Arguments, RawEventInfo Info)>? MethodCalled;
         public event Action<(IShadowCLR Runtime, FunctionInfo Function, IValueOrObject? returnValue, IArgumentsList? ByRefArguments, RawEventInfo Info)>? MethodReturned;
         public event Action<(IShadowCLR Runtime, FunctionInfo Function, IShadowObject Instance, RawEventInfo Info)>? LockAcquireAttempted;
@@ -85,8 +86,8 @@ namespace SharpDetect.Core.Runtime
         internal void RaiseJITCompilationStarted(IShadowCLR runtime, FunctionInfo function, RawEventInfo info)
             => JITCompilationStarted?.Invoke((runtime, function, info));
 
-        internal void RaiseThreadCreated(IShadowCLR runtime, UIntPtr threadId, RawEventInfo info)
-            => ThreadCreated?.Invoke((runtime, threadId, info));
+        internal void RaiseThreadCreated(IShadowCLR runtime, UIntPtr newThreadId, UIntPtr? forkerThreadId, RawEventInfo info)
+            => ThreadCreated?.Invoke((runtime, newThreadId, forkerThreadId, info with { ThreadId = forkerThreadId ?? 0 }));
 
         internal void RaiseThreadDestroyed(IShadowCLR runtime, UIntPtr threadId, RawEventInfo info)
             => ThreadDestroyed?.Invoke((runtime, threadId, info));
@@ -157,6 +158,9 @@ namespace SharpDetect.Core.Runtime
 
         internal void RaiseArrayIndexAccessed(IShadowCLR runtime, int index, RawEventInfo info)
             => ArrayIndexAccessed?.Invoke((runtime, index, info));
+
+        internal void RaiseThreadAllocated(IShadowCLR runtime, UIntPtr threadId, RawEventInfo info)
+            => ThreadAllocated?.Invoke((runtime, threadId, info));
 
         internal void RaiseMethodCalled(IShadowCLR runtime, FunctionInfo function, ArgumentsList? arguments, RawEventInfo info)
             => MethodCalled?.Invoke((runtime, function, arguments, info));
