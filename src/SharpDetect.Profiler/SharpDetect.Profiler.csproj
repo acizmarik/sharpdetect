@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -18,7 +18,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Iced" Version="1.18.0" />
-		<PackageReference Include="NetMQ" Version="4.0.1.11" />
+		<PackageReference Include="NetMQ" Version="4.0.1.12" />
 	</ItemGroup>
 
 	<ItemGroup>
