@@ -37,7 +37,7 @@ namespace SharpDetect.Core.Runtime.Threads
             ProcessId = processId;
             Id = threadId;
             VirtualId = virtualThreadId;
-            DisplayName = $"{nameof(ShadowThread)}-{virtualThreadId}";
+            DisplayName = CreateShadowName();
             OperationContext = new OperationContext();
             state = ShadowThreadState.Running;
             callstack = new Stack<StackFrame>();
@@ -128,10 +128,19 @@ namespace SharpDetect.Core.Runtime.Threads
         public void Execute(ulong notificationId, JobFlags flags, Action job, bool highPriority = true)
             => (highPriority ? highPriorityQueue.Writer : lowPriorityQueue.Writer).TryWrite((notificationId, job, flags));
 
+        private string CreateShadowName()
+            => $"{nameof(ShadowThread)}-{VirtualId}";
+
         public void SetName(string name)
         {
             DisplayName = name;
             workerThread.Name = name;
+        }
+
+        public void SetRealName(string realName)
+        {
+            DisplayName = $"{CreateShadowName()} [{realName}]";
+            workerThread.Name = DisplayName;
         }
 
         public StackFrame PeekCallstack()

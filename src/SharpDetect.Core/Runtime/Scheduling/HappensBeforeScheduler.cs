@@ -98,8 +98,15 @@ namespace SharpDetect.Core.Runtime.Scheduling
         
         public void Schedule_ThreadNameChanged(UIntPtr threadId, string name, RawEventInfo info)
         {
-            TryGetShadowThread(threadId, out var thread);
-            thread!.SetName($"{thread.DisplayName}({name})");
+            // Remember custom thread names for each thread
+            // There is a possibility that this notification comes before ThreadCreated...
+            SetCustomThreadName(threadId, name);
+
+            Schedule(threadId, info.Id, JobFlags.Concurrent, () =>
+            {
+                TryGetShadowThread(threadId, out var thread);
+                Executor.ExecuteThreadNameChanged(thread!, name, info);
+            });
         }
         
         public void Schedule_RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason, RawEventInfo info)

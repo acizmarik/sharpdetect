@@ -24,6 +24,7 @@ namespace SharpDetect.Core.Runtime
         public event Action<(IShadowCLR Runtime, FunctionInfo Function, RawEventInfo Info)>? JITCompilationStarted;
         public event Action<(IShadowCLR Runtime, UIntPtr NewThreadId, UIntPtr? ForkerThreadId, RawEventInfo Info)>? ThreadCreated;
         public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, RawEventInfo Info)>? ThreadDestroyed;
+        public event Action<(IShadowCLR Runtime, UIntPtr ThreadId, string Name, RawEventInfo Info)>? ThreadNameChanged;
         public event Action<(IShadowCLR Runtime, COR_PRF_SUSPEND_REASON Reason, RawEventInfo Info)>? RuntimeSuspendStarted;
         public event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeSuspendFinished;
         public event Action<(IShadowCLR Runtime, RawEventInfo Info)>? RuntimeResumeStarted;
@@ -87,10 +88,13 @@ namespace SharpDetect.Core.Runtime
             => JITCompilationStarted?.Invoke((runtime, function, info));
 
         internal void RaiseThreadCreated(IShadowCLR runtime, UIntPtr newThreadId, UIntPtr? forkerThreadId, RawEventInfo info)
-            => ThreadCreated?.Invoke((runtime, newThreadId, forkerThreadId, info with { ThreadId = forkerThreadId ?? 0 }));
+            => ThreadCreated?.Invoke((runtime, newThreadId, forkerThreadId, info with { ThreadId = forkerThreadId ?? newThreadId }));
 
         internal void RaiseThreadDestroyed(IShadowCLR runtime, UIntPtr threadId, RawEventInfo info)
             => ThreadDestroyed?.Invoke((runtime, threadId, info));
+
+        internal void RaiseThreadNameChanged(IShadowCLR runtime, UIntPtr threadId, string name, RawEventInfo info)
+            => ThreadNameChanged?.Invoke((runtime, threadId, name, info));
 
         internal void RaiseRuntimeSuspendStarted(IShadowCLR runtime, COR_PRF_SUSPEND_REASON reason, RawEventInfo info)
             => RuntimeSuspendStarted?.Invoke((runtime, reason, info));

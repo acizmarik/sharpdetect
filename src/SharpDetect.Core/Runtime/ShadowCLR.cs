@@ -100,6 +100,12 @@ namespace SharpDetect.Core.Runtime
             logger.LogDebug("Thread destroyed: {thread} ({handle})", thread.DisplayName, thread.Id);
         }
 
+        public void Process_ThreadNameChanged(ShadowThread thread, string name)
+        {
+            thread.SetRealName(name);
+            logger.LogDebug("Thread renamed: {thread} ({handle})", thread, thread.Id);
+        }
+
         public void Process_RuntimeSuspendStarted(COR_PRF_SUSPEND_REASON reason)
         {
             RuntimeContract.Assert(State == ShadowRuntimeState.Executing);
@@ -271,7 +277,7 @@ namespace SharpDetect.Core.Runtime
                 });
 
             // Wait for 'ThreadAllocated' notification
-            if (!forker.Wait(timeout: TimeSpan.FromSeconds(2)))
+            if (!forker.Wait(timeout: TimeSpan.FromSeconds(1)))
             {
                 // In some cases, the forker can not be determined
                 // This is especially the case for IOCP (ThreadPool's IO Completion Port threads)

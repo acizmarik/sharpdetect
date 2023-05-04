@@ -19,6 +19,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
         public int ProcessId { get; private set; }
         protected BlockingCollection<ShadowThread> ShadowThreadDestroyingQueue;
         protected readonly EpochSource EpochSource;
+        private ImmutableDictionary<UIntPtr, string> threadNameLookup;
         private ImmutableDictionary<UIntPtr, ShadowThread> threadLookup;
         private readonly IDateTimeProvider dateTimeProvider;
         private readonly ILoggerFactory loggerFactory;
@@ -35,6 +36,7 @@ namespace SharpDetect.Core.Runtime.Scheduling
             this.ShadowThreadDestroyingQueue = new BlockingCollection<ShadowThread>();
             this.EpochSource = new EpochSource();
             this.threadLookup = ImmutableDictionary.Create<UIntPtr, ShadowThread>();
+            this.threadNameLookup = ImmutableDictionary.Create<UIntPtr, string>();
             this.dateTimeProvider = dateTimeProvider;
             this.loggerFactory = loggerFactory;
             this.lastHeartbeatTimeStamp = dateTimeProvider.Now;
@@ -82,6 +84,12 @@ namespace SharpDetect.Core.Runtime.Scheduling
                 thread.Execute(taskId, flags, job);
         }
 
+        protected void SetCustomThreadName(UIntPtr threadId, string name)
+            => threadNameLookup = threadNameLookup.SetItem(threadId, name);
+
+        protected bool TryGetCustomThreadName(UIntPtr threadId, [NotNullWhen(returnValue: true)] out string? name)
+            => threadNameLookup.TryGetValue(threadId, out name);
+
         protected ShadowThread Register(UIntPtr threadId)
         {
             if (threadLookup.TryGetValue(threadId, out var shadowThread))
@@ -89,6 +97,9 @@ namespace SharpDetect.Core.Runtime.Scheduling
 
             ShadowThread newThread;
             newThread = new ShadowThread(ProcessId, threadId, virtualThreadsCounter++, loggerFactory, EpochSource);
+            if (TryGetCustomThreadName(threadId, out var customThreadName))
+                newThread.SetRealName(customThreadName);
+
             ImmutableDictionary<UIntPtr, ShadowThread>? newLookup;
             ImmutableDictionary<UIntPtr, ShadowThread>? oldLookup;
             
