@@ -1,0 +1,36 @@
+﻿{{#if reports}}
+<h1 class="error">{{title}}</h1>
+{{else}}
+<h1>{{title}}</h1>
+{{/if}}
+
+<p class="summary">{{description}}</p>
+
+<hr />
+
+<div class="tab">
+    <button id="btnRuntime" class="tablinks" data-group="1" onclick="openTab('Runtime')">Runtime</button>
+    <button id="btnAssemblies" class="tablinks" data-group="1" onclick="openTab('Assemblies')">Assemblies</button>
+    {{#if reports}}
+    <button id="btnViolations" class="tablinks" data-group="1" onclick="openTab('Violations')">Violations</button>
+    {{/if}}
+</div>
+
+<div id="Runtime" class="tabcontent" data-group="1">
+    {{> runtime}}
+</div>
+<div id="Assemblies" class="tabcontent" data-group="1">
+    {{> assemblies}}
+</div>
+<div id="Violations" class="tabcontent" data-group="1">
+    <div class="tab">
+        {{#reports}}
+        <button id="btn{{title}}" class="tablinks" data-group="11" onclick="openTab('{{title}}')">{{title}}</button>
+        {{/reports}}
+    </div>
+    {{#reports}}
+    <div id="{{title}}" class="tabcontent" data-group="11">
+        {{> threads}}
+    </div>
+    {{/reports}}
+</div>

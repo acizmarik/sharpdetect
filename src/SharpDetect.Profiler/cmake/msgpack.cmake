@@ -1,0 +1,5 @@
+add_definitions(-DMSGPACK_NO_BOOST)
+set(MSGPACK_ENDIAN_LITTLE_BYTE 1)
+set(MSGPACK_USE_BOOST OFF)
+add_subdirectory("lib/msgpack-c")
+include_directories("lib/msgpack-c/include")

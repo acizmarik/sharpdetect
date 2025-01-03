@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+	<PackageReference Include="CommunityToolkit.Diagnostics" />
+  </ItemGroup>
+  
+  <ItemGroup>
+	<ProjectReference Include="..\..\SharpDetect.Reporting\SharpDetect.Reporting.csproj" />
+	<ProjectReference Include="..\SharpDetect.Extensibility.Abstractions\SharpDetect.Extensibility.Abstractions.csproj" />
+	<ProjectReference Include="..\SharpDetect.Extensibility\SharpDetect.Extensibility.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<InternalsVisibleTo Include="SharpDetect.E2ETests"/>
+  </ItemGroup>
+
+</Project>

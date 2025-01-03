@@ -1,0 +1,26 @@
+﻿<script>
+    function openTab(tabContentId) {
+        const content = document.getElementById(tabContentId);
+        const button = document.getElementById(`btn${tabContentId}`);
+        const groupId = button.getAttribute("data-group");
+
+        closeAllTabs(groupId);
+        content.style.display = "block";
+        button.classList.add("active");
+    }
+
+    function closeAllTabs(groupId) {
+        for (let tabContent of document.querySelectorAll(`div.tabcontent[data-group='${groupId}']`)) {
+            tabContent.style.display = "none";
+        }
+
+        for (let tabLink of document.querySelectorAll(`button.tablinks[data-group='${groupId}']`)) {
+            tabLink.classList.remove("active");
+        }
+    }
+
+    /* Initialize */
+    openTab(document.querySelector("div.tabcontent[data-group='1']").id);
+    openTab(document.querySelector("div.tabcontent[data-group='11']").id);
+    openTab(document.querySelector("div.tabcontent[data-group='111']").id);
+</script>

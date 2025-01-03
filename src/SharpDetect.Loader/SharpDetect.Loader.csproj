@@ -1,13 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <PackageReference Include="Microsoft.DiaSymReader.Native" Version="1.7.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
+    <PackageReference Include="CSharp.OperationResult" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="OneOf" />
+    <PackageReference Include="dnlib" />
   </ItemGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\SharpDetect.Common\SharpDetect.Common.csproj" />
+    <ProjectReference Include="..\SharpDetect.Events\SharpDetect.Events.csproj" />
   </ItemGroup>
-
 </Project>

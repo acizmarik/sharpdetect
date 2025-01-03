@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\SharpDetect.Events\SharpDetect.Events.csproj" />
+    <ProjectReference Include="..\..\SharpDetect.Reporting\SharpDetect.Reporting.csproj" />
+    <ProjectReference Include="..\SharpDetect.MethodDescriptors\SharpDetect.MethodDescriptors.csproj" />
+  </ItemGroup>
+</Project>

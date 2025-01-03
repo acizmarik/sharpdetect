@@ -1,0 +1,203 @@
+﻿/* CSS reset; source: http://meyerweb.com/eric/tools/css/reset/ */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+    display: block;
+}
+
+body {
+    line-height: 1;
+}
+
+ol, ul {
+    list-style: none;
+}
+
+blockquote, q {
+    quotes: none;
+}
+
+blockquote:before, blockquote:after,
+q:before, q:after {
+    content: '';
+    content: none;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/* Variables */
+:root {
+    --color-background: #b6c4d1;
+    --color-code-background: #fee4b5;
+    --color-code-hover-background: #faebd7;
+    --color-primary: #49796b;
+    --color-accent: #b2675e;
+    --color-lightblack: #454545;
+    --color-black: #141414;
+    --color-white: #f8f8ff;
+    --color-lightgray: #d3d3d3;
+    --color-gray: #dddddd;
+    --color-controls-default: var(--color-white);
+    --color-controls-pressed: var(--color-lightgray);
+    --color-controls-hover: var(--color-gray);
+    --font-size: 1rem;
+    --font-default: "Segoe UI", Tahoma, sans-serif;
+    --font-monospace: "Droid Sans Mono", "Consolas", "monospace", monospace
+}
+
+/* Main */
+body {
+    font-family: var(--font-default);
+    font-size: var(--font-size);
+    margin: 1rem;
+    line-height: 1.2;
+    background-color: var(--color-background);
+}
+
+h1 {
+    font-style: italic;
+    font-weight: normal;
+    font-size: 2.5rem;
+    color: var(--color-black);
+    margin: 1.5rem 0;
+}
+
+h2 {
+    font-weight: normal;
+    font-size: 1.75rem;
+    color: var(--color-black);
+    margin: 0.5rem 0 0.5rem 0.25rem;
+}
+
+ol {
+    list-style-type: none;
+}
+
+.error {
+    color: var(--color-accent);
+}
+
+/* Stack trace */
+.stacktrace {
+    background-color: var(--color-stacktrace-background);
+}
+.stacktrace div.stackframe {
+    border-style: solid;
+    border-width: 1px;
+    border-color: var(--color-black);
+}
+.stacktrace div.stackframe + div.stackframe {
+    border-top: 0px;
+}
+.stacktrace input[type="checkbox"] {
+    display: none;
+}
+.stacktrace span.metadata {
+    font-family: var(--font-monospace);
+    overflow-wrap: break-word;
+    display: block;
+    margin-left: 1rem;
+}
+.stacktrace sub.sourceFile {
+    font-size: 0.75rem;
+    overflow-wrap: break-word;
+    font-style: italic;
+    display: block;
+    margin-left: 1rem;
+}
+.stackframe {
+    background-color: var(--color-code-background)
+}
+.stackframe:hover {
+    background-color: var(--color-code-hover-background);
+}
+
+/* Tabs */
+.tab {
+    overflow: hidden;
+    background-color: var(--color-controls-default);
+    border-style: solid;
+    border-width: thin;
+    border-color: var(--color-lightblack);
+}
+.tab button {
+    background-color: inherit;
+    font-weight: bold;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 8px 10px;
+}
+.tab button:hover {
+    background-color: var(--color-controls-hover);
+}
+.tab button.active {
+    background-color: var(--color-controls-pressed);
+}
+.tabcontent {
+    display: none;
+    padding: 8px 8px;
+    border-style: solid;
+    border-width: thin;
+    border-color: var(--color-lightblack);
+    border-top: none;
+}
+
+/* Tables */
+.styled-table {
+    overflow: hidden;
+    table-layout: fixed;
+    word-break: break-all;
+    width: 100%;
+    border-style: solid;
+    border-width: thin;
+    border-color: var(--color-lightblack);
+    font-size: 1rem;
+}
+
+.styled-table thead tr {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    text-align: left;
+}
+
+.styled-table th,
+.styled-table td {
+    padding: 5px 10px;
+}
+
+.styled-table tbody tr:nth-of-type(odd) {
+    background-color: var(--color-lightgray);
+}
+
+.styled-table tbody tr:nth-of-type(even) {
+    background-color: var(--color-white);
+}
+
+.styled-table table > tr > td:first-child {
+    padding-right: 10px
+}

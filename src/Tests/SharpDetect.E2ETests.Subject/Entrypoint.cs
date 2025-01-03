@@ -1,3 +1,6 @@
+// Copyright 2025 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
 ﻿namespace SharpDetect.E2ETests.Subject
 {
     public static partial class Program
@@ -164,9 +167,12 @@
                     break;
             }
 
-            // Data-race on fields detection
+            // Concurrency issues detection
             switch (args[0])
             {
+                case nameof(Test_Deadlock_SimpleDeadlock):
+                    Test_Deadlock_SimpleDeadlock();
+                    break;
                 case nameof(Test_DataRace_ReferenceType_Static_SimpleRace):
                     Test_DataRace_ReferenceType_Static_SimpleRace();
                     break;
