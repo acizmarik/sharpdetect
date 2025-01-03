@@ -1,6 +1,6 @@
 ﻿{
   "Target": {
-    "Path": "../../../../SniffDotNet.E2ETests.Subject/bin/Debug/net8.0/SniffDotNet.E2ETests.Subject.dll",
+    "Path": "../../../../SharpDetect.E2ETests.Subject/bin/Debug/net8.0/SharpDetect.E2ETests.Subject.dll",
     "Args": "Test_NoDeadlock",
     "Architecture": "X64",
     "RedirectInputOutput": {
@@ -11,7 +11,7 @@
   "Runtime": {
     "Profiler": {
       "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
-      "Path": "D:/Workspace/SniffDotNet/src/Profiler/SniffDotNet.Profiler/out/build/x64-debug/Profiler/Profiler.dll",
+      "Path": "../../../../../artifacts/Profiler.dll",
       "EventMask": [
         "COR_PRF_MONITOR_CLASS_LOADS",
         "COR_PRF_MONITOR_MODULE_LOADS",
@@ -31,8 +31,8 @@
     }
   },
   "Analysis": {
-    "Path": "../../../../../Extensibility/SniffDotNet.Plugins/bin/Debug/net8.0/SniffDotNet.Plugins.dll",
-    "FullTypeName": "SniffDotNet.Plugins.Deadlock.DeadlockPlugin",
+    "Path": "../../../../../Extensibility/SharpDetect.Plugins/bin/Debug/net8.0/SharpDetect.Plugins.dll",
+    "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
     "RenderReport": false
   }
 }
