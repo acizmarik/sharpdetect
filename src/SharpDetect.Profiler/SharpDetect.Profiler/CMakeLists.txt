@@ -19,5 +19,5 @@ set(HEADERS
     "RecordedEventType.h"
     "HashingUtils.h")
 
-add_library (Profiler SHARED ${SOURCES} ${HEADERS} "Profiler.def" "CapturedValueFlags.h")
-target_link_libraries (Profiler PRIVATE LibProfiler LibIPC)
+add_library (SharpDetect.Profiler SHARED ${SOURCES} ${HEADERS} "Profiler.def" "CapturedValueFlags.h")
+target_link_libraries (SharpDetect.Profiler PRIVATE LibProfiler LibIPC)

@@ -11,7 +11,7 @@
   "Runtime": {
     "Profiler": {
       "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
-      "Path": "../../../../../artifacts/Profiler.dll",
+      "Path": "../../../../../artifacts/SharpDetect.Profiler.dll",
       "EventMask": [
         "COR_PRF_MONITOR_CLASS_LOADS",
         "COR_PRF_MONITOR_MODULE_LOADS",

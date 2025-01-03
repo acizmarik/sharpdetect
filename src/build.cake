@@ -21,6 +21,8 @@ Task("Clean")
     CleanDirectory($"./Tests/SharpDetect.E2ETests/bin/{configuration}");
     CleanDirectory($"./Tests/SharpDetect.E2ETests.Subject/bin/{configuration}");
     CleanDirectory($"./SharpDetect.Profiler/artifacts");
+    CleanDirectory($"./artifacts");
+    Information("Cleanup finished.");
 });
 
 Task("Restore-NuGet-Packages")
@@ -94,7 +96,7 @@ Task("Build-Local-Environment")
     CopyFileToDirectory(ipqLibrary, artifactsDirectory);
     Information($"Copied IPQ native library to {artifactsDirectory}.");
 
-    var profilerLibrary = $"./SharpDetect.Profiler/artifacts/Profiler/{configuration}/Profiler.dll";
+    var profilerLibrary = $"./SharpDetect.Profiler/artifacts/SharpDetect.Profiler/{configuration}/SharpDetect.Profiler.dll";
     CopyFileToDirectory(profilerLibrary, artifactsDirectory);
     Information($"Copied profiler native library to {artifactsDirectory}.");
 });
