@@ -4,7 +4,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Extensibility;
-using SharpDetect.Extensibility.Abstractions;
 using SharpDetect.Extensibility.Configuration;
 using SharpDetect.Loader.Configuration;
 using SharpDetect.Metadata.Configuration;

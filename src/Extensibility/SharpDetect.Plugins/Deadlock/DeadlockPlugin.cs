@@ -5,7 +5,6 @@
 using SharpDetect.Events;
 using SharpDetect.Events.Descriptors.Profiler;
 using SharpDetect.Extensibility;
-using SharpDetect.Extensibility.Abstractions;
 using SharpDetect.Extensibility.Models;
 using SharpDetect.Extensibility.PluginBases.OrderedEvents;
 using SharpDetect.Loaders;

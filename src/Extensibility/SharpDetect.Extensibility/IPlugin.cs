@@ -7,7 +7,7 @@ using SharpDetect.MethodDescriptors.Arguments;
 using SharpDetect.Reporting.Model;
 using System.Collections.Immutable;
 
-namespace SharpDetect.Extensibility.Abstractions;
+namespace SharpDetect.Extensibility;
 
 public interface IPlugin
 {

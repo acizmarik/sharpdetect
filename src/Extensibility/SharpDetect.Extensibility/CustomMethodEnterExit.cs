@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 ﻿using SharpDetect.Events;
-using SharpDetect.Extensibility.Abstractions;
 
 namespace SharpDetect.Extensibility
 {

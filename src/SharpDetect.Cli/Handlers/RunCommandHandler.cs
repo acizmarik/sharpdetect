@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Cli.Configuration;
 using SharpDetect.Events;
 using SharpDetect.Extensibility;
-using SharpDetect.Extensibility.Abstractions;
 using SharpDetect.InterProcessQueue;
 using SharpDetect.InterProcessQueue.Configuration;
 using SharpDetect.InterProcessQueue.Memory;

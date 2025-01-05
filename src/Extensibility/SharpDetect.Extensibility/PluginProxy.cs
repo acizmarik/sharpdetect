@@ -3,7 +3,6 @@
 
 ﻿using Microsoft.Extensions.Logging;
 using SharpDetect.Events;
-using SharpDetect.Extensibility.Abstractions;
 using SharpDetect.Reporting.Model;
 using System.Collections.Immutable;
 using System.Linq.Expressions;

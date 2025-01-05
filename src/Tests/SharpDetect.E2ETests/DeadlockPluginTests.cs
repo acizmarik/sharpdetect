@@ -4,7 +4,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Cli.Handlers;
 using SharpDetect.Extensibility;
-using SharpDetect.Extensibility.Abstractions;
 using Xunit;
 
 namespace SharpDetect.E2ETests

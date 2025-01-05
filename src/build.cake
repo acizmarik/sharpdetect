@@ -14,7 +14,6 @@ Task("Clean")
     CleanDirectory($"./SharpDetect.Reporting/bin/{configuration}");
     CleanDirectory($"./SharpDetect.Serialization/bin/{configuration}");
     CleanDirectory($"./Extensibility/SharpDetect.Extensibility/bin/{configuration}");
-    CleanDirectory($"./Extensibility/SharpDetect.Extensibility.Abstractions/bin/{configuration}");
     CleanDirectory($"./Extensibility/SharpDetect.MethodDescriptors/bin/{configuration}");
     CleanDirectory($"./Extensibility/SharpDetect.Plugins/bin/{configuration}");
     CleanDirectory($"./Samples/SimpleDeadlock/bin/{configuration}");

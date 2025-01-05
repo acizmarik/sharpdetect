@@ -4,7 +4,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using SharpDetect.Events;
 using SharpDetect.Events.Descriptors.Profiler;
-using SharpDetect.Extensibility.Abstractions;
 using SharpDetect.Extensibility.Models;
 using SharpDetect.Extensibility.PluginBases.MethodDescriptors;
 using SharpDetect.Loaders;
@@ -238,9 +237,6 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
 
         return lockObj;
     }
-
-    private static bool CanTakeLock(ThreadId threadId, Lock lockObj)
-        => lockObj.Owner is null || lockObj.Owner == threadId;
 
     private RuntimeArgumentList ParseArguments(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
         => ParseArguments(metadata, args.ModuleId, args.MethodToken, args.ArgumentValues, args.ArgumentInfos);
