@@ -64,7 +64,7 @@ Task("Build-Profiler")
         Information($"Created directory: {artifactsDirectory}.");
     }
 
-    StartProcess("cmake", new ProcessSettings
+    var exitCode = StartProcess("cmake", new ProcessSettings
     {
         Arguments = new ProcessArgumentBuilder()
             .Append("..")
@@ -73,11 +73,17 @@ Task("Build-Profiler")
         WorkingDirectory = artifactsDirectory
     });
 
-    StartProcess("cmake", new ProcessSettings
+    if (exitCode != 0)
+        throw new Exception($"Failure during CMake configure. Exit code: {exitCode}.");
+
+    exitCode = StartProcess("cmake", new ProcessSettings
     {
         Arguments = new ProcessArgumentBuilder().Append("--build ."),
         WorkingDirectory = artifactsDirectory
     });
+
+    if (exitCode != 0)
+        throw new Exception($"Failure during build. Exit code: {exitCode}.");
 });
 
 Task("Build-Local-Environment")
