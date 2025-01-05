@@ -28,7 +28,7 @@ public partial class DeadlockPlugin
     private void PrepareViolationDiagnostics()
     {
         Reporter.SetTitle(_deadlocks.Count == 1 ? "One violation found" : $"Several ({_deadlocks.Count}) violations found");
-        Reporter.SetDescription("For each of the violation holds that one or multiple threads are blocked - waiting for each other (deadlock).");
+        Reporter.SetDescription("See details below for more information.");
 
         var index = 0;
         foreach (var (processId, cycle) in _deadlocks)

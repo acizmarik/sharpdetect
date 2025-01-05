@@ -120,7 +120,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var lockObj = GetLock(lockObjectId);
         lockObj.Release(threadId);
         LockReleased?.Invoke(new(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
-        UnblockThreadsWaitingForObject();
+        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorPulseOneAttempt)]
@@ -170,7 +170,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         lockObj.Release(threadId);
         _callstackArguments[threadId].Push(arguments);
         ObjectWaitAttempted?.Invoke(new ObjectWaitAttemptArgs(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
-        UnblockThreadsWaitingForObject();
+        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorWaitResult)]
@@ -185,26 +185,6 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
             ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj, success));
     }
 
-    private void UnblockThreadsWaitingForObject()
-    {
-        if (_eventsDeliveryContext.GetBlockedThreads().Any())
-        {
-            var toUnblockThreads = new List<ThreadId>();
-            foreach (var blockedThreadId in _eventsDeliveryContext.GetBlockedThreads())
-            {
-                // Check if thread can take lock
-                var arguments = _callstackArguments[blockedThreadId].Peek();
-                var blockedLockObj = GetLock(arguments[0].Value.AsT1);
-                if (CanTakeLock(blockedThreadId, blockedLockObj))
-                    toUnblockThreads.Add(blockedThreadId);
-            }
-
-            // Unblock all threads that are able to continue
-            foreach (var unlockedThreadId in toUnblockThreads)
-                _eventsDeliveryContext.UnblockEventsDeliveryForThread(unlockedThreadId);
-        }
-    }
-
     private bool TryConsumeOrDeferLockAcquire(ThreadId threadId, Lock lockObj)
     {
         if (lockObj.Owner is null || lockObj.Owner.Value == threadId)
@@ -216,7 +196,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         }
 
         // It needs to be deferred
-        _eventsDeliveryContext.BlockEventsDeliveryForThread(threadId);
+        _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForObject(threadId, lockObj);
         return false;
     }
 

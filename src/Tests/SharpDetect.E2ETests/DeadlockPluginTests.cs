@@ -33,7 +33,7 @@ namespace SharpDetect.E2ETests
 
             // Assert
             Assert.Null(report);
-            Assert.Empty(eventsDeliveryContext.GetBlockedThreads());
+            Assert.False(eventsDeliveryContext.HasBlockedThreads());
         }
 
         [Theory]

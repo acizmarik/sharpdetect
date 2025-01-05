@@ -1,39 +1,46 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using SharpDetect.Events;
+using SharpDetect.Events;
 using SharpDetect.Events.Descriptors.Profiler;
+using SharpDetect.Extensibility.Models;
 
 namespace SharpDetect.Extensibility
 {
     internal class EventsDeliveryContext : IEventsDeliveryContext
     {
         private readonly Dictionary<ThreadId, Queue<RecordedEvent>> _undelivered;
+        private readonly Dictionary<Lock, Queue<ThreadId>> _waitForLockQueue;
         private readonly HashSet<ThreadId> _blockedThreads;
-        private readonly HashSet<ThreadId> _newlyUnblockedThreads;
+        private readonly HashSet<ThreadId> _unblockedThreads;
 
         public EventsDeliveryContext()
         {
             _undelivered = [];
+            _waitForLockQueue = [];
             _blockedThreads = [];
-            _newlyUnblockedThreads = [];
+            _unblockedThreads = [];
         }
-        public void BlockEventsDeliveryForThread(ThreadId threadId)
+        
+        public void BlockEventsDeliveryForThreadWaitingForObject(ThreadId threadId, Lock lockObj)
         {
             if (!_undelivered.ContainsKey(threadId))
                 _undelivered[threadId] = new Queue<RecordedEvent>();
             _blockedThreads.Add(threadId);
+            
+            if (!_waitForLockQueue.ContainsKey(lockObj))
+                _waitForLockQueue[lockObj] = new Queue<ThreadId>();
+            _waitForLockQueue[lockObj].Enqueue(threadId);
         }
 
-        public void UnblockEventsDeliveryForThread(ThreadId threadId)
+        public void UnblockEventsDeliveryForThreadWaitingForObject(Lock lockObj)
         {
-            _blockedThreads.Remove(threadId);
-            _newlyUnblockedThreads.Add(threadId);
-        }
-
-        public IEnumerable<ThreadId> GetBlockedThreads()
-        {
-            return _blockedThreads;
+            if (_waitForLockQueue.TryGetValue(lockObj, out var waitQueue) && waitQueue.Count > 0)
+            {
+                var firstThreadId = waitQueue.Dequeue();
+                _blockedThreads.Remove(firstThreadId);
+                _unblockedThreads.Add(firstThreadId);
+            }
         }
 
         public IEnumerable<RecordedEvent> ConsumeUndeliveredEvents(ThreadId threadId)
@@ -50,15 +57,20 @@ namespace SharpDetect.Extensibility
 
         public bool HasUnblockedThreads()
         {
-            return _newlyUnblockedThreads.Count > 0;
+            return _unblockedThreads.Count > 0;
+        }
+
+        public bool HasBlockedThreads()
+        {
+            return _blockedThreads.Count > 0;
         }
 
         public IEnumerable<ThreadId> ConsumeUnblockedThreads()
         {
-            while (_newlyUnblockedThreads.Count > 0)
+            while (_unblockedThreads.Count > 0)
             {
-                var current = _newlyUnblockedThreads.First();
-                _newlyUnblockedThreads.Remove(current);
+                var current = _unblockedThreads.First();
+                _unblockedThreads.Remove(current);
                 yield return current;
             }
         }

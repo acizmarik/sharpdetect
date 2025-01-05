@@ -107,7 +107,11 @@ namespace SharpDetect.Cli.Handlers
                 {
                     foreach (var unblockedThreadId in _eventsDeliveryContext.ConsumeUnblockedThreads())
                     {
-                        _ = _eventsDeliveryContext.ConsumeUndeliveredEvents(unblockedThreadId).TakeWhile(evt => TryProcessEvent(evt) == EventState.Executed);
+                        foreach (var undeliveredEvent in _eventsDeliveryContext.ConsumeUndeliveredEvents(unblockedThreadId))
+                        {
+                            if (TryProcessEvent(undeliveredEvent) != EventState.Executed)
+                                break;
+                        }
                     }
                 }
 
