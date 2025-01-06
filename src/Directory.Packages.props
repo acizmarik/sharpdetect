@@ -1,7 +1,4 @@
 <Project>
-  <PropertyGroup>
-    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-  </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="CSharp.OperationResult" Version="0.1.6" />
     <PackageVersion Include="dnlib" Version="4.4.0" />

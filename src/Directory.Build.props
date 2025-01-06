@@ -1,16 +1,23 @@
-﻿<Project>
+<Project>
     <!-- Basic metadata -->
     <PropertyGroup>
         <Authors>Andrej Čižmárik</Authors>
         <Copyright>Copyright © Andrej Čižmárik</Copyright>
-        <PackageTags>dotnet;tracing;profiling;instrumentation</PackageTags>
+        <Description>Dynamic analysis framework for .NET programs</Description>
+        <PackageTags>dotnet;analysis;profiling;instrumentation</PackageTags>
         <RepositoryType>git</RepositoryType>
+        <RepositoryBranch Condition="'$(GITHUB_REF_NAME)' != ''">$(GITHUB_REF_NAME)</RepositoryBranch>
+        <RepositoryCommit Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</RepositoryCommit>
+        <RepositoryUrl>https://github.com/acizmarik/sharpdetect</RepositoryUrl>
     </PropertyGroup>
   
     <!-- Compilation -->
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
-		<Features>strict</Features>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <ContinuousIntegrationBuild Condition="'$(GITHUB_RUN_ID)' != ''">true</ContinuousIntegrationBuild>
+        <DebugType>embedded</DebugType>
+        <Features>strict</Features>
         <Nullable>enable</Nullable>
         <ImplicitUsings>true</ImplicitUsings>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -19,10 +26,8 @@
         
     <!-- Versioning -->
     <PropertyGroup>
-        <IsPreview>true</IsPreview>
-        <VersionPrefix>0.0.1</VersionPrefix>
-        <AssemblyVersion>0.0.1</AssemblyVersion>
-        <FileVersion>0.0.1</FileVersion>
+        <VersionPrefix>2.0.0</VersionPrefix>
+        <VersionSuffix Condition="'$(EXCLUDE_VERSION_SUFFIX)' != 'true'">prerelease</VersionSuffix>
     </PropertyGroup>
 
     <!-- Static analysis -->
