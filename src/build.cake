@@ -106,4 +106,15 @@ Task("Build-Local-Environment")
     Information($"Copied profiler native library to {artifactsDirectory}.");
 });
 
+Task("Tests")
+    .IsDependentOn("Build-Local-Environment")
+    .Does(() =>
+{
+    DotNetTest("./SharpDetect.sln", new DotNetTestSettings
+    {
+        Configuration = configuration,
+        NoRestore = true,
+    });
+});
+
 RunTarget(target);
