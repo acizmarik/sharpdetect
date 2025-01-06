@@ -1,4 +1,4 @@
-﻿// Copyright 2023 Andrej Čižmárik and Contributors
+﻿// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
@@ -72,7 +72,7 @@ namespace SharpDetect.E2ETests.Subject
         {
             var instance = new InstanceFieldReferenceType();
             _ = instance.Test_Field_ReferenceType_Instance;
-            
+
         }
 
         public static void Test_Property_ReferenceType_Instance_Read()
@@ -96,7 +96,7 @@ namespace SharpDetect.E2ETests.Subject
         public static void Test_Field_ValueType_Static_Read()
         {
             _ = StaticFieldValueType.Test_Field_ValueType_Static;
-            
+
         }
 
         public static void Test_Property_ValueType_Static_Read()
@@ -107,7 +107,7 @@ namespace SharpDetect.E2ETests.Subject
         public static void Test_Field_ValueType_Static_Write()
         {
             StaticFieldValueType.Test_Field_ValueType_Static = 123;
-            
+
         }
 
         public static void Test_Property_ValueType_Static_Write()
@@ -289,6 +289,84 @@ namespace SharpDetect.E2ETests.Subject
         {
             ArrayElement.Test_Array_Struct = new DateTime[1];
             ArrayElement.Test_Array_Struct[0] = DateTime.UtcNow;
+        }
+
+        public static void Test_NoDeadlock()
+        {
+            var lockObj1 = new object();
+            var lockObj2 = new object();
+
+            var thread1 = new Thread(() =>
+            {
+                for (;;)
+                {
+                    lock (lockObj1)
+                    {
+                        lock (lockObj2)
+                        {
+                        }
+                    }
+                }
+            });
+
+            var thread2 = new Thread(() =>
+            {
+                for (;;)
+                {
+                    lock (lockObj1)
+                    {
+                        lock (lockObj2)
+                        {
+                        }
+                    }
+                }
+            });
+
+            thread1.IsBackground = true;
+            thread2.IsBackground = true;
+            thread1.Start();
+            thread2.Start();
+
+            Thread.Sleep(2000);
+        }
+
+        public static void Test_Deadlock_SimpleDeadlock()
+        {
+            var lockObj1 = new object();
+            var lockObj2 = new object();
+
+            var thread1 = new Thread(() =>
+            {
+                for (;;)
+                {
+                    lock (lockObj1)
+                    {
+                        lock (lockObj2)
+                        {
+                        }
+                    }
+                }
+            });
+
+            var thread2 = new Thread(() =>
+            {
+                for (;;)
+                {
+                    lock (lockObj2)
+                    {
+                        lock (lockObj1)
+                        {
+                        }
+                    }
+                }
+            });
+
+            thread1.IsBackground = true;
+            thread2.IsBackground = true;
+            thread1.Start();
+            thread2.Start();
+
+            Thread.Sleep(2000);
         }
 
         public static void Test_DataRace_ReferenceType_Static_SimpleRace()

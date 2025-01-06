@@ -1,0 +1,12 @@
+[submodule "src/SharpDetect.Profiler/lib/loguru"]
+	path = src/SharpDetect.Profiler/lib/loguru
+	url = git@github.com:emilk/loguru.git
+[submodule "src/SharpDetect.Profiler/lib/miniutf"]
+	path = src/SharpDetect.Profiler/lib/miniutf
+	url = git@github.com:dropbox/miniutf.git
+[submodule "src/SharpDetect.Profiler/lib/msgpack-c"]
+	path = src/SharpDetect.Profiler/lib/msgpack-c
+	url = https://github.com/msgpack/msgpack-c.git
+[submodule "src/SharpDetect.Profiler/lib/json"]
+	path = src/SharpDetect.Profiler/lib/json
+	url = git@github.com:nlohmann/json.git

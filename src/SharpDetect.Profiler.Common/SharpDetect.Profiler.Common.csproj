@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <RootNamespace>SharpDetect.Profiler</RootNamespace>
-  </PropertyGroup>
-
-</Project>

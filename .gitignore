@@ -399,4 +399,5 @@ FodyWeavers.xsd
 
 # Visual Studio automatically creates launchSettings.json which is annoying
 # Everyone probably wants a custom launchSettings.json as there should be local paths
-src/SharpDetect.Console/Properties/launchSettings.json
+launchSettings.json
+

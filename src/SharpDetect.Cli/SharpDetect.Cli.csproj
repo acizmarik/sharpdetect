@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CliFx" />
+    <PackageReference Include="CliWrap" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Extensibility\SharpDetect.Extensibility\SharpDetect.Extensibility.csproj" />
+    <ProjectReference Include="..\Extensibility\SharpDetect.MethodDescriptors\SharpDetect.MethodDescriptors.csproj" />
+    <ProjectReference Include="..\SharpDetect.InterProcessQueue\SharpDetect.InterProcessQueue.csproj" />
+    <ProjectReference Include="..\SharpDetect.Reporting\SharpDetect.Reporting.csproj" />
+    <ProjectReference Include="..\SharpDetect.Serialization\SharpDetect.Serialization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<InternalsVisibleTo Include="SharpDetect.E2ETests" />	
+  </ItemGroup>
+
+</Project>
