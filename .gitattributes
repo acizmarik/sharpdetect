@@ -9,6 +9,7 @@
 *.config    text        eol=lf
 *.csproj    text        eol=lf
 *.json      text        eol=lf
+*.yml		text		eol=lf
 *.md        text        eol=lf
 *.props     text        eol=lf
 *.sh        text        eol=lf
