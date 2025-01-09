@@ -42,6 +42,5 @@ namespace SharpDetect.Cli
     public record ProfilerConfigurationArgs(
         string Clsid, 
         string Path, 
-        bool CollectFullStackTraces, 
-        COR_PRF_MONITOR[] EventMask);
+        bool CollectFullStackTraces);
 }

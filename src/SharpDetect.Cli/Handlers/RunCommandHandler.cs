@@ -176,8 +176,7 @@ namespace SharpDetect.Cli.Handlers
                     builder.Set("CORECLR_ENABLE_PROFILING", "1");
                     builder.Set("CORECLR_PROFILER", Args.Runtime.Profiler.Clsid.ToString());
                     builder.Set("CORECLR_PROFILER_PATH", Args.Runtime.Profiler.Path);
-                    builder.Set("SharpDetect_PROF_EVENTMASK",
-                        Args.Runtime.Profiler.EventMask.Cast<uint>().Aggregate((c, n) => c | n).ToString());
+                    builder.Set("SharpDetect_PROF_EVENTMASK", ((uint)_plugin.ProfilerMonitoringOptions).ToString());
                     builder.Set("SharpDetect_COLLECT_FULL_STACKTRACES", Args.Runtime.Profiler.CollectFullStackTraces ? "1" : "0");
                     builder.Set("SharpDetect_REWRITING_CONFIGURATION_FILE_PATH", RewritingConfigurationPath);
                     builder.Set("SharpDetect_SHAREDMEMORY_NAME", SharedMemoryName);
@@ -282,14 +281,11 @@ namespace SharpDetect.Cli.Handlers
         {
             var profilerClsid = configArgs.Profiler.Clsid;
             var profilerPath = configArgs.Profiler.Path;
-            var profilerEventMask = configArgs.Profiler.EventMask;
 
             if (!Guid.TryParse(profilerClsid, out var parsedClsid) || parsedClsid == Guid.Empty)
                 throw new ArgumentException($"Invalid profiler CLSID: \"{profilerClsid}\".");
             if (string.IsNullOrWhiteSpace(profilerPath))
                 throw new ArgumentException($"Invalid profiler path: \"{profilerPath}\".");
-            if (profilerEventMask?.Length == 0)
-                throw new ArgumentException($"Invalid profiler event mask: <empty>.");
             if (!File.Exists(profilerPath))
                 throw new ArgumentException($"Could not find profiler library: \"{profilerPath}\".");
 

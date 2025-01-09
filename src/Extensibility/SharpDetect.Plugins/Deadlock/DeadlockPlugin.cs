@@ -18,7 +18,7 @@ namespace SharpDetect.Plugins.Deadlock;
 public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 {
     public readonly record struct DeadlockInfo(uint ProcessId, List<(ThreadId ThreadId, string ThreadName, ThreadId BlockedOn, TrackedObjectId LockId)> Cycle);
-    public COR_PRF_MONITOR MandatoryProfilerOptions => _requiredProfilerFlags;
+    public COR_PRF_MONITOR ProfilerMonitoringOptions => _requiredProfilerFlags;
     public RecordedEventActionVisitorBase EventsVisitor => this;
     public ImmutableArray<MethodDescriptor> MethodDescriptors { get; }
     public string ReportCategory => "Deadlock";
@@ -31,12 +31,14 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
         COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
         COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+        COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
         COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
         COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
         COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
         COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
         COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST;
+        COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
+        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES;
 
     private readonly IMetadataContext _metadataContext;
     private readonly Dictionary<ThreadId, string> _threads;

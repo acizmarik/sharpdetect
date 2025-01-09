@@ -13,7 +13,7 @@ public interface IPlugin
 {
     string ReportCategory { get; }
     ImmutableArray<MethodDescriptor> MethodDescriptors { get; }
-    COR_PRF_MONITOR MandatoryProfilerOptions { get; }
+    COR_PRF_MONITOR ProfilerMonitoringOptions { get; }
     
     Summary CreateDiagnostics();
 
