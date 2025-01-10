@@ -14,12 +14,6 @@ namespace SharpDetect.Cli.Configuration
 {
     internal static class ServiceCollectionExtensions
     {
-        internal static IServiceCollection AddAnalysisServices<TPlugin>(this IServiceCollection services)
-            where TPlugin : class, IPlugin
-        {
-            return AddAnalysisServices(services, typeof(TPlugin));
-        }
-
         internal static IServiceCollection AddAnalysisServices(this IServiceCollection services, Type pluginType)
         {
             services.AddSingleton(TimeProvider.System);
@@ -35,6 +29,7 @@ namespace SharpDetect.Cli.Configuration
             services.AddSharpDetectExtensibilityServices();
             services.AddSharpDetectReportingServices();
             services.AddSingleton(p => (IPlugin)ActivatorUtilities.CreateInstance(p, pluginType));
+            services.AddSingleton(pluginType, p => p.GetRequiredService<IPlugin>());
             services.AddSingleton<PluginProxy>();
 
             return services;

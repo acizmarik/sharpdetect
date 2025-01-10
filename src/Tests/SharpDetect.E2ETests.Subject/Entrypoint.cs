@@ -220,20 +220,8 @@
             // Garbage collection events
             switch (args[0])
             {
-                case nameof(Test_SingleGarbageCollection_NonCompacting_Simple):
-                    Test_SingleGarbageCollection_NonCompacting_Simple();
-                    break;
-                case nameof(Test_SingleGarbageCollection_Compacting_Simple):
-                    Test_SingleGarbageCollection_Compacting_Simple();
-                    break;
                 case nameof(Test_SingleGarbageCollection_ObjectTracking_Simple):
                     Test_SingleGarbageCollection_ObjectTracking_Simple();
-                    break;
-                case nameof(Test_MultipleGarbageCollection_NonCompacting_Simple):
-                    Test_MultipleGarbageCollection_NonCompacting_Simple();
-                    break;
-                case nameof(Test_MultipleGarbageCollection_Compacting_Simple):
-                    Test_MultipleGarbageCollection_Compacting_Simple();
                     break;
                 case nameof(Test_MultipleGarbageCollection_ObjectTracking_Simple):
                     Test_MultipleGarbageCollection_ObjectTracking_Simple();

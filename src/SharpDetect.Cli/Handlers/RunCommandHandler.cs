@@ -37,7 +37,7 @@ namespace SharpDetect.Cli.Handlers
         private readonly IPlugin _plugin;
         private readonly ILogger _logger;
 
-        public RunCommandHandler(string configurationFilePath)
+        private RunCommandHandler(string configurationFilePath, Type? pluginType)
         {
             _jsonDeserializerOptions = new JsonSerializerOptions()
             {
@@ -52,15 +52,25 @@ namespace SharpDetect.Cli.Handlers
             Args = LoadCommandArguments(configurationFilePath);
             ThrowOnInvalidConfiguration();
 
-            var _pluginType = LoadPluginInfo();
+            pluginType ??= LoadPluginInfo();
             ServiceProvider = new ServiceCollection()
-                .AddAnalysisServices(_pluginType)
+                .AddAnalysisServices(pluginType)
                 .BuildServiceProvider();
 
             _proxy = ServiceProvider.GetRequiredService<PluginProxy>();
             _plugin = ServiceProvider.GetRequiredService<IPlugin>();
             _eventsDeliveryContext = ServiceProvider.GetRequiredService<IEventsDeliveryContext>();
             _logger = ServiceProvider.GetRequiredService<ILogger<RunCommandHandler>>();
+        }
+
+        public static RunCommandHandler Create(string configurationFilePath)
+        {
+            return new RunCommandHandler(configurationFilePath, null);
+        }
+
+        public static RunCommandHandler Create(string configurationFilePath, Type pluginType)
+        {
+            return new RunCommandHandler(configurationFilePath, pluginType);
         }
 
         public ValueTask ExecuteAsync(IConsole _)

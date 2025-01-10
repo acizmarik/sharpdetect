@@ -17,21 +17,21 @@ namespace SharpDetect.Extensibility.PluginBases.OrderedEvents;
 
 public abstract class HappensBeforeOrderingPluginBase : PluginBase
 {
-    protected readonly record struct LockAcquireAttemptArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    protected readonly record struct LockAcquireResultArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
-    protected readonly record struct LockReleaseArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    protected readonly record struct ObjectPulseOneArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    protected readonly record struct ObjectPulseAllArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    protected readonly record struct ObjectWaitAttemptArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    protected readonly record struct ObjectWaitResultArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
+    public readonly record struct LockAcquireAttemptArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct LockAcquireResultArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
+    public readonly record struct LockReleaseArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectPulseOneArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectPulseAllArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectWaitAttemptArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectWaitResultArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
 
-    protected event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
-    protected event Action<LockAcquireResultArgs>? LockAcquireReturned;
-    protected event Action<LockReleaseArgs>? LockReleased;
-    protected event Action<ObjectPulseOneArgs>? ObjectPulsedOne;
-    protected event Action<ObjectPulseAllArgs>? ObjectPulsedAll;
-    protected event Action<ObjectWaitAttemptArgs>? ObjectWaitAttempted;
-    protected event Action<ObjectWaitResultArgs>? ObjectWaitReturned;
+    public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
+    public event Action<LockAcquireResultArgs>? LockAcquireReturned;
+    public event Action<LockReleaseArgs>? LockReleased;
+    public event Action<ObjectPulseOneArgs>? ObjectPulsedOne;
+    public event Action<ObjectPulseAllArgs>? ObjectPulsedAll;
+    public event Action<ObjectWaitAttemptArgs>? ObjectWaitAttempted;
+    public event Action<ObjectWaitResultArgs>? ObjectWaitReturned;
 
     private readonly Dictionary<ThreadId, Stack<RuntimeArgumentList>> _callstackArguments = [];
     private readonly Dictionary<TrackedObjectId, Lock> _locks = [];

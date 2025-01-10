@@ -27,7 +27,7 @@ namespace SharpDetect.Cli.Commands
             try
             {
                 Directory.SetCurrentDirectory(workingDirectory);
-                commandHandler = new RunCommandHandler(ArgumentsFile);
+                commandHandler = RunCommandHandler.Create(ArgumentsFile);
                 await commandHandler.ExecuteAsync(console);
             }
             finally

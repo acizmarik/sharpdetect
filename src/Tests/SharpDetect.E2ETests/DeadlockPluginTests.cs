@@ -8,6 +8,7 @@ using Xunit;
 
 namespace SharpDetect.E2ETests
 {
+    [Collection("E2E")]
     public class DeadlockPluginTests
     {
         private const string ConfigurationFolder = "DeadlockPluginTestConfigurations";
@@ -21,7 +22,7 @@ namespace SharpDetect.E2ETests
         public async Task DeadlockPlugin_NoDeadlock(string configuration)
         {
             // Arrange
-            var handler = new RunCommandHandler(configuration);
+            var handler = RunCommandHandler.Create(configuration);
             var services = handler.ServiceProvider;
             var pluginProxy = services.GetRequiredService<PluginProxy>();
             var eventsDeliveryContext = services.GetRequiredService<IEventsDeliveryContext>();
@@ -44,7 +45,7 @@ namespace SharpDetect.E2ETests
         public async Task DeadlockPlugin_CanDetectDeadlock(string configuration)
         {
             // Arrange
-            var handler = new RunCommandHandler(configuration);
+            var handler = RunCommandHandler.Create(configuration);
             var services = handler.ServiceProvider;
             var plugin = services.GetRequiredService<IPlugin>();
             var pluginProxy = services.GetRequiredService<PluginProxy>();

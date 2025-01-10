@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
@@ -489,36 +489,6 @@ namespace SharpDetect.E2ETests.Subject
             var task1 = Task.Run(() => { lock (lockObj) { instance1.Test_DataRace_ReferenceType_Instance = new object(); } });
             var task2 = Task.Run(() => { lock (lockObj) { instance2.Test_DataRace_ReferenceType_Instance = new object(); } });
             Task.WaitAll(task1, task2);
-        }
-
-        public static void Test_SingleGarbageCollection_NonCompacting_Simple()
-        {
-            GC.Collect(2, GCCollectionMode.Forced, true, false);
-            GC.WaitForPendingFinalizers();
-        }
-
-        public static void Test_SingleGarbageCollection_Compacting_Simple()
-        {
-            GC.Collect(2, GCCollectionMode.Forced, true, true);
-            GC.WaitForPendingFinalizers();
-        }
-
-        public static void Test_MultipleGarbageCollection_NonCompacting_Simple()
-        {
-            GC.Collect(2, GCCollectionMode.Forced, true, false);
-            GC.WaitForPendingFinalizers();
-
-            GC.Collect(2, GCCollectionMode.Forced, true, false);
-            GC.WaitForPendingFinalizers();
-        }
-
-        public static void Test_MultipleGarbageCollection_Compacting_Simple()
-        {
-            GC.Collect(2, GCCollectionMode.Forced, true, true);
-            GC.WaitForPendingFinalizers();
-
-            GC.Collect(2, GCCollectionMode.Forced, true, true);
-            GC.WaitForPendingFinalizers();
         }
 
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()

@@ -1,0 +1,23 @@
+{
+  "Target": {
+    "Path": "../../../../SharpDetect.E2ETests.Subject/bin/Release/net8.0/SharpDetect.E2ETests.Subject.dll",
+    "Args": "Test_MonitorMethods_TryEnterExit3",
+    "Architecture": "X64",
+    "RedirectInputOutput": {
+      "StdoutFilePath": "test_stdout.log",
+      "StderrFilePath": "test_stderr.log"
+    }
+  },
+  "Runtime": {
+    "Profiler": {
+      "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
+      "Path": "../../../../../artifacts/SharpDetect.Profiler.dll",
+      "CollectFullStackTraces": true
+    }
+  },
+  "Analysis": {
+    "Path": "SharpDetect.E2ETests.dll",
+    "FullTypeName": "SharpDetect.E2ETests.Utils.TestHappensBeforePlugin",
+    "RenderReport": false
+  }
+}
