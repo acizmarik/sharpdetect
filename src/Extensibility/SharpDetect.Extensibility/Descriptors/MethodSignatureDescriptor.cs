@@ -3,7 +3,7 @@
 
 ﻿using SharpDetect.Events.Descriptors.Profiler;
 
-namespace SharpDetect.MethodDescriptors;
+namespace SharpDetect.Extensibility.Descriptors;
 
 public record MethodSignatureDescriptor(
     CorCallingConvention CallingConvention,

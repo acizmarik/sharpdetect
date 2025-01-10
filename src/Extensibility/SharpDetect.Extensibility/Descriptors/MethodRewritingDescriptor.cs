@@ -1,9 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using SharpDetect.MethodDescriptors.Arguments;
-
-namespace SharpDetect.MethodDescriptors;
+namespace SharpDetect.Extensibility.Descriptors;
 
 public record MethodRewritingDescriptor(
     bool InjectHooks,

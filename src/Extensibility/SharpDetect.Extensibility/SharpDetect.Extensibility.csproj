@@ -13,7 +13,6 @@
     <ProjectReference Include="..\..\SharpDetect.Metadata\SharpDetect.Metadata.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Reporting\SharpDetect.Reporting.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Serialization\SharpDetect.Serialization.csproj" />
-    <ProjectReference Include="..\SharpDetect.MethodDescriptors\SharpDetect.MethodDescriptors.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="SharpDetect.E2ETests" />

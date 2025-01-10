@@ -1,15 +1,15 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using SharpDetect.Events;
 using SharpDetect.Events.Descriptors.Profiler;
 using SharpDetect.Extensibility;
+using SharpDetect.Extensibility.Descriptors;
 using SharpDetect.Extensibility.Models;
 using SharpDetect.Extensibility.PluginBases.OrderedEvents;
 using SharpDetect.Loaders;
 using SharpDetect.Metadata;
-using SharpDetect.MethodDescriptors.Arguments;
 using SharpDetect.Serialization;
 using System.Collections.Immutable;
 
