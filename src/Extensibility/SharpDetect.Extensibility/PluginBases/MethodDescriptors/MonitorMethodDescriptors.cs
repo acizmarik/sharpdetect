@@ -23,8 +23,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorEnterObject = new MethodDescriptor(
                 "Enter",
                 "System.Threading.Monitor",
-                "System.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 1,
@@ -41,8 +39,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorReliableEnter = new MethodDescriptor(
                 "ReliableEnter",
                 "System.Threading.Monitor",
-                "System.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 2,
@@ -67,8 +63,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorReliableEnterTimeout = new MethodDescriptor(
                 "ReliableEnterTimeout",
                 "System.Threading.Monitor",
-                "System.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 3,
@@ -94,8 +88,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorExit = new MethodDescriptor(
                 "Exit",
                 "System.Threading.Monitor",
-                "System.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 1,
@@ -112,8 +104,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorPulseOne = new MethodDescriptor(
                 "Pulse",
                 "System.Threading.Monitor",
-                "System.Threading.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 1,
@@ -130,8 +120,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorPulseAll = new MethodDescriptor(
                 "PulseAll",
                 "System.Threading.Monitor",
-                "System.Threading.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 1,
@@ -148,8 +136,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorWaitObject = new MethodDescriptor(
                 "Wait",
                 "System.Threading.Monitor",
-                "System.Threading.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 1,
@@ -166,8 +152,6 @@ namespace SharpDetect.Extensibility.PluginBases.MethodDescriptors
             _monitorWaitObjectInt = new MethodDescriptor(
                 "Wait",
                 "System.Threading.Monitor",
-                "System.Threading.Private.CoreLib.dll",
-                "System.Threading.dll",
                 new MethodSignatureDescriptor(
                     CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                     ParametersCount: 2,

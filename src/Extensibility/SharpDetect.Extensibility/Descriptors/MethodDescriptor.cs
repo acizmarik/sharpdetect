@@ -6,7 +6,5 @@ namespace SharpDetect.Extensibility.Descriptors;
 public record MethodDescriptor(
     string MethodName,
     string DeclaringTypeFullName,
-    string AssemblyName,
-    string? ReferenceAssembly,
     MethodSignatureDescriptor SignatureDescriptor,
     MethodRewritingDescriptor RewritingDescriptor);
