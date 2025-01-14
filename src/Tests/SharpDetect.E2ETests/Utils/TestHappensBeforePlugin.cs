@@ -2,17 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using dnlib.DotNet;
-using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
-using SharpDetect.Core.Loader;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Descriptors;
 using SharpDetect.Core.Plugins.PluginBases.MethodDescriptors;
 using SharpDetect.Core.Plugins.PluginBases.OrderedEvents;
 using SharpDetect.Core.Reporting.Model;
-using SharpDetect.Core.Serialization;
 using System.Collections.Immutable;
 
 namespace SharpDetect.E2ETests.Utils;
@@ -66,12 +63,9 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
     private readonly IMetadataContext _metadataContext;
 
     public TestHappensBeforePlugin(
-        IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
-        IArgumentsParser argumentsParser,
-        IRecordedEventsDeliveryContext eventsDeliveryContext,
-        ILogger<TestHappensBeforePlugin> logger)
-        : base(moduleBindContext, metadataContext, argumentsParser, eventsDeliveryContext, logger)
+        IServiceProvider serviceProvider)
+        : base(serviceProvider)
     {
         _metadataContext = metadataContext;
     }

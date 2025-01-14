@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Loader;
@@ -14,10 +15,10 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
 
-    protected PluginBase(IModuleBindContext moduleBindContext, ILogger logger)
+    protected PluginBase(IServiceProvider serviceProvider)
     {
-        ModuleBindContext = moduleBindContext;
-        Logger = logger;
+        ModuleBindContext = serviceProvider.GetRequiredService<IModuleBindContext>();
+        Logger = serviceProvider.GetRequiredService<ILogger<PluginBase>>();
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ProfilerLoadRecordedEvent args)

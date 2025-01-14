@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
@@ -39,17 +40,12 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     private readonly IArgumentsParser _argumentsParser;
     private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
 
-    protected HappensBeforeOrderingPluginBase(
-        IModuleBindContext moduleBindContext,
-        IMetadataContext metadataContext,
-        IArgumentsParser argumentsParser,
-        IRecordedEventsDeliveryContext eventsDeliveryContext,
-        ILogger logger)
-        : base(moduleBindContext, logger)
+    protected HappensBeforeOrderingPluginBase(IServiceProvider serviceProvider)
+        : base(serviceProvider)
     {
-        _metadataContext = metadataContext;
-        _argumentsParser = argumentsParser;
-        _eventsDeliveryContext = eventsDeliveryContext;
+        _metadataContext = serviceProvider.GetRequiredService<IMetadataContext>();
+        _argumentsParser = serviceProvider.GetRequiredService<IArgumentsParser>();
+        _eventsDeliveryContext = serviceProvider.GetRequiredService<IRecordedEventsDeliveryContext>();
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockAcquire)]
