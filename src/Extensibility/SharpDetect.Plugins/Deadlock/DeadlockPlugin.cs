@@ -38,7 +38,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
         COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES;
 
-    private readonly IMetadataContext _metadataContext;
+    private readonly ICallstackResolver _callStackResolver;
     private readonly Dictionary<ThreadId, string> _threads;
     private readonly Dictionary<ThreadId, Lock?> _waitingForLocks;
     private readonly Dictionary<ThreadId, HashSet<Lock>> _takenLocks;
@@ -47,11 +47,11 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     private int nextFreeThreadId;
 
     public DeadlockPlugin(
-        IMetadataContext metadataContext,
+        ICallstackResolver callstackResolver,
         IServiceProvider serviceProvider)
         : base(serviceProvider)
     {
-        _metadataContext = metadataContext;
+        _callStackResolver = callstackResolver;
 
         _deadlocks = [];
         _threads = [];

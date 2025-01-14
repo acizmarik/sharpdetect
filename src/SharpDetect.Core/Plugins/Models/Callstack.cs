@@ -20,13 +20,6 @@ public class Callstack(uint pid, ThreadId tid) : IReadOnlyCollection<StackFrame>
     public StackFrame Pop()
         => stack.Pop();
 
-    public CallStackSnapshot CreateSnapshot()
-    {
-        var projection = stack.Select(sf => (sf.ModuleId, sf.MethodToken));
-        var snapshotCallStack = new Stack<(ModuleId ModuleId, MdMethodDef MethodToken)>(projection);
-        return new CallStackSnapshot(Pid, Tid, snapshotCallStack);
-    }
-
     public IEnumerator<StackFrame> GetEnumerator()
         => stack.GetEnumerator();
 

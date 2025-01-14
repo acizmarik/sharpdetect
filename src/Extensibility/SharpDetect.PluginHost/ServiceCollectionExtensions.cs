@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static void AddSharpDetectPluginHostServices(this IServiceCollection services)
     {
         services.AddSingleton<IPluginHost, Services.PluginHost>();
+        services.AddSingleton<ICallstackResolver, CallstackResolver>();
         services.AddSingleton<IRecordedEventsDeliveryContext, RecordedEventsDeliveryContext>();
         services.AddSingleton<IRecordedEventBindingsCompiler, RecordedEventBindingsCompiler>();
     }
