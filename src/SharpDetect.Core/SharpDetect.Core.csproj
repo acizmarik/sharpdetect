@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+		<PackageReference Include="CSharp.OperationResult" />
+		<PackageReference Include="OneOf" />
+		<PackageReference Include="dnlib" />
+		<PackageReference Include="CommunityToolkit.Diagnostics" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="SharpDetect.E2ETests" />
+	</ItemGroup>
+</Project>

@@ -1,11 +1,12 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using HandlebarsDotNet;
-using SharpDetect.Events.Descriptors.Profiler;
-using SharpDetect.Reporting.Model;
+using HandlebarsDotNet;
+using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Reporting;
+using SharpDetect.Core.Reporting.Model;
 
-namespace SharpDetect.Reporting;
+namespace SharpDetect.Reporting.Services;
 
 internal sealed class HtmlReportRenderer : IReportSummaryRenderer
 {

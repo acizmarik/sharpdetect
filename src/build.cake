@@ -7,14 +7,13 @@ Task("Clean")
     .Does(() =>
 {
     CleanDirectory($"./SharpDetect.Cli/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.Events/bin/{configuration}");
+    CleanDirectory($"./SharpDetect.Core/bin/{configuration}");
     CleanDirectory($"./SharpDetect.InterProcessQueue/bin/{configuration}");
     CleanDirectory($"./SharpDetect.Loader/bin/{configuration}");
     CleanDirectory($"./SharpDetect.Metadata/bin/{configuration}");
     CleanDirectory($"./SharpDetect.Reporting/bin/{configuration}");
     CleanDirectory($"./SharpDetect.Serialization/bin/{configuration}");
-    CleanDirectory($"./Extensibility/SharpDetect.Extensibility/bin/{configuration}");
-    CleanDirectory($"./Extensibility/SharpDetect.MethodDescriptors/bin/{configuration}");
+    CleanDirectory($"./Extensibility/SharpDetect.PluginHost/bin/{configuration}");
     CleanDirectory($"./Extensibility/SharpDetect.Plugins/bin/{configuration}");
     CleanDirectory($"./Samples/SimpleDeadlock/bin/{configuration}");
     CleanDirectory($"./Tests/SharpDetect.E2ETests/bin/{configuration}");

@@ -5,24 +5,23 @@
 using MessagePack.Formatters;
 using MessagePack.Resolvers;
 
-namespace SharpDetect.Serialization.Formatters
+namespace SharpDetect.Serialization.Formatters;
+
+internal sealed class CustomFormatResolver : IFormatterResolver
 {
-    internal sealed class CustomFormatResolver : IFormatterResolver
+    private static readonly Dictionary<Type, IMessagePackFormatter> _formatters = new()
     {
-        private static readonly Dictionary<Type, IMessagePackFormatter> _formatters = new()
-        {
-            { typeof(UIntPtr), new UIntPtrFormatter() }
-        };
+        { typeof(UIntPtr), new UIntPtrFormatter() }
+    };
 
-        public IMessagePackFormatter<T>? GetFormatter<T>()
+    public IMessagePackFormatter<T>? GetFormatter<T>()
+    {
+        if (!_formatters.TryGetValue(typeof(T), out var formatter) ||
+            formatter is not IMessagePackFormatter<T> concreteFormatter)
         {
-            if (!_formatters.TryGetValue(typeof(T), out var formatter) ||
-                formatter is not IMessagePackFormatter<T> concreteFormatter)
-            {
-                return StandardResolver.Instance.GetFormatter<T>();
-            }
-
-            return concreteFormatter;
+            return StandardResolver.Instance.GetFormatter<T>();
         }
+
+        return concreteFormatter;
     }
 }

@@ -1,15 +1,16 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using OperationResult;
-using SharpDetect.Events;
-using SharpDetect.Events.Descriptors.Profiler;
-using SharpDetect.Loaders;
+using SharpDetect.Core.Events;
+using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Loader;
+using SharpDetect.Core.Metadata;
 using static OperationResult.Helpers;
 
-namespace SharpDetect.Metadata;
+namespace SharpDetect.Metadata.Services;
 
 internal class MetadataResolver : IMetadataResolver
 {
@@ -19,9 +20,9 @@ internal class MetadataResolver : IMetadataResolver
     private readonly ILogger<MetadataResolver> _logger;
 
     public MetadataResolver(
-        uint processId, 
-        IModuleBindContext moduleBindContext, 
-        InjectedData state, 
+        uint processId,
+        IModuleBindContext moduleBindContext,
+        InjectedData state,
         ILogger<MetadataResolver> logger)
     {
         ProcessId = processId;

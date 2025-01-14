@@ -1,13 +1,14 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using dnlib.DotNet;
+using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using OneOf;
 using OperationResult;
-using SharpDetect.Events;
-using SharpDetect.Events.Descriptors.Profiler;
-using SharpDetect.Metadata;
+using SharpDetect.Core.Events;
+using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Metadata;
+using SharpDetect.Core.Serialization;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using static OperationResult.Helpers;

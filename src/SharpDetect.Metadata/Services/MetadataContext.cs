@@ -1,11 +1,12 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Loaders;
+using SharpDetect.Core.Loader;
+using SharpDetect.Core.Metadata;
 using System.Collections.Immutable;
 
-namespace SharpDetect.Metadata;
+namespace SharpDetect.Metadata.Services;
 
 internal class MetadataContext : IMetadataContext
 {
@@ -15,7 +16,7 @@ internal class MetadataContext : IMetadataContext
     private readonly IServiceProvider _serviceProvider;
 
     public MetadataContext(
-        IModuleBindContext moduleBindContext, 
+        IModuleBindContext moduleBindContext,
         IServiceProvider serviceProvider)
     {
         _moduleBindContext = moduleBindContext;

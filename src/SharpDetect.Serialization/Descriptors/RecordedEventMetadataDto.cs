@@ -1,9 +1,9 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using MessagePack;
-using SharpDetect.Events;
-using SharpDetect.Events.Descriptors.Profiler;
+using MessagePack;
+using SharpDetect.Core.Events;
+using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Serialization.Descriptors;
 

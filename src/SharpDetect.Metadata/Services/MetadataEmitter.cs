@@ -1,9 +1,10 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using SharpDetect.Events.Descriptors.Profiler;
+using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Metadata;
 
-namespace SharpDetect.Metadata;
+namespace SharpDetect.Metadata.Services;
 
 internal class MetadataEmitter : IMetadataEmitter
 {
@@ -11,7 +12,7 @@ internal class MetadataEmitter : IMetadataEmitter
     private readonly InjectedData _state;
 
     public MetadataEmitter(
-        uint processId, 
+        uint processId,
         InjectedData state)
     {
         ProcessId = processId;

@@ -1,8 +1,9 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using MessagePack;
-using SharpDetect.Events;
+using MessagePack;
+using SharpDetect.Core.Events;
+using SharpDetect.Core.Serialization;
 using SharpDetect.Serialization.Descriptors;
 using SharpDetect.Serialization.Formatters;
 

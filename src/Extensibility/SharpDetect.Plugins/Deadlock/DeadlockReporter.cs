@@ -1,12 +1,13 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using SharpDetect.Events.Descriptors.Profiler;
-using SharpDetect.Reporting;
-using SharpDetect.Reporting.Model;
+using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Plugins;
+using SharpDetect.Core.Reporting.Model;
 using System.Collections.Immutable;
 
 namespace SharpDetect.Plugins.Deadlock;
+
 public partial class DeadlockPlugin
 {
     public Summary CreateDiagnostics()

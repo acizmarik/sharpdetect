@@ -7,11 +7,16 @@
   <ItemGroup>
     <PackageReference Include="CliFx" />
     <PackageReference Include="CliWrap" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Extensibility\SharpDetect.Extensibility\SharpDetect.Extensibility.csproj" />
+    <ProjectReference Include="..\Extensibility\SharpDetect.PluginHost\SharpDetect.PluginHost.csproj" />
+    <ProjectReference Include="..\SharpDetect.Core\SharpDetect.Core.csproj" />
     <ProjectReference Include="..\SharpDetect.InterProcessQueue\SharpDetect.InterProcessQueue.csproj" />
+    <ProjectReference Include="..\SharpDetect.Loader\SharpDetect.Loader.csproj" />
+    <ProjectReference Include="..\SharpDetect.Metadata\SharpDetect.Metadata.csproj" />
     <ProjectReference Include="..\SharpDetect.Reporting\SharpDetect.Reporting.csproj" />
     <ProjectReference Include="..\SharpDetect.Serialization\SharpDetect.Serialization.csproj" />
   </ItemGroup>

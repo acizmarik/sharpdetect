@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <PackageReference Include="CSharp.OperationResult" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
@@ -7,6 +7,6 @@
     <PackageReference Include="dnlib" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SharpDetect.Events\SharpDetect.Events.csproj" />
+    <ProjectReference Include="..\SharpDetect.Core\SharpDetect.Core.csproj" />
   </ItemGroup>
 </Project>

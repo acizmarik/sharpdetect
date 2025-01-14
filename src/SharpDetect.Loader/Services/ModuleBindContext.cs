@@ -1,16 +1,16 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using dnlib.DotNet;
+using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using OperationResult;
-using SharpDetect.Events;
-using SharpDetect.Events.Descriptors.Profiler;
-using SharpDetect.Loaders;
+using SharpDetect.Core.Events;
+using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Loader;
 using System.Collections.Concurrent;
 using static OperationResult.Helpers;
 
-namespace SharpDetect.Loader;
+namespace SharpDetect.Loader.Services;
 
 internal class ModuleBindContext : IModuleBindContext
 {
@@ -20,7 +20,7 @@ internal class ModuleBindContext : IModuleBindContext
     private readonly ILogger<ModuleBindContext> _logger;
 
     public ModuleBindContext(
-        IAssemblyLoadContext assemblyLoadContext, 
+        IAssemblyLoadContext assemblyLoadContext,
         ILogger<ModuleBindContext> logger)
     {
         _assemblyLoadContext = assemblyLoadContext;
@@ -56,7 +56,7 @@ internal class ModuleBindContext : IModuleBindContext
             {
                 // Dynamically generated assembly (this is not supported)
                 // There is not an easy way to obtain a dynamically emitted assembly
-                _logger.LogWarning("[PID={Pid}] Could not load assembly \"{Path}\" for module with identifier={Id}. It was probably generated during runtime.", 
+                _logger.LogWarning("[PID={Pid}] Could not load assembly \"{Path}\" for module with identifier={Id}. It was probably generated during runtime.",
                     metadata.Pid, path, moduleId.Value);
             }
             else

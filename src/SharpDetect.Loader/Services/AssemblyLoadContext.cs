@@ -1,14 +1,14 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using dnlib.DotNet;
+using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using OperationResult;
-using SharpDetect.Loaders;
+using SharpDetect.Core.Loader;
 using System.Collections.Concurrent;
 using static OperationResult.Helpers;
 
-namespace SharpDetect.Loader;
+namespace SharpDetect.Loader.Services;
 
 internal class AssemblyLoadContext : IAssemblyLoadContext
 {

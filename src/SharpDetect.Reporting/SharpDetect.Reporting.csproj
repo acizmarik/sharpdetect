@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <PackageReference Include="Handlebars.Net" />
@@ -8,7 +8,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SharpDetect.Events\SharpDetect.Events.csproj" />
+    <ProjectReference Include="..\SharpDetect.Core\SharpDetect.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

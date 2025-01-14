@@ -1,8 +1,9 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using Microsoft.Extensions.Logging;
-using SharpDetect.Reporting.Model;
+using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Reporting;
+using SharpDetect.Core.Reporting.Model;
 using System.Diagnostics;
 
 namespace SharpDetect.Reporting.Services;

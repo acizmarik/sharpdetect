@@ -1,13 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SharpDetect.Events\SharpDetect.Events.csproj" />
-    <ProjectReference Include="..\SharpDetect.Metadata\SharpDetect.Metadata.csproj" />
+    <ProjectReference Include="..\SharpDetect.Core\SharpDetect.Core.csproj" />
   </ItemGroup>
 
 </Project>
