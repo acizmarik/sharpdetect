@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <exception>
@@ -16,12 +16,18 @@ namespace LibProfiler
         _gcContext = GarbageCollectionContext(_allocations, std::move(collectedGenerations), std::move(bounds));
     }
 
-    void ObjectsTracker::ProcessGarbageCollectionFinished()
+    GarbageCollectionContext ObjectsTracker::ProcessGarbageCollectionFinished()
     {
         std::lock_guard guard(_allocationMutex);
+        auto gcPreviousTrackedObjectsCount = _gcContext.value().GetPreviousTrackedObjects().size();
+        auto gcNextTrackedObjectsCount = _gcContext.value().GetNextTrackedObjects().size();
+        LOG_F(INFO, "GC removed %lld tracked objects.", gcPreviousTrackedObjectsCount - gcNextTrackedObjectsCount);
+
         _allocations = _gcContext.value().GetHeap();
-        _gcContext = { };
+        auto gcContextCopy = std::move(_gcContext.value());
+        _gcContext.reset();
         LOG_F(INFO, "GC finished. Currently tracked objects count=%lld.", _allocations.size());
+        return gcContextCopy;
     }
 
     void ObjectsTracker::ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths)

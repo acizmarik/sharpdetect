@@ -1,5 +1,7 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
+
+#include <algorithm>
 
 #include "../lib/loguru/loguru.hpp"
 
@@ -7,10 +9,15 @@
 
 LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unordered_map<ObjectID, TrackedObjectId>& oldHeap, std::vector<BOOL>&& generationsCollected, std::vector<COR_PRF_GC_GENERATION_RANGE>&& bounds)	:
 	_newHeapBuilder({ }), 
+	_previousTrackedObjects({ }),
+	_nextTrackedObjects({ }),
 	_previousSortedHeap(std::vector<std::tuple<ObjectID, TrackedObjectId>>(oldHeap.cbegin(), oldHeap.cend())), 
 	_generationsCollected(std::move(generationsCollected)),
 	_bounds(std::move(bounds))
 {
+	for (auto&& [objectId, trackedObjectId] : oldHeap)
+		_previousTrackedObjects.insert(trackedObjectId);
+
 	std::sort(std::begin(_previousSortedHeap), std::end(_previousSortedHeap),
 		[](auto const& t1, auto const& t2) { return std::get<0>(t1) < std::get<0>(t2); });
 
@@ -49,6 +56,7 @@ void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(std::span
 			// All objects that matched are surviving
 			auto& [currentObjectId, currentTrackedObjectId] = _previousSortedHeap[survivingIndex];
 			_newHeapBuilder.insert(std::make_pair(currentObjectId, currentTrackedObjectId));
+			_nextTrackedObjects.insert(currentTrackedObjectId);
 		}
 	}
 }
@@ -77,6 +85,7 @@ void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(std::span<Ob
 			auto& [currentObjectId, currentTrackedObjectId] = _previousSortedHeap[survivingIndex];
 			auto const newStartingIndex = newStart + (currentObjectId - oldStart);
 			_newHeapBuilder.insert(std::make_pair(newStartingIndex, currentTrackedObjectId));
+			_nextTrackedObjects.insert(currentTrackedObjectId);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -45,8 +45,8 @@ namespace LibIPC
 		/* Garbage collection */
 		GarbageCollectionStart = 20,
 		GarbageCollectionFinish = 21,
-		GarbageCollectionSurvivors = 22,
-		GarbageCollectionCompaction = 23,
+		GarbageCollectedTrackedObjects = 22,
+		//Reserved = 23,
 
 		/* Metadata modifications */
 		AssemblyReferenceInjection = 24,
@@ -100,6 +100,10 @@ namespace LibIPC
 	using GarbageCollectionStartMsgArgs = msgpack::type::tuple<>;
 	using GarbageCollectionStartMsgArgsInstance = msgpack::type::tuple<INT32, GarbageCollectionStartMsgArgs>;
 	using GarbageCollectionStartMsg = msgpack::type::tuple<MetadataMsg, GarbageCollectionStartMsgArgsInstance>;
+
+	using GarbageCollectedTrackedObjectsMsgArgs = msgpack::type::tuple<std::vector<UINT64>>;
+	using GarbageCollectedTrackedObjectsMsgArgsInstance = msgpack::type::tuple<INT32, GarbageCollectedTrackedObjectsMsgArgs>;
+	using GarbageCollectedTrackedObjectsMsg = msgpack::type::tuple<MetadataMsg, GarbageCollectedTrackedObjectsMsgArgsInstance>;
 
 	using GarbageCollectionFinishMsgArgs = msgpack::type::tuple<UINT64, UINT64>;
 	using GarbageCollectionFinishMsgArgsInstance = msgpack::type::tuple<INT32, GarbageCollectionFinishMsgArgs>;
@@ -181,6 +185,7 @@ namespace LibIPC
 		JitCompilationMsg CreateJitCompilationMsg(MetadataMsg&& metadataMsg, UINT32 mdTypeDef, UINT32 mdMethodDef);
 		
 		GarbageCollectionStartMsg CreateGarbageCollectionStartMsg(MetadataMsg&& metadataMsg);
+		GarbageCollectedTrackedObjectsMsg CreateGarbageCollectedTrackedObjectsMsg(MetadataMsg&& metadataMsg, std::vector<UINT64>&& removedTrackedObjects);
 		GarbageCollectionFinishMsg CreateGarbageCollectionFinishMsg(MetadataMsg&& metadataMsg, UINT64 oldTrackedObjectsCount, UINT64 newTrackedObjectsCount);
 		
 		ThreadCreateMsg CreateThreadCreateMsg(MetadataMsg&& metadataMsg, UINT64 threadId);

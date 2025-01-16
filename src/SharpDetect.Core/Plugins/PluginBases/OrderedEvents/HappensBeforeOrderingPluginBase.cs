@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
-using SharpDetect.Core.Loader;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins.Descriptors;
 using SharpDetect.Core.Plugins.Models;
@@ -213,6 +211,14 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     protected override void Visit(RecordedEventMetadata metadata, MethodWrapperInjectionRecordedEvent args)
     {
         _metadataContext.GetEmitter(metadata.Pid).Emit(args.ModuleId, args.WrapperMethodToken, args.WrappedMethodToken);
+        base.Visit(metadata, args);
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, GarbageCollectedTrackedObjectsRecordedEvent args)
+    {
+        foreach (var removedTrackedObjectId in args.RemovedTrackedObjectIds)
+            _locks.Remove(removedTrackedObjectId);
+
         base.Visit(metadata, args);
     }
 

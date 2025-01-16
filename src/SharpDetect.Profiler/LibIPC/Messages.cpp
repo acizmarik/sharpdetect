@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "Messages.h"
@@ -57,6 +57,12 @@ GarbageCollectionStartMsg LibIPC::Helpers::CreateGarbageCollectionStartMsg(Metad
 {
     auto const discriminator = static_cast<INT32>(RecordedEventType::GarbageCollectionStart);
     return GarbageCollectionStartMsg(std::move(metadataMsg), GarbageCollectionStartMsgArgsInstance(discriminator, GarbageCollectionStartMsgArgs()));
+}
+
+GarbageCollectedTrackedObjectsMsg LibIPC::Helpers::CreateGarbageCollectedTrackedObjectsMsg(MetadataMsg&& metadataMsg, std::vector<UINT64>&& removedTrackedObjects)
+{
+    auto const discriminator = static_cast<INT32>(RecordedEventType::GarbageCollectedTrackedObjects);
+    return GarbageCollectedTrackedObjectsMsg(std::move(metadataMsg), GarbageCollectedTrackedObjectsMsgArgsInstance(discriminator, GarbageCollectedTrackedObjectsMsgArgs(std::move(removedTrackedObjects))));
 }
 
 GarbageCollectionFinishMsg LibIPC::Helpers::CreateGarbageCollectionFinishMsg(MetadataMsg&& metadataMsg, UINT64 oldTrackedObjectsCount, UINT64 newTrackedObjectsCount)

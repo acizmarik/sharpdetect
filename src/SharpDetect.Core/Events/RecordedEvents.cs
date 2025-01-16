@@ -46,6 +46,9 @@ public sealed record ThreadDestroyRecordedEvent(
 
 public sealed record GarbageCollectionStartRecordedEvent() : IRecordedEventArgs;
 
+public sealed record GarbageCollectedTrackedObjectsRecordedEvent(
+    TrackedObjectId[] RemovedTrackedObjectIds) : IRecordedEventArgs;
+
 public sealed record GarbageCollectionFinishRecordedEvent(
     ulong OldTrackedObjectsCount,
     ulong NewTrackedObjectsCount) : IRecordedEventArgs;

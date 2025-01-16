@@ -145,6 +145,20 @@ public sealed record GarbageCollectionStartRecordedEventDto() : IRecordedEventAr
 }
 
 [MessagePackObject]
+public sealed record GarbageCollectedTrackedObjectsRecordedEventDto(
+    [property: Key(0)] nuint[] RemovedTrackedObjectIds) : IRecordedEventArgsDto
+{
+    public IRecordedEventArgs Convert()
+    {
+        TrackedObjectId[] array = new TrackedObjectId[RemovedTrackedObjectIds.Length];
+        for (var index = 0; index < array.Length; index++)
+            array[index] = new TrackedObjectId(RemovedTrackedObjectIds[index]);
+
+        return new GarbageCollectedTrackedObjectsRecordedEvent(array);
+    }
+}
+
+[MessagePackObject]
 public sealed record GarbageCollectionFinishRecordedEventDto(
     [property: Key(0)] ulong OldTrackedObjectsCount,
     [property: Key(1)] ulong NewTrackedObjectsCount) : IRecordedEventArgsDto

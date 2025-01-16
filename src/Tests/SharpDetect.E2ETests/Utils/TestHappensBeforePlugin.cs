@@ -38,6 +38,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
     public event Action<(RecordedEventMetadata Metadata, AssemblyLoadRecordedEvent Args)>? AssemblyLoaded;
     public event Action<(RecordedEventMetadata Metadata, AssemblyReferenceInjectionRecordedEvent Args)>? AssemblyReferenceInjected;
     public event Action<(RecordedEventMetadata Metadata, GarbageCollectionStartRecordedEvent Args)>? GarbageCollectionStarted;
+    public event Action<(RecordedEventMetadata Metadata, GarbageCollectedTrackedObjectsRecordedEvent Args)>? GarbageCollectedTrackedObjects;
     public event Action<(RecordedEventMetadata Metadata, GarbageCollectionFinishRecordedEvent Args)>? GarbageCollectionFinished;
     public event Action<(RecordedEventMetadata Metadata, JitCompilationRecordedEvent Args)>? JitCompilationStarted;
     public event Action<(RecordedEventMetadata Metadata, MethodBodyRewriteRecordedEvent Args)>? MethodBodyRewritten;
@@ -94,6 +95,12 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
     {
         base.Visit(metadata, args);
         GarbageCollectionFinished?.Invoke((metadata, args));
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, GarbageCollectedTrackedObjectsRecordedEvent args)
+    {
+        base.Visit(metadata, args);
+        GarbageCollectedTrackedObjects?.Invoke((metadata, args));
     }
 
     protected override void Visit(RecordedEventMetadata metadata, GarbageCollectionStartRecordedEvent args)

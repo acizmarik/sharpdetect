@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <algorithm>
@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stack>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -287,7 +288,22 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::GarbageCollectionStarted(
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::GarbageCollectionFinished()
 {
     auto oldSize = _objectsTracker.GetTrackedObjectsCount();
-    _objectsTracker.ProcessGarbageCollectionFinished();
+    auto gcContext = _objectsTracker.ProcessGarbageCollectionFinished();
+    auto& nextTrackedObjectIds = gcContext.GetNextTrackedObjects();
+    auto& previousTrackedObjectIds = gcContext.GetPreviousTrackedObjects();
+    std::vector<LibProfiler::TrackedObjectId> removedTrackedObjectIds;
+    for (auto&& previousTrackedObjectId : previousTrackedObjectIds)
+    {
+        if (nextTrackedObjectIds.find(previousTrackedObjectId) == nextTrackedObjectIds.cend())
+            removedTrackedObjectIds.push_back(previousTrackedObjectId);
+    }
+    if (removedTrackedObjectIds.size() > 0)
+    {
+        _client.Send(LibIPC::Helpers::CreateGarbageCollectedTrackedObjectsMsg(
+            CreateMetadataMsg(), 
+            std::move(removedTrackedObjectIds)));
+    }
+
     auto newSize = _objectsTracker.GetTrackedObjectsCount();
     _client.Send(LibIPC::Helpers::CreateGarbageCollectionFinishMsg(CreateMetadataMsg(), oldSize, newSize));
     return S_OK;

@@ -14,6 +14,7 @@ namespace SharpDetect.Serialization.Descriptors;
 [Union((int)RecordedEventType.TypeLoad, typeof(TypeLoadRecordedEventDto))]
 [Union((int)RecordedEventType.JITCompilation, typeof(JitCompilationRecordedEventDto))]
 [Union((int)RecordedEventType.GarbageCollectionStart, typeof(GarbageCollectionStartRecordedEventDto))]
+[Union((int)RecordedEventType.GarbageCollectedTrackedObjects, typeof(GarbageCollectedTrackedObjectsRecordedEventDto))]
 [Union((int)RecordedEventType.GarbageCollectionFinish, typeof(GarbageCollectionFinishRecordedEventDto))]
 [Union((int)RecordedEventType.ThreadCreate, typeof(ThreadCreateRecordedEventDto))]
 [Union((int)RecordedEventType.ThreadRename, typeof(ThreadRenameRecordedEventDto))]
