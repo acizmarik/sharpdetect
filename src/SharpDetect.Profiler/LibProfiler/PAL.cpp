@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "PAL.h"
@@ -24,15 +24,6 @@ INT LibProfiler::PAL_GetCurrentPid()
     return _getpid();
 #else
     return getpid();
-#endif
-}
-
-std::string LibProfiler::PAL_CreateLibraryFileName(const std::string& libraryName)
-{
-#ifdef _WIN32
-    return libraryName + ".dll";
-#else
-    return libraryName + ".so";
 #endif
 }
 

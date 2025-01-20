@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <algorithm>
@@ -9,27 +9,28 @@
 
 #include "AssemblyDef.h"
 #include "WString.h"
+#include "PAL.h"
 
 HRESULT LibProfiler::AssemblyDef::Initialize(ModuleID moduleId)
 {
 	auto hr = _corProfilerInfo.GetModuleInfo2(moduleId, nullptr, 0, nullptr, nullptr, &_assemblyId, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain assembly ID for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain assembly ID for %" UINT_PTR_FORMAT " Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
 	hr = _corProfilerInfo.GetModuleMetaData(moduleId, ofRead, IID_IMetaDataAssemblyImport, reinterpret_cast<IUnknown**>(&_metadataAssemblyImport));
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain IMetaDataAssemblyImport for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain IMetaDataAssemblyImport for %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
 	hr = _corProfilerInfo.GetModuleMetaData(moduleId, ofRead | ofWrite, IID_IMetaDataAssemblyEmit, reinterpret_cast<IUnknown**>(&_metadataAssemblyEmit));
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain IMetaDataAssemblyEmit for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain IMetaDataAssemblyEmit for %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
@@ -51,7 +52,7 @@ HRESULT LibProfiler::AssemblyDef::Initialize(ModuleID moduleId)
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::make_unique<WCHAR[]>(nameLength);
+	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
 	hr = metadataImport.GetAssemblyProps(mdAssembly, nullptr, nullptr, nullptr, nameBuffer.get(), nameLength, nullptr, nullptr, nullptr);
 	if (FAILED(hr))
 	{
@@ -178,7 +179,7 @@ HRESULT LibProfiler::AssemblyDef::GetAssemblyRefProps(mdAssemblyRef assemblyRef,
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::make_unique<WCHAR[]>(nameLength);
+	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
 	hr = metadataAssemblyImport.GetAssemblyRefProps(
 		assemblyRef,
 		nullptr,
@@ -237,7 +238,7 @@ HRESULT LibProfiler::AssemblyDef::LoadReferences()
 			continue;
 		}
 
-		auto nameBuffer = std::make_unique<WCHAR[]>(nameLength);
+		auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
 		hr = metadataAssemblyImport.GetAssemblyRefProps(
 			assemblyRef,
 			nullptr,
