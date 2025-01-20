@@ -1,4 +1,5 @@
-var rid = Argument("rid", "win-x64");
+var rid = Argument<string>("rid");
+var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
 
@@ -23,21 +24,13 @@ Task("Clean")
     Information("Cleanup finished.");
 });
 
-Task("Restore-NuGet-Packages")
-    .IsDependentOn("Clean")
-    .Does(() =>
-{
-    DotNetRestore("./SharpDetect.sln");
-});
-
 Task("Build-Managed")
-    .IsDependentOn("Restore-NuGet-Packages")
+    .IsDependentOn("Clean")
     .Does(() =>
 {
     DotNetBuild("./SharpDetect.sln", new DotNetBuildSettings
     {
-        Configuration = configuration,
-        NoRestore = true,
+        Configuration = configuration
     });
 });
 
@@ -53,10 +46,9 @@ Task("Build-IPQ")
 });
 
 Task("Build-Profiler")
-    .IsDependentOn("Build-IPQ")
     .Does(() =>
 {
-    var artifactsDirectory = "./SharpDetect.Profiler/artifacts";
+    var artifactsDirectory = $"./SharpDetect.Profiler/artifacts/{rid}";
     if (!System.IO.Directory.Exists(artifactsDirectory))
     {
         System.IO.Directory.CreateDirectory(artifactsDirectory);
@@ -66,7 +58,7 @@ Task("Build-Profiler")
     var exitCode = StartProcess("cmake", new ProcessSettings
     {
         Arguments = new ProcessArgumentBuilder()
-            .Append("..")
+            .Append("../..")
             .Append($"-DCMAKE_BUILD_TYPE={configuration}")
             .Append("-DMSGPACK_USE_BOOST=off"),
         WorkingDirectory = artifactsDirectory
@@ -86,33 +78,35 @@ Task("Build-Profiler")
 });
 
 Task("Build-Local-Environment")
+    .IsDependentOn("Build-IPQ")
     .IsDependentOn("Build-Profiler")
     .Does(() =>
 {
-    var artifactsDirectory = "./artifacts";
+    var artifactsDirectory = "./artifacts/";
     if (!System.IO.Directory.Exists(artifactsDirectory))
     {
         System.IO.Directory.CreateDirectory(artifactsDirectory);
         Information($"Created directory: {artifactsDirectory}.");
     }
 
-    var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/net8.0/win-x64/native/SharpDetect.InterProcessQueue.dll";
+    var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/net8.0/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
     CopyFileToDirectory(ipqLibrary, artifactsDirectory);
     Information($"Copied IPQ native library to {artifactsDirectory}.");
 
-    var profilerLibrary = $"./SharpDetect.Profiler/artifacts/SharpDetect.Profiler/{configuration}/SharpDetect.Profiler.dll";
+    var profilerLibrary = (rid.StartsWith("win"))
+        ? $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Profiler/{configuration}/SharpDetect.Profiler.{libraryExtension}"
+        : $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Profiler/SharpDetect.Profiler.{libraryExtension}";
     CopyFileToDirectory(profilerLibrary, artifactsDirectory);
     Information($"Copied profiler native library to {artifactsDirectory}.");
 });
 
 Task("Tests")
-    .IsDependentOn("Build-Local-Environment")
+    //.IsDependentOn("Build-Local-Environment")
     .Does(() =>
 {
     DotNetTest("./SharpDetect.sln", new DotNetTestSettings
     {
         Configuration = configuration,
-        NoRestore = true,
     });
 });
 

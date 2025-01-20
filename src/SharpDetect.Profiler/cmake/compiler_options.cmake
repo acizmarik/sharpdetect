@@ -1,4 +1,4 @@
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_BUILD_TYPE Debug)
@@ -8,20 +8,23 @@ if (NOT (CMAKE_SIZEOF_VOID_P EQUAL 8))
 endif()
 
 if (WIN32)
+    message("Windows x64 build")
     enable_language(ASM_MASM)
 elseif (UNIX AND NOT APPLE)
+    message("Linux x64 build")
     enable_language(ASM)
     add_compile_options(
-        -DPAL_STDCPP_COMPAT 
-        -DPLATFORM_UNIX 
-        -DUNICODE 
-        -DBIT64 
+        -g
+        -fPIC 
+        -fms-extensions 
+        -Wno-pragma-pack
+        -DHOST_AMD64 
         -DHOST_64BIT 
-        -DAMD64)
+        -DPLATFORM_UNIX
+        -DPAL_STDCPP_COMPAT)
+    set(CMAKE_STATIC_LIBRARY_PREFIX "")
+    set(CMAKE_SHARED_LIBRARY_PREFIX "")
+
 else()
     message(FATAL_ERROR "Unsupported platform. Expected Windows or Linux." )
 endif()
-
-
-
-

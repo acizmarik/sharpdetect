@@ -1,8 +1,9 @@
-﻿if (WIN32)
+if (WIN32)
     set(ASM_SRC asmHelpers.asm)
 elseif (UNIX AND NOT APPLE)
     set(ASM_SRC asmHelpers.S)
 endif()
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -z noexecstack")
 
 set(SOURCES
     "CorProfiler.cpp"

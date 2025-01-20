@@ -14,7 +14,10 @@
         "Profiler":
         {
             "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
-            "Path": "../../artifacts/SharpDetect.Profiler.dll",
+            "Path": {
+                "WindowsX64": "../../artifacts/SharpDetect.Profiler.dll",
+                "LinuxX64": "../../artifacts/SharpDetect.Profiler.so"
+            },
             "CollectFullStackTraces": true
         }
     },

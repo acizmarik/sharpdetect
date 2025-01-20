@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -44,13 +44,6 @@ namespace LibProfiler
 			_objectCtorRva(other._objectCtorRva)
 		{
 
-		}
-
-		~ModuleDef()
-		{
-			delete _metadataModuleEmit;
-			delete _metadataModuleImport;
-			delete _methodMalloc;
 		}
 		
 		ModuleDef& operator=(ModuleDef&&) = delete;
@@ -140,6 +133,7 @@ namespace LibProfiler
 		IMetaDataEmit2& GetMetadataEmit() const;
 		IMethodMalloc& GetMethodMalloc() const;
 		HRESULT GetPlaceHolderMethodRVA(OUT UINT* rva);
+		std::string GetFileNameFromPath(const std::string& path);
 
 		ModuleID _moduleId;
 		AssemblyID _assemblyId;

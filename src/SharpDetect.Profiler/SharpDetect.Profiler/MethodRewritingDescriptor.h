@@ -1,12 +1,12 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
-#include <optional>
 #include <vector>
 
 #include "../lib/json/single_include/nlohmann/json.hpp"
+#include "../lib/optional/include/tl/optional.hpp"
 
 #include "cor.h"
 
@@ -21,9 +21,9 @@ namespace Profiler
 		BOOL injectHooks;
 		BOOL injectManagedWrapper;
 		std::vector<CapturedArgumentDescriptor> arguments;
-		std::optional<CapturedValueDescriptor> returnValue;
-		std::optional<USHORT> methodEnterInterpretation;
-		std::optional<USHORT> methodExitInterpretation;
+		tl::optional<CapturedValueDescriptor> returnValue;
+		tl::optional<USHORT> methodEnterInterpretation;
+		tl::optional<USHORT> methodExitInterpretation;
 	};
 
     void to_json(nlohmann::json& json, const MethodRewritingDescriptor& descriptor);

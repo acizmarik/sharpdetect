@@ -10,3 +10,9 @@
 [submodule "src/SharpDetect.Profiler/lib/json"]
 	path = src/SharpDetect.Profiler/lib/json
 	url = git@github.com:nlohmann/json.git
+[submodule "src/SharpDetect.Profiler/lib/span"]
+	path = src/SharpDetect.Profiler/lib/span
+	url = git@github.com:tcbrindle/span.git
+[submodule "src/SharpDetect.Profiler/lib/optional"]
+	path = src/SharpDetect.Profiler/lib/optional
+	url = git@github.com:TartanLlama/optional.git

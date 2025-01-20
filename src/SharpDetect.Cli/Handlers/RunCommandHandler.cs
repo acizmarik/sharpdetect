@@ -24,8 +24,9 @@ namespace SharpDetect.Cli.Handlers;
 internal sealed class RunCommandHandler
 {
     private const string RewritingConfigurationFileName = "SharpDetect_Rewriting_Config.data";
-    private const string SharedMemoryName = "SharpDetect_Run_SharedMemory.data";
-    private const int SharedMemorySize = 2_000_000;
+    private const string SharedMemoryName = "SharpDetect_IPQ";
+    private const string SharedMemoryFile = "SharpDetect_SharedMemory.data";
+    private const int SharedMemorySize = 20_971_520 /* 20 MB */;
     private static readonly string RewritingConfigurationPath = Path.Combine(Path.GetTempPath(), RewritingConfigurationFileName);
 
     public IServiceProvider ServiceProvider { get; }
@@ -81,9 +82,9 @@ internal sealed class RunCommandHandler
         var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync();
         _logger.LogInformation("Started process with PID: {Pid}.", targetApplicationProcess.ProcessId);
 
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(SharedMemoryName, file: null, SharedMemorySize);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(SharedMemoryName, SharedMemoryFile, SharedMemorySize);
         using var eventConsumer = new Consumer(consumerOptions, ArrayPool<byte>.Shared);
-        _logger.LogTrace("Started event consumer of IPC queue with name: \"{Name}\".", consumerOptions.Name);
+        _logger.LogTrace("Started event consumer of IPC queue with name: \"{Name}\" file:\"{File}\".", consumerOptions.Name, consumerOptions.File);
 
         var eventParser = ServiceProvider.GetRequiredService<IRecordedEventParser>();
         ExecuteAnalysis(eventConsumer, targetApplicationProcess.Task, eventParser);
@@ -179,18 +180,24 @@ internal sealed class RunCommandHandler
         if (Args.Target.Args is { } targetArgs)
             argsBuilder.Add(targetArgs);
 
+        var profilerPath = GetProfilerPath();
+        var extension = Path.GetExtension(profilerPath);
+        var profilerDirectory = Path.GetDirectoryName(profilerPath)!;
+        var ipqPath = $"{Path.Combine(profilerDirectory, "SharpDetect.InterProcessQueue")}{extension}";
+
         var command = CliWrap.Cli.Wrap(host)
             .WithArguments(argsBuilder)
             .WithEnvironmentVariables(builder =>
             {
                 builder.Set("CORECLR_ENABLE_PROFILING", "1");
                 builder.Set("CORECLR_PROFILER", Args.Runtime.Profiler.Clsid.ToString());
-                builder.Set("CORECLR_PROFILER_PATH", Args.Runtime.Profiler.Path);
+                builder.Set("CORECLR_PROFILER_PATH", profilerPath);
+                builder.Set("SharpDetect_IPQ_PATH", ipqPath);
                 builder.Set("SharpDetect_PROF_EVENTMASK", ((uint)_plugin.ProfilerMonitoringOptions).ToString());
                 builder.Set("SharpDetect_COLLECT_FULL_STACKTRACES", Args.Runtime.Profiler.CollectFullStackTraces ? "1" : "0");
                 builder.Set("SharpDetect_REWRITING_CONFIGURATION_FILE_PATH", RewritingConfigurationPath);
                 builder.Set("SharpDetect_SHAREDMEMORY_NAME", SharedMemoryName);
-                builder.Set("SharpDetect_SHAREDMEMORY_SIZE", SharedMemorySize.ToString());
+                builder.Set("SharpDetect_SHAREDMEMORY_FILE", SharedMemoryFile);
 
                 foreach (var (key, value) in Args.Runtime.Host?.AdditionalEnvironmentVariables ?? Enumerable.Empty<KeyValuePair<string, string>>())
                     builder.Set(key, value);
@@ -221,6 +228,19 @@ internal sealed class RunCommandHandler
         }
 
         return command;
+    }
+
+    private string GetProfilerPath()
+    {
+        if (RuntimeInformation.ProcessArchitecture != Architecture.X64)
+            throw new PlatformNotSupportedException($"Architecture: {RuntimeInformation.ProcessArchitecture}.");
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return Args.Runtime.Profiler.Path.WindowsX64;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            return Args.Runtime.Profiler.Path.LinuxX64;
+        else
+            throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
     }
 
     private void SerializeRewritingConfiguration()
@@ -290,14 +310,26 @@ internal sealed class RunCommandHandler
     private static void ThrowOnInvalidRuntimeConfiguration(RuntimeConfigurationArgs configArgs)
     {
         var profilerClsid = configArgs.Profiler.Clsid;
-        var profilerPath = configArgs.Profiler.Path;
+        var profilerPaths = configArgs.Profiler.Path;
 
         if (!Guid.TryParse(profilerClsid, out var parsedClsid) || parsedClsid == Guid.Empty)
             throw new ArgumentException($"Invalid profiler CLSID: \"{profilerClsid}\".");
-        if (string.IsNullOrWhiteSpace(profilerPath))
-            throw new ArgumentException($"Invalid profiler path: \"{profilerPath}\".");
-        if (!File.Exists(profilerPath))
-            throw new ArgumentException($"Could not find profiler library: \"{profilerPath}\".");
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (string.IsNullOrEmpty(profilerPaths.WindowsX64))
+                throw new ArgumentException($"No profiler path specified for Windows x64 platform.");
+            if (!File.Exists(profilerPaths.WindowsX64))
+                throw new ArgumentException($"Could not find Windows x64 profiler library: \"{profilerPaths.WindowsX64}\".");
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            if (string.IsNullOrEmpty(profilerPaths.LinuxX64))
+                throw new ArgumentException($"No profiler path specified for Linux x64 platform.");
+            if (!File.Exists(profilerPaths.LinuxX64))
+                throw new ArgumentException($"Could not find Linux x64 profiler library: \"{profilerPaths.LinuxX64}\".");
+        }
 
         if (configArgs.Host is { } host)
         {
