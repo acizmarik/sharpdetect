@@ -1,7 +1,7 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include <optional>
+#include <stdexcept>
 
 #include "../lib/loguru/loguru.hpp"
 
@@ -65,7 +65,7 @@ LibProfiler::OpCode LibProfiler::ReadOpCode(const BYTE* data, INT& index)
     return opcode.value();
 }
 
-std::optional<LibProfiler::Operand> LibProfiler::ReadOperand(OpCode opCode, const BYTE* data, INT& index)
+tl::optional<LibProfiler::Operand> LibProfiler::ReadOperand(OpCode opCode, const BYTE* data, INT& index)
 {
     switch (opCode.GetOperandType())
     {
@@ -87,36 +87,48 @@ std::optional<LibProfiler::Operand> LibProfiler::ReadOperand(OpCode opCode, cons
         case OperandType::ShortInlineI: return ReadInlineI8(data, index);
         case OperandType::ShortInlineR: return ReadShortInlineR(data, index);
         case OperandType::ShortInlineVar: return ReadInlineI8(data, index);
-        default: throw std::exception("Invalid OpCode.OperandType");
+        default: throw std::runtime_error("Invalid OpCode.OperandType");
     }
 }
 
 LibProfiler::Operand LibProfiler::ReadInlineR(const BYTE* data, INT& index)
 {
-    return { .Real = Read<DOUBLE>(data, index) };
+    Operand result{ };
+    result.Real = Read<DOUBLE>(data, index);
+    return result;
 }
 
 LibProfiler::Operand LibProfiler::ReadShortInlineR(const BYTE* data, INT& index)
 {
-    return { .Single = Read<FLOAT>(data, index) };
+    Operand result{ };
+    result.Single = Read<FLOAT>(data, index);
+    return result;
 }
 
 LibProfiler::Operand LibProfiler::ReadInlineI8(const BYTE* data, INT& index)
 {
-    return { .Arg8 = Read<INT8>(data, index) };
+    Operand result{ };
+    result.Arg8 = Read<INT8>(data, index);
+    return result;
 }
 
 LibProfiler::Operand LibProfiler::ReadInlineI16(const BYTE* data, INT& index)
 {
-    return { .Arg16 = Read<INT16>(data, index) };
+    Operand result{ };
+    result.Arg16 = Read<INT16>(data, index);
+    return result;
 }
 
 LibProfiler::Operand LibProfiler::ReadInlineI32(const BYTE* data, INT& index)
 {
-    return { .Arg32 = Read<INT32>(data, index) };
+    Operand result{ };
+    result.Arg32 = Read<INT32>(data, index);
+    return result;
 }
 
 LibProfiler::Operand LibProfiler::ReadInlineI64(const BYTE* data, INT& index)
 {
-    return { .Arg64 = Read<INT64>(data, index) };
+    Operand result{ };
+    result.Arg64 = Read<INT64>(data, index);
+    return result;
 }

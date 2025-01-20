@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <cstring>
@@ -37,7 +37,9 @@ HRESULT LibProfiler::PatchMethodBody(
 	// Check if any instructions need to be patched
 	INT ip = 0;
 	std::vector<Instruction> instructionsToPatch;
-	auto [headerSize, codeSize] = ReadHeaderInfo(methodBody, ip);
+	UINT headerSize;
+	UINT codeSize;
+	std::tie(headerSize, codeSize) = ReadHeaderInfo(methodBody, ip);
 	while (ip < codeSize + headerSize)
 	{
 		auto instruction = ReadInstruction(methodBody, ip);
@@ -184,7 +186,7 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 	hr = moduleDef.AllocMethodBody(code.size() + 1, &rawNewMethodBody);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not allocate memory for method wrapper %s in module %s. Error: 0x%x.", wrapperMethodName, moduleDef.GetName().c_str(), hr);
+		LOG_F(ERROR, "Could not allocate memory for method wrapper %s in module %s. Error: 0x%x.", wrapperMethodName.c_str(), moduleDef.GetName().c_str(), hr);
 		return E_FAIL;
 	}
 
@@ -204,7 +206,7 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 		&mdWrapperMethodDef);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not create wrapper method %s in module %s. Error: 0x%x.", wrapperMethodName, moduleDef.GetName().c_str(), hr);
+		LOG_F(ERROR, "Could not create wrapper method %s in module %s. Error: 0x%x.", wrapperMethodName.c_str(), moduleDef.GetName().c_str(), hr);
 		return E_FAIL;
 	}
 
@@ -212,7 +214,7 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 	hr = corProfilerInfo.SetILFunctionBody(moduleDef.GetModuleId(), mdWrapperMethodDef, newMethodBody);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not set body for wrapper method %s in module %s. Error: 0x%x.", wrapperMethodName, moduleDef.GetName().c_str(), hr);
+		LOG_F(ERROR, "Could not set body for wrapper method %s in module %s. Error: 0x%x.", wrapperMethodName.c_str(), moduleDef.GetName().c_str(), hr);
 		return E_FAIL;
 	}
 

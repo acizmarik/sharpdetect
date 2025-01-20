@@ -29,7 +29,7 @@ internal sealed class SharedMemoryProvider : IDisposable
             return new(MemoryMappedFile.CreateFromFile(
                 file!,
                 FileMode.OpenOrCreate,
-                memoryMappingName,
+                null,
                 capacity));
         }
         else
@@ -55,7 +55,10 @@ internal sealed class SharedMemoryProvider : IDisposable
 
             return new(MemoryMappedFile.CreateFromFile(
                 file!,
-                FileMode.OpenOrCreate));
+                FileMode.OpenOrCreate,
+                null,
+                capacity,
+                MemoryMappedFileAccess.ReadWrite));
         }
         else
         {

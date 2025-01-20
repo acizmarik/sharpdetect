@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -20,7 +20,7 @@ namespace LibIPC
 	class Client
 	{
 	public:
-		Client(const std::string& ipqName, const std::string& mmfName, INT size);
+		Client();
 		Client(Client&& other) = delete;
 		Client& operator=(Client&&) = delete;
 		Client(Client& other) = delete;
@@ -33,7 +33,7 @@ namespace LibIPC
 			msgpack::sbuffer buffer;
 			msgpack::pack(buffer, data);
 			{
-				auto guard = std::lock_guard<std::mutex>(_mutex);
+				std::lock_guard<std::mutex> guard(_mutex);
 				_queue.emplace(std::move(buffer));
 			}
 
@@ -43,16 +43,15 @@ namespace LibIPC
 	private:
 		void ThreadLoop();
 
-		inline static const std::string _ipqLibraryName = LibProfiler::PAL_CreateLibraryFileName("SharpDetect.InterProcessQueue");
-		inline static const std::string _ipqProducerCreateSymbolName = "ipq_producer_create";
-		inline static const std::string _ipqProducerDestroySymbolName = "ipq_producer_destroy";
-		inline static const std::string _ipqProducerEnqueueSymbolName = "ipq_producer_enqueue";
+		static const std::string _ipqProducerCreateSymbolName;
+		static const std::string _ipqProducerDestroySymbolName;
+		static const std::string _ipqProducerEnqueueSymbolName;
 		typedef PVOID(*ipq_producer_create)(const char*, const char*, INT);
 		typedef void (*ipq_producer_destroy)(PVOID);
 		typedef INT(*ipq_producer_enqueue)(PVOID, BYTE*, INT);
 
-		const std::string _ipqName;
-		const std::string _mmfName;
+		std::string _ipqName;
+		std::string _mmfName;
 		MODULE_HANDLE _ipqModuleHandle;
 		PVOID _ffiProducer;
 		INT _queueSize;

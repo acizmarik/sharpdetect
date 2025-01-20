@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -8,7 +8,7 @@
 #include <stack>
 #include <utility>
 #include <vector>
-#include <shared_mutex>
+#include <mutex>
 
 #include "cor.h"
 
@@ -69,21 +69,21 @@ namespace Profiler
 			const MethodDescriptor& methodDescriptor,
 			std::vector<UINT_PTR>& indirects,
 			const COR_PRF_FUNCTION_ARGUMENT_INFO& argumentInfos,
-			std::span<BYTE> argumentValues,
-			std::span<BYTE> argumentOffsets);
+			tcb::span<BYTE> argumentValues,
+			tcb::span<BYTE> argumentOffsets);
 
 		HRESULT GetByRefArguments(
 			const MethodDescriptor& methodDescriptor,
 			const std::vector<UINT_PTR>& indirects,
-			std::span<BYTE> indirectValues,
-			std::span<BYTE> indirectOffsets);
+			tcb::span<BYTE> indirectValues,
+			tcb::span<BYTE> indirectOffsets);
 
 		HRESULT GetArgument(
 			const CapturedArgumentDescriptor& argument,
 			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
 			std::vector<UINT_PTR>& indirects,
-			std::span<BYTE>& argValue,
-			std::span<BYTE>& argOffset);
+			tcb::span<BYTE>& argValue,
+			tcb::span<BYTE>& argOffset);
 
 		std::atomic_bool _terminating;
 		BOOL _collectFullStackTraces;
@@ -92,26 +92,26 @@ namespace Profiler
 
 		std::unordered_map<AssemblyID, std::shared_ptr<LibProfiler::AssemblyDef>> _assemblies;
 		std::unordered_map<ModuleID, std::shared_ptr<LibProfiler::ModuleDef>> _modules;
-		std::shared_mutex _assembliesAndModulesSharedMutex;
+		std::mutex _assembliesAndModulesMutex;
 		
 		std::unordered_map<ModuleID, std::unordered_map<mdToken, mdToken>> _rewritings;
-		std::shared_mutex _rewritingsSharedMutex;
+		std::mutex _rewritingsMutex;
 
 		using MethodId = std::pair<ModuleID, mdMethodDef>;
 		using MethodIdHasher = Profiler::pair_hash<ModuleID, mdMethodDef>;
 		std::unordered_map<MethodId, BOOL, MethodIdHasher> _wrappers;
-		std::shared_mutex _wrappersSharedMutex;
+		std::mutex _wrappersMutex;
 
 		LibProfiler::ObjectsTracker _objectsTracker;
 		std::vector< std::shared_ptr<MethodDescriptor>> _methodDescriptors;
 		std::unordered_map<MethodId, std::shared_ptr<MethodDescriptor>, MethodIdHasher> _methodDescriptorsLookup;
-		std::shared_mutex _methodDescriptorsSharedMutex;
+		std::mutex _methodDescriptorsMutex;
 
 		using MethodInvocationId = std::tuple<ModuleID, mdMethodDef, USHORT>;
 		using MethodInvocationIdHasher = Profiler::tuple_hash<ModuleID, mdMethodDef, USHORT>;
 		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodEntryLookup;
 		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodExitLookup;
-		std::shared_mutex _customEventLookupsSharedMutex;
+		std::mutex _customEventLookupsMutex;
 
 		using CustomEventsLookup = std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher>;
 		void AddCustomEventMapping(

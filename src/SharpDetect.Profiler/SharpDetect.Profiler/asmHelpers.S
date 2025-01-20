@@ -1,5 +1,5 @@
-; Copyright (c) .NET Foundation and contributors. All rights reserved.
-; Licensed under the MIT license. See LICENSE file in the project root for full license information.
+# Copyright (c) .NET Foundation and contributors. All rights reserved.
+# Licensed under the MIT license. See LICENSE.clr-samples.txt file in the project root for full license information.
 
 .section .text
 
@@ -75,3 +75,5 @@ TailcallNaked:
     pop %rcx
     pop %rax
     ret
+
+.section .note.GNU-stack,"",@progbits
