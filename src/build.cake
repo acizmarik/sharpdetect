@@ -101,7 +101,7 @@ Task("Build-Local-Environment")
 });
 
 Task("Tests")
-    //.IsDependentOn("Build-Local-Environment")
+    .IsDependentOn("Build-Local-Environment")
     .Does(() =>
 {
     DotNetTest("./SharpDetect.sln", new DotNetTestSettings

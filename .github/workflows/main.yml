@@ -4,7 +4,17 @@ on: ["push"]
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        rid: [win-x64, linux-x64]
+        exclude:
+          # Cross-compilation is not supported 
+          - os: ubuntu-latest
+            rid: win-x64
+          - os: windows-latest
+            rid: linux-x64
     steps:
     - uses: actions/checkout@v4
       with:
@@ -17,10 +27,20 @@ jobs:
       run: |
         cd src
         dotnet tool restore
-        dotnet cake
+        dotnet cake --rid=${{ matrix.rid }}
 
   tests:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        rid: [win-x64, linux-x64]
+        exclude:
+          # Cross-compilation is not supported 
+          - os: ubuntu-latest
+            rid: win-x64
+          - os: windows-latest
+            rid: linux-x64
     steps:
     - uses: actions/checkout@v4
       with:
@@ -33,4 +53,4 @@ jobs:
       run: |
         cd src
         dotnet tool restore
-        dotnet cake --target=Tests
+        dotnet cake --rid=${{ matrix.rid }} --target=Tests

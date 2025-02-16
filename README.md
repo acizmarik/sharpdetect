@@ -7,14 +7,35 @@ A work-in-progress, experimental dynamic analysis framework for .NET programs.
 
 ### Prerequisites
 
+The following list of dependencies is needed to build & run the solution. Alternatively, for Linux, you can use `Dockerfile` from repository root. It creates an environment with necessary dependencies.
+
+#### Windows
+
 * .NET 8 SDK
 * Visual Studio 2022 Build Tools
 
+#### Linux
+
+* .NET 8 SDK
+* zlib1g-dev
+* clang
+
 ### Build Steps
+
+#### Windows
 
 ```bash
 cd src
-dotnet cake
+dotnet tool restore
+dotnet cake --rid=win-x64
+```
+
+#### Linux
+
+```bash
+cd src
+dotnet tool restore
+dotnet cake --rid=linux-x64
 ```
 
 ## Available Tools
@@ -27,7 +48,7 @@ dotnet cake
 | --------- | ----------------------------- | ---------------------------- |
 | win-x64   | :white_check_mark:            | :x:                          |
 | win-x86   | :x:                           | :x:                          |
-| linux-x64 | :x:                           | (not applicable)             |
+| linux-x64 | :white_check_mark:            | (not applicable)             |
 | linux-x86 | :x:                           | (not applicable)             |
 
 ## License
