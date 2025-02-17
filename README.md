@@ -13,18 +13,23 @@ The following list of dependencies is needed to build & run the solution. Altern
 
 * .NET 8 SDK
 * Visual Studio 2022 Build Tools
+* git
 
 #### Linux
 
 * .NET 8 SDK
 * zlib1g-dev
 * clang
+* cmake
+* git
 
 ### Build Steps
 
 #### Windows
 
 ```bash
+git submodule update --init --recursive
+
 cd src
 dotnet tool restore
 dotnet cake --rid=win-x64
@@ -33,6 +38,8 @@ dotnet cake --rid=win-x64
 #### Linux
 
 ```bash
+git submodule update --init --recursive
+
 cd src
 dotnet tool restore
 dotnet cake --rid=linux-x64
