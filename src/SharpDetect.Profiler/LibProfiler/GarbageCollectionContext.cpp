@@ -15,11 +15,17 @@ LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unord
 	_generationsCollected(std::move(generationsCollected)),
 	_bounds(std::move(bounds))
 {
-	for (auto&& [objectId, trackedObjectId] : oldHeap)
+	for (auto&& record : oldHeap)
+	{
+		auto trackedObjectId = record.second;
 		_previousTrackedObjects.insert(trackedObjectId);
+	}
 
 	std::sort(std::begin(_previousSortedHeap), std::end(_previousSortedHeap),
-		[](auto const& t1, auto const& t2) { return std::get<0>(t1) < std::get<0>(t2); });
+		[](std::tuple<ObjectID, TrackedObjectId> const& t1, std::tuple<ObjectID, TrackedObjectId> const& t2)
+		{ 
+			return std::get<0>(t1) < std::get<0>(t2); 
+		});
 
 	/* All generations that are not being collected automatically survived */
 	for (auto&& bound : _bounds)
@@ -30,11 +36,11 @@ LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unord
 			continue;
 		}
 
-		ProcessSurvivingReferences(std::span<ObjectID>(&bound.rangeStart, 1), std::span<SIZE_T>(&bound.rangeLength, 1));
+		ProcessSurvivingReferences(tcb::span<ObjectID>(&bound.rangeStart, 1), tcb::span<SIZE_T>(&bound.rangeLength, 1));
 	}
 }
 
-void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths)
+void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(tcb::span<ObjectID> starts, tcb::span<SIZE_T> lengths)
 {
 	for (size_t index = 0; index < starts.size(); index++) 
 	{
@@ -54,14 +60,16 @@ void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(std::span
 		for (size_t survivingIndex = startIndex; survivingIndex < endIndex; survivingIndex++)
 		{
 			// All objects that matched are surviving
-			auto& [currentObjectId, currentTrackedObjectId] = _previousSortedHeap[survivingIndex];
+			ObjectID currentObjectId;
+			TrackedObjectId currentTrackedObjectId;
+			std::tie(currentObjectId, currentTrackedObjectId) = _previousSortedHeap[survivingIndex];
 			_newHeapBuilder.insert(std::make_pair(currentObjectId, currentTrackedObjectId));
 			_nextTrackedObjects.insert(currentTrackedObjectId);
 		}
 	}
 }
 
-void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths)
+void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(tcb::span<ObjectID> oldStarts, tcb::span<ObjectID> newStarts, tcb::span<SIZE_T> lengths)
 {
 	for (size_t index = 0; index < oldStarts.size(); index++)
 	{
@@ -82,7 +90,9 @@ void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(std::span<Ob
 		for (size_t survivingIndex = startIndex; survivingIndex < endIndex; survivingIndex++)
 		{
 			// All objects that matched are surviving
-			auto& [currentObjectId, currentTrackedObjectId] = _previousSortedHeap[survivingIndex];
+			ObjectID currentObjectId;
+			TrackedObjectId currentTrackedObjectId;
+			std::tie(currentObjectId, currentTrackedObjectId) = _previousSortedHeap[survivingIndex];
 			auto const newStartingIndex = newStart + (currentObjectId - oldStart);
 			_newHeapBuilder.insert(std::make_pair(newStartingIndex, currentTrackedObjectId));
 			_nextTrackedObjects.insert(currentTrackedObjectId);
@@ -100,7 +110,8 @@ INT LibProfiler::GarbageCollectionContext::BinarySearch(ObjectID objId)
 	while (leftIndex <= rightIndex)
 	{
 		auto middleIndex = (leftIndex + rightIndex) / 2;
-		auto& [middleValue, _] = _previousSortedHeap[middleIndex];
+		ObjectID middleValue;
+		std::tie(middleValue, std::ignore) = _previousSortedHeap[middleIndex];
 
 		if (middleValue == objId)
 			return middleIndex;

@@ -1,13 +1,13 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include <filesystem>
 #include <memory>
 #include <string>
 
 #include "../lib/loguru/loguru.hpp"
 
 #include "ModuleDef.h"
+#include "PAL.h"
 #include "WString.h"
 
 HRESULT LibProfiler::ModuleDef::Initialize(ModuleID moduleId)
@@ -15,21 +15,21 @@ HRESULT LibProfiler::ModuleDef::Initialize(ModuleID moduleId)
 	auto hr = _corProfilerInfo.GetModuleMetaData(moduleId, ofRead, IID_IMetaDataImport2, reinterpret_cast<IUnknown**>(&_metadataModuleImport));
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain IMetaDataImport for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain IMetaDataImport for %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
 	hr = _corProfilerInfo.GetModuleMetaData(moduleId, ofRead | ofWrite, IID_IMetaDataEmit2, reinterpret_cast<IUnknown**>(&_metadataModuleEmit));
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain IMetaDataEmit for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain IMetaDataEmit for %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
 	hr = _corProfilerInfo.GetILFunctionBodyAllocator(moduleId, &_methodMalloc);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain IMethodMalloc for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain IMethodMalloc for %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
@@ -37,22 +37,31 @@ HRESULT LibProfiler::ModuleDef::Initialize(ModuleID moduleId)
 	hr = _corProfilerInfo.GetModuleInfo2(moduleId, nullptr, 0, &nameLength, nullptr, &_assemblyId, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain module information for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain module information for %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::make_unique<WCHAR[]>(nameLength);
+	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
 	hr = _corProfilerInfo.GetModuleInfo2(moduleId, nullptr, nameLength, nullptr, nameBuffer.get(), nullptr, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not obtain module path for %lld. Error: 0x%x.", moduleId, hr);
+		LOG_F(ERROR, "Could not obtain module path for %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
 		return E_FAIL;
 	}
 
 	_moduleId = moduleId;
 	_fullPath = LibProfiler::ToString(nameBuffer.get());
-	_name = std::filesystem::path(_fullPath).filename().string();
+	_name = GetFileNameFromPath(_fullPath);
 	return S_OK;
+}
+
+std::string LibProfiler::ModuleDef::GetFileNameFromPath(const std::string& path) {
+	auto lastDelimiter = path.find_last_of("/\\");
+	if (lastDelimiter == std::string::npos) {
+		return path;
+	}
+
+	return path.substr(lastDelimiter + 1);
 }
 
 HRESULT LibProfiler::ModuleDef::AddTypeDef(IN const std::string& name, IN CorTypeAttr flags, IN mdToken baseType, OUT mdTypeDef* typeDef)
@@ -68,7 +77,7 @@ HRESULT LibProfiler::ModuleDef::AllocMethodBody(IN ULONG size, OUT void** body)
 	auto memory = methodMalloc.Alloc(size);
 	if (memory == nullptr)
 	{
-		LOG_F(ERROR, "Could not allocate method body for size=%ld.", size);
+		LOG_F(ERROR, "Could not allocate method body for size=%" ULONG_FORMAT ".", size);
 		return E_FAIL;
 	}
 
@@ -169,15 +178,15 @@ HRESULT LibProfiler::ModuleDef::GetMethodProps(
 	auto hr = metadataImport.GetMethodProps(methodDef, typeDef, nullptr, 0, &methodNameLength, &methodFlags, signature, signatureLength, nullptr, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not get method props for mdMethodDef=%d from module=%lld. Error: 0x%x.", methodDef, _moduleId, hr);
+		LOG_F(ERROR, "Could not get method props for mdMethodDef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", methodDef, _moduleId, hr);
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::make_unique<WCHAR[]>(methodNameLength);
+	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[methodNameLength]);
 	hr = metadataImport.GetMethodProps(methodDef, nullptr, nameBuffer.get(), methodNameLength, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not get method name for mdMethodDef=%d from module=%lld. Error: 0x%x.", methodDef, _moduleId, hr);
+		LOG_F(ERROR, "Could not get method name for mdMethodDef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", methodDef, _moduleId, hr);
 		return E_FAIL;
 	}
 		
@@ -195,15 +204,15 @@ HRESULT LibProfiler::ModuleDef::GetTypeProps(
 	auto hr = metadataImport.GetTypeDefProps(typeDef, nullptr, 0, &typeNameLength, nullptr, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not get type props for mdTypeDef=%d from module=%lld. Error: 0x%x.", typeDef, _moduleId, hr);
+		LOG_F(ERROR, "Could not get type props for mdTypeDef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", typeDef, _moduleId, hr);
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::make_unique<WCHAR[]>(typeNameLength);
+	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[typeNameLength]);
 	hr = metadataImport.GetTypeDefProps(typeDef, nameBuffer.get(), typeNameLength, nullptr, nullptr, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not get type name for mdTypeDef=%d from module=%lld. Error: 0x%x.", typeDef, _moduleId, hr);
+		LOG_F(ERROR, "Could not get type name for mdTypeDef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", typeDef, _moduleId, hr);
 		return E_FAIL;
 	}
 
@@ -219,7 +228,7 @@ HRESULT LibProfiler::ModuleDef::GetTypeRefProps(
 	auto hr = metadataImport.GetTypeRefProps(typeRef, resolutionScope, nullptr, 0, nullptr);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not get type ref props for mdTypeRef=%d from module=%lld. Error: 0x%x", typeRef, _moduleId, hr);
+		LOG_F(ERROR, "Could not get type ref props for mdTypeRef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x", typeRef, _moduleId, hr);
 		return E_FAIL;
 	}
 

@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <numeric>
@@ -35,7 +34,8 @@ Profiler::CorProfiler* ProfilerInstance;
 thread_local std::stack<std::vector<UINT_PTR>> ArgsCallStack;
 
 Profiler::CorProfiler::CorProfiler() : 
-    _client(LibIPC::Client("SharpDetect_Run_SharedMemory.data", "", 2000000)),
+    _client(),
+    _collectFullStackTraces(false),
     _coreModule(0)
 {
     ProfilerInstance = this;
@@ -130,7 +130,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
 
 HRESULT Profiler::CorProfiler::LoadRewritingConfiguration()
 {
-    auto rawRewritingConfigPath = std::getenv("SHARPDETECT_REWRITING_CONFIGURATION_FILE_PATH");
+    auto rawRewritingConfigPath = std::getenv("SharpDetect_REWRITING_CONFIGURATION_FILE_PATH");
     if (rawRewritingConfigPath == nullptr)
     {
         LOG_F(ERROR, "Rewriting configuration path is not set.");
@@ -138,13 +138,8 @@ HRESULT Profiler::CorProfiler::LoadRewritingConfiguration()
     }
 
     auto rewritingConfigPath = std::string(rawRewritingConfigPath);
-    if (!std::filesystem::exists(rewritingConfigPath))
-    {
-        LOG_F(ERROR, "Rewriting configuration path %s does not exist.", rewritingConfigPath.c_str());
-        return E_FAIL;
-    }
 
-    auto rawShouldCollectFullStackTraces = std::getenv("SHARPDETECT_COLLECT_FULL_STACKTRACES");
+    auto rawShouldCollectFullStackTraces = std::getenv("SharpDetect_COLLECT_FULL_STACKTRACES");
     if (rawShouldCollectFullStackTraces == nullptr)
     {
         // Default: set to false
@@ -175,7 +170,7 @@ HRESULT Profiler::CorProfiler::LoadRewritingConfiguration()
 
 HRESULT Profiler::CorProfiler::InitializeProfilingFeatures()
 {
-    auto rawProfilerEventMask = std::getenv("SHARPDETECT_PROF_EVENTMASK");
+    auto rawProfilerEventMask = std::getenv("SharpDetect_PROF_EVENTMASK");
     if (rawProfilerEventMask == nullptr)
     {
         LOG_F(ERROR, "Event mask is not set.");
@@ -230,7 +225,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadCreated(ThreadID threadId
     if (_terminating)
         return S_OK;
 
-    LOG_F(INFO, "Thread created %lld.", threadId);
+    LOG_F(INFO, "Thread created %" UINT_PTR_FORMAT ".", threadId);
     _client.Send(LibIPC::Helpers::CreateThreadCreateMsg(CreateMetadataMsg(), threadId));
     return S_OK;
 }
@@ -316,9 +311,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::MovedReferences2(
     SIZE_T cObjectIDRangeLength[])
 {
     _objectsTracker.ProcessMovingReferences(
-        std::span<ObjectID>(oldObjectIDRangeStart, cMovedObjectIDRanges),
-        std::span<ObjectID>(newObjectIDRangeStart, cMovedObjectIDRanges),
-        std::span<SIZE_T>(cObjectIDRangeLength, cMovedObjectIDRanges));
+        tcb::span<ObjectID>(oldObjectIDRangeStart, cMovedObjectIDRanges),
+        tcb::span<ObjectID>(newObjectIDRangeStart, cMovedObjectIDRanges),
+        tcb::span<SIZE_T>(cObjectIDRangeLength, cMovedObjectIDRanges));
     return S_OK;
 }
 
@@ -328,8 +323,8 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::SurvivingReferences2(
     SIZE_T cObjectIDRangeLength[])
 {
     _objectsTracker.ProcessSurvivingReferences(
-        std::span<ObjectID>(objectIDRangeStart, cSurvivingObjectIDRanges), 
-        std::span<SIZE_T>(cObjectIDRangeLength, cSurvivingObjectIDRanges));
+        tcb::span<ObjectID>(objectIDRangeStart, cSurvivingObjectIDRanges), 
+        tcb::span<SIZE_T>(cObjectIDRangeLength, cSurvivingObjectIDRanges));
     return S_OK;
 }
 
@@ -342,13 +337,13 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::JITCompilationStarted(FunctionI
     mdMethodDef mdMethodDef;
     if (FAILED(_corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &mdMethodDef)))
     {
-        LOG_F(ERROR, "Could not determine information about Function ID = %lld.", functionId);
+        LOG_F(ERROR, "Could not determine information about Function ID = %" UINT_PTR_FORMAT ".", functionId);
         return E_FAIL;
     }
 
     if (!HasModuleDef(moduleId))
     {
-        LOG_F(ERROR, "Could not resolve Module ID = %lld for method TOK = %d.", moduleId, mdMethodDef);
+        LOG_F(ERROR, "Could not resolve Module ID = %" UINT_PTR_FORMAT " for method TOK = %d.", moduleId, mdMethodDef);
         return E_FAIL;
     }
     auto moduleDefPtr = GetModuleDef(moduleId);
@@ -384,7 +379,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
     auto const assemblyId = assemblyDef.GetAssemblyId();
 
     {
-        auto guard = std::unique_lock<std::shared_mutex>(_assembliesAndModulesSharedMutex);
+        auto guard = std::unique_lock<std::mutex>(_assembliesAndModulesMutex);
         // FIXME: modules and assemblies are not always 1:1 mapped (assembly can contain multiple modules)
         _modules.emplace(moduleId, moduleDefPtr);
         _assemblies.emplace(assemblyId, assemblyDefPtr);
@@ -393,11 +388,11 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
     if (_coreModule == 0)
     {
         _coreModule = moduleDef.GetModuleId();
-        LOG_F(INFO, "Identified core module: %s with handle (%lld)", moduleDef.GetName().c_str(), moduleDef.GetModuleId());
+        LOG_F(INFO, "Identified core module: %s with handle (%" UINT_PTR_FORMAT ")", moduleDef.GetName().c_str(), moduleDef.GetModuleId());
     }
 
-    LOG_F(INFO, "Loaded assembly: %s with handle (%lld)", assemblyDef.GetName().c_str(), assemblyDef.GetAssemblyId());
-    LOG_F(INFO, "Loaded module: %s with handle (%lld)", moduleDef.GetFullPath().c_str(), moduleDef.GetModuleId());
+    LOG_F(INFO, "Loaded assembly: %s with handle (%" UINT_PTR_FORMAT ")", assemblyDef.GetName().c_str(), assemblyDef.GetAssemblyId());
+    LOG_F(INFO, "Loaded module: %s with handle (%" UINT_PTR_FORMAT ")", moduleDef.GetFullPath().c_str(), moduleDef.GetModuleId());
     
     WrapAnalyzedExternMethods(moduleDef);
     ImportMethodWrappers(assemblyDef, moduleDef);
@@ -430,7 +425,7 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
     std::unordered_map<mdToken, mdToken> rewritingsBuilder;
     
     {
-        auto guard = std::shared_lock<std::shared_mutex>(_rewritingsSharedMutex);
+        auto guard = std::unique_lock<std::mutex>(_rewritingsMutex);
         for (auto&& methodPtr : _methodDescriptors)
         {
             auto& method = *methodPtr.get();
@@ -477,7 +472,7 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
 
             rewritingsBuilder.emplace(methodDef, wrapperMethodDef);
             {
-                auto guard = std::unique_lock<std::shared_mutex>(_wrappersSharedMutex);
+                auto guard = std::unique_lock<std::mutex>(_wrappersMutex);
                 _wrappers.emplace(std::make_pair(moduleDef.GetModuleId(), wrapperMethodDef), true);
             }
 
@@ -491,14 +486,14 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
         }
     }
     
-    auto guard = std::unique_lock<std::shared_mutex>(_rewritingsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_rewritingsMutex);
     _rewritings.emplace(moduleDef.GetModuleId(), rewritingsBuilder);
     return S_OK;
 }
 
 HRESULT Profiler::CorProfiler::ImportMethodWrappers(LibProfiler::AssemblyDef& assemblyDef, LibProfiler::ModuleDef& moduleDef)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_methodDescriptorsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_methodDescriptorsMutex);
     for (auto&& methodPointer : _methodDescriptors)
     {
         auto& method = *methodPointer.get();
@@ -555,7 +550,7 @@ HRESULT Profiler::CorProfiler::ImportMethodWrapper(
     
     // Store mapping
     {
-        auto guard = std::unique_lock<std::shared_mutex>(_rewritingsSharedMutex);
+        auto guard = std::unique_lock<std::mutex>(_rewritingsMutex);
         _rewritings.at(moduleDef.GetModuleId()).emplace(methodRef, wrapperMethodRef);
     }
 
@@ -582,13 +577,13 @@ void Profiler::CorProfiler::AddCustomEventMapping(
     if (static_cast<RecordedEventType>(mapping) == RecordedEventType::NotSpecified)
         return;
 
-    auto guard = std::unique_lock<std::shared_mutex>(_customEventLookupsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_customEventLookupsMutex);
     lookup.emplace(std::make_tuple(moduleId, methodDef, original), mapping);
 }
 
 HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(LibProfiler::ModuleDef& moduleDef)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_rewritingsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_rewritingsMutex);
     auto& moduleRewritings = (*_rewritings.find(moduleDef.GetModuleId())).second;
 
     for (auto&& methodPointer : _methodDescriptors)
@@ -651,7 +646,7 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(LibProfiler::Modul
                 mapping);
         }
 
-        auto _ = std::unique_lock<std::shared_mutex>(_methodDescriptorsSharedMutex);
+        auto _ = std::unique_lock<std::mutex>(_methodDescriptorsMutex);
         _methodDescriptorsLookup.emplace(std::make_pair(moduleDef.GetModuleId(), sourceToken), methodPointer);
         LOG_F(INFO, "Imported custom event on method %s::%s (%d) in module %s.", method.declaringTypeFullName.c_str(), method.methodName.c_str(), sourceToken, moduleDef.GetName().c_str());
     }
@@ -666,7 +661,7 @@ BOOL Profiler::CorProfiler::FindCustomEventMapping(
     USHORT original,
     USHORT& mapping)
 {
-    auto guard = std::unique_lock<std::shared_mutex>(_customEventLookupsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_customEventLookupsMutex);
     auto mappingIt = lookup.find(std::make_tuple(moduleId, methodDef, original));
     if (mappingIt == lookup.cend())
         return false;
@@ -679,13 +674,13 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(LibProfiler::ModuleDef& moduleDef
 {
     {
         // If we are compiling injected method, skip it
-        auto guard = std::shared_lock<std::shared_mutex>(_wrappersSharedMutex);
+        auto guard = std::unique_lock<std::mutex>(_wrappersMutex);
         if (_wrappers.find(std::make_pair(moduleDef.GetModuleId(), mdMethodDef)) != _wrappers.cend())
             return E_FAIL;
     }
 
     // If there are no rewritings registered for current module, skip it
-    auto guard = std::shared_lock<std::shared_mutex>(_rewritingsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_rewritingsMutex);
     auto tokensToRewriteIterator = _rewritings.find(moduleDef.GetModuleId());
     if (tokensToRewriteIterator == _rewritings.cend())
         return E_FAIL;
@@ -736,7 +731,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
     hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef);
     if (FAILED(hr))
     {
-        LOG_F(ERROR, "Could not resolve functionId %lld to a method. Error: 0x%x", functionId, hr);
+        LOG_F(ERROR, "Could not resolve functionId %" UINT_PTR_FORMAT " to a method. Error: 0x%x", functionId, hr);
         return E_FAIL;
     }
 
@@ -796,7 +791,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
     }
 
     std::vector<UINT_PTR> indirects;
-    auto rawArgumentInfos = std::make_unique<BYTE[]>(argumentsLength);
+    auto rawArgumentInfos = std::unique_ptr<BYTE[]>(new BYTE[argumentsLength]);
     hr = _corProfilerInfo->GetFunctionEnter3Info(functionId, eltInfo, &frameInfo, &argumentsLength, (COR_PRF_FUNCTION_ARGUMENT_INFO*)(rawArgumentInfos.get()));
     if (FAILED(hr))
     {
@@ -819,8 +814,8 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
         descriptor,
         indirects,
         argumentInfos,
-        std::span(argumentValues.data(), argumentValuesLength),
-        std::span(argumentOffsets.data(), argumentOffsetsLength));
+        tcb::span<BYTE>(argumentValues.data(), argumentValuesLength),
+        tcb::span<BYTE>(argumentOffsets.data(), argumentOffsetsLength));
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not parse arguments data for method %d. Error: 0x%x.", methodDef, hr);
@@ -855,7 +850,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(FunctionIDOrClientID functionOrClient
     hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef);
     if (FAILED(hr))
     {
-        LOG_F(ERROR, "Could not resolve functionId %lld to a method. Error: 0x%x", functionId, hr);
+        LOG_F(ERROR, "Could not resolve functionId %" UINT_PTR_FORMAT " to a method. Error: 0x%x", functionId, hr);
         return E_FAIL;
     }
 
@@ -945,8 +940,8 @@ HRESULT Profiler::CorProfiler::LeaveMethod(FunctionIDOrClientID functionOrClient
             hr = GetByRefArguments(
                 descriptor,
                 indirects,
-                std::span<BYTE>(argumentValues.data(), argumentValues.size()),
-                std::span<BYTE>(argumentOffsets.data(), argumentOffsets.size()));
+                tcb::span<BYTE>(argumentValues.data(), argumentValues.size()),
+                tcb::span<BYTE>(argumentOffsets.data(), argumentOffsets.size()));
             if (FAILED(hr))
             {
                 LOG_F(ERROR, "Could not parse by-ref arguments data for method %d. Error: 0x%x.", methodDef, hr);
@@ -985,8 +980,8 @@ HRESULT Profiler::CorProfiler::GetArguments(
     const MethodDescriptor& methodDescriptor,
     std::vector<UINT_PTR>& indirects,
     const COR_PRF_FUNCTION_ARGUMENT_INFO& argumentInfos,
-    std::span<BYTE> argumentValues,
-    std::span<BYTE> argumentOffsets)
+    tcb::span<BYTE> argumentValues,
+    tcb::span<BYTE> argumentOffsets)
 {
     for (auto&& argument : methodDescriptor.rewritingDescriptor.arguments)
     {
@@ -1010,8 +1005,8 @@ HRESULT Profiler::CorProfiler::GetArguments(
 HRESULT Profiler::CorProfiler::GetByRefArguments(
     const MethodDescriptor& methodDescriptor,
     const std::vector<UINT_PTR>& indirects,
-    std::span<BYTE> indirectValues,
-    std::span<BYTE> indirectOffsets)
+    tcb::span<BYTE> indirectValues,
+    tcb::span<BYTE> indirectOffsets)
 {
     auto indirectsPointer = 0;
     for (auto&& argument : methodDescriptor.rewritingDescriptor.arguments)
@@ -1035,8 +1030,8 @@ HRESULT Profiler::CorProfiler::GetArgument(
     const CapturedArgumentDescriptor& argument,
     COR_PRF_FUNCTION_ARGUMENT_RANGE range,
     std::vector<UINT_PTR>& indirects,
-    std::span<BYTE>& argValue,
-    std::span<BYTE>& argOffset)
+    tcb::span<BYTE>& argValue,
+    tcb::span<BYTE>& argOffset)
 {
     auto const flags = argument.value.flags;
 
@@ -1077,37 +1072,37 @@ HRESULT Profiler::CorProfiler::GetArgument(
 
 std::shared_ptr<LibProfiler::ModuleDef> Profiler::CorProfiler::GetModuleDef(ModuleID moduleId)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_assembliesAndModulesSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_assembliesAndModulesMutex);
     return _modules.find(moduleId)->second;
 }
 
 std::shared_ptr<LibProfiler::AssemblyDef> Profiler::CorProfiler::GetAssemblyDef(AssemblyID assemblyID)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_assembliesAndModulesSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_assembliesAndModulesMutex);
     return _assemblies.find(assemblyID)->second;
 }
 
 std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_methodDescriptorsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_methodDescriptorsMutex);
     return _methodDescriptorsLookup.find(std::make_pair(moduleId, methodDef))->second;
 }
 
 BOOL Profiler::CorProfiler::HasModuleDef(ModuleID moduleId)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_assembliesAndModulesSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_assembliesAndModulesMutex);
     return _modules.find(moduleId) != _modules.cend();
 }
 
 BOOL Profiler::CorProfiler::HasAssemblyDef(AssemblyID assemblyId)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_assembliesAndModulesSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_assembliesAndModulesMutex);
     return _assemblies.find(assemblyId) != _assemblies.cend();
 }
 
 BOOL Profiler::CorProfiler::HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
 {
-    auto guard = std::shared_lock<std::shared_mutex>(_methodDescriptorsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_methodDescriptorsMutex);
     return _methodDescriptorsLookup.find(std::make_pair(moduleId, methodDef)) != _methodDescriptorsLookup.cend();
 }
 
@@ -1118,11 +1113,11 @@ std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::FindMethodDes
     HRESULT hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &mdMethodDef);
     if (FAILED(hr))
     {
-        LOG_F(ERROR, "Could not determine information about Function ID = %lld. Error: 0x%x.", functionId, hr);
+        LOG_F(ERROR, "Could not determine information about Function ID = %" UINT_PTR_FORMAT ". Error: 0x%x.", functionId, hr);
         return { };
     }
 
-    auto guard = std::shared_lock<std::shared_mutex>(_methodDescriptorsSharedMutex);
+    auto guard = std::unique_lock<std::mutex>(_methodDescriptorsMutex);
     auto it = _methodDescriptorsLookup.find(std::make_pair(moduleId, mdMethodDef));
     return (it != _methodDescriptorsLookup.cend()) ? (*it).second : nullptr;
 }

@@ -39,6 +39,10 @@ public record AnalysisPluginConfigurationArgs(
     bool RenderReport);
 
 public record ProfilerConfigurationArgs(
-    string Clsid, 
-    string Path, 
+    string Clsid,
+    ProfilerPathArgs Path, 
     bool CollectFullStackTraces);
+
+public record ProfilerPathArgs(
+    string WindowsX64,
+    string LinuxX64);

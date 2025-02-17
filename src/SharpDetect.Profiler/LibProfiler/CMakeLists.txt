@@ -13,32 +13,19 @@ set(SOURCES
 	"WString.cpp"
 	"PAL.cpp")
 
-set(HEADERS
-	"../lib/miniutf/miniutfdata.h"
-	"../lib/miniutf/miniutf.hpp"
-	"../lib/miniutf/miniutf_collation.hpp"
-	"CorProfilerBase.h" 
-	"ClassFactory.h" 
-	"AssemblyDef.h" 
-	"AssemblyRef.h" 
-	"ModuleDef.h" 
-	"FlowControl.h" 
-	"Instruction.h" 
-	"OpCode.h"
-	"Code.h" 
-	"OperandType.h" 
-	"OpCodeType.h" 
-	"StackBehaviour.h" 
-	"Operand.h" 
-	"MethodBodyHelpers.h" 
-	"OpCodes.h" 
-	"GarbageCollectionContext.h" 
-	"TrackedObjectId.h" 
-	"ObjectsTracker.h"
-	"Instrumentation.h"
-	"ComPtr.h"
-	"WString.h"
-	"PAL.h")
+if (UNIX AND NOT APPLE)
+	list(APPEND INCLUDE_DIRECTORIES "../lib/coreclr/inc")
+	list(APPEND INCLUDE_DIRECTORIES "../lib/coreclr/pal/inc")
+	list(APPEND INCLUDE_DIRECTORIES "../lib/coreclr/pal/inc/rt")
+	list(APPEND INCLUDE_DIRECTORIES "../lib/coreclr/pal/prebuilt/inc")
+	list(APPEND SOURCES "../lib/coreclr/pal/prebuilt/idl/corprof_i.cpp")
+endif()
+list(APPEND INCLUDE_DIRECTORIES "../lib/miniutf")
 
-add_library (LibProfiler STATIC ${SOURCES} ${HEADERS})
+add_library (LibProfiler STATIC ${SOURCES})
+target_include_directories(LibProfiler PUBLIC ${INCLUDE_DIRECTORIES})
+if (UNIX AND NOT APPLE)
+	# Fix compilation issues with miniutf on Linux
+	target_compile_options(LibProfiler PRIVATE -include cstdint)
+endif()
 target_link_libraries(LibProfiler PRIVATE loguru::loguru)

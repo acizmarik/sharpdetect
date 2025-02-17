@@ -3,7 +3,8 @@
 #pragma once
 
 #include <array>
-#include <optional>
+
+#include "../lib/optional/include/tl/optional.hpp"
 
 #include "Code.h"
 #include "OpCode.h"
@@ -19,12 +20,12 @@ namespace LibProfiler
         /// <summary>
         /// All one-byte opcodes
         /// </summary>
-        static std::array<std::optional<LibProfiler::OpCode>, 256> OneByteOpCodes;
+        static std::array<tl::optional<LibProfiler::OpCode>, 256> OneByteOpCodes;
 
         /// <summary>
         /// All two-byte opcodes (first byte is <c>0xFE</c>)
         /// </summary>
-        static std::array< std::optional<LibProfiler::OpCode>, 256> TwoByteOpCodes;
+        static std::array<tl::optional<LibProfiler::OpCode>, 256> TwoByteOpCodes;
 
         static void Register(LibProfiler::OpCode&& opCode)
         {
