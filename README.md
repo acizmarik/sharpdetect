@@ -7,8 +7,6 @@ A work-in-progress, experimental dynamic analysis framework for .NET programs.
 
 ### Prerequisites
 
-The following list of dependencies is needed to build & run the solution. Alternatively, for Linux, you can use `Dockerfile` from repository root. It creates an environment with necessary dependencies.
-
 #### Windows
 
 * .NET 8 SDK
@@ -25,7 +23,7 @@ The following list of dependencies is needed to build & run the solution. Altern
 
 ### Build Steps
 
-#### Windows
+#### Windows Development Build
 
 ```bash
 git submodule update --init --recursive
@@ -37,12 +35,20 @@ dotnet cake --rid=win-x64
 
 #### Linux
 
+##### Alternative: Development Build
+
 ```bash
 git submodule update --init --recursive
 
 cd src
 dotnet tool restore
 dotnet cake --rid=linux-x64
+```
+
+##### Alternative: Testing Build
+
+```bash
+docker build -t sharpdetect/ubuntu-24.04
 ```
 
 ## Available Tools
