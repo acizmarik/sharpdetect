@@ -12,7 +12,6 @@
 
 #include "CapturedArgumentDescriptor.h"
 #include "CapturedValueDescriptor.h"
-#include "RecordedEventType.h"
 
 namespace Profiler
 {

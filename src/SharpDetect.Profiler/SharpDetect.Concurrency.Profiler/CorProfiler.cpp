@@ -574,7 +574,7 @@ void Profiler::CorProfiler::AddCustomEventMapping(
     USHORT original,
     USHORT mapping)
 {
-    if (static_cast<RecordedEventType>(mapping) == RecordedEventType::NotSpecified)
+    if (static_cast<LibIPC::RecordedEventType>(mapping) == LibIPC::RecordedEventType::NotSpecified)
         return;
 
     auto guard = std::unique_lock<std::mutex>(_customEventLookupsMutex);
@@ -618,14 +618,14 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(LibProfiler::Modul
                 _customEventOnMethodEntryLookup, 
                 moduleId,
                 sourceToken, 
-                static_cast<USHORT>(RecordedEventType::MethodEnter), 
+                static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnter),
                 mapping);
 
             AddCustomEventMapping(
                 _customEventOnMethodEntryLookup, 
                 moduleId,
                 sourceToken,
-                static_cast<USHORT>(RecordedEventType::MethodEnterWithArguments), 
+                static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments),
                 mapping);
         }
         if (method.rewritingDescriptor.methodExitInterpretation.has_value())
@@ -635,14 +635,14 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(LibProfiler::Modul
                 _customEventOnMethodExitLookup,
                 moduleId, 
                 sourceToken,
-                static_cast<USHORT>(RecordedEventType::MethodExit),
+                static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit),
                 mapping);
 
             AddCustomEventMapping(
                 _customEventOnMethodExitLookup,
                 moduleId,
                 sourceToken,
-                static_cast<USHORT>(RecordedEventType::MethodExitWithArguments), 
+                static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments),
                 mapping);
         }
 
@@ -738,8 +738,8 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
     // Check if event mapping is available
     USHORT customMethodEnterEvent;
     USHORT customMethodEnterWithArgumentsEvent;
-    auto const originalMethodEnterEvent = static_cast<USHORT>(RecordedEventType::MethodEnter);
-    auto const originalMethodEnterWithArgumentsEvent = static_cast<USHORT>(RecordedEventType::MethodEnterWithArguments);
+    auto const originalMethodEnterEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnter);
+    auto const originalMethodEnterWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments);
     auto const hasCustomMethodEnterEvent = FindCustomEventMapping(
         _customEventOnMethodEntryLookup,
         moduleId,
@@ -857,8 +857,8 @@ HRESULT Profiler::CorProfiler::LeaveMethod(FunctionIDOrClientID functionOrClient
     // Check if event mapping is available
     USHORT customMethodExitEvent;
     USHORT customMethodExitWithArgumentsEvent;
-    auto const originalMethodExitEvent = static_cast<USHORT>(RecordedEventType::MethodExit);
-    auto const originalMethodExitWithArgumentsEvent = static_cast<USHORT>(RecordedEventType::MethodExitWithArguments);
+    auto const originalMethodExitEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit);
+    auto const originalMethodExitWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
     auto const hasCustomMethodExitEvent = FindCustomEventMapping(
         _customEventOnMethodExitLookup,
         moduleId,
