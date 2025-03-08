@@ -117,11 +117,18 @@ namespace LibProfiler
 
 		HRESULT GetTypeProps(
 			IN mdTypeDef typeDef,
+			OUT mdToken* extendsTypeDef,
 			OUT std::string& name);
 
 		HRESULT GetTypeRefProps(
 			IN mdTypeRef typeRef,
-			OUT mdToken* resolutionScope);
+			OUT mdToken* resolutionScope,
+			OUT std::string& name);
+
+		HRESULT FindImplementedInterface(
+			IN mdTypeDef typeDef,
+			IN const std::string& interfaceName,
+			OUT mdTypeDef* implementedInterface);
 
 		const std::string& GetName() const { return _name; }
 		const std::string& GetFullPath() const { return _fullPath; }

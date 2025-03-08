@@ -354,7 +354,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::JITCompilationStarted(FunctionI
     std::string typeName;
     CorMethodAttr methodFlags;
     if (FAILED(moduleDef.GetMethodProps(mdMethodDef, &mdTypeDef, methodName, &methodFlags, nullptr, nullptr)) ||
-        FAILED(moduleDef.GetTypeProps(mdTypeDef, typeName)))
+        FAILED(moduleDef.GetTypeProps(mdTypeDef, nullptr, typeName)))
     {
         LOG_F(ERROR, "Could not obtain methods properties for TOK = %d.", mdMethodDef);
         return E_FAIL;

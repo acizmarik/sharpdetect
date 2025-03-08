@@ -189,19 +189,22 @@ HRESULT LibProfiler::ModuleDef::GetMethodProps(
 		LOG_F(ERROR, "Could not get method name for mdMethodDef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", methodDef, _moduleId, hr);
 		return E_FAIL;
 	}
-		
-	*flags = static_cast<CorMethodAttr>(methodFlags);
+
+	if (flags != nullptr)
+		*flags = static_cast<CorMethodAttr>(methodFlags);
+
 	name = LibProfiler::ToString(nameBuffer.get());
 	return S_OK;
 }
 
 HRESULT LibProfiler::ModuleDef::GetTypeProps(
 	IN mdTypeDef typeDef,
+	OUT mdToken* extendsTypeDef,
 	OUT std::string& name)
 {
 	auto& metadataImport = GetMetadataImport();
 	ULONG typeNameLength;
-	auto hr = metadataImport.GetTypeDefProps(typeDef, nullptr, 0, &typeNameLength, nullptr, nullptr);
+	auto hr = metadataImport.GetTypeDefProps(typeDef, nullptr, 0, &typeNameLength, nullptr, extendsTypeDef);
 	if (FAILED(hr))
 	{
 		LOG_F(ERROR, "Could not get type props for mdTypeDef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", typeDef, _moduleId, hr);
@@ -222,17 +225,91 @@ HRESULT LibProfiler::ModuleDef::GetTypeProps(
 
 HRESULT LibProfiler::ModuleDef::GetTypeRefProps(
 	IN mdTypeRef typeRef,
-	OUT mdToken* resolutionScope)
+	OUT mdToken* resolutionScope,
+	OUT std::string& name)
 {
 	auto& metadataImport = GetMetadataImport();
-	auto hr = metadataImport.GetTypeRefProps(typeRef, resolutionScope, nullptr, 0, nullptr);
+
+	ULONG typeNameLength;
+	auto hr = metadataImport.GetTypeRefProps(typeRef, resolutionScope, nullptr, 0, &typeNameLength);
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not get type ref props for mdTypeRef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x", typeRef, _moduleId, hr);
+		LOG_F(ERROR, "Could not get type ref props for mdTypeRef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", typeRef, _moduleId, hr);
 		return E_FAIL;
 	}
 
+	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[typeNameLength]);
+	hr = metadataImport.GetTypeRefProps(typeRef, nullptr, nameBuffer.get(), typeNameLength, nullptr);
+	if (FAILED(hr))
+	{
+		LOG_F(ERROR, "Could not get type name for mdTypeRef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", typeRef, _moduleId, hr);
+		return E_FAIL;
+	}
+
+	name = LibProfiler::ToString(nameBuffer.get());
 	return S_OK;
+}
+
+HRESULT LibProfiler::ModuleDef::FindImplementedInterface(
+	IN mdTypeDef typeDef, 
+	IN const std::string& interfaceName, 
+	OUT mdTypeDef* implementedInterface)
+{
+	auto& metadataImport = GetMetadataImport();
+	*implementedInterface = mdTypeDefNil;
+
+	HRESULT hr;
+	ULONG count;
+	HCORENUM enumerator = nullptr;
+	mdInterfaceImpl mdInterfaceImpl;
+
+	do
+	{
+		hr = metadataImport.EnumInterfaceImpls(&enumerator, typeDef, &mdInterfaceImpl, 1, &count);
+		if (FAILED(hr) || count == 0)
+			break;
+
+		mdTypeDef mdImplementation;
+		hr = metadataImport.GetInterfaceImplProps(mdInterfaceImpl, nullptr, &mdImplementation);
+		if (FAILED(hr))
+		{
+			LOG_F(ERROR, "Could not obtain interface implementation props for mdInterfaceImpl=%d for module=%" UINT_PTR_FORMAT ". Error: 0x%x", mdInterfaceImpl, _moduleId, hr);
+			return E_FAIL;
+		}
+
+		std::string implementationTypeName;
+		if (TypeFromToken(mdImplementation) == mdtTypeDef)
+		{
+			hr = GetTypeProps(mdImplementation, nullptr, implementationTypeName);
+			if (FAILED(hr))
+			{
+				LOG_F(WARNING, "Could not obtain interface props for mdTypeDef=%d for module=%" UINT_PTR_FORMAT ". Error: 0x%x", mdImplementation, _moduleId, hr);
+				continue;
+			}
+		}
+		else if (TypeFromToken(mdImplementation) == mdtTypeRef)
+		{
+			hr = GetTypeRefProps(mdImplementation, nullptr, implementationTypeName);
+			if (FAILED(hr))
+			{
+				LOG_F(WARNING, "Could not obtain interface props for mdTypeRef=%d for module=%" UINT_PTR_FORMAT ". Error: 0x%x", mdImplementation, _moduleId, hr);
+				continue;
+			}
+		}
+		else
+		{
+			// Type spec or other token types are not interesting to us
+			continue;
+		}
+
+		if (implementationTypeName == interfaceName)
+		{
+			*implementedInterface = mdImplementation;
+			return S_OK;
+		}
+	} while (SUCCEEDED(hr));
+
+	return E_FAIL;
 }
 
 HRESULT LibProfiler::ModuleDef::GetPlaceHolderMethodRVA(OUT UINT* rva)

@@ -1,0 +1,30 @@
+{
+    "Target": 
+    {
+        "Path": "../../Samples/SimpleNonDisposed/bin/Debug/net8.0/SimpleNonDisposed.dll",
+        "Args": "",
+        "Architecture": "X64",
+        "RedirectInputOutput":
+        {
+            "SingleConsoleMode": true
+        }
+    },
+    "Runtime": 
+    {
+        "Profiler":
+        {
+            "Clsid": "{54fec423-9e6c-46af-9457-17c9364156a5}",
+            "Path": {
+                "WindowsX64": "../../artifacts/SharpDetect.Disposables.Profiler.dll",
+                "LinuxX64": "../../artifacts/SharpDetect.Disposables.Profiler.so"
+            },
+            "CollectFullStackTraces": true
+        }
+    },
+    "Analysis": 
+    {
+        "Path": "../../Extensibility/SharpDetect.Plugins/bin/Debug/net8.0/SharpDetect.Plugins.dll",
+        "FullTypeName": "SharpDetect.Plugins.Disposables.DisposablesPlugin",
+        "RenderReport": true
+    }
+}
