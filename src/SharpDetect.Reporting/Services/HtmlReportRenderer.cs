@@ -20,19 +20,21 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
         _template = File.ReadAllText(baseTemplateFile.FullName);
     }
 
-    public string Render(Summary summary)
+    public string Render(Summary summary, DirectoryInfo additionalPartials)
     {
-        var environment = CreateEnvironment();
+        var environment = CreateEnvironment(additionalPartials);
         var dataContent = BuildDataContext(summary);
         var compiledTemplate = environment.Compile(_template);
         return compiledTemplate(dataContent);
     }
 
-    private IHandlebars CreateEnvironment()
+    private IHandlebars CreateEnvironment(DirectoryInfo additionalPartials)
     {
         var stylesTemplateFile = _primaryDirectory.GetFiles("styles.css").Single();
-        var partialsTemplateFiles = _primaryDirectory.GetFiles("*.html");
-        var partialTemplates = partialsTemplateFiles
+        var htmlTemplateFiles = _primaryDirectory.GetFiles("*.html");
+        var additionalHtmlTemplateFiles = additionalPartials.GetFiles("*.html");
+        var htmlTemplates = htmlTemplateFiles
+            .Concat(additionalHtmlTemplateFiles)
             .Concat([stylesTemplateFile])
             .Select(file => (
                 Path.GetFileNameWithoutExtension(file.FullName),
@@ -40,7 +42,7 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
             .ToDictionary(kv => kv.Item1, kv => kv.Item2);
 
         var environment = Handlebars.CreateSharedEnvironment();
-        foreach (var (templateName, templateContent) in partialTemplates)
+        foreach (var (templateName, templateContent) in htmlTemplates)
             environment.RegisterTemplate(templateName, templateContent);
 
         return environment;

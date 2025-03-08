@@ -7,5 +7,5 @@ namespace SharpDetect.Core.Reporting;
 
 public interface IReportSummaryRenderer
 {
-    string Render(Summary summary);
+    string Render(Summary summary, DirectoryInfo additionalPartials);
 }

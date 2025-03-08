@@ -29,6 +29,8 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                    COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
         additionalData: GetRequiredMethodDescriptors());
+    public DirectoryInfo ReportTemplates { get; }
+
     private readonly HashSet<DeadlockInfo> _deadlocks;
     private readonly ICallstackResolver _callStackResolver;
     private readonly Dictionary<ThreadId, string> _threads;
@@ -57,6 +59,13 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         LockReleased += OnLockReleased;
         ObjectWaitAttempted += OnObjectWaitAttempted;
         ObjectWaitReturned += OnObjectWaitReturned;
+
+        ReportTemplates = new DirectoryInfo(
+            Path.Combine(
+                Path.GetDirectoryName(GetType().Assembly.Location)!,
+                "Deadlock",
+                "Templates",
+                "Partials"));
     }
 
     private void OnLockAcquireAttempted(LockAcquireAttemptArgs args)

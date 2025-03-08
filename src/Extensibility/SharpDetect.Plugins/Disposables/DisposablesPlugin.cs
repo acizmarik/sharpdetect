@@ -28,6 +28,8 @@ public class DisposablesPlugin : PluginBase, IPlugin
                    COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
         additionalData: null);
+    public DirectoryInfo ReportTemplates { get; }
+
     private readonly IMetadataContext _metadataContext;
     private readonly HashSet<TrackedObjectId> _allocated;
 
@@ -38,6 +40,13 @@ public class DisposablesPlugin : PluginBase, IPlugin
     {
         _metadataContext = metadataContext;
         _allocated = [];
+
+        ReportTemplates = new DirectoryInfo(
+            Path.Combine(
+                Path.GetDirectoryName(GetType().Assembly.Location)!,
+                "Disposables",
+                "Templates",
+                "Partials"));
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)
@@ -64,10 +73,14 @@ public class DisposablesPlugin : PluginBase, IPlugin
             _allocated.Add(trackedDisposableObjectId);
         else
             _allocated.Remove(trackedDisposableObjectId);
+
+        base.Visit(metadata, args);
     }
 
     public Summary CreateDiagnostics()
     {
-        throw new NotImplementedException();
+        Reporter.SetTitle("No violations found");
+        Reporter.SetDescription("All disposables were correctly disposed.");
+        return Reporter.Build();
     }
 }

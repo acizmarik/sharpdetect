@@ -42,7 +42,9 @@ public sealed class RunCommand : ICommand
     private static void ShowReportSummary(IServiceProvider serviceProvider)
     {
         var displayer = serviceProvider.GetRequiredService<IReportSummaryDisplayer>();
-        var summary = serviceProvider.GetRequiredService<IPlugin>().CreateDiagnostics();
-        displayer.Display(summary);
+        var plugin = serviceProvider.GetRequiredService<IPlugin>();
+        var summary = plugin.CreateDiagnostics();
+
+        displayer.Display(summary, plugin.ReportTemplates);
     }
 }

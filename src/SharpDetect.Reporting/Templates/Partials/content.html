@@ -1,4 +1,4 @@
-﻿{{#if reports}}
+{{#if reports}}
 <h1 class="error">{{title}}</h1>
 {{else}}
 <h1>{{title}}</h1>
@@ -23,14 +23,5 @@
     {{> assemblies}}
 </div>
 <div id="Violations" class="tabcontent" data-group="1">
-    <div class="tab">
-        {{#reports}}
-        <button id="btn{{title}}" class="tablinks" data-group="11" onclick="openTab('{{title}}')">{{title}}</button>
-        {{/reports}}
-    </div>
-    {{#reports}}
-    <div id="{{title}}" class="tabcontent" data-group="11">
-        {{> threads}}
-    </div>
-    {{/reports}}
+    {{> violations}}
 </div>

@@ -9,6 +9,7 @@ namespace SharpDetect.Core.Plugins;
 public interface IPlugin
 {
     string ReportCategory { get; }
+    DirectoryInfo ReportTemplates { get; }
     PluginConfiguration Configuration { get; }
     RecordedEventActionVisitorBase EventsVisitor { get; }
 

@@ -24,9 +24,9 @@ internal sealed class HtmlReportDisplayer : IReportSummaryDisplayer
         _logger = logger;
     }
 
-    public void Display(Summary summary)
+    public void Display(Summary summary, DirectoryInfo additionalPartials)
     {
-        var html = _reportSummaryRenderer.Render(summary);
+        var html = _reportSummaryRenderer.Render(summary, additionalPartials);
         _logger.LogTrace("Rendered summary to HTML. Document length: {Length}.", html.Length);
 
         var timestamp = _timeProvider.GetUtcNow().UtcDateTime.ToString("s").Replace(":", ".");
