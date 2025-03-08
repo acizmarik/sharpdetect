@@ -6,10 +6,8 @@ using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Plugins.Descriptors;
 using SharpDetect.Core.Plugins.PluginBases;
 using SharpDetect.Core.Reporting.Model;
-using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 
 namespace SharpDetect.Plugins.Disposables;
@@ -17,20 +15,19 @@ namespace SharpDetect.Plugins.Disposables;
 public class DisposablesPlugin : PluginBase, IPlugin
 {
     public string ReportCategory => "Disposables";
-    public ImmutableArray<MethodDescriptor> MethodDescriptors { get; } = [];
-    public COR_PRF_MONITOR ProfilerMonitoringOptions => _requiredProfilerFlags;
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    private const COR_PRF_MONITOR _requiredProfilerFlags =
-        COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES;
+    public PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
+        eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
+        additionalData: null);
     private readonly IMetadataContext _metadataContext;
     private readonly HashSet<TrackedObjectId> _allocated;
 
@@ -40,7 +37,7 @@ public class DisposablesPlugin : PluginBase, IPlugin
         : base(serviceProvider)
     {
         _metadataContext = metadataContext;
-        _allocated = new HashSet<TrackedObjectId>();
+        _allocated = [];
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)

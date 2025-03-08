@@ -7,8 +7,12 @@
 
 Profiler::CorProfiler* ProfilerInstance;
 
-Profiler::CorProfiler::CorProfiler() :
-    _client(),
+Profiler::CorProfiler::CorProfiler(Configuration configuration) :
+    _configuration(configuration),
+    _client(
+        configuration.sharedMemoryName,
+        configuration.sharedMemoryFile.value_or(std::string()),
+        configuration.sharedMemorySize),
     _collectFullStackTraces(false)
 {
     ProfilerInstance = this;
@@ -49,7 +53,7 @@ UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID functionId, void* clientDat
 
     if (!ProfilerInstance->HasModuleDef(moduleId))
     {
-        LOG_F(WARNING, "Could not resolve Module ID = %" UINT_PTR_FORMAT " for method TOK = %d.", moduleId, mdMethodDef);
+        LOG_F(WARNING, "Could not resolve Module ID = %" UINT_PTR_FORMAT " for method token = %d.", moduleId, mdMethodDef);
         *pbHookFunction = false;
         return functionId;
     }
@@ -66,7 +70,7 @@ UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID functionId, void* clientDat
     if (FAILED(moduleDef.GetMethodProps(mdMethodDef, &typeDef, methodName, nullptr, &signature, &signatureSize)) ||
         FAILED(moduleDef.GetTypeProps(typeDef, &extendsTypeToken, typeName)))
     {
-        LOG_F(ERROR, "Could not obtain methods properties for TOK = %d.", mdMethodDef);
+        LOG_F(ERROR, "Could not obtain methods properties for token = %d.", mdMethodDef);
         *pbHookFunction = false;
         return functionId;
     }

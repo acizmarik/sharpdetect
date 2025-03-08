@@ -1,9 +1,16 @@
 // Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE.coreclr.txt file in the project root for full license information.
 
-#include "CorProfiler.h"
+#include <fstream>
 
+#include "../lib/json/single_include/nlohmann/json.hpp"
+#include "../lib/loguru/loguru.hpp"
 #include "../LibProfiler/ClassFactory.h"
+
+#include "CorProfiler.h"
+#include "Configuration.h"
+
+using json = nlohmann::json;
 
 const IID IID_IUnknown = { 0x00000000, 0x0000, 0x0000, { 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };
 const IID IID_IClassFactory = { 0x00000001, 0x0000, 0x0000, { 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };
@@ -24,7 +31,29 @@ _Check_return_ EXTERN_C HRESULT STDAPICALLTYPE DllGetClassObject(_In_ REFCLSID r
         return E_FAIL;
     }
 
-    auto factory = new LibProfiler::ClassFactory<Profiler::CorProfiler>;
+    auto rawConfigPath = std::getenv("SharpDetect_CONFIGURATION_PATH");
+    if (rawConfigPath == nullptr)
+    {
+        LOG_F(ERROR, "Configuration path is not set.");
+        return E_FAIL;
+    }
+
+    auto configPath = std::string(rawConfigPath);
+    Profiler::Configuration configuration { };
+
+    try
+    {
+        auto file = std::ifstream(configPath);
+        auto json = json::parse(file);
+        from_json(json, configuration);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_F(ERROR, "Error parsing configuration from file %s. Due to error: %s.", configPath.c_str(), e.what());
+        return E_FAIL;
+    }
+
+    auto factory = new LibProfiler::ClassFactory<Profiler::CorProfiler, Profiler::Configuration>(configuration);
     if (factory == nullptr)
     {
         return E_FAIL;

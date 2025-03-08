@@ -4,40 +4,32 @@
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
-using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Plugins.Descriptors;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Plugins.PluginBases.OrderedEvents;
-using System.Collections.Immutable;
 
 namespace SharpDetect.Plugins.Deadlock;
 
 public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 {
-    public readonly record struct DeadlockInfo(uint ProcessId, List<(ThreadId ThreadId, string ThreadName, ThreadId BlockedOn, TrackedObjectId LockId)> Cycle);
-    public COR_PRF_MONITOR ProfilerMonitoringOptions => _requiredProfilerFlags;
-    public RecordedEventActionVisitorBase EventsVisitor => this;
-    public ImmutableArray<MethodDescriptor> MethodDescriptors { get; }
     public string ReportCategory => "Deadlock";
-
+    public RecordedEventActionVisitorBase EventsVisitor => this;
+    public PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
+        eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
+        additionalData: GetRequiredMethodDescriptors());
     private readonly HashSet<DeadlockInfo> _deadlocks;
-
-    private const COR_PRF_MONITOR _requiredProfilerFlags =
-        COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES;
-
     private readonly ICallstackResolver _callStackResolver;
     private readonly Dictionary<ThreadId, string> _threads;
     private readonly Dictionary<ThreadId, Lock?> _waitingForLocks;
@@ -65,7 +57,6 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         LockReleased += OnLockReleased;
         ObjectWaitAttempted += OnObjectWaitAttempted;
         ObjectWaitReturned += OnObjectWaitReturned;
-        MethodDescriptors = GetRequiredMethodDescriptors();
     }
 
     private void OnLockAcquireAttempted(LockAcquireAttemptArgs args)

@@ -17,7 +17,6 @@
 #include "../lib/json/single_include/nlohmann/json.hpp"
 #include "../lib/loguru/loguru.hpp"
 
-#include "CorProfiler.h"
 #include "../LibIPC/Client.h"
 #include "../LibIPC/Messages.h"
 #include "../LibProfiler/AssemblyDef.h"
@@ -27,14 +26,19 @@
 #include "../LibProfiler/Instrumentation.h"
 #include "../LibProfiler/PAL.h"
 #include "../LibProfiler/WString.h"
+#include "CorProfiler.h"
 
 using json = nlohmann::json;
 
 Profiler::CorProfiler* ProfilerInstance;
 thread_local std::stack<std::vector<UINT_PTR>> ArgsCallStack;
 
-Profiler::CorProfiler::CorProfiler() : 
-    _client(),
+Profiler::CorProfiler::CorProfiler(Configuration configuration) :
+    _configuration(configuration),
+    _client(
+        configuration.sharedMemoryName,
+        configuration.sharedMemoryFile.value_or(std::string()),
+        configuration.sharedMemorySize),
     _collectFullStackTraces(false),
     _coreModule(0)
 {
@@ -72,11 +76,19 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         LOG_F(ERROR, "Could not obtain profiling API. Terminating.");
         return E_FAIL;
     }
+
+    for (auto&& item : _configuration.additionalData)
+        _methodDescriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
     
-    if (FAILED(LoadRewritingConfiguration()))
+    auto rawShouldCollectFullStackTraces = std::getenv("SharpDetect_COLLECT_FULL_STACKTRACES");
+    if (rawShouldCollectFullStackTraces == nullptr)
     {
-        LOG_F(ERROR, "Could not obtain configuration. Terminating.");
-        return E_FAIL;
+        // Default: set to false
+        _collectFullStackTraces = false;
+    }
+    else
+    {
+        _collectFullStackTraces = std::stoi(rawShouldCollectFullStackTraces);
     }
 
     COR_PRF_RUNTIME_TYPE runtimeType;
@@ -128,64 +140,16 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
     return S_OK;
 }
 
-HRESULT Profiler::CorProfiler::LoadRewritingConfiguration()
-{
-    auto rawRewritingConfigPath = std::getenv("SharpDetect_REWRITING_CONFIGURATION_FILE_PATH");
-    if (rawRewritingConfigPath == nullptr)
-    {
-        LOG_F(ERROR, "Rewriting configuration path is not set.");
-        return E_FAIL;
-    }
-
-    auto rewritingConfigPath = std::string(rawRewritingConfigPath);
-
-    auto rawShouldCollectFullStackTraces = std::getenv("SharpDetect_COLLECT_FULL_STACKTRACES");
-    if (rawShouldCollectFullStackTraces == nullptr)
-    {
-        // Default: set to false
-        _collectFullStackTraces = false;
-    }
-    else
-    {
-        _collectFullStackTraces = std::stoi(rawShouldCollectFullStackTraces);
-    }
-
-    try
-    {
-        auto file = std::ifstream(rewritingConfigPath);
-        auto json = json::parse(file);
-        std::vector<MethodDescriptor> methodDescriptors;
-        from_json(json, methodDescriptors);
-        for (auto&& methodDescriptor : methodDescriptors)
-            _methodDescriptors.push_back(std::make_shared<MethodDescriptor>(std::move(methodDescriptor)));
-    }
-    catch (const std::exception& e)
-    {
-        LOG_F(ERROR, "Error parsing rewriting configuration from file %s. Due to error: %s.", rewritingConfigPath.c_str(), e.what());
-        return E_FAIL;
-    }
-
-    return S_OK;
-}
-
 HRESULT Profiler::CorProfiler::InitializeProfilingFeatures()
 {
-    auto rawProfilerEventMask = std::getenv("SharpDetect_PROF_EVENTMASK");
-    if (rawProfilerEventMask == nullptr)
-    {
-        LOG_F(ERROR, "Event mask is not set.");
-        return E_FAIL;
-    }
-
-    auto profilerEventMask = static_cast<COR_PRF_MONITOR>(std::stoll(std::string(rawProfilerEventMask)));
-    auto hr = _corProfilerInfo->SetEventMask(profilerEventMask);
+    auto hr = _corProfilerInfo->SetEventMask(_configuration.eventMask);
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not set profiling flags. Error: 0x%x.", hr);
         return E_FAIL;
     }
 
-    if ((profilerEventMask & COR_PRF_MONITOR::COR_PRF_MONITOR_ENTERLEAVE) != 0)
+    if ((_configuration.eventMask & COR_PRF_MONITOR::COR_PRF_MONITOR_ENTERLEAVE) != 0)
     {
         hr = _corProfilerInfo->SetEnterLeaveFunctionHooks3WithInfo(EnterNaked, LeaveNaked, TailcallNaked);
         if (FAILED(hr))

@@ -4,17 +4,22 @@
 #pragma once
 
 #include "unknwn.h"
+#include <algorithm>
 #include <atomic>
+#include <memory>
+#include <utility>
 
 namespace LibProfiler
 {
-    template <class T> class ClassFactory : public IClassFactory
+    template <class TInstance, class TArg> class ClassFactory : public IClassFactory
     {
     private:
-        T* _ptr;
+        TInstance* _ptr;
         std::atomic<int> _refCount;
+        TArg _arg;
+
     public:
-        ClassFactory() : _ptr(nullptr), _refCount(0)
+        ClassFactory(TArg arg) : _ptr(nullptr), _refCount(0), _arg(arg)
         {
         }
 
@@ -59,7 +64,7 @@ namespace LibProfiler
                 return CLASS_E_NOAGGREGATION;
             }
 
-            _ptr = new T();
+            _ptr = new TInstance(_arg);
             if (_ptr == nullptr)
             {
                 return E_FAIL;

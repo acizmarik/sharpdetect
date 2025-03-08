@@ -19,14 +19,14 @@
 #include "../LibProfiler/ModuleDef.h"
 #include "../LibProfiler/ObjectsTracker.h"
 #include "../LibProfiler/WString.h"
-
+#include "Configuration.h"
 
 namespace Profiler
 {
 	class CorProfiler : public LibProfiler::CorProfilerBase
 	{
 	public:
-		CorProfiler();
+		CorProfiler(Configuration configuration);
 		virtual HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
 		virtual HRESULT STDMETHODCALLTYPE ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) override;
 		virtual HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason) override;
@@ -44,6 +44,7 @@ namespace Profiler
 	private:
 		std::atomic_bool _terminating;
 		BOOL _collectFullStackTraces;
+		Configuration _configuration;
 		LibIPC::Client _client;
 		LibProfiler::ObjectsTracker _objectsTracker;
 

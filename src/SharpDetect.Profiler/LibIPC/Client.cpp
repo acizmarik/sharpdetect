@@ -12,27 +12,16 @@ const std::string LibIPC::Client::_ipqProducerCreateSymbolName = "ipq_producer_c
 const std::string LibIPC::Client::_ipqProducerDestroySymbolName = "ipq_producer_destroy";
 const std::string LibIPC::Client::_ipqProducerEnqueueSymbolName = "ipq_producer_enqueue";
 
-LibIPC::Client::Client() : 
-	_ipqName({}),
-	_mmfName({}),
-	_queueSize(20971520 /* 20MB */),
+LibIPC::Client::Client(std::string mmName, std::string mmFile, UINT size) :
+	_ipqName(mmName),
+	_mmfName(mmFile),
+	_queueSize(size),
 	_ipqModuleHandle(nullptr),
 	_ffiProducer(nullptr),
 	_ipqProducerCreateSymbolAddress(nullptr),
 	_ipqProducerDestroySymbolAddress(nullptr),
 	_ipqProducerEnqueueSymbolAddress(nullptr)
 {
-	auto const sharedMemoryNameStringPointer = std::getenv("SharpDetect_SHAREDMEMORY_NAME");
-	if (sharedMemoryNameStringPointer == nullptr)
-	{
-		LOG_F(FATAL, "Could not obtain memory map name.");
-		throw std::runtime_error("Error while configuring memory mapped file.");
-	}
-	_ipqName = std::string(sharedMemoryNameStringPointer);
-
-	auto const sharedMemoryFileStringPointer = std::getenv("SharpDetect_SHAREDMEMORY_FILE");
-	_mmfName = (sharedMemoryFileStringPointer != nullptr) ? std::string(sharedMemoryFileStringPointer) : std::string();
-
 	auto const ipqPathStringPointer = std::getenv("SharpDetect_IPQ_PATH");
 	if (ipqPathStringPointer == nullptr)
 	{

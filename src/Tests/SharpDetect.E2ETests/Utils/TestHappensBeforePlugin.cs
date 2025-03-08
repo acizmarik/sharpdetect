@@ -17,22 +17,22 @@ namespace SharpDetect.E2ETests.Utils;
 public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Test";
-    public ImmutableArray<MethodDescriptor> MethodDescriptors => MonitorMethodDescriptors.GetAllMethods().ToImmutableArray();
-    public COR_PRF_MONITOR ProfilerMonitoringOptions =>
-        COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
-        COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
-        COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
-        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES;
     public RecordedEventActionVisitorBase EventsVisitor => this;
+    public PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
+        eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
+                   COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
+        additionalData: MonitorMethodDescriptors.GetAllMethods().ToImmutableArray());
     public Summary CreateDiagnostics() => throw new NotSupportedException();
 
     public event Action<(RecordedEventMetadata Metadata, AssemblyLoadRecordedEvent Args)>? AssemblyLoaded;
