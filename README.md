@@ -54,6 +54,7 @@ docker build -t sharpdetect/ubuntu-24.04
 ## Available Tools
 
 * **Deadlock Analyzer** - Monitors all lock-related operations on `System.Threading.Monitor`. If a deadlock is detected, user receives a report with details (affected threads, stack traces).
+* **Disposable Analyzer** - Monitors all allocations and disposals on reference types that implement `IDisposable`. If disposable type has not been disposed, user receives report with details (allocation thread, stack trace).
 
 ## State of Development
 
