@@ -34,6 +34,6 @@ add_library (LibProfiler STATIC ${SOURCES})
 target_include_directories(LibProfiler PUBLIC ${INCLUDE_DIRECTORIES})
 if (UNIX AND NOT APPLE)
     # Fix compilation issues with miniutf on Linux
-    target_compile_options(LibProfiler PRIVATE -include cstdint)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include cstdint")
 endif()
 target_link_libraries(LibProfiler PRIVATE loguru::loguru)
