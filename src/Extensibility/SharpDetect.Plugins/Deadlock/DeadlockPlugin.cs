@@ -33,12 +33,10 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 
     private readonly HashSet<DeadlockInfo> _deadlocks;
     private readonly ICallstackResolver _callStackResolver;
-    private readonly Dictionary<ThreadId, string> _threads;
     private readonly Dictionary<ThreadId, Lock?> _waitingForLocks;
     private readonly Dictionary<ThreadId, HashSet<Lock>> _takenLocks;
     private readonly Dictionary<ThreadId, Callstack> _callstacks;
     private readonly Dictionary<ThreadId, Stack<RuntimeArgumentList>> _callstackArguments;
-    private int nextFreeThreadId;
 
     public DeadlockPlugin(
         ICallstackResolver callstackResolver,
@@ -48,7 +46,6 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         _callStackResolver = callstackResolver;
 
         _deadlocks = [];
-        _threads = [];
         _waitingForLocks = [];
         _takenLocks = [];
         _callstacks = [];
@@ -100,37 +97,24 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
     {
         var threadId = args.ThreadId;
-        if (!_threads.ContainsKey(threadId))
+        if (!Threads.ContainsKey(threadId))
         {
             // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
             StartNewThread(metadata.Pid, args.ThreadId);
         }
 
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, ThreadDestroyRecordedEvent args)
-    {
-        var threadId = args.ThreadId;
-        var name = _threads[threadId];
-        _threads.Remove(threadId);
-        Logger.LogInformation("Destroyed thread {Name}.", name);
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)
     {
         var threadId = args.ThreadId;
-        if (!_threads.ContainsKey(threadId))
+        if (!Threads.ContainsKey(threadId))
         {
             // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
             StartNewThread(metadata.Pid, args.ThreadId);
         }
 
-        var oldName = _threads[threadId];
-        var newName = $"{oldName} ({args.NewName})";
-        _threads[threadId] = newName;
-        Logger.LogInformation("Renamed thread {PldName} -> {NewName}.", oldName, newName);
         base.Visit(metadata, args);
     }
 
@@ -156,16 +140,6 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     {
         _callstacks[metadata.Tid].Pop();
         base.Visit(metadata, args);
-    }
-
-    private void StartNewThread(uint processId, ThreadId threadId)
-    {
-        _threads[threadId] = $"T{nextFreeThreadId++}";
-        _waitingForLocks[threadId] = null;
-        _takenLocks[threadId] = [];
-        _callstacks[threadId] = new(processId, threadId);
-        _callstackArguments[threadId] = new();
-        Logger.LogInformation("Started thread {Name}.", _threads[threadId]);
     }
 
     private void CheckForDeadlocks(uint processId, ThreadId threadId)
@@ -210,7 +184,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                 {
                     var blockedOnLock = _waitingForLocks[thread]!;
                     var blockedOnThreadId = blockedOnLock.Owner!.Value;
-                    deadlock.Add((thread, _threads[thread], blockedOnThreadId, blockedOnLock.LockObjectId));
+                    deadlock.Add((thread, Threads[thread], blockedOnThreadId, blockedOnLock.LockObjectId));
                 }
 
                 // Check if we recorded this deadlock
@@ -231,5 +205,13 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                 stack.Pop();
             }
         }
+    }
+
+    private void StartNewThread(uint processId, ThreadId threadId)
+    {
+        _waitingForLocks[threadId] = null;
+        _takenLocks[threadId] = [];
+        _callstacks[threadId] = new(processId, threadId);
+        _callstackArguments[threadId] = new();
     }
 }

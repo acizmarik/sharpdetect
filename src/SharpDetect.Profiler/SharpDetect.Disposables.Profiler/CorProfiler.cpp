@@ -155,19 +155,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         buildVersion,
         qfeVersion);
 
-    auto flags =
-        COR_PRF_MONITOR_MODULE_LOADS |
-        COR_PRF_MONITOR_ENTERLEAVE |
-        COR_PRF_MONITOR_GC |
-        COR_PRF_ENABLE_FUNCTION_ARGS |
-        COR_PRF_ENABLE_FUNCTION_RETVAL |
-        COR_PRF_ENABLE_FRAME_INFO |
-        COR_PRF_DISABLE_INLINING |
-        COR_PRF_DISABLE_OPTIMIZATIONS |
-        COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
-        COR_PRF_DISABLE_ALL_NGEN_IMAGES;
-
-    hr = _corProfilerInfo->SetEventMask(flags);
+    hr = _corProfilerInfo->SetEventMask(_configuration.eventMask);
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not set event mask. Terminating.");
@@ -210,6 +198,38 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
     LOG_F(INFO, "Loaded module: %s with handle (%" UINT_PTR_FORMAT ")", moduleDef.GetFullPath().c_str(), moduleDef.GetModuleId());
     _client.Send(LibIPC::Helpers::CreateModuleLoadMsg(CreateMetadataMsg(), moduleDef.GetModuleId(), moduleDef.GetAssemblyId(), moduleDef.GetFullPath()));
 
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadCreated(ThreadID threadId)
+{
+    if (_terminating)
+        return S_OK;
+
+    LOG_F(INFO, "Thread created %" UINT_PTR_FORMAT ".", threadId);
+    _client.Send(LibIPC::Helpers::CreateThreadCreateMsg(CreateMetadataMsg(), threadId));
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadDestroyed(ThreadID threadId)
+{
+    if (_terminating)
+        return S_OK;
+
+    _client.Send(LibIPC::Helpers::CreateThreadDestroyMsg(CreateMetadataMsg(), threadId));
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadNameChanged(
+    ThreadID threadId,
+    ULONG cchName,
+    WCHAR name[])
+{
+    if (_terminating)
+        return S_OK;
+
+    auto nameString = LibProfiler::ToString(LibProfiler::WSTRING(name, cchName));
+    _client.Send(LibIPC::Helpers::CreateThreadRenameMsg(CreateMetadataMsg(), threadId, nameString));
     return S_OK;
 }
 

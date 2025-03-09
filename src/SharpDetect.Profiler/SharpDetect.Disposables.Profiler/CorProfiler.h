@@ -33,6 +33,9 @@ namespace Profiler
 		virtual HRESULT STDMETHODCALLTYPE GarbageCollectionFinished() override;
 		virtual HRESULT STDMETHODCALLTYPE MovedReferences2(ULONG cMovedObjectIDRanges, ObjectID oldObjectIDRangeStart[], ObjectID newObjectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
 		virtual HRESULT STDMETHODCALLTYPE SurvivingReferences2(ULONG cSurvivingObjectIDRanges, ObjectID objectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
+		virtual HRESULT STDMETHODCALLTYPE ThreadCreated(ThreadID threadId) override;
+		virtual HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
+		virtual HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
 
 		ICorProfilerInfo8& GetCorProfilerInfo();
 		BOOL HasModuleDef(ModuleID moduleId);

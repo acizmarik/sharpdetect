@@ -12,12 +12,13 @@ using System.Runtime.InteropServices;
 
 namespace SharpDetect.Plugins.Disposables;
 
-public class DisposablesPlugin : PluginBase, IPlugin
+public partial class DisposablesPlugin : PluginBase, IPlugin
 {
     public string ReportCategory => "Disposables";
     public RecordedEventActionVisitorBase EventsVisitor => this;
     public PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
         eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                   COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
                    COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
@@ -31,7 +32,8 @@ public class DisposablesPlugin : PluginBase, IPlugin
     public DirectoryInfo ReportTemplates { get; }
 
     private readonly IMetadataContext _metadataContext;
-    private readonly HashSet<TrackedObjectId> _allocated;
+    private readonly HashSet<TrackedObjectId> _notDisposed;
+    private readonly Dictionary<TrackedObjectId, AllocationInfo> _allocationInfos;
 
     public DisposablesPlugin(
         IMetadataContext metadataContext,
@@ -39,7 +41,8 @@ public class DisposablesPlugin : PluginBase, IPlugin
         : base(serviceProvider)
     {
         _metadataContext = metadataContext;
-        _allocated = [];
+        _notDisposed = [];
+        _allocationInfos = [];
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -67,20 +70,20 @@ public class DisposablesPlugin : PluginBase, IPlugin
         var methodDef = methodDefResolveResult.Value;
         var trackedDisposableObjectId = MemoryMarshal.Read<TrackedObjectId>(args.ArgumentValues);
 
+        var threadInfo = new ThreadInfo(metadata.Tid.Value, Threads[metadata.Tid]);
         Logger.LogInformation("Invoked {method} with {objectId}", methodDef.FullName, trackedDisposableObjectId);
 
         if (methodDef.IsConstructor)
-            _allocated.Add(trackedDisposableObjectId);
+        {
+            if (_notDisposed.Add(trackedDisposableObjectId))
+                _allocationInfos.Add(trackedDisposableObjectId, new AllocationInfo(methodDef, metadata.Pid, threadInfo));
+        }
         else
-            _allocated.Remove(trackedDisposableObjectId);
+        {
+            _notDisposed.Remove(trackedDisposableObjectId);
+            _allocationInfos.Remove(trackedDisposableObjectId);
+        }
 
         base.Visit(metadata, args);
-    }
-
-    public Summary CreateDiagnostics()
-    {
-        Reporter.SetTitle("No violations found");
-        Reporter.SetDescription("All disposables were correctly disposed.");
-        return Reporter.Build();
     }
 }
