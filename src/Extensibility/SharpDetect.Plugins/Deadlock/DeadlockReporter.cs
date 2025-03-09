@@ -41,7 +41,7 @@ public partial class DeadlockPlugin
             foreach (var (threadId, threadName, blockedOnThreadId, lockId) in cycle)
             {
                 var threadInfo = reportedThreads[threadId.Value];
-                var stackTrace = _callStackResolver.Resolve(threadInfo, _callstacks[threadId]);
+                var stackTrace = _callStackResolver.Resolve(threadInfo, Callstacks[threadId]);
                 reportBuilder.AddReportReason(threadInfo, $"Blocked - waiting for object: {lockId.Value} owned by thread {threadNames[blockedOnThreadId]}");
                 stackTraces.Add(threadInfo, stackTrace);
             }

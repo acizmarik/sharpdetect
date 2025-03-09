@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Loader;
+using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Core.Plugins.PluginBases;
@@ -16,6 +17,8 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
     protected IReadOnlyDictionary<ThreadId, string> Threads => _threads;
+    protected IReadOnlyDictionary<ThreadId, Callstack> Callstacks => _callstacks;
+    private readonly Dictionary<ThreadId, Callstack> _callstacks;
     private readonly Dictionary<ThreadId, string> _threads;
     private int nextFreeThreadId;
 
@@ -23,6 +26,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
     {
         ModuleBindContext = serviceProvider.GetRequiredService<IModuleBindContext>();
         Logger = serviceProvider.GetRequiredService<ILogger<PluginBase>>();
+        _callstacks = [];
         _threads = [];
     }
 
@@ -115,12 +119,28 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
 
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterRecordedEvent args)
     {
+        _callstacks[metadata.Tid].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterExitCounter();
+        base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
+        _callstacks[metadata.Tid].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterExitCounter();
+        base.Visit(metadata, args);
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+    {
+        _callstacks[metadata.Tid].Pop();
+        base.Visit(metadata, args);
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        _callstacks[metadata.Tid].Pop();
+        base.Visit(metadata, args);
     }
 
     protected override void DefaultVisit(RecordedEventMetadata metadata, IRecordedEventArgs args)
@@ -131,6 +151,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
     private void StartNewThread(uint processId, ThreadId threadId)
     {
         _threads[threadId] = $"T{nextFreeThreadId++}";
+        _callstacks[threadId] = new(processId, threadId);
         Logger.LogInformation("Started thread {Name}.", _threads[threadId]);
     }
 }

@@ -35,7 +35,6 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     private readonly ICallstackResolver _callStackResolver;
     private readonly Dictionary<ThreadId, Lock?> _waitingForLocks;
     private readonly Dictionary<ThreadId, HashSet<Lock>> _takenLocks;
-    private readonly Dictionary<ThreadId, Callstack> _callstacks;
     private readonly Dictionary<ThreadId, Stack<RuntimeArgumentList>> _callstackArguments;
 
     public DeadlockPlugin(
@@ -48,7 +47,6 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         _deadlocks = [];
         _waitingForLocks = [];
         _takenLocks = [];
-        _callstacks = [];
         _callstackArguments = [];
 
         LockAcquireAttempted += OnLockAcquireAttempted;
@@ -115,30 +113,6 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
             StartNewThread(metadata.Pid, args.ThreadId);
         }
 
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, MethodEnterRecordedEvent args)
-    {
-        _callstacks[metadata.Tid].Push(args.ModuleId, args.MethodToken);
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
-    {
-        _callstacks[metadata.Tid].Push(args.ModuleId, args.MethodToken);
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
-    {
-        _callstacks[metadata.Tid].Pop();
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
-    {
-        _callstacks[metadata.Tid].Pop();
         base.Visit(metadata, args);
     }
 
@@ -211,7 +185,6 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     {
         _waitingForLocks[threadId] = null;
         _takenLocks[threadId] = [];
-        _callstacks[threadId] = new(processId, threadId);
         _callstackArguments[threadId] = new();
     }
 }

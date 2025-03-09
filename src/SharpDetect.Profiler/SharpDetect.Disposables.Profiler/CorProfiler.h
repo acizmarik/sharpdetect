@@ -38,6 +38,7 @@ namespace Profiler
 		virtual HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
 
 		ICorProfilerInfo8& GetCorProfilerInfo();
+		BOOL IsCollectFullStackTraces() const { return _collectFullStackTraces; }
 		BOOL HasModuleDef(ModuleID moduleId);
 		std::shared_ptr<LibProfiler::ModuleDef> GetModuleDef(ModuleID moduleId);
 		HRESULT EnterMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);

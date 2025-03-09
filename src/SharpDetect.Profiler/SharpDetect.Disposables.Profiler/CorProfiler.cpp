@@ -4,6 +4,7 @@
 #include "../lib/loguru/loguru.hpp"
 
 #include "CorProfiler.h"
+#include "MethodHookInfo.h"
 
 Profiler::CorProfiler* ProfilerInstance;
 
@@ -37,25 +38,45 @@ PROFILER_STUB TailcallStub(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO elt
     ProfilerInstance->TailcallMethod(functionId, eltInfo);
 }
 
+void MarkAnalyzedMethod(Profiler::MethodHookInfo* methodHookInfo, void* clientData, BOOL* pbHookFunction)
+{
+    methodHookInfo->GetInstance = true;
+    methodHookInfo->Hook = true;
+    clientData = methodHookInfo;
+    *pbHookFunction = true;
+}
+
+void MarkNotAnalyzedMethod(Profiler::MethodHookInfo* methodHookInfo, void* clientData, BOOL* pbHookFunction)
+{
+    auto collectFullStackTraces = ProfilerInstance->IsCollectFullStackTraces();
+    methodHookInfo->GetInstance = false;
+    methodHookInfo->Hook = collectFullStackTraces;
+    clientData = methodHookInfo;
+    *pbHookFunction = collectFullStackTraces;
+}
+
 UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID functionId, void* clientData, BOOL* pbHookFunction)
 {
     HRESULT hr;
     ModuleID moduleId;
     mdMethodDef mdMethodDef;
-    ICorProfilerInfo8& corProfilerInfo = ProfilerInstance->GetCorProfilerInfo();
+    auto& corProfilerInfo = ProfilerInstance->GetCorProfilerInfo();
+    auto methodHookInfo = new Profiler::MethodHookInfo();
+    methodHookInfo->FunctionId = functionId;
+    auto returnValue = reinterpret_cast<UINT_PTR>(methodHookInfo);
 
     if (FAILED(corProfilerInfo.GetFunctionInfo(functionId, nullptr, &moduleId, &mdMethodDef)))
     {
         LOG_F(WARNING, "Could not determine information about Function ID = %" UINT_PTR_FORMAT ".", functionId);
-        *pbHookFunction = false;
-        return functionId;
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
     }
 
     if (!ProfilerInstance->HasModuleDef(moduleId))
     {
         LOG_F(WARNING, "Could not resolve Module ID = %" UINT_PTR_FORMAT " for method token = %d.", moduleId, mdMethodDef);
-        *pbHookFunction = false;
-        return functionId;
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
     }
 
     auto moduleDefPtr = ProfilerInstance->GetModuleDef(moduleId);
@@ -71,41 +92,41 @@ UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID functionId, void* clientDat
         FAILED(moduleDef.GetTypeProps(typeDef, &extendsTypeToken, typeName)))
     {
         LOG_F(ERROR, "Could not obtain methods properties for token = %d.", mdMethodDef);
-        *pbHookFunction = false;
-        return functionId;
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
     }
 
     if (methodName != ".ctor" &&
        (methodName != "Dispose" || signature[1] != 0))
     {
-        *pbHookFunction = false;
-        return functionId;
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
     }
 
     std::string baseTypeName;
     if (TypeFromToken(extendsTypeToken) == mdtTypeDef && FAILED(moduleDef.GetTypeProps(extendsTypeToken, nullptr, baseTypeName)) ||
        (TypeFromToken(extendsTypeToken) == mdtTypeRef && FAILED(moduleDef.GetTypeRefProps(extendsTypeToken, nullptr, baseTypeName))))
     {
-        *pbHookFunction = false;
-        return functionId;
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
     }
 
     if (baseTypeName == "System.ValueType" || baseTypeName == "System.Enum")
     {
-        *pbHookFunction = false;
-        return functionId;
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
     }
 
     mdTypeDef disposableTypeDef;
     if (FAILED(moduleDef.FindImplementedInterface(typeDef, "System.IDisposable", &disposableTypeDef)))
     {
-        *pbHookFunction = false;
-        return functionId;
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
     }
 
     LOG_F(INFO, "Hooking %s::%s.", typeName.c_str(), methodName.c_str());
-    *pbHookFunction = true;
-    return functionId;
+    MarkAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+    return returnValue;
 }
 
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfilerInfoUnk)
@@ -117,6 +138,17 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
     {
         LOG_F(ERROR, "Could not obtain profiling API. Terminating.");
         return E_FAIL;
+    }
+
+    auto rawShouldCollectFullStackTraces = std::getenv("SharpDetect_COLLECT_FULL_STACKTRACES");
+    if (rawShouldCollectFullStackTraces == nullptr)
+    {
+        // Default: set to false
+        _collectFullStackTraces = false;
+    }
+    else
+    {
+        _collectFullStackTraces = std::stoi(rawShouldCollectFullStackTraces);
     }
 
     COR_PRF_RUNTIME_TYPE runtimeType;
@@ -315,7 +347,8 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
         return S_OK;
 
     HRESULT hr;
-    FunctionID functionId = functionOrClientId.functionID;
+    MethodHookInfo* methodHookInfo = static_cast<MethodHookInfo*>((void*)functionOrClientId.clientID);
+    FunctionID functionId = methodHookInfo->FunctionId;
 
     // Retrieve method token
     ModuleID moduleId;
@@ -325,6 +358,16 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
     {
         LOG_F(ERROR, "Could not resolve functionId %" UINT_PTR_FORMAT " to a method. Error: 0x%x", functionId, hr);
         return E_FAIL;
+    }
+
+    if (!methodHookInfo->GetInstance)
+    {
+        _client.Send(LibIPC::Helpers::CreateMethodEnterMsg(
+            CreateMetadataMsg(),
+            moduleId,
+            methodDef,
+            static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnter)));
+        return S_OK;
     }
 
     // Retrieve "this" pointer
@@ -363,13 +406,33 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
         static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments),
         std::move(argData),
         std::move(argOffset)));
-
-    LOG_F(INFO, "Enter %d with %lld", methodDef, trackedObjectId);
     return S_OK;
 }
 
 HRESULT Profiler::CorProfiler::LeaveMethod(FunctionIDOrClientID functionOrClientId, COR_PRF_ELT_INFO eltInfo)
 {
+    if (_terminating)
+        return S_OK;
+
+    HRESULT hr;
+    MethodHookInfo* methodHookInfo = static_cast<MethodHookInfo*>((void*)functionOrClientId.clientID);
+    FunctionID functionId = methodHookInfo->FunctionId;
+
+    // Retrieve method token
+    ModuleID moduleId;
+    mdMethodDef methodDef;
+    hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef);
+    if (FAILED(hr))
+    {
+        LOG_F(ERROR, "Could not resolve functionId %" UINT_PTR_FORMAT " to a method. Error: 0x%x", functionId, hr);
+        return E_FAIL;
+    }
+
+    _client.Send(LibIPC::Helpers::CreateMethodExitMsg(
+        CreateMetadataMsg(),
+        moduleId,
+        methodDef,
+        static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit)));
     return S_OK;
 }
 

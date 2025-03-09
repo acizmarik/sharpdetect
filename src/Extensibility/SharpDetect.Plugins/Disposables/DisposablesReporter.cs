@@ -47,10 +47,8 @@ public partial class DisposablesPlugin
             builder.SetTitle($"#{index}");
             builder.SetDescription($"Leaked instance of {info.MethodDef.DeclaringType.FullName}.");
             builder.AddThread(threadInfo);
-            builder.AddStackTrace(new StackTrace(threadInfo, [new StackFrame(
-                info.MethodDef.FullName,
-                info.MethodDef.Module.Location,
-                (int)info.MethodDef.MDToken.Raw)]));
+            var stackTrace = _callstackResolver.Resolve(threadInfo, info.Callstack);
+            builder.AddStackTrace(stackTrace);
             builder.AddReportReason(threadInfo, "Allocated leaked object");
             Reporter.AddReport(builder.Build());
         }

@@ -32,15 +32,18 @@ public partial class DisposablesPlugin : PluginBase, IPlugin
     public DirectoryInfo ReportTemplates { get; }
 
     private readonly IMetadataContext _metadataContext;
+    private readonly ICallstackResolver _callstackResolver;
     private readonly HashSet<TrackedObjectId> _notDisposed;
     private readonly Dictionary<TrackedObjectId, AllocationInfo> _allocationInfos;
 
     public DisposablesPlugin(
         IMetadataContext metadataContext,
+        ICallstackResolver callstackResolver,
         IServiceProvider serviceProvider)
         : base(serviceProvider)
     {
         _metadataContext = metadataContext;
+        _callstackResolver = callstackResolver;
         _notDisposed = [];
         _allocationInfos = [];
 
@@ -75,8 +78,11 @@ public partial class DisposablesPlugin : PluginBase, IPlugin
 
         if (methodDef.IsConstructor)
         {
+            var callstackCopy = Callstacks[metadata.Tid].Clone();
+            callstackCopy.Push(args.ModuleId, args.MethodToken);
+            var allocationInfo = new AllocationInfo(methodDef, metadata.Pid, threadInfo, callstackCopy);
             if (_notDisposed.Add(trackedDisposableObjectId))
-                _allocationInfos.Add(trackedDisposableObjectId, new AllocationInfo(methodDef, metadata.Pid, threadInfo));
+                _allocationInfos.Add(trackedDisposableObjectId, allocationInfo);
         }
         else
         {
