@@ -45,6 +45,6 @@ public sealed class RunCommand : ICommand
         var plugin = serviceProvider.GetRequiredService<IPlugin>();
         var summary = plugin.CreateDiagnostics();
 
-        displayer.Display(summary, plugin.ReportTemplates);
+        displayer.Display(summary, plugin, plugin.ReportTemplates);
     }
 }

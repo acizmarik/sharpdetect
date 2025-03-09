@@ -6,7 +6,6 @@ using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Plugins.Descriptors;
 using SharpDetect.Core.Plugins.PluginBases.MethodDescriptors;
 using SharpDetect.Core.Plugins.PluginBases.OrderedEvents;
 using SharpDetect.Core.Reporting.Model;
@@ -35,6 +34,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
         additionalData: MonitorMethodDescriptors.GetAllMethods().ToImmutableArray());
     public DirectoryInfo ReportTemplates => throw new NotSupportedException();
     public Summary CreateDiagnostics() => throw new NotSupportedException();
+    public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports) => throw new NotSupportedException();
 
     public event Action<(RecordedEventMetadata Metadata, AssemblyLoadRecordedEvent Args)>? AssemblyLoaded;
     public event Action<(RecordedEventMetadata Metadata, AssemblyReferenceInjectionRecordedEvent Args)>? AssemblyReferenceInjected;

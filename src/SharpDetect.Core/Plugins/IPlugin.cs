@@ -14,4 +14,5 @@ public interface IPlugin
     RecordedEventActionVisitorBase EventsVisitor { get; }
 
     Summary CreateDiagnostics();
+    IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports);
 }

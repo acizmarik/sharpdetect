@@ -56,4 +56,32 @@ public partial class DeadlockPlugin
             Reporter.AddReport(reportBuilder.Build());
         }
     }
+
+    public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports)
+    {
+        return reports.Select(report => new
+        {
+            title = report.Title,
+            description = report.Description,
+            threads = report.GetReportedThreads().Select(threadInfo =>
+            {
+                report.TryGetStackTrace(threadInfo, out var st);
+                report.TryGetReportReason(threadInfo, out var reason);
+                return new
+                {
+                    name = threadInfo.Name,
+                    reason = reason!,
+                    stacktrace = st!.Frames.Select(frame =>
+                    {
+                        return new
+                        {
+                            metadataName = frame.MethodName,
+                            metadataToken = frame.MethodToken,
+                            sourceFile = frame.SourceMapping,
+                        };
+                    }).ToArray()
+                };
+            }).ToArray()
+        });
+    }
 }

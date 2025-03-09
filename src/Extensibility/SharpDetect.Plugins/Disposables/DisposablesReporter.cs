@@ -44,13 +44,45 @@ public partial class DisposablesPlugin
 
             var builder = new ReportBuilder(index++, ReportCategory);
             var threadInfo = new ThreadInfo(info.ThreadInfo.Id, info.ThreadInfo.Name);
-            builder.SetTitle($"#{index}");
-            builder.SetDescription($"Leaked instance of {info.MethodDef.DeclaringType.FullName}.");
+            builder.SetTitle(info.ThreadInfo.Name);
+            builder.SetDescription($"Leaked {info.MethodDef.DeclaringType.FullName} instance.");
             builder.AddThread(threadInfo);
             var stackTrace = _callstackResolver.Resolve(threadInfo, info.Callstack);
             builder.AddStackTrace(stackTrace);
             builder.AddReportReason(threadInfo, "Allocated leaked object");
             Reporter.AddReport(builder.Build());
+        }
+    }
+
+    public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports)
+    {
+        foreach (var threadReports in reports.GroupBy(r => r.GetReportedThreads().Single()))
+        {
+            var threadInfo = threadReports.Key;
+            yield return new
+            {
+                thread = threadInfo.Name,
+                stacktraces = threadReports.Select(r =>
+                {
+                    r.TryGetStackTrace(threadInfo, out var stacktrace);
+                    r.TryGetReportReason(threadInfo, out var reason);
+                    return new
+                    {
+                        identifier = r.Identifier,
+                        reason,
+                        description = r.Description,
+                        stacktrace = stacktrace!.Frames.Select(frame =>
+                        {
+                            return new
+                            {
+                                metadataName = frame.MethodName,
+                                metadataToken = frame.MethodToken,
+                                sourceFile = frame.SourceMapping,
+                            };
+                        }).ToArray()
+                    };
+                }).ToArray()
+            };
         }
     }
 }
