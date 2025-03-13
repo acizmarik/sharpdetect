@@ -42,6 +42,7 @@ Profiler::CorProfiler::CorProfiler(Configuration configuration) :
     _collectFullStackTraces(false),
     _coreModule(0)
 {
+    _terminating = false;
     ProfilerInstance = this;
 }
 

@@ -16,6 +16,7 @@ Profiler::CorProfiler::CorProfiler(Configuration configuration) :
         configuration.sharedMemorySize),
     _collectFullStackTraces(false)
 {
+    _terminating = false;
     ProfilerInstance = this;
 }
 
@@ -53,6 +54,30 @@ void MarkNotAnalyzedMethod(Profiler::MethodHookInfo* methodHookInfo, void* clien
     methodHookInfo->Hook = collectFullStackTraces;
     clientData = methodHookInfo;
     *pbHookFunction = collectFullStackTraces;
+}
+
+BOOL IsTypeIgnored(const std::string& typeName)
+{
+    auto& typesToIgnore = ProfilerInstance->GetConfiguration().additionalData.typesToIgnore;
+    for (auto&& item : typesToIgnore)
+    {
+        if (item.fullName == typeName)
+            return true;
+    }
+
+    return false;
+}
+
+BOOL IsMethodIncludedInAnalysis(const std::string& typeName, const std::string& methodName)
+{
+    auto& methodsToInclude = ProfilerInstance->GetConfiguration().additionalData.methodsToInclude;
+    for (auto&& item : methodsToInclude)
+    {
+        if (item.declaringTypeFullName == typeName && item.name == methodName)
+            return true;
+    }
+
+    return false;
 }
 
 UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID functionId, void* clientData, BOOL* pbHookFunction)
@@ -96,8 +121,17 @@ UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID functionId, void* clientDat
         return returnValue;
     }
 
-    if (methodName != ".ctor" &&
-       (methodName != "Dispose" || signature[1] != 0))
+    if (IsTypeIgnored(typeName))
+    {
+        MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
+        return returnValue;
+    }
+
+    auto shouldAnalyze = methodName == ".ctor" || 
+                         (methodName == "Dispose" && signature[1] != 0) ||
+                         IsMethodIncludedInAnalysis(typeName, methodName);
+
+    if (!shouldAnalyze)
     {
         MarkNotAnalyzedMethod(methodHookInfo, clientData, pbHookFunction);
         return returnValue;

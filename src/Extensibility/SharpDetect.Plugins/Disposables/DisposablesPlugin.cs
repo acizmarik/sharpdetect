@@ -7,6 +7,8 @@ using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
+using SharpDetect.Plugins.Disposables.Descriptors;
+using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 
 namespace SharpDetect.Plugins.Disposables;
@@ -27,7 +29,11 @@ public partial class DisposablesPlugin : PluginBase, IPlugin
                    COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
-        additionalData: null);
+        additionalData: new
+        {
+            TypesToIgnore = DisposablesDescriptors.GetAllTypeIgnores().ToImmutableArray(),
+            MethodsToInclude = DisposablesDescriptors.GetAllMethodDescriptors().ToImmutableArray()
+        });
     public DirectoryInfo ReportTemplates { get; }
 
     private readonly IMetadataContext _metadataContext;

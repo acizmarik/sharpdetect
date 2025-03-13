@@ -8,8 +8,9 @@
 
 #include "../lib/json/single_include/nlohmann/json.hpp"
 #include "../lib/optional/include/tl/optional.hpp"
-
 #include "cor.h"
+
+#include "ConfigurationAdditionalData.h"
 
 namespace Profiler
 {
@@ -19,6 +20,7 @@ namespace Profiler
 		std::string sharedMemoryName;
 		tl::optional<std::string> sharedMemoryFile;
 		UINT sharedMemorySize;
+		ConfigurationAdditionalData additionalData;
 	};
 
 	void to_json(nlohmann::json& json, const Configuration& descriptor);
