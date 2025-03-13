@@ -5,7 +5,7 @@ Method();
 
 void Method()
 {
-    var disposable = new CustomDisposable();
+    using var ms = new StreamReader(new MemoryStream());
 }
 
 class CustomDisposable : IDisposable

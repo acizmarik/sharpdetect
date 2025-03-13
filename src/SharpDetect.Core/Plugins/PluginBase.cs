@@ -9,7 +9,7 @@ using SharpDetect.Core.Loader;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
 
-namespace SharpDetect.Core.Plugins.PluginBases;
+namespace SharpDetect.Core.Plugins;
 
 public abstract class PluginBase : RecordedEventActionVisitorBase
 {

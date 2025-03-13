@@ -6,7 +6,6 @@ using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Plugins.PluginBases;
 using SharpDetect.Core.Reporting.Model;
 using System.Runtime.InteropServices;
 

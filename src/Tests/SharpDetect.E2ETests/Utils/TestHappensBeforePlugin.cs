@@ -6,9 +6,9 @@ using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Plugins.PluginBases.MethodDescriptors;
-using SharpDetect.Core.Plugins.PluginBases.OrderedEvents;
 using SharpDetect.Core.Reporting.Model;
+using SharpDetect.Plugins;
+using SharpDetect.Plugins.Deadlock.Descriptors;
 using System.Collections.Immutable;
 
 namespace SharpDetect.E2ETests.Utils;

@@ -6,7 +6,8 @@ using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
-using SharpDetect.Core.Plugins.PluginBases.OrderedEvents;
+using SharpDetect.Plugins.Deadlock.Descriptors;
+using System.Collections.Immutable;
 
 namespace SharpDetect.Plugins.Deadlock;
 
@@ -28,7 +29,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                    COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
-        additionalData: GetRequiredMethodDescriptors());
+        additionalData: MonitorMethodDescriptors.GetAllMethods().ToImmutableArray());
     public DirectoryInfo ReportTemplates { get; }
 
     private readonly HashSet<DeadlockInfo> _deadlocks;
