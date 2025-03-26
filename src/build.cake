@@ -69,7 +69,7 @@ Task("Build-Profiler")
 
     exitCode = StartProcess("cmake", new ProcessSettings
     {
-        Arguments = new ProcessArgumentBuilder().Append("--build ."),
+        Arguments = new ProcessArgumentBuilder().Append($"--build . --config {configuration}"),
         WorkingDirectory = artifactsDirectory
     });
 

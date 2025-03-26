@@ -17,7 +17,7 @@ public class DeadlockPluginTests
 #if DEBUG
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}_Release.json"))]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}_Release.json")]
 #endif
     public async Task DeadlockPlugin_NoDeadlock(string configuration)
     {
@@ -40,7 +40,7 @@ public class DeadlockPluginTests
 #if DEBUG
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Release.json"))]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Release.json")]
 #endif
     public async Task DeadlockPlugin_CanDetectDeadlock(string configuration)
     {

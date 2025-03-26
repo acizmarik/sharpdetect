@@ -18,7 +18,7 @@ public class DisposablesPluginTests
 #if DEBUG
     [InlineData($"{ConfigurationFolder}/{nameof(DisposablesPlugin_CanDetectNonDisposed_CustomObject)}_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DisposablesPlugin_CanDetectNonDisposed_CustomObject)}_Release.json"))]
+    [InlineData($"{ConfigurationFolder}/{nameof(DisposablesPlugin_CanDetectNonDisposed_CustomObject)}_Release.json")]
 #endif
     public async Task DisposablesPlugin_CanDetectNonDisposed_CustomObject(string configuration)
     {
@@ -44,7 +44,7 @@ public class DisposablesPluginTests
 #if DEBUG
     [InlineData($"{ConfigurationFolder}/{nameof(DisposablesPlugin_CanDetectDisposed_CustomObject)}_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DisposablesPlugin_CanDetectDisposed_CustomObject)}_Release.json"))]
+    [InlineData($"{ConfigurationFolder}/{nameof(DisposablesPlugin_CanDetectDisposed_CustomObject)}_Release.json")]
 #endif
     public async Task DisposablesPlugin_CanDetectDisposed_CustomObject(string configuration)
     {
