@@ -20,7 +20,7 @@ namespace LibIPC
 	class Client
 	{
 	public:
-		Client();
+		Client(std::string mmName, std::string mmFile, UINT size);
 		Client(Client&& other) = delete;
 		Client& operator=(Client&&) = delete;
 		Client(Client& other) = delete;

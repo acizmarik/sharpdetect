@@ -41,9 +41,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub", "GitHub", "{C075D1
 		..\.github\workflows\main.yml = ..\.github\workflows\main.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.Core", "SharpDetect.Core\SharpDetect.Core.csproj", "{80BBA215-8F4D-4B62-8021-C6EBCCD41AFA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Core", "SharpDetect.Core\SharpDetect.Core.csproj", "{80BBA215-8F4D-4B62-8021-C6EBCCD41AFA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.PluginHost", "Extensibility\SharpDetect.PluginHost\SharpDetect.PluginHost.csproj", "{97E7D625-C2D8-4657-9126-2410DBEDF70D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.PluginHost", "Extensibility\SharpDetect.PluginHost\SharpDetect.PluginHost.csproj", "{97E7D625-C2D8-4657-9126-2410DBEDF70D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleNonDisposed", "Samples\SimpleNonDisposed\SimpleNonDisposed.csproj", "{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -99,6 +101,10 @@ Global
 		{97E7D625-C2D8-4657-9126-2410DBEDF70D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{97E7D625-C2D8-4657-9126-2410DBEDF70D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{97E7D625-C2D8-4657-9126-2410DBEDF70D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -109,6 +115,7 @@ Global
 		{0D7D0BB4-128C-49A8-A0FD-2FBD65BB949E} = {4158D903-2A66-4347-83D7-FDCFC4F5A884}
 		{D2FFD494-569A-499E-9898-004A10042B58} = {4158D903-2A66-4347-83D7-FDCFC4F5A884}
 		{97E7D625-C2D8-4657-9126-2410DBEDF70D} = {DDDE2C8F-D130-4B27-A8A9-D12F55098A39}
+		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9} = {90D7D4DF-1967-4606-91B6-E0210F4F36C7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85DE1FF1-4319-481E-AB39-C52687E142FA}

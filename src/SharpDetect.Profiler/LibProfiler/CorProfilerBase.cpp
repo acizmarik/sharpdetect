@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include <cstdlib>
@@ -31,6 +31,7 @@ HRESULT STDMETHODCALLTYPE LibProfiler::CorProfilerBase::Initialize(IUnknown* pIC
 
 HRESULT STDMETHODCALLTYPE LibProfiler::CorProfilerBase::Shutdown()
 {
+    LOG_F(INFO, "Shutting down.");
     return S_OK;
 }
 

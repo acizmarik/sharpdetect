@@ -93,11 +93,17 @@ Task("Build-Local-Environment")
     CopyFileToDirectory(ipqLibrary, artifactsDirectory);
     Information($"Copied IPQ native library to {artifactsDirectory}.");
 
-    var profilerLibrary = (rid.StartsWith("win"))
-        ? $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Profiler/{configuration}/SharpDetect.Profiler.{libraryExtension}"
-        : $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Profiler/SharpDetect.Profiler.{libraryExtension}";
-    CopyFileToDirectory(profilerLibrary, artifactsDirectory);
-    Information($"Copied profiler native library to {artifactsDirectory}.");
+    var concurrencyProfilerLibrary = (rid.StartsWith("win"))
+        ? $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Concurrency.Profiler/{configuration}/SharpDetect.Concurrency.Profiler.{libraryExtension}"
+        : $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Concurrency.Profiler/SharpDetect.Concurrency.Profiler.{libraryExtension}";
+
+    var disposablesProfilerLibrary = (rid.StartsWith("win"))
+        ? $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Disposables.Profiler/{configuration}/SharpDetect.Disposables.Profiler.{libraryExtension}"
+        : $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Disposables.Profiler/SharpDetect.Disposables.Profiler.{libraryExtension}";
+
+    CopyFileToDirectory(concurrencyProfilerLibrary, artifactsDirectory);
+    CopyFileToDirectory(disposablesProfilerLibrary, artifactsDirectory);
+    Information($"Copied profiler native libraries to {artifactsDirectory}.");
 });
 
 Task("Tests")

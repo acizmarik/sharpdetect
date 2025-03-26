@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.E2ETests.Subject.Helpers;
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
 using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
 using SharpDetect.E2ETests.Subject.Helpers.Fields;
@@ -593,6 +594,17 @@ namespace SharpDetect.E2ETests.Subject
             // Create some more garbage
             new object();
             new object();
+        }
+
+        public static void Test_NonDisposedAnalysis_CustomDisposable_NonDisposed()
+        {
+            var disposable = new Disposables.CustomDisposable();
+        }
+
+        public static void Test_NonDisposedAnalysis_CustomDisposable_Disposed()
+        {
+            var disposable = new Disposables.CustomDisposable();
+            disposable.Dispose();
         }
     }
 }

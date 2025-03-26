@@ -23,15 +23,8 @@ namespace SharpDetect.Cli.Handlers;
 
 internal sealed class RunCommandHandler
 {
-    private const string RewritingConfigurationFileName = "SharpDetect_Rewriting_Config.data";
-    private const string SharedMemoryName = "SharpDetect_IPQ";
-    private const string SharedMemoryFile = "SharpDetect_SharedMemory.data";
-    private const int SharedMemorySize = 20_971_520 /* 20 MB */;
-    private static readonly string RewritingConfigurationPath = Path.Combine(Path.GetTempPath(), RewritingConfigurationFileName);
-
     public IServiceProvider ServiceProvider { get; }
     public RunCommandArgs Args { get; }
-    private readonly JsonSerializerOptions _jsonSerializerOptions;
     private readonly JsonSerializerOptions _jsonDeserializerOptions;
     private readonly IPluginHost _pluginHost;
     private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
@@ -44,10 +37,6 @@ internal sealed class RunCommandHandler
         {
             Converters = { new JsonStringEnumConverter() },
             PropertyNamingPolicy = null
-        };
-        _jsonSerializerOptions = new JsonSerializerOptions() 
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
         Args = LoadCommandArguments(configurationFilePath);
@@ -76,13 +65,16 @@ internal sealed class RunCommandHandler
 
     public ValueTask ExecuteAsync(IConsole _)
     {
-        SerializeRewritingConfiguration();
-        _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", RewritingConfigurationPath);
+        _plugin.Configuration.SerializeToFile(GetFullConfigurationPath());
+        _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", GetFullConfigurationPath());
 
         var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync();
         _logger.LogInformation("Started process with PID: {Pid}.", targetApplicationProcess.ProcessId);
 
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(SharedMemoryName, SharedMemoryFile, SharedMemorySize);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(
+            _plugin.Configuration.SharedMemoryName, 
+            _plugin.Configuration.SharedMemoryFile, 
+            _plugin.Configuration.SharedMemorySize);
         using var eventConsumer = new Consumer(consumerOptions, ArrayPool<byte>.Shared);
         _logger.LogTrace("Started event consumer of IPC queue with name: \"{Name}\" file:\"{File}\".", consumerOptions.Name, consumerOptions.File);
 
@@ -192,12 +184,9 @@ internal sealed class RunCommandHandler
                 builder.Set("CORECLR_ENABLE_PROFILING", "1");
                 builder.Set("CORECLR_PROFILER", Args.Runtime.Profiler.Clsid.ToString());
                 builder.Set("CORECLR_PROFILER_PATH", profilerPath);
-                builder.Set("SharpDetect_IPQ_PATH", ipqPath);
-                builder.Set("SharpDetect_PROF_EVENTMASK", ((uint)_plugin.ProfilerMonitoringOptions).ToString());
                 builder.Set("SharpDetect_COLLECT_FULL_STACKTRACES", Args.Runtime.Profiler.CollectFullStackTraces ? "1" : "0");
-                builder.Set("SharpDetect_REWRITING_CONFIGURATION_FILE_PATH", RewritingConfigurationPath);
-                builder.Set("SharpDetect_SHAREDMEMORY_NAME", SharedMemoryName);
-                builder.Set("SharpDetect_SHAREDMEMORY_FILE", SharedMemoryFile);
+                builder.Set("SharpDetect_IPQ_PATH", ipqPath);
+                builder.Set("SharpDetect_CONFIGURATION_PATH", GetFullConfigurationPath());
 
                 foreach (var (key, value) in Args.Runtime.Host?.AdditionalEnvironmentVariables ?? Enumerable.Empty<KeyValuePair<string, string>>())
                     builder.Set(key, value);
@@ -241,19 +230,6 @@ internal sealed class RunCommandHandler
             return Args.Runtime.Profiler.Path.LinuxX64;
         else
             throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
-    }
-
-    private void SerializeRewritingConfiguration()
-    {
-        try
-        {
-            using var fileStream = File.Open(RewritingConfigurationPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            JsonSerializer.Serialize(fileStream, _plugin.MethodDescriptors, _jsonSerializerOptions);
-        }
-        catch (Exception e)
-        {
-            throw new InvalidOperationException("Could not serialize method descriptors.", e);
-        }
     }
 
     private RunCommandArgs LoadCommandArguments(string configurationFilePath)
@@ -353,5 +329,10 @@ internal sealed class RunCommandHandler
             throw new ArgumentException($"Could not find plugin assembly: \"{pluginPath}\".");
         if (string.IsNullOrWhiteSpace(pluginTypeName))
             throw new ArgumentException($"Invalid plugin type fullname: \"{pluginTypeName}\".");
+    }
+
+    private static string GetFullConfigurationPath()
+    {
+        return Path.Combine(Path.GetTempPath(), PluginConfiguration.ConfigurationFileName);
     }
 }

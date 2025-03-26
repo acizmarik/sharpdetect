@@ -3,6 +3,7 @@
 
 using HandlebarsDotNet;
 using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
 using SharpDetect.Core.Reporting.Model;
 
@@ -20,19 +21,21 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
         _template = File.ReadAllText(baseTemplateFile.FullName);
     }
 
-    public string Render(Summary summary)
+    public string Render(Summary summary, IPlugin plugin, DirectoryInfo additionalPartials)
     {
-        var environment = CreateEnvironment();
-        var dataContent = BuildDataContext(summary);
+        var environment = CreateEnvironment(additionalPartials);
+        var dataContent = BuildDataContext(plugin, summary);
         var compiledTemplate = environment.Compile(_template);
         return compiledTemplate(dataContent);
     }
 
-    private IHandlebars CreateEnvironment()
+    private IHandlebars CreateEnvironment(DirectoryInfo additionalPartials)
     {
         var stylesTemplateFile = _primaryDirectory.GetFiles("styles.css").Single();
-        var partialsTemplateFiles = _primaryDirectory.GetFiles("*.html");
-        var partialTemplates = partialsTemplateFiles
+        var htmlTemplateFiles = _primaryDirectory.GetFiles("*.html");
+        var additionalHtmlTemplateFiles = additionalPartials.GetFiles("*.html");
+        var htmlTemplates = htmlTemplateFiles
+            .Concat(additionalHtmlTemplateFiles)
             .Concat([stylesTemplateFile])
             .Select(file => (
                 Path.GetFileNameWithoutExtension(file.FullName),
@@ -40,13 +43,13 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
             .ToDictionary(kv => kv.Item1, kv => kv.Item2);
 
         var environment = Handlebars.CreateSharedEnvironment();
-        foreach (var (templateName, templateContent) in partialTemplates)
+        foreach (var (templateName, templateContent) in htmlTemplates)
             environment.RegisterTemplate(templateName, templateContent);
 
         return environment;
     }
 
-    private static object BuildDataContext(Summary summary)
+    private static object BuildDataContext(IPlugin plugin, Summary summary)
     {
         var runtimeName = summary.RuntimeInfo.Type switch
         {
@@ -76,7 +79,6 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
                     .OrderBy(kv => kv.Key)
                     .Select(kv => new { key = kv.Key, value = kv.Value })
             },
-
             assemblies = summary.GetAllModules().Select(moduleInfo =>
             {
                 return new
@@ -88,33 +90,7 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
                     culture = moduleInfo.Culture
                 };
             }),
-            reports = summary.GetAllReports().Select(report =>
-            {
-                return new
-                {
-                    title = report.Title,
-                    description = report.Description,
-                    threads = report.GetReportedThreads().Select(threadInfo =>
-                    {
-                        report.TryGetStackTrace(threadInfo, out var st);
-                        report.TryGetReportReason(threadInfo, out var reason);
-                        return new
-                        {
-                            name = threadInfo.Name,
-                            reason = reason!,
-                            stacktrace = st!.Frames.Select(frame =>
-                            {
-                                return new
-                                {
-                                    metadataName = frame.MethodName,
-                                    metadataToken = frame.MethodToken,
-                                    sourceFile = frame.SourceMapping,
-                                };
-                            }).ToArray()
-                        };
-                    }).ToArray()
-                };
-            })
+            reports = plugin.CreateReportDataContext(summary.GetAllReports()).ToArray()
         };
     }
 }

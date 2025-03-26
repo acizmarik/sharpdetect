@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
 using SharpDetect.Core.Reporting.Model;
 using System.Diagnostics;
@@ -24,9 +25,9 @@ internal sealed class HtmlReportDisplayer : IReportSummaryDisplayer
         _logger = logger;
     }
 
-    public void Display(Summary summary)
+    public void Display(Summary summary, IPlugin plugin, DirectoryInfo additionalPartials)
     {
-        var html = _reportSummaryRenderer.Render(summary);
+        var html = _reportSummaryRenderer.Render(summary, plugin, additionalPartials);
         _logger.LogTrace("Rendered summary to HTML. Document length: {Length}.", html.Length);
 
         var timestamp = _timeProvider.GetUtcNow().UtcDateTime.ToString("s").Replace(":", ".");

@@ -25,4 +25,12 @@ public class Callstack(uint pid, ThreadId tid) : IReadOnlyCollection<StackFrame>
 
     IEnumerator IEnumerable.GetEnumerator()
         => GetEnumerator();
+
+    public Callstack Clone()
+    {
+        var copy = new Callstack(Pid, Tid);
+        foreach (var item in stack.Reverse())
+            copy.Push(item.ModuleId, item.MethodToken);
+        return copy;
+    }
 }

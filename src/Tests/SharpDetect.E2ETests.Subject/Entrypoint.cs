@@ -217,6 +217,17 @@
                     break;
             }
 
+            // Disposables
+            switch (args[0])
+            {
+                case nameof(Test_NonDisposedAnalysis_CustomDisposable_Disposed):
+                    Test_NonDisposedAnalysis_CustomDisposable_Disposed();
+                    break;
+                case nameof(Test_NonDisposedAnalysis_CustomDisposable_NonDisposed):
+                    Test_NonDisposedAnalysis_CustomDisposable_NonDisposed();
+                    break;
+            }
+
             // Garbage collection events
             switch (args[0])
             {

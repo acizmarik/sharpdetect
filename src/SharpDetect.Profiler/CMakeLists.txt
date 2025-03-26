@@ -8,4 +8,5 @@ include(${CMAKE_SOURCE_DIR}/cmake/loguru.cmake)
 
 add_subdirectory("LibIPC")
 add_subdirectory("LibProfiler")
-add_subdirectory("SharpDetect.Profiler")
+add_subdirectory("SharpDetect.Concurrency.Profiler")
+add_subdirectory("SharpDetect.Disposables.Profiler")

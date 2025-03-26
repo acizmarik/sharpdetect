@@ -19,16 +19,17 @@
 #include "../LibProfiler/ModuleDef.h"
 #include "../LibProfiler/ObjectsTracker.h"
 #include "../LibProfiler/WString.h"
-#include "MethodDescriptor.h"
-#include "HashingUtils.h"
 
+#include "Configuration.h"
+#include "HashingUtils.h"
+#include "MethodDescriptor.h"
 
 namespace Profiler
 {
 	class CorProfiler : public LibProfiler::CorProfilerBase
 	{
 	public:
-		CorProfiler();
+		CorProfiler(Configuration configuration);
 		virtual HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
 
 		virtual HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason) override;
@@ -62,7 +63,6 @@ namespace Profiler
 		HRESULT ImportMethodWrapper(LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
 		HRESULT ImportCustomRecordedEventTypes(LibProfiler::ModuleDef& moduleDef);
 
-		HRESULT LoadRewritingConfiguration();
 		HRESULT InitializeProfilingFeatures();
 
 		HRESULT GetArguments(
@@ -87,6 +87,7 @@ namespace Profiler
 
 		std::atomic_bool _terminating;
 		BOOL _collectFullStackTraces;
+		Configuration _configuration;
 		LibIPC::Client _client;
 		ModuleID _coreModule;
 

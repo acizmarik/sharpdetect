@@ -12,4 +12,19 @@
     <InternalsVisibleTo Include="SharpDetect.E2ETests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Deadlock\Templates\Partials\threads.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Deadlock\Templates\Partials\violations.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Disposables\Templates\Partials\threads.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Disposables\Templates\Partials\violations.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
