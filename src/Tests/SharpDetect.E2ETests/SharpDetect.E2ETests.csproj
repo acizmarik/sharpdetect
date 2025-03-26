@@ -37,6 +37,18 @@
     <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectDeadlock_Debug.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="DisposablesPluginTestConfigurations\DisposablesPlugin_CanDetectDisposed_CustomObject_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DisposablesPluginTestConfigurations\DisposablesPlugin_CanDetectNonDisposed_CustomObject_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DisposablesPluginTestConfigurations\DisposablesPlugin_CanDetectDisposed_CustomObject_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DisposablesPluginTestConfigurations\DisposablesPlugin_CanDetectNonDisposed_CustomObject_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit2_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

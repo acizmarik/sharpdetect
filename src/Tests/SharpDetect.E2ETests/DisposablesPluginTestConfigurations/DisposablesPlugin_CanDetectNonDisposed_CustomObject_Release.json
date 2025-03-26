@@ -1,0 +1,25 @@
+{
+  "Target": {
+    "Path": "../../../../SharpDetect.E2ETests.Subject/bin/Release/net8.0/SharpDetect.E2ETests.Subject.dll",
+    "Args": "Test_NonDisposedAnalysis_CustomDisposable_NonDisposed",
+    "Architecture": "X64",
+    "RedirectInputOutput": {
+      "StdoutFilePath": "test_stdout.log",
+      "StderrFilePath": "test_stderr.log"
+    }
+  },
+  "Runtime": {
+    "Profiler": {
+      "Clsid": "{54fec423-9e6c-46af-9457-17c9364156a5}",
+      "Path": {
+        "WindowsX64": "../../../../../artifacts/SharpDetect.Disposables.Profiler.dll",
+        "LinuxX64": "../../../../../artifacts/SharpDetect.Disposables.Profiler.so"
+      }
+    }
+  },
+  "Analysis": {
+    "Path": "../../../../../Extensibility/SharpDetect.Plugins/bin/Release/net8.0/SharpDetect.Plugins.dll",
+    "FullTypeName": "SharpDetect.Plugins.Disposables.DisposablesPlugin",
+    "RenderReport": false
+  }
+}

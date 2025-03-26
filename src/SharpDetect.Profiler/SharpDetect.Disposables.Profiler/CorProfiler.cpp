@@ -128,7 +128,7 @@ UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID functionId, void* clientDat
     }
 
     auto shouldAnalyze = methodName == ".ctor" || 
-                         (methodName == "Dispose" && signature[1] != 0) ||
+                         (methodName == "Dispose" && signature[1] == 0) ||
                          IsMethodIncludedInAnalysis(typeName, methodName);
 
     if (!shouldAnalyze)
