@@ -2,6 +2,14 @@ var rid = Argument<string>("rid");
 var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
+var sdk = Argument("sdk", "net8.0");
+
+var artifactsDirectory = "./artifacts/";
+var profilers = new string[]
+{
+    "SharpDetect.Concurrency.Profiler",
+    "SharpDetect.Disposables.Profiler"
+};
 
 Task("Clean")
     .WithCriteria(c => HasArgument("rebuild"))
@@ -35,7 +43,6 @@ Task("Build-Managed")
 });
 
 Task("Build-IPQ")
-    .IsDependentOn("Build-Managed")
     .Does(() =>
 {
     DotNetPublish("./SharpDetect.InterProcessQueue", new DotNetPublishSettings
@@ -78,31 +85,35 @@ Task("Build-Profiler")
 });
 
 Task("Build-Local-Environment")
+    .IsDependentOn("Build-Managed")
     .IsDependentOn("Build-IPQ")
     .IsDependentOn("Build-Profiler")
     .Does(() =>
 {
-    var artifactsDirectory = "./artifacts/";
+    RunTarget("Copy-Native-Artifacts");
+});
+
+Task("Copy-Native-Artifacts")
+    .Does(() =>
+{
     if (!System.IO.Directory.Exists(artifactsDirectory))
     {
         System.IO.Directory.CreateDirectory(artifactsDirectory);
         Information($"Created directory: {artifactsDirectory}.");
     }
 
-    var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/net8.0/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
+    var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/{sdk}/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
     CopyFileToDirectory(ipqLibrary, artifactsDirectory);
     Information($"Copied IPQ native library to {artifactsDirectory}.");
 
-    var concurrencyProfilerLibrary = (rid.StartsWith("win"))
-        ? $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Concurrency.Profiler/{configuration}/SharpDetect.Concurrency.Profiler.{libraryExtension}"
-        : $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Concurrency.Profiler/SharpDetect.Concurrency.Profiler.{libraryExtension}";
+    foreach (var profilerName in profilers)
+    {
+        var profilerLibrary = (rid.StartsWith("win"))
+            ? $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{configuration}/{profilerName}.{libraryExtension}"
+            : $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{profilerName}.{libraryExtension}";
+        CopyFileToDirectory(profilerLibrary, artifactsDirectory);
+    }
 
-    var disposablesProfilerLibrary = (rid.StartsWith("win"))
-        ? $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Disposables.Profiler/{configuration}/SharpDetect.Disposables.Profiler.{libraryExtension}"
-        : $"./SharpDetect.Profiler/artifacts/{rid}/SharpDetect.Disposables.Profiler/SharpDetect.Disposables.Profiler.{libraryExtension}";
-
-    CopyFileToDirectory(concurrencyProfilerLibrary, artifactsDirectory);
-    CopyFileToDirectory(disposablesProfilerLibrary, artifactsDirectory);
     Information($"Copied profiler native libraries to {artifactsDirectory}.");
 });
 
@@ -114,6 +125,30 @@ Task("Tests")
     {
         Configuration = configuration,
     });
+});
+
+Task("CI-Prepare-Managed")
+    .Does(() =>
+{
+    DotNetPublish("./SharpDetect.Cli", new DotNetPublishSettings
+    {
+        Configuration = configuration
+    });
+    DotNetPublish("./Extensibility/SharpDetect.Plugins", new DotNetPublishSettings
+    {
+        Configuration = configuration
+    });
+});
+
+Task("CI-Prepare-Native-Libs")
+    .IsDependentOn("Build-IPQ")
+    .IsDependentOn("Build-Profiler")
+    .IsDependentOn("Copy-Native-Artifacts")
+    .Does(() =>
+{
+    var files = GetFiles($"{artifactsDirectory}*");
+    foreach (var file in files)
+        Information(file.FullPath);
 });
 
 RunTarget(target);
