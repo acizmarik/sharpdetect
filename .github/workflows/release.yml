@@ -1,0 +1,85 @@
+name: Release
+
+on: workflow_dispatch
+
+jobs:
+  prepare-managed:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.*
+    - name: Build
+      run: |
+        cd src
+        dotnet tool restore
+        dotnet cake --rid="linux-x64" --target="CI-Prepare-Managed" --configuration=Release
+    - name: Setup
+      run: |
+        mkdir -p build/Cli build/Plugins build/Runtime
+        cp -r src/SharpDetect.Cli/bin/Release/net8.0/publish/* build/Cli/
+        cp -r src/Extensibility/SharpDetect.Plugins/bin/Release/net8.0/publish/* build/Plugins/
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: managed
+        path: build/*
+        if-no-files-found: error
+
+  prepare-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        rid: [win-x64, linux-x64]
+        exclude:
+          # Cross-compilation is not supported 
+          - os: ubuntu-latest
+            rid: win-x64
+          - os: windows-latest
+            rid: linux-x64
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.*
+    - name: Build
+      run: |
+        cd src
+        dotnet tool restore
+        dotnet cake --rid=${{ matrix.rid }} --target="CI-Prepare-Native-Libs" --configuration=Release
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.rid }}
+        path: src/artifacts/*
+        if-no-files-found: error
+  
+  pack:
+    needs: [prepare-managed, prepare-native]  
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Managed
+      uses: actions/download-artifact@v4
+      with:
+        name: managed
+    - name: Download Native
+      uses: actions/download-artifact@v4
+      with:
+        pattern: "*64"
+        path: Runtime
+    - name: Dump Working Directory
+      run: ls -R
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: SharpDetect
+        path: ./*
+        if-no-files-found: error

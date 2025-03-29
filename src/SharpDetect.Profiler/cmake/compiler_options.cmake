@@ -1,17 +1,16 @@
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_BUILD_TYPE Debug)
 
 if (NOT (CMAKE_SIZEOF_VOID_P EQUAL 8))
     message(FATAL_ERROR "Unsupported architecture. Expected 64 bit." )
 endif()
 
 if (WIN32)
-    message("Windows x64 build")
+    message("Windows x64 ${CMAKE_BUILD_TYPE} build")
     enable_language(ASM_MASM)
 elseif (UNIX AND NOT APPLE)
-    message("Linux x64 build")
+    message("Linux x64 ${CMAKE_BUILD_TYPE} build")
     enable_language(ASM)
     add_compile_options(
         -g

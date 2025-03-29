@@ -39,13 +39,14 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub", "GitHub", "{C075D1CE-2B09-445F-A37A-263FC4D71160}"
 	ProjectSection(SolutionItems) = preProject
 		..\.github\workflows\main.yml = ..\.github\workflows\main.yml
+		..\.github\workflows\release.yml = ..\.github\workflows\release.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.Core", "SharpDetect.Core\SharpDetect.Core.csproj", "{80BBA215-8F4D-4B62-8021-C6EBCCD41AFA}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.PluginHost", "Extensibility\SharpDetect.PluginHost\SharpDetect.PluginHost.csproj", "{97E7D625-C2D8-4657-9126-2410DBEDF70D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleNonDisposed", "Samples\SimpleNonDisposed\SimpleNonDisposed.csproj", "{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimpleNonDisposed", "Samples\SimpleNonDisposed\SimpleNonDisposed.csproj", "{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
