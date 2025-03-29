@@ -148,7 +148,20 @@ Task("CI-Prepare-Native-Libs")
 {
     var files = GetFiles($"{artifactsDirectory}*");
     foreach (var file in files)
+    {
+        if (rid.StartsWith("linux"))
+        {
+            StartProcess("strip", new ProcessSettings
+            {
+                Arguments = new ProcessArgumentBuilder()
+                    .Append("-s")
+                    .Append(file.FullPath),
+                WorkingDirectory = artifactsDirectory
+            });
+        }
+
         Information(file.FullPath);
+    }
 });
 
 RunTarget(target);
