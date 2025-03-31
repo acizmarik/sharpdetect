@@ -14,12 +14,14 @@
       "Path": {
         "WindowsX64": "../../../../../artifacts/SharpDetect.Disposables.Profiler.dll",
         "LinuxX64": "../../../../../artifacts/SharpDetect.Disposables.Profiler.so"
-      }
+      },
+      "LogLevel": "Information"
     }
   },
   "Analysis": {
     "Path": "../../../../../Extensibility/SharpDetect.Plugins/bin/Debug/net8.0/SharpDetect.Plugins.dll",
     "FullTypeName": "SharpDetect.Plugins.Disposables.DisposablesPlugin",
-    "RenderReport": false
+    "RenderReport": false,
+    "LogLevel": "Information"
   }
 }

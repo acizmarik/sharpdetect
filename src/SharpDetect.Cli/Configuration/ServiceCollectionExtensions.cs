@@ -14,13 +14,16 @@ namespace SharpDetect.Cli.Configuration;
 
 internal static class ServiceCollectionExtensions
 {
-    internal static IServiceCollection AddAnalysisServices(this IServiceCollection services, Type pluginType)
+    internal static IServiceCollection AddAnalysisServices(
+        this IServiceCollection services, 
+        RunCommandArgs args, 
+        Type pluginType)
     {
         services.AddSingleton(TimeProvider.System);
         services.AddLogging(builder =>
         {
             builder.AddConsole();
-            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.SetMinimumLevel(args.Analysis.LogLevel);
         });
 
         services.AddSharpDetectLoaderServices();
