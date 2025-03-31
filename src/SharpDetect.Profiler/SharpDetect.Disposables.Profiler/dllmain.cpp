@@ -23,12 +23,20 @@ EXTERN_C BOOL STDMETHODCALLTYPE DllMain(HMODULE hModule, DWORD ul_reason_for_cal
 
 _Check_return_ EXTERN_C HRESULT STDAPICALLTYPE DllGetClassObject(_In_ REFCLSID rclsid, _In_ REFIID riid, _Outptr_ LPVOID * ppv)
 {
-    //while (!::IsDebuggerPresent())
-    //    ::Sleep(100);
-
     if (ppv == nullptr || rclsid != IID_Profiler)
     {
         return E_FAIL;
+    }
+
+    auto rawLoguruLevel = std::getenv("SharpDetect_LOG_LEVEL");
+    if (rawLoguruLevel != nullptr)
+    {
+        auto logLevel = std::string(rawLoguruLevel);
+        loguru::g_stderr_verbosity = std::stoi(logLevel);
+    }
+    else
+    {
+        loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
     }
 
     auto rawConfigPath = std::getenv("SharpDetect_CONFIGURATION_PATH");

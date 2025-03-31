@@ -44,7 +44,7 @@ internal sealed class RunCommandHandler
 
         pluginType ??= LoadPluginInfo();
         ServiceProvider = new ServiceCollection()
-            .AddAnalysisServices(pluginType)
+            .AddAnalysisServices(Args, pluginType)
             .BuildServiceProvider();
 
         _pluginHost = ServiceProvider.GetRequiredService<IPluginHost>();
@@ -187,6 +187,7 @@ internal sealed class RunCommandHandler
                 builder.Set("SharpDetect_COLLECT_FULL_STACKTRACES", Args.Runtime.Profiler.CollectFullStackTraces ? "1" : "0");
                 builder.Set("SharpDetect_IPQ_PATH", ipqPath);
                 builder.Set("SharpDetect_CONFIGURATION_PATH", GetFullConfigurationPath());
+                builder.Set("SharpDetect_LOG_LEVEL", ((int)Args.Runtime.Profiler.LogLevel).ToString());
 
                 foreach (var (key, value) in Args.Runtime.Host?.AdditionalEnvironmentVariables ?? Enumerable.Empty<KeyValuePair<string, string>>())
                     builder.Set(key, value);

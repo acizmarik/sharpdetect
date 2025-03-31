@@ -27,6 +27,17 @@ _Check_return_ EXTERN_C HRESULT STDAPICALLTYPE DllGetClassObject(_In_ REFCLSID r
         return E_FAIL;
     }
 
+    auto rawLoguruLevel = std::getenv("SharpDetect_LOG_LEVEL");
+    if (rawLoguruLevel != nullptr)
+    {
+        auto logLevel = std::string(rawLoguruLevel);
+        loguru::g_stderr_verbosity = std::stoi(logLevel);
+    }
+    else
+    {
+        loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
+    }
+
     auto rawConfigPath = std::getenv("SharpDetect_CONFIGURATION_PATH");
     if (rawConfigPath == nullptr)
     {

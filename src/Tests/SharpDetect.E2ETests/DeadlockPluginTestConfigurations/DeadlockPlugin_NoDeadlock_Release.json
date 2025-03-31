@@ -14,12 +14,14 @@
       "Path": {
         "WindowsX64": "../../../../../artifacts/SharpDetect.Concurrency.Profiler.dll",
         "LinuxX64": "../../../../../artifacts/SharpDetect.Concurrency.Profiler.so"
-      }
+      },
+      "LogLevel": "Information"
     }
   },
   "Analysis": {
     "Path": "../../../../../Extensibility/SharpDetect.Plugins/bin/Release/net8.0/SharpDetect.Plugins.dll",
     "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
-    "RenderReport": false
+    "RenderReport": false,
+    "LogLevel": "Information"
   }
 }

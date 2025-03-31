@@ -15,12 +15,14 @@
         "WindowsX64": "../../../../../artifacts/SharpDetect.Concurrency.Profiler.dll",
         "LinuxX64": "../../../../../artifacts/SharpDetect.Concurrency.Profiler.so"
       },
-      "CollectFullStackTraces": true
+      "CollectFullStackTraces": true,
+      "LogLevel": "Information"
     }
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
     "FullTypeName": "SharpDetect.E2ETests.Utils.TestHappensBeforePlugin",
-    "RenderReport": false
+    "RenderReport": false,
+    "LogLevel": "Information"
   }
 }

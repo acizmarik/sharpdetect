@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
 
 namespace SharpDetect.Cli;
@@ -36,12 +37,21 @@ public record AnalysisPluginConfigurationArgs(
     string Path, 
     string FullTypeName,
     string Configuration,
-    bool RenderReport);
+    bool RenderReport = false,
+    LogLevel LogLevel = LogLevel.Warning);
+
+public enum ProfilerLogLevel
+{
+    Information = 0,
+    Warning = -1,
+    Error = -2
+}
 
 public record ProfilerConfigurationArgs(
     string Clsid,
     ProfilerPathArgs Path, 
-    bool CollectFullStackTraces);
+    bool CollectFullStackTraces = false,
+    ProfilerLogLevel LogLevel = ProfilerLogLevel.Warning);
 
 public record ProfilerPathArgs(
     string WindowsX64,
