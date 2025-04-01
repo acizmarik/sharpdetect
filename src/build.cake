@@ -136,7 +136,8 @@ Task("CI-Prepare-Managed")
     });
     DotNetPublish("./Extensibility/SharpDetect.Plugins", new DotNetPublishSettings
     {
-        Configuration = configuration
+        Configuration = configuration,
+        OutputDirectory = "artifacts/Plugins"
     });
 });
 
