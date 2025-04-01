@@ -164,11 +164,14 @@ internal sealed class RunCommandHandler
 
     private Command BuildTargetApplicationCommand()
     {
-        var host = Args.Runtime.Host?.Path ?? "dotnet";
+        var host = Args.Runtime.Host?.Path is { } hostPath 
+            ? Environment.ExpandEnvironmentVariables(hostPath)
+            : "dotnet";
+
         var argsBuilder = new List<string>(capacity: 3);
         if (Args.Runtime.Host?.Args is { } hostArgs)
             argsBuilder.Add(hostArgs);
-        argsBuilder.Add(Args.Target.Path);
+        argsBuilder.Add(Environment.ExpandEnvironmentVariables(Args.Target.Path));
         if (Args.Target.Args is { } targetArgs)
             argsBuilder.Add(targetArgs);
 
@@ -249,7 +252,7 @@ internal sealed class RunCommandHandler
 
     private Type LoadPluginInfo()
     {
-        var assemblyPath = Args.Analysis.Path;
+        var assemblyPath = Environment.ExpandEnvironmentVariables(Args.Analysis.Path);
         var pluginType = Args.Analysis.FullTypeName;
 
         try

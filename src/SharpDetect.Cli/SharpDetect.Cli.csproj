@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <PackageId>SharpDetect</PackageId>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sharpdetect</ToolCommandName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +26,13 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SharpDetect.E2ETests" />	
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../artifacts/linux-x64/*.so" Pack="true" PackagePath="tools/$(TargetFramework)/any/Profilers/linux-x64/" Visible="false" />
+    <None Include="../artifacts/win-x64/*.dll" Pack="true" PackagePath="tools/$(TargetFramework)/any/Profilers/win-x64/" Visible="false" />
+    <None Include="../artifacts/Plugins/**/*.*" Pack="true" PackagePath="tools/$(TargetFramework)/any/Plugins/" Visible="false" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
 
 </Project>

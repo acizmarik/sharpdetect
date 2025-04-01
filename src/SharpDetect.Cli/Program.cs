@@ -7,9 +7,14 @@ namespace SharpDetect.Cli;
 
 public static class Program
 {
-    public static async Task<int> Main() =>
-        await new CliApplicationBuilder()
+    public static async Task<int> Main()
+    {
+        var root = Path.GetDirectoryName(typeof(Program).Assembly.Location);
+        Environment.SetEnvironmentVariable("SHARPDETECT_ROOT", root);
+
+        return await new CliApplicationBuilder()
             .AddCommandsFromThisAssembly()
             .Build()
             .RunAsync();
+    }
 }

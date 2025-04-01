@@ -3,33 +3,6 @@ name: Release
 on: workflow_dispatch
 
 jobs:
-  prepare-managed:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: 'true'
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.*
-    - name: Build
-      run: |
-        cd src
-        dotnet tool restore
-        dotnet cake --rid="linux-x64" --target="CI-Prepare-Managed" --configuration=Release
-    - name: Setup
-      run: |
-        mkdir -p build/Cli build/Plugins build/Runtime
-        cp -r src/SharpDetect.Cli/bin/Release/net8.0/publish/* build/Cli/
-        cp -r src/Extensibility/SharpDetect.Plugins/bin/Release/net8.0/publish/* build/Plugins/
-    - name: Upload
-      uses: actions/upload-artifact@v4
-      with:
-        name: managed
-        path: build/*
-        if-no-files-found: error
-
   prepare-native:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -63,23 +36,33 @@ jobs:
         if-no-files-found: error
   
   pack:
-    needs: [prepare-managed, prepare-native]  
+    needs: [prepare-native]  
     runs-on: ubuntu-latest
     steps:
-    - name: Download Managed
-      uses: actions/download-artifact@v4
+    - uses: actions/checkout@v4
       with:
-        name: managed
+        submodules: 'true'
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.*
+    - name: Build
+      run: |
+        cd src
+        dotnet tool restore
+        dotnet cake --rid="linux-x64" --target="CI-Prepare-Managed" --configuration=Release
     - name: Download Native
       uses: actions/download-artifact@v4
       with:
         pattern: "*64"
-        path: Runtime
-    - name: Dump Working Directory
-      run: ls -R
+        path: src/artifacts/
+    - name: Pack
+      run: |
+        cd src
+        dotnet pack SharpDetect.Cli/SharpDetect.Cli.csproj --output ./artifacts/
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: SharpDetect
-        path: ./*
+        name: NuGet
+        path: src/artifacts/SharpDetect*.nupkg
         if-no-files-found: error

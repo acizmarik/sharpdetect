@@ -1,10 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Diagnostics" />
-  </ItemGroup>
-  
-  <ItemGroup>
     <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
   </ItemGroup>
 
