@@ -12,8 +12,8 @@
     "Profiler": {
       "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
       "Path": {
-        "WindowsX64": "../../../../../artifacts/SharpDetect.Concurrency.Profiler.dll",
-        "LinuxX64": "../../../../../artifacts/SharpDetect.Concurrency.Profiler.so"
+        "WindowsX64": "../../../../../artifacts/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
+        "LinuxX64": "../../../../../artifacts/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so"
       },
       "LogLevel": "Information"
     }

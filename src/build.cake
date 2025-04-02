@@ -4,7 +4,8 @@ var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
 var sdk = Argument("sdk", "net8.0");
 
-var artifactsDirectory = "./artifacts/";
+var artifactsDirectory = "./artifacts";
+var nativeArtifactsDirectory = artifactsDirectory + "/Profilers/" + rid + "/";
 var profilers = new string[]
 {
     "SharpDetect.Concurrency.Profiler",
@@ -39,6 +40,12 @@ Task("Build-Managed")
     DotNetBuild("./SharpDetect.sln", new DotNetBuildSettings
     {
         Configuration = configuration
+    });
+
+    DotNetPublish("./Extensibility/SharpDetect.Plugins", new DotNetPublishSettings
+    {
+        Configuration = configuration,
+        OutputDirectory = "artifacts/Plugins"
     });
 });
 
@@ -102,19 +109,25 @@ Task("Copy-Native-Artifacts")
         Information($"Created directory: {artifactsDirectory}.");
     }
 
+    if (!System.IO.Directory.Exists(nativeArtifactsDirectory))
+    {
+        System.IO.Directory.CreateDirectory(nativeArtifactsDirectory);
+        Information($"Created directory: {nativeArtifactsDirectory}.");
+    }
+
     var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/{sdk}/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
-    CopyFileToDirectory(ipqLibrary, artifactsDirectory);
-    Information($"Copied IPQ native library to {artifactsDirectory}.");
+    CopyFileToDirectory(ipqLibrary, nativeArtifactsDirectory);
+    Information($"Copied IPQ native library to {nativeArtifactsDirectory}.");
 
     foreach (var profilerName in profilers)
     {
         var profilerLibrary = (rid.StartsWith("win"))
             ? $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{configuration}/{profilerName}.{libraryExtension}"
             : $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{profilerName}.{libraryExtension}";
-        CopyFileToDirectory(profilerLibrary, artifactsDirectory);
+        CopyFileToDirectory(profilerLibrary, $"{nativeArtifactsDirectory}");
     }
 
-    Information($"Copied profiler native libraries to {artifactsDirectory}.");
+    Information($"Copied profiler native libraries to {nativeArtifactsDirectory}.");
 });
 
 Task("Tests")

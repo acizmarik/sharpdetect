@@ -11,7 +11,10 @@ public static class ServiceCollectionExtensions
 {
     public static void AddSharpDetectReportingServices(this IServiceCollection services)
     {
-        services.AddSingleton<IReportSummaryRenderer>(p => new HtmlReportRenderer(new DirectoryInfo("Templates/Partials")));
+        var rootFolder = Path.GetDirectoryName(typeof(ServiceCollectionExtensions).Assembly.Location)!;
+        var partialsFolder = Path.Combine(rootFolder, "Templates/Partials");
+
+        services.AddSingleton<IReportSummaryRenderer>(p => new HtmlReportRenderer(new DirectoryInfo(partialsFolder)));
         services.AddSingleton<IReportSummaryDisplayer, HtmlReportDisplayer>();
     }
 }

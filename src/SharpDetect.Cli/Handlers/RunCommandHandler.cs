@@ -39,7 +39,8 @@ internal sealed class RunCommandHandler
             PropertyNamingPolicy = null
         };
 
-        Args = LoadCommandArguments(configurationFilePath);
+        Args = DeserializeCommandArguments(configurationFilePath);
+        Args = ExpandCommandArguments(Args);
         ThrowOnInvalidConfiguration();
 
         pluginType ??= LoadPluginInfo();
@@ -164,14 +165,11 @@ internal sealed class RunCommandHandler
 
     private Command BuildTargetApplicationCommand()
     {
-        var host = Args.Runtime.Host?.Path is { } hostPath 
-            ? Environment.ExpandEnvironmentVariables(hostPath)
-            : "dotnet";
-
+        var host = Args.Runtime.Host?.Path ?? "dotnet";
         var argsBuilder = new List<string>(capacity: 3);
         if (Args.Runtime.Host?.Args is { } hostArgs)
             argsBuilder.Add(hostArgs);
-        argsBuilder.Add(Environment.ExpandEnvironmentVariables(Args.Target.Path));
+        argsBuilder.Add(Args.Target.Path);
         if (Args.Target.Args is { } targetArgs)
             argsBuilder.Add(targetArgs);
 
@@ -236,7 +234,7 @@ internal sealed class RunCommandHandler
             throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
     }
 
-    private RunCommandArgs LoadCommandArguments(string configurationFilePath)
+    private RunCommandArgs DeserializeCommandArguments(string configurationFilePath)
     {
         try
         {
@@ -250,9 +248,29 @@ internal sealed class RunCommandHandler
         }
     }
 
+    private static RunCommandArgs ExpandCommandArguments(RunCommandArgs args)
+    {
+        var runtimeProfilerPaths = args.Runtime.Profiler.Path with
+        {
+            WindowsX64 = Environment.ExpandEnvironmentVariables(args.Runtime.Profiler.Path.WindowsX64 ?? string.Empty),
+            LinuxX64 = Environment.ExpandEnvironmentVariables(args.Runtime.Profiler.Path.LinuxX64 ?? string.Empty)
+        };
+        var runtimeProfiler = args.Runtime.Profiler with { Path = runtimeProfilerPaths };
+        var runtimeHost = args.Runtime.Host is { } host ? host with { Path = Environment.ExpandEnvironmentVariables(host.Path ?? string.Empty) } : null;
+        var runtime = args.Runtime with
+        {
+            Host = runtimeHost,
+            Profiler = runtimeProfiler
+        };
+        var target = args.Target with { Path = Environment.ExpandEnvironmentVariables(args.Target.Path ?? string.Empty) };
+        var analysis = args.Analysis with { Path = Environment.ExpandEnvironmentVariables(args.Analysis.Path ?? string.Empty) };
+
+        return new RunCommandArgs(runtime, target, analysis);
+    }
+
     private Type LoadPluginInfo()
     {
-        var assemblyPath = Environment.ExpandEnvironmentVariables(Args.Analysis.Path);
+        var assemblyPath = Args.Analysis.Path;
         var pluginType = Args.Analysis.FullTypeName;
 
         try
