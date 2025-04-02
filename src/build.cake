@@ -160,7 +160,7 @@ Task("CI-Prepare-Native-Libs")
     .IsDependentOn("Copy-Native-Artifacts")
     .Does(() =>
 {
-    var files = GetFiles($"{artifactsDirectory}*");
+    var files = GetFiles($"{nativeArtifactsDirectory}*");
     foreach (var file in files)
     {
         if (rid.StartsWith("linux"))
@@ -170,7 +170,7 @@ Task("CI-Prepare-Native-Libs")
                 Arguments = new ProcessArgumentBuilder()
                     .Append("-s")
                     .Append(file.FullPath),
-                WorkingDirectory = artifactsDirectory
+                WorkingDirectory = nativeArtifactsDirectory
             });
         }
 

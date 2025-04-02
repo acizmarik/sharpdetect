@@ -32,7 +32,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.rid }}
-        path: src/artifacts/*
+        path: src/artifacts/Profilers/${{matrix.rid}}/*
         if-no-files-found: error
   
   pack:
@@ -55,10 +55,11 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         pattern: "*64"
-        path: src/artifacts/
+        path: src/artifacts/Profilers
     - name: Pack
       run: |
         cd src
+        ls -R artifacts/
         dotnet pack SharpDetect.Cli/SharpDetect.Cli.csproj --output ./artifacts/
     - name: Upload
       uses: actions/upload-artifact@v4
