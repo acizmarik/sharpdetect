@@ -10,6 +10,12 @@
         <RepositoryCommit Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</RepositoryCommit>
         <RepositoryUrl>https://github.com/acizmarik/sharpdetect</RepositoryUrl>
     </PropertyGroup>
+    
+    <!-- Licensing -->
+    <PropertyGroup>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    </PropertyGroup>
   
     <!-- Compilation -->
     <PropertyGroup>
