@@ -27,7 +27,8 @@ public sealed class RunCommand : ICommand
         try
         {
             Directory.SetCurrentDirectory(workingDirectory);
-            commandHandler = RunCommandHandler.Create(ArgumentsFile);
+            var fileName = Path.GetFileName(ArgumentsFile);
+            commandHandler = RunCommandHandler.Create(fileName);
             await commandHandler.ExecuteAsync(console);
         }
         finally
