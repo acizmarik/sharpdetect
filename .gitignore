@@ -401,3 +401,5 @@ FodyWeavers.xsd
 # Everyone probably wants a custom launchSettings.json as there should be local paths
 launchSettings.json
 
+# Rider
+**/.idea/*
