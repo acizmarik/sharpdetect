@@ -1,7 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿using OperationResult;
+using OperationResult;
 using SharpDetect.InterProcessQueue.Configuration;
 using SharpDetect.InterProcessQueue.Memory;
 using System.Buffers;

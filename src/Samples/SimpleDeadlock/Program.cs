@@ -1,7 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-﻿var lockObj1 = new object();
+var lockObj1 = new object();
 var lockObj2 = new object();
 
 Console.WriteLine("Hello World!");
