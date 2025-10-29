@@ -1,124 +1,151 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using MessagePack;
 using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Core.Events;
 
+[MessagePackObject]
 public sealed record ProfilerLoadRecordedEvent(
-    COR_PRF_RUNTIME_TYPE RuntimeType,
-    ushort MajorVersion,
-    ushort MinorVersion,
-    ushort BuildVersion,
-    ushort QfeVersion) : IRecordedEventArgs;
+    [property: Key(0)] COR_PRF_RUNTIME_TYPE RuntimeType,
+    [property: Key(1)] ushort MajorVersion,
+    [property: Key(2)] ushort MinorVersion,
+    [property: Key(3)] ushort BuildVersion,
+    [property: Key(4)] ushort QfeVersion) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record ProfilerInitializeRecordedEvent() : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record ProfilerDestroyRecordedEvent() : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record AssemblyLoadRecordedEvent(
-    AssemblyId AssemblyId,
-    string Name) : IRecordedEventArgs;
+    [property: Key(0)] AssemblyId AssemblyId,
+    [property: Key(1)] string Name) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record ModuleLoadRecordedEvent(
-    AssemblyId AssemblyId,
-    ModuleId ModuleId,
-    string Path) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] AssemblyId AssemblyId,
+    [property: Key(2)] string Path) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record TypeLoadRecordedEvent(
-    ModuleId ModuleId,
-    MdTypeDef TypeToken) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdTypeDef TypeToken) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record JitCompilationRecordedEvent(
-    ModuleId ModuleId,
-    MdTypeDef TypeToken,
-    MdMethodDef MethodToken) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdTypeDef TypeToken,
+    [property: Key(2)] MdMethodDef MethodToken) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record ThreadCreateRecordedEvent(
-    ThreadId ThreadId) : IRecordedEventArgs;
+    [property: Key(0)] ThreadId ThreadId) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record ThreadRenameRecordedEvent(
-    ThreadId ThreadId,
-    string NewName) : IRecordedEventArgs;
+    [property: Key(0)] ThreadId ThreadId,
+    [property: Key(1)] string NewName) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record ThreadDestroyRecordedEvent(
-    ThreadId ThreadId) : IRecordedEventArgs;
+    [property: Key(0)] ThreadId ThreadId) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record GarbageCollectionStartRecordedEvent() : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record GarbageCollectedTrackedObjectsRecordedEvent(
-    TrackedObjectId[] RemovedTrackedObjectIds) : IRecordedEventArgs;
+    [property: Key(0)] TrackedObjectId[] RemovedTrackedObjectIds) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record GarbageCollectionFinishRecordedEvent(
-    ulong OldTrackedObjectsCount,
-    ulong NewTrackedObjectsCount) : IRecordedEventArgs;
+    [property: Key(0)] ulong OldTrackedObjectsCount,
+    [property: Key(1)] ulong NewTrackedObjectsCount) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record MethodEnterRecordedEvent(
-    ModuleId ModuleId,
-    MdMethodDef MethodToken,
-    ushort Interpretation) : IRecordedEventArgs, ICustomizableEventType;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken,
+    [property: Key(2)] ushort Interpretation) : IRecordedEventArgs, ICustomizableEventType;
 
+[MessagePackObject]
 public sealed record MethodExitRecordedEvent(
-    ModuleId ModuleId,
-    MdMethodDef MethodToken,
-    ushort Interpretation) : IRecordedEventArgs, ICustomizableEventType;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken,
+    [property: Key(2)] ushort Interpretation) : IRecordedEventArgs, ICustomizableEventType;
 
+[MessagePackObject]
 public sealed record TailcallRecordedEvent(
-    ModuleId ModuleId,
-    MdMethodDef MethodToken) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record MethodEnterWithArgumentsRecordedEvent(
-    ModuleId ModuleId,
-    MdMethodDef MethodToken,
-    ushort Interpretation,
-    byte[] ArgumentValues,
-    byte[] ArgumentInfos) : IRecordedEventArgs, ICustomizableEventType;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken,
+    [property: Key(2)] ushort Interpretation,
+    [property: Key(3)] byte[] ArgumentValues,
+    [property: Key(4)] byte[] ArgumentInfos) : IRecordedEventArgs, ICustomizableEventType;
 
+[MessagePackObject]
 public sealed record MethodExitWithArgumentsRecordedEvent(
-    ModuleId ModuleId,
-    MdMethodDef MethodToken,
-    ushort Interpretation,
-    byte[] ReturnValue,
-    byte[] ByRefArgumentValues,
-    byte[] ByRefArgumentInfos) : IRecordedEventArgs, ICustomizableEventType;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken,
+    [property: Key(2)] ushort Interpretation,
+    [property: Key(3)] byte[] ReturnValue,
+    [property: Key(4)] byte[] ByRefArgumentValues,
+    [property: Key(5)] byte[] ByRefArgumentInfos) : IRecordedEventArgs, ICustomizableEventType;
 
+[MessagePackObject]
 public sealed record TailcallWithArgumentsRecordedEvent(
-    ModuleId ModuleId,
-    MdMethodDef MethodToken,
-    byte[] ArgumentValues,
-    byte[] ArgumentInfos) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken,
+    [property: Key(2)] byte[] ArgumentValues,
+    [property: Key(3)] byte[] ArgumentInfos) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record AssemblyReferenceInjectionRecordedEvent(
-    AssemblyId TargetAssemblyId,
-    AssemblyId AssemblyId) : IRecordedEventArgs;
+    [property: Key(0)] AssemblyId TargetAssemblyId,
+    [property: Key(1)] AssemblyId AssemblyId) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record TypeDefinitionInjectionRecordedEvent(
-    ModuleId ModuleId,
-    MdTypeDef TypeToken,
-    string TypeName) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdTypeDef TypeToken,
+    [property: Key(2)] string TypeName) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record TypeReferenceInjectionRecordedEvent(
-    ModuleId TargetModuleId,
-    ModuleId FromModuleId,
-    MdTypeDef TypeToken) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId TargetModuleId,
+    [property: Key(1)] ModuleId FromModuleId,
+    [property: Key(2)] MdTypeDef TypeToken) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record MethodDefinitionInjectionRecordedEvent(
-    ModuleId ModuleId,
-    MdTypeDef TypeToken,
-    MdMethodDef MethodToken,
-    string MethodName) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdTypeDef TypeToken,
+    [property: Key(2)] MdMethodDef MethodToken,
+    [property: Key(3)] string MethodName) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record MethodWrapperInjectionRecordedEvent(
-    ModuleId ModuleId,
-    MdTypeDef TypeToken,
-    MdMethodDef WrappedMethodToken,
-    MdMethodDef WrapperMethodToken,
-    string WrapperMethodName) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdTypeDef TypeToken,
+    [property: Key(2)] MdMethodDef WrappedMethodToken,
+    [property: Key(3)] MdMethodDef WrapperMethodToken,
+    [property: Key(4)] string WrapperMethodName) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record MethodReferenceInjectionRecordedEvent(
-    ModuleId TargetModuleId,
-    string FullName) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId TargetModuleId,
+    [property: Key(1)] string FullName) : IRecordedEventArgs;
 
+[MessagePackObject]
 public sealed record MethodBodyRewriteRecordedEvent(
-    ModuleId ModuleId,
-    MdMethodDef MethodToken) : IRecordedEventArgs;
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken) : IRecordedEventArgs;

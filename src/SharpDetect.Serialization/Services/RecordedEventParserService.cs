@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using MessagePack;
+using MessagePack.Resolvers;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Serialization;
-using SharpDetect.Serialization.Descriptors;
 using SharpDetect.Serialization.Formatters;
 
 namespace SharpDetect.Serialization.Services;
@@ -15,14 +15,17 @@ internal sealed class RecordedEventParserService : IRecordedEventParser
 
     public RecordedEventParserService()
     {
-        var formatResolver = new CustomFormatResolver();
+        var resolver = CompositeResolver.Create(
+            CustomFormatResolver.Instance,
+            StandardResolver.Instance
+        );
+        
         _serializerOptions = MessagePackSerializerOptions.Standard
-            .WithResolver(formatResolver);
+            .WithResolver(resolver);
     }
 
     public RecordedEvent Parse(ReadOnlyMemory<byte> input)
     {
-        var dto = MessagePackSerializer.Deserialize<RecordedEventDto>(input, _serializerOptions);
-        return dto.Convert();
+        return MessagePackSerializer.Deserialize<RecordedEvent>(input, _serializerOptions);
     }
 }

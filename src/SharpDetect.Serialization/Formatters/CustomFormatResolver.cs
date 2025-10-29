@@ -4,24 +4,58 @@
 using MessagePack;
 using MessagePack.Formatters;
 using MessagePack.Resolvers;
+using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Serialization.Formatters;
 
 internal sealed class CustomFormatResolver : IFormatterResolver
 {
-    private static readonly Dictionary<Type, IMessagePackFormatter> _formatters = new()
+    public static readonly IFormatterResolver Instance = new CustomFormatResolver();
+
+    private CustomFormatResolver()
     {
-        { typeof(UIntPtr), new UIntPtrFormatter() }
-    };
+    }
 
     public IMessagePackFormatter<T>? GetFormatter<T>()
     {
-        if (!_formatters.TryGetValue(typeof(T), out var formatter) ||
-            formatter is not IMessagePackFormatter<T> concreteFormatter)
+        return FormatterCache<T>.Formatter;
+    }
+
+    private static class FormatterCache<T>
+    {
+        public static readonly IMessagePackFormatter<T>? Formatter;
+
+        static FormatterCache()
         {
-            return StandardResolver.Instance.GetFormatter<T>();
+            Formatter = (IMessagePackFormatter<T>?)CustomFormatterHelper.GetFormatter(typeof(T));
+        }
+    }
+}
+
+internal static class CustomFormatterHelper
+{
+    private static readonly Dictionary<Type, object> CustomFormatters = new()
+    {
+        { typeof(UIntPtr), new UIntPtrFormatter() },
+        { typeof(ThreadId), new ThreadIdFormatter() },
+        { typeof(ObjectId), new ObjectIdFormatter() },
+        { typeof(ModuleId), new ModuleIdFormatter() },
+        { typeof(FunctionId), new FunctionIdFormatter() },
+        { typeof(AssemblyId), new AssemblyIdFormatter() },
+        { typeof(TrackedObjectId), new TrackedObjectIdFormatter() },
+        { typeof(MdTypeDef), new MdTypeDefFormatter() },
+        { typeof(MdTypeRef), new MdTypeRefFormatter() },
+        { typeof(MdMethodDef), new MdMethodDefFormatter() },
+        { typeof(MdMemberRef), new MdMemberRefFormatter() }
+    };
+
+    internal static object? GetFormatter(Type t)
+    {
+        if (CustomFormatters.TryGetValue(t, out var formatter))
+        {
+            return formatter;
         }
 
-        return concreteFormatter;
+        return null;
     }
 }
