@@ -11,10 +11,13 @@ public record PluginConfiguration(
     string SharedMemoryName,
     string? SharedMemoryFile,
     uint SharedMemorySize,
+    string CommandQueueName,
+    string? CommandQueueFile,
+    uint CommandQueueSize,
     object? AdditionalData)
 {
     public const string ConfigurationFileName = "SharpDetect_Configuration.json";
-    private static readonly JsonSerializerOptions _jsonSerializerOptions = _jsonSerializerOptions = new()
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
@@ -25,9 +28,12 @@ public record PluginConfiguration(
     {
         return new PluginConfiguration(
             EventMask: (uint)eventMask,
-            SharedMemoryName: "SharpDetect_IPQ",
-            SharedMemoryFile: "SharpDetect_SharedMemory.data",
+            SharedMemoryName: "SharpDetect_NotificationsQueue",
+            SharedMemoryFile: "SharpDetect_NotificationsQueue.data",
             SharedMemorySize: 20_971_520 /* 20 MB */,
+            CommandQueueName: "SharpDetect_CommandQueue",
+            CommandQueueFile: "SharpDetect_CommandQueue.data",
+            CommandQueueSize: 1_048_576 /* 1 MB */,
             additionalData);
     }
 
@@ -42,6 +48,9 @@ public record PluginConfiguration(
                 SharedMemoryName,
                 SharedMemoryFile,
                 SharedMemorySize,
+                CommandQueueName,
+                CommandQueueFile,
+                CommandQueueSize,
                 AdditionalData
             }, _jsonSerializerOptions);
             using var writer = new StreamWriter(fileStream);

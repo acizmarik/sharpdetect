@@ -149,3 +149,14 @@ public sealed record MethodReferenceInjectionRecordedEvent(
 public sealed record MethodBodyRewriteRecordedEvent(
     [property: Key(0)] ModuleId ModuleId,
     [property: Key(1)] MdMethodDef MethodToken) : IRecordedEventArgs;
+
+[MessagePackObject]
+public sealed record StackTraceSnapshotRecordedEvent(
+    [property: Key(0)] ThreadId ThreadId,
+    [property: Key(1)] ModuleId[] ModuleIds,
+    [property: Key(2)] MdMethodDef[] MethodTokens) : IRecordedEventArgs;
+
+[MessagePackObject]
+public sealed record StackTraceSnapshotsRecordedEvent(
+    [property: Key(0)] StackTraceSnapshotRecordedEvent[] Snapshots) : IRecordedEventArgs;
+

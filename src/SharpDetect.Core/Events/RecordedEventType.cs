@@ -50,6 +50,10 @@ public enum RecordedEventType : ushort
     ProfilerInitialize = 34,
     ProfilerDestroy = 35,
 
+    /* Stack trace snapshots */
+    StackTraceSnapshot = 36,
+    StackTraceSnapshots = 37,
+
     /* Synchronization */
     MonitorLockAcquire = 100,
     MonitorLockTryAcquire = 101,

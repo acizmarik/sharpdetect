@@ -1,0 +1,6 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\SharpDetect.Core\SharpDetect.Core.csproj" />
+    <ProjectReference Include="..\SharpDetect.InterProcessQueue\SharpDetect.InterProcessQueue.csproj" />
+  </ItemGroup>
+</Project>

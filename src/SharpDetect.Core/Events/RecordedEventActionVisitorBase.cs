@@ -116,6 +116,12 @@ public abstract class RecordedEventActionVisitorBase
 
     protected virtual void Visit(RecordedEventMetadata metadata, MethodBodyRewriteRecordedEvent args)
         => DefaultVisit(metadata, args);
+    
+    protected virtual void Visit(RecordedEventMetadata metadata, StackTraceSnapshotRecordedEvent args)
+        => DefaultVisit(metadata, args);
+    
+    protected virtual void Visit(RecordedEventMetadata metadata, StackTraceSnapshotsRecordedEvent args)
+        => DefaultVisit(metadata, args);
 
     protected virtual void DefaultVisit(RecordedEventMetadata metadata, IRecordedEventArgs args)
         => throw new NotImplementedException($"{nameof(RecordedEventActionVisitorBase)} is missing implementation for {args.GetType()}.");

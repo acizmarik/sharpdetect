@@ -17,7 +17,7 @@ public partial class DisposablesPlugin : PluginBase, IPlugin
 {
     public string ReportCategory => "Disposables";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
+    public override PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
         eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
