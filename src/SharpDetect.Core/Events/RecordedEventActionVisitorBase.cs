@@ -35,6 +35,8 @@ public abstract class RecordedEventActionVisitorBase
             case MethodWrapperInjectionRecordedEvent methodWrapperInjectionArgs: Visit(metadata, methodWrapperInjectionArgs); break;
             case MethodReferenceInjectionRecordedEvent methodReferenceInjectionArgs: Visit(metadata, methodReferenceInjectionArgs); break;
             case MethodBodyRewriteRecordedEvent methodBodyRewriteArgs: Visit(metadata, methodBodyRewriteArgs); break;
+            case StackTraceSnapshotRecordedEvent stackTraceSnapshotArgs: Visit(metadata, stackTraceSnapshotArgs); break;
+            case StackTraceSnapshotsRecordedEvent stackTraceSnapshotsArgs: Visit(metadata, stackTraceSnapshotsArgs); break;
             default: throw new NotSupportedException($"{nameof(RecordedEventActionVisitorBase)} does not support {args.GetType()}.");
         }
     }

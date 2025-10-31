@@ -11,16 +11,32 @@
 const std::string LibIPC::Client::_ipqProducerCreateSymbolName = "ipq_producer_create";
 const std::string LibIPC::Client::_ipqProducerDestroySymbolName = "ipq_producer_destroy";
 const std::string LibIPC::Client::_ipqProducerEnqueueSymbolName = "ipq_producer_enqueue";
+const std::string LibIPC::Client::_ipqConsumerCreateSymbolName = "ipq_consumer_create";
+const std::string LibIPC::Client::_ipqConsumerDestroySymbolName = "ipq_consumer_destroy";
+const std::string LibIPC::Client::_ipqConsumerDequeueSymbolName = "ipq_consumer_dequeue";
+const std::string LibIPC::Client::_ipqFreeMemorySymbolName = "ipq_free_memory";
 
-LibIPC::Client::Client(std::string mmName, std::string mmFile, UINT size) :
-	_ipqName(mmName),
-	_mmfName(mmFile),
-	_queueSize(size),
+
+LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFile, UINT commandQueueSize,
+					   std::string eventQueueName, std::string eventQueueFile, UINT eventQueueSize) :
+	_ipqName(eventQueueName),
+	_mmfName(eventQueueFile),
+	_commandQueueName(commandQueueName),
+	_commandMmfName(commandQueueFile),
+	_eventQueueSize(eventQueueSize),
+	_commandQueueSize(commandQueueSize),
 	_ipqModuleHandle(nullptr),
 	_ffiProducer(nullptr),
+	_ffiConsumer(nullptr),
+	_commandReceivingEnabled(true),
+	_commandHandler(nullptr),
 	_ipqProducerCreateSymbolAddress(nullptr),
 	_ipqProducerDestroySymbolAddress(nullptr),
-	_ipqProducerEnqueueSymbolAddress(nullptr)
+	_ipqProducerEnqueueSymbolAddress(nullptr),
+	_ipqConsumerCreateSymbolAddress(nullptr),
+	_ipqConsumerDestroySymbolAddress(nullptr),
+	_ipqConsumerDequeueSymbolAddress(nullptr),
+	_ipqFreeMemorySymbolAddress(nullptr)
 {
 	auto const ipqPathStringPointer = std::getenv("SharpDetect_IPQ_PATH");
 	if (ipqPathStringPointer == nullptr)
@@ -37,41 +53,61 @@ LibIPC::Client::Client(std::string mmName, std::string mmFile, UINT size) :
 		throw std::runtime_error("Error while loading communication library.");
 	}
 
+	// Load all symbols
 	_ipqProducerCreateSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqProducerCreateSymbolName);
 	_ipqProducerDestroySymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqProducerDestroySymbolName);
 	_ipqProducerEnqueueSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqProducerEnqueueSymbolName);
+	_ipqConsumerCreateSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerCreateSymbolName);
+	_ipqConsumerDestroySymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerDestroySymbolName);
+	_ipqConsumerDequeueSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerDequeueSymbolName);
+	_ipqFreeMemorySymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqFreeMemorySymbolName);
+
 	if (_ipqProducerCreateSymbolAddress == nullptr ||
 		_ipqProducerDestroySymbolAddress == nullptr ||
-		_ipqProducerEnqueueSymbolAddress == nullptr)
+		_ipqProducerEnqueueSymbolAddress == nullptr ||
+		_ipqConsumerCreateSymbolAddress == nullptr ||
+		_ipqConsumerDestroySymbolAddress == nullptr ||
+		_ipqConsumerDequeueSymbolAddress == nullptr ||
+		_ipqFreeMemorySymbolAddress == nullptr)
 	{
 		LOG_F(FATAL, "Communication library does not contain expected symbols.");
 		throw std::runtime_error("Incompatibility issue while loading communication library symbols.");
 	}
 	
-	_ffiProducer = reinterpret_cast<ipq_producer_create>(_ipqProducerCreateSymbolAddress)(_ipqName.c_str(), _mmfName.c_str(), _queueSize);
+	// Create producer for events
+	_ffiProducer = reinterpret_cast<ipq_producer_create>(_ipqProducerCreateSymbolAddress)(_ipqName.c_str(), _mmfName.c_str(), _eventQueueSize);
 	if (_ffiProducer == nullptr)
 	{
 		LOG_F(FATAL, "Communication library could not create producer.");
-		throw std::runtime_error("Could not obtain write access to IPC queue.");
+		throw std::runtime_error("Could not obtain write access to IPC event queue.");
 	}
 
-	LOG_F(INFO, "Communication library initialized.");
-	_thread = std::thread(&LibIPC::Client::ThreadLoop, this);
+	// Create consumer for commands
+	_ffiConsumer = reinterpret_cast<ipq_consumer_create>(_ipqConsumerCreateSymbolAddress)(_commandQueueName.c_str(), _commandMmfName.c_str(), _commandQueueSize);
+	if (_ffiConsumer == nullptr)
+	{
+		LOG_F(FATAL, "Communication library could not create consumer.");
+		throw std::runtime_error("Could not obtain read access to IPC command queue.");
+	}
+
+	LOG_F(INFO, "Communication library initialized with command receiving enabled.");
+	_eventThread = std::thread(&LibIPC::Client::EventThreadLoop, this);
+	_commandThread = std::thread(&LibIPC::Client::CommandThreadLoop, this);
 }
 
-void LibIPC::Client::ThreadLoop()
+void LibIPC::Client::EventThreadLoop()
 {
-	LOG_F(INFO, "IPC worker thread started.");
+	LOG_F(INFO, "IPC event worker thread started.");
 	auto enqueueFn = reinterpret_cast<ipq_producer_enqueue>(_ipqProducerEnqueueSymbolAddress);
 	while (!_terminating)
 	{
-		auto lock = std::unique_lock<std::mutex>(_mutex);
-		if (_queueNonEmptySignal.wait_for(lock, std::chrono::seconds(2)) == std::cv_status::timeout || _queue.empty())
+		auto lock = std::unique_lock<std::mutex>(_eventMutex);
+		if (_eventQueueNonEmptySignal.wait_for(lock, std::chrono::seconds(2)) == std::cv_status::timeout || _eventQueue.empty())
 			continue;
 
-		while (!_queue.empty())
+		while (!_eventQueue.empty())
 		{
-			auto&& item = std::move(_queue.front());
+			auto&& item = std::move(_eventQueue.front());
 
 			auto byteStream = reinterpret_cast<BYTE*>(item.data());
 			INT result = 0;
@@ -84,10 +120,117 @@ void LibIPC::Client::ThreadLoop()
 			}
 			while (result != 0);
 
-			_queue.pop();
+			_eventQueue.pop();
 		}
 	}
-	LOG_F(INFO, "IPC worker thread terminated.");
+	LOG_F(INFO, "IPC event worker thread terminated.");
+}
+
+void LibIPC::Client::CommandThreadLoop()
+{
+	LOG_F(INFO, "IPC command worker thread started.");
+	auto dequeueFn = reinterpret_cast<ipq_consumer_dequeue>(_ipqConsumerDequeueSymbolAddress);
+	auto freeMemoryFn = reinterpret_cast<ipq_free_memory>(_ipqFreeMemorySymbolAddress);
+
+	while (!_terminating)
+	{
+		BYTE* dataPtr = nullptr;
+		INT size = 0;
+
+		auto result = dequeueFn(_ffiConsumer, &dataPtr, &size);
+		if (result != 0)
+		{
+			std::this_thread::yield();
+			continue;
+		}
+
+		try
+		{
+			msgpack::object_handle objectHandle = msgpack::unpack(reinterpret_cast<const char*>(dataPtr), size);
+			msgpack::object obj = objectHandle.get();
+
+			// Extract command structure: [[pid, commandId], [discriminator, args]]
+			if (obj.type != msgpack::type::ARRAY || obj.via.array.size != 2)
+			{
+				LOG_F(WARNING, "Invalid command message format.");
+				freeMemoryFn(dataPtr);
+				continue;
+			}
+
+			// Extract metadata: [pid, commandId]
+			auto& metadataObj = obj.via.array.ptr[0];
+			if (metadataObj.type != msgpack::type::ARRAY || metadataObj.via.array.size != 2)
+			{
+				LOG_F(WARNING, "Invalid command metadata format.");
+				freeMemoryFn(dataPtr);
+				continue;
+			}
+			
+			UINT32 pid = metadataObj.via.array.ptr[0].as<UINT32>();
+			UINT64 commandId = metadataObj.via.array.ptr[1].as<UINT64>();
+			
+			// Extract union: [discriminator, args]
+			auto& unionObj = obj.via.array.ptr[1];
+			if (unionObj.type != msgpack::type::ARRAY || unionObj.via.array.size != 2)
+			{
+				LOG_F(WARNING, "Invalid command union format.");
+				freeMemoryFn(dataPtr);
+				continue;
+			}
+
+			INT32 discriminator = unionObj.via.array.ptr[0].as<INT32>();
+			auto& argsObj = unionObj.via.array.ptr[1];
+
+			// Handle based on command type
+			if (_commandHandler != nullptr)
+			{
+				switch (static_cast<ProfilerCommandType>(discriminator))
+				{
+				case ProfilerCommandType::CreateStackSnapshot:
+				{
+					if (argsObj.type == msgpack::type::ARRAY && argsObj.via.array.size == 1)
+					{
+						UINT64 targetThreadId = argsObj.via.array.ptr[0].as<UINT64>();
+						_commandHandler->OnCreateStackSnapshot(commandId, targetThreadId);
+					}
+					else
+					{
+						LOG_F(WARNING, "Invalid CreateStackSnapshot arguments.");
+					}
+					break;
+				}
+				case ProfilerCommandType::CreateStackSnapshots:
+				{
+					if (argsObj.type == msgpack::type::ARRAY && argsObj.via.array.size == 1)
+					{
+						auto threadIds = argsObj.via.array.ptr[0].as<std::vector<UINT64>>();
+						_commandHandler->OnCreateStackSnapshots(commandId, threadIds);
+					}
+					else
+					{
+						LOG_F(WARNING, "Invalid CreateStackSnapshots arguments.");
+					}
+					break;
+				}
+				default:
+					LOG_F(WARNING, "Unknown command type. Discriminator: %d", discriminator);
+					break;
+				}
+			}
+		}
+		catch (const std::exception& ex)
+		{
+			LOG_F(ERROR, "Error processing command: %s", ex.what());
+		}
+
+		freeMemoryFn(dataPtr);
+	}
+	LOG_F(INFO, "IPC command worker thread terminated.");
+}
+
+void LibIPC::Client::SetCommandHandler(ICommandHandler* handler)
+{
+	_commandHandler = handler;
 }
 
 LibIPC::Client::~Client()
@@ -96,8 +239,18 @@ LibIPC::Client::~Client()
 		return;
 
 	_terminating = true;
-	_thread.join();
+	if (_eventThread.joinable())
+		_eventThread.join();
+
+	if (_commandReceivingEnabled && _commandThread.joinable())
+		_commandThread.join();
 
 	reinterpret_cast<ipq_producer_destroy>(_ipqProducerDestroySymbolAddress)(_ffiProducer);
 	_ffiProducer = nullptr;
+
+	if (_commandReceivingEnabled && _ffiConsumer != nullptr)
+	{
+		reinterpret_cast<ipq_consumer_destroy>(_ipqConsumerDestroySymbolAddress)(_ffiConsumer);
+		_ffiConsumer = nullptr;
+	}
 }

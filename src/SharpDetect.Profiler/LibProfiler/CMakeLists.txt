@@ -18,6 +18,7 @@ set(SOURCES
     "GarbageCollectionContext.cpp"
     "ObjectsTracker.cpp" 
     "Instrumentation.cpp"
+    "StackWalker.cpp"
     "WString.cpp"
     "PAL.cpp")
 

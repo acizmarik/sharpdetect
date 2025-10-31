@@ -15,7 +15,7 @@ namespace LibProfiler
         std::atomic<int> _refCount;
 
     protected:
-        ICorProfilerInfo8* _corProfilerInfo;
+        ICorProfilerInfo10* _corProfilerInfo;
 
     public:
         CorProfilerBase();

@@ -9,4 +9,5 @@ namespace SharpDetect.Core.Events;
 [MessagePackObject]
 public readonly record struct RecordedEventMetadata(
     [property: Key(0)] uint Pid,
-    [property: Key(1)] ThreadId Tid);
+    [property: Key(1)] ThreadId Tid,
+    [property: Key(2)] ulong? CommandId = null);

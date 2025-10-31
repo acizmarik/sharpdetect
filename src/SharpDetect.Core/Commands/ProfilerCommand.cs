@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using MessagePack;
-using SharpDetect.Core.Events;
 
 namespace SharpDetect.Core.Commands;
 

@@ -3,7 +3,9 @@
 
 using MessagePack;
 
-namespace SharpDetect.Core.Events;
+namespace SharpDetect.Core.Commands;
 
 [MessagePackObject]
-public readonly record struct RecordedCommandMetadata([property: Key(0)] uint Pid);
+public readonly record struct RecordedCommandMetadata(
+    [property: Key(0)] uint Pid,
+    [property: Key(1)] ulong CommandId);

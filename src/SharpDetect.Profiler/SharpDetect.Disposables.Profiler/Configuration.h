@@ -17,9 +17,15 @@ namespace Profiler
 	struct Configuration
 	{
 		UINT eventMask;
+
 		std::string sharedMemoryName;
 		tl::optional<std::string> sharedMemoryFile;
 		UINT sharedMemorySize;
+
+		std::string commandQueueName;
+		tl::optional<std::string> commandQueueFile;
+        UINT commandQueueSize;
+
 		ConfigurationAdditionalData additionalData;
 	};
 

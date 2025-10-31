@@ -156,6 +156,13 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
         /* Ignored event */
     }
 
+    protected IProfilerCommandSender GetCommandSender(uint pid)
+    {
+        return !_profilerCommandSenders.TryGetValue((int)pid, out var sender) 
+            ? throw new InvalidOperationException($"No command sender initialized for process {pid}.")
+            : sender;
+    }
+
     private void StartNewThread(uint processId, ThreadId threadId)
     {
         _threads[threadId] = $"T{nextFreeThreadId++}";
