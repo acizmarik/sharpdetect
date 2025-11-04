@@ -8,18 +8,16 @@ namespace SharpDetect.InterProcessQueue.Tests;
 
 public class EnqueueDequeueTests
 {
+    private const string TestQueueName = "SharpDetect_IPQ_EnqueueDequeue_Test_Queue";
+    private const string TestFileName = "SharpDetect_IPQ_EnqueueDequeue__Test.data";
+    private const int TestQueueSize = 1024 * 1024;
+    
     [Fact]
     public void InterProcessQueue_Enqueue_SingleMessage_Succeeds()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(
-            InitializationTests.TestQueueName,
-            InitializationTests.TestFileName,
-            InitializationTests.TestQueueSize);
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(
-            InitializationTests.TestQueueName,
-            InitializationTests.TestFileName,
-            InitializationTests.TestQueueSize);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
         using var producer = new Producer(producerOptions);
         using var consumer = new Consumer(consumerOptions);
         
@@ -37,14 +35,8 @@ public class EnqueueDequeueTests
     public void InterProcessQueue_Dequeue_SingleMessage_ReturnsCorrectData()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(
-            InitializationTests.TestQueueName,
-            InitializationTests.TestFileName,
-            InitializationTests.TestQueueSize);
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(
-            InitializationTests.TestQueueName,
-            InitializationTests.TestFileName,
-            InitializationTests.TestQueueSize);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
         using var producer = new Producer(producerOptions);
         using var consumer = new Consumer(consumerOptions);
         
@@ -67,14 +59,8 @@ public class EnqueueDequeueTests
     public void InterProcessQueue_EnqueueDequeue_MultipleMessages_MaintainsOrder()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(
-            InitializationTests.TestQueueName,
-            InitializationTests.TestFileName,
-            InitializationTests.TestQueueSize);
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(
-            InitializationTests.TestQueueName,
-            InitializationTests.TestFileName,
-            InitializationTests.TestQueueSize);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
         using var producer = new Producer(producerOptions);
         using var consumer = new Consumer(consumerOptions);
         
@@ -107,14 +93,11 @@ public class EnqueueDequeueTests
     public void InterProcessQueue_Enqueue_MessageLargerThanQueue_ReturnsNotEnoughMemory()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(
-            InitializationTests.TestQueueName,
-            InitializationTests.TestFileName,
-            InitializationTests.TestQueueSize);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
         using var producer = new Producer(producerOptions);
         
         // Act
-        var result = producer.Enqueue(new byte[InitializationTests.TestQueueSize]);
+        var result = producer.Enqueue(new byte[TestQueueSize]);
         
         // Assert
         Assert.True(result.IsError);

@@ -5,9 +5,9 @@ namespace SharpDetect.InterProcessQueue.Tests;
 
 public class InitializationTests
 {
-    internal const string TestQueueName = "SharpDetect_IPQ_Test_Queue";
-    internal const string TestFileName = "SharpDetect_IPQ_Test_File";
-    internal const int TestQueueSize = 1024 * 1024;
+    private const string TestQueueName = "SharpDetect_IPQ_Initialization_Test_Queue";
+    private const string TestFileName = "SharpDetect_IPQ_Initialization_Test.data";
+    private const int TestQueueSize = 1024 * 1024;
     
     [Fact]
     public void InterProcessQueue_Initialize_CreatesEmpty()
