@@ -64,7 +64,7 @@ internal sealed class RunCommandHandler
         return new RunCommandHandler(configurationFilePath, pluginType);
     }
 
-    public ValueTask ExecuteAsync(IConsole _)
+    public ValueTask ExecuteAsync(IConsole _, CancellationToken ct = default)
     {
         _plugin.Configuration.SerializeToFile(GetFullConfigurationPath());
         _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", GetFullConfigurationPath());
@@ -80,16 +80,16 @@ internal sealed class RunCommandHandler
         _logger.LogTrace("Started event consumer of IPC queue with name: \"{Name}\" file:\"{File}\".", consumerOptions.Name, consumerOptions.File);
 
         var eventParser = ServiceProvider.GetRequiredService<IRecordedEventParser>();
-        ExecuteAnalysis(eventConsumer, targetApplicationProcess.Task, eventParser);
+        ExecuteAnalysis(eventConsumer, targetApplicationProcess.Task, eventParser, ct);
         _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", targetApplicationProcess.ProcessId);
 
         return ValueTask.CompletedTask;
     }
 
-    private void ExecuteAnalysis(Consumer consumer, Task targetProcessTask, IRecordedEventParser eventParser)
+    private void ExecuteAnalysis(Consumer consumer, Task targetProcessTask, IRecordedEventParser eventParser, CancellationToken ct = default)
     {
         RecordedEvent? previousRecordedEvent = null;
-        while (!ShouldTerminateAnalysis(targetProcessTask, previousRecordedEvent))
+        while (!ShouldTerminateAnalysis(targetProcessTask, previousRecordedEvent, ct))
         {
             var result = consumer.Dequeue();
             if (result.IsError)
@@ -157,9 +157,10 @@ internal sealed class RunCommandHandler
         }
     }
 
-    private static bool ShouldTerminateAnalysis(Task targetProcessTask, RecordedEvent? recordedEvents)
+    private static bool ShouldTerminateAnalysis(Task targetProcessTask, RecordedEvent? recordedEvents, CancellationToken ct)
     {
-        return (targetProcessTask.IsCompleted && recordedEvents == null) || 
+        return ct.IsCancellationRequested ||
+               (targetProcessTask.IsCompleted && recordedEvents == null) || 
                (recordedEvents?.EventArgs is ProfilerDestroyRecordedEvent);
     }
 
