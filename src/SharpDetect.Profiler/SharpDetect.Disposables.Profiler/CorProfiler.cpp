@@ -11,6 +11,9 @@ Profiler::CorProfiler* ProfilerInstance;
 Profiler::CorProfiler::CorProfiler(Configuration configuration) :
     _configuration(configuration),
     _client(
+		configuration.commandQueueName,
+		configuration.commandQueueFile.value_or(std::string()),
+		configuration.commandQueueSize,
         configuration.sharedMemoryName,
         configuration.sharedMemoryFile.value_or(std::string()),
         configuration.sharedMemorySize),
@@ -241,6 +244,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         LOG_F(ERROR, "Could not register function ID mapper. Error: 0x%x.", hr);
         return E_FAIL;
     }
+
+    _client.SetCommandHandler(this);
+    LOG_F(INFO, "Registered command handler.");
 
     _client.Send(LibIPC::Helpers::CreateProfilerInitiazeMsg(CreateMetadataMsg()));
     LOG_F(INFO, "Profiler initialized.");
@@ -475,7 +481,7 @@ HRESULT Profiler::CorProfiler::TailcallMethod(FunctionIDOrClientID functionOrCli
     return S_OK;
 }
 
-ICorProfilerInfo8& Profiler::CorProfiler::GetCorProfilerInfo()
+ICorProfilerInfo10& Profiler::CorProfiler::GetCorProfilerInfo()
 {
     return *_corProfilerInfo;
 }
@@ -498,3 +504,83 @@ LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg()
     _corProfilerInfo->GetCurrentThreadID(&threadId);
     return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId);
 }
+
+LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg(UINT64 commandId)
+{
+    ThreadID threadId;
+    _corProfilerInfo->GetCurrentThreadID(&threadId);
+    return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId, commandId);
+}
+
+void Profiler::CorProfiler::OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId)
+{
+    LOG_F(INFO, "Received command to create stack snapshot for thread %" UINT_PTR_FORMAT " (commandId: %lu).", targetThreadId, commandId);
+    
+    if (FAILED(CaptureStackTrace(commandId, targetThreadId)))
+    {
+        LOG_F(ERROR, "Failed to capture stack trace for thread %" UINT_PTR_FORMAT ".", targetThreadId);
+    }
+}
+
+void Profiler::CorProfiler::OnCreateStackSnapshots(UINT64 commandId, const std::vector<UINT64>& targetThreadIds)
+{
+    LOG_F(INFO, "Received command to create stack snapshots for %zu threads (commandId: %lu).", targetThreadIds.size(), commandId);
+    
+    std::vector<std::vector<LibProfiler::StackFrame>> frames;
+    auto hr = LibProfiler::StackWalker::CaptureStackTraces(_corProfilerInfo, targetThreadIds, frames);
+    
+    if (FAILED(hr))
+    {
+        LOG_F(WARNING, "One or more stack traces failed to capture. Error: 0x%x.", hr);
+    }
+    
+    std::vector<LibIPC::StackTraceSnapshotMsgArgs> snapshots;
+    snapshots.reserve(frames.size());
+    
+    for (size_t i = 0; i < frames.size(); ++i)
+    {
+        std::vector<UINT64> moduleIds;
+        std::vector<UINT32> methodTokens;
+        moduleIds.reserve(frames[i].size());
+        methodTokens.reserve(frames[i].size());
+        
+        for (const auto& frame : frames[i])
+        {
+            moduleIds.push_back(frame.ModuleId);
+            methodTokens.push_back(frame.MethodToken);
+        }
+        
+        snapshots.emplace_back(targetThreadIds[i], std::move(moduleIds), std::move(methodTokens));
+    }
+
+	auto snapshotsCount = snapshots.size();
+    _client.Send(LibIPC::Helpers::CreateStackTraceSnapshotsMsg(CreateMetadataMsg(commandId), std::move(snapshots)));
+    LOG_F(INFO, "Sent stack snapshots notification with %zu snapshots (commandId: %lu).", snapshotsCount, commandId);
+}
+
+HRESULT Profiler::CorProfiler::CaptureStackTrace(UINT64 commandId, ThreadID threadId)
+{
+    std::vector<UINT64> moduleIds;
+    std::vector<UINT32> methodTokens;
+    
+    auto hr = LibProfiler::StackWalker::CaptureStackTrace(_corProfilerInfo, threadId, moduleIds, methodTokens);
+    
+    if (FAILED(hr))
+    {
+        LOG_F(ERROR, "StackWalker::CaptureStackTrace failed. Error: 0x%x.", hr);
+        return hr;
+    }
+    
+    _client.Send(LibIPC::Helpers::CreateStackTraceSnapshotMsg(
+        CreateMetadataMsg(commandId),
+        threadId,
+        std::move(moduleIds),
+        std::move(methodTokens)));
+    
+    LOG_F(INFO, "Sent stack trace snapshot notification for thread %" UINT_PTR_FORMAT " with %zu frames (commandId: %lu).",
+        threadId, moduleIds.size(), commandId);
+    
+    return S_OK;
+}
+
+

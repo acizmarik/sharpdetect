@@ -1,11 +1,24 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using MessagePack;
+
 namespace SharpDetect.Core.Events.Profiler;
 
-public readonly record struct ThreadId(nuint Value);
-public readonly record struct ObjectId(nuint Value);
-public readonly record struct ModuleId(nuint Value);
-public readonly record struct FunctionId(nuint Value);
-public readonly record struct AssemblyId(nuint Value);
-public readonly record struct TrackedObjectId(nuint Value);
+[MessagePackObject]
+public readonly record struct ThreadId([property: Key(0)] nuint Value);
+
+[MessagePackObject]
+public readonly record struct ObjectId([property: Key(0)] nuint Value);
+
+[MessagePackObject]
+public readonly record struct ModuleId([property: Key(0)] nuint Value);
+
+[MessagePackObject]
+public readonly record struct FunctionId([property: Key(0)] nuint Value);
+
+[MessagePackObject]
+public readonly record struct AssemblyId([property: Key(0)] nuint Value);
+
+[MessagePackObject]
+public readonly record struct TrackedObjectId([property: Key(0)] nuint Value);

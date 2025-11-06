@@ -4,6 +4,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Cli.Handlers;
 using SharpDetect.Core.Plugins;
+using SharpDetect.E2ETests.Utils;
 using Xunit;
 
 namespace SharpDetect.E2ETests;
@@ -45,12 +46,14 @@ public class DeadlockPluginTests
     public async Task DeadlockPlugin_CanDetectDeadlock(string configuration)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration);
+        var handler = RunCommandHandler.Create(configuration, typeof(TestDeadlockPlugin));
         var services = handler.ServiceProvider;
-        var plugin = services.GetRequiredService<IPlugin>();
+        var plugin = services.GetRequiredService<TestDeadlockPlugin>();
+        using var cts = new CancellationTokenSource();
+        plugin.StackTraceSnapshotsCreated += _ => cts.Cancel();;
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await handler.ExecuteAsync(null!, cts.Token);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert

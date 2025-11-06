@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Communication;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Loader;
 using SharpDetect.Metadata;
@@ -28,6 +29,7 @@ internal static class ServiceCollectionExtensions
 
         services.AddSharpDetectLoaderServices();
         services.AddSharpDetectMetadataServices();
+        services.AddSharpDetectCommunicationServices();
         services.AddSharpDetectSerializationServices();
         services.AddSharpDetectReportingServices();
         services.AddSharpDetectPluginHostServices();

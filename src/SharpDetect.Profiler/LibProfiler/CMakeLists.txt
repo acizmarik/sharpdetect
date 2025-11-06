@@ -18,6 +18,7 @@ set(SOURCES
     "GarbageCollectionContext.cpp"
     "ObjectsTracker.cpp" 
     "Instrumentation.cpp"
+    "StackWalker.cpp"
     "WString.cpp"
     "PAL.cpp")
 
@@ -27,7 +28,11 @@ if (UNIX AND NOT APPLE)
     list(APPEND INCLUDE_DIRECTORIES "../lib/coreclr/pal/inc/rt")
     list(APPEND INCLUDE_DIRECTORIES "../lib/coreclr/pal/prebuilt/inc")
     list(APPEND SOURCES "../lib/coreclr/pal/prebuilt/idl/corprof_i.cpp")
+elseif (WIN32)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+    set(INCLUDE_DIRECTORIES "../lib/coreclr/pal/prebuilt/inc" ${INCLUDE_DIRECTORIES})
 endif()
+
 list(APPEND INCLUDE_DIRECTORIES "../lib/miniutf")
 
 add_library (LibProfiler STATIC ${SOURCES})

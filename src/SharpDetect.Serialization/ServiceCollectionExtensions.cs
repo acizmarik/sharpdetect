@@ -13,5 +13,6 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IRecordedEventParser, RecordedEventParserService>();
         services.AddSingleton<IArgumentsParser, ArgumentsParserService>();
+        services.AddSingleton<IProfilerCommandSerializer, ProfilerCommandSerializerService>();
     }
 }

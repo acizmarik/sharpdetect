@@ -8,6 +8,7 @@ using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Plugins.Deadlock.Descriptors;
 using System.Collections.Immutable;
+using SharpDetect.Core.Commands;
 
 namespace SharpDetect.Plugins.Deadlock;
 
@@ -15,7 +16,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Deadlock";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
+    public override PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
         eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
@@ -24,6 +25,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                    COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
                    COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
                    COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
+                   COR_PRF_MONITOR.COR_PRF_ENABLE_STACK_SNAPSHOT |
                    COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
@@ -31,12 +33,13 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
         additionalData: MonitorMethodDescriptors.GetAllMethods().ToImmutableArray());
     public DirectoryInfo ReportTemplates { get; }
-
-    private readonly HashSet<DeadlockInfo> _deadlocks;
+    
     private readonly ICallstackResolver _callStackResolver;
-    private readonly Dictionary<ThreadId, Lock?> _waitingForLocks;
-    private readonly Dictionary<ThreadId, HashSet<Lock>> _takenLocks;
-    private readonly Dictionary<ThreadId, Stack<RuntimeArgumentList>> _callstackArguments;
+    private readonly Dictionary<(uint Pid, ulong RequestId), DeadlockInfo> _deadlocks;
+    private readonly Dictionary<(uint Pid, ulong RequestId), StackTraceSnapshotsRecordedEvent> _deadlockStackTraces;
+    private readonly Dictionary<(uint Pid, ThreadId Tid), Lock?> _waitingForLocks;
+    private readonly Dictionary<(uint Pid, ThreadId Tid), HashSet<Lock>> _takenLocks;
+    private readonly Dictionary<(uint Pid, ThreadId Tid), Stack<RuntimeArgumentList>> _callstackArguments;
 
     public DeadlockPlugin(
         ICallstackResolver callstackResolver,
@@ -46,6 +49,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         _callStackResolver = callstackResolver;
 
         _deadlocks = [];
+        _deadlockStackTraces = [];
         _waitingForLocks = [];
         _takenLocks = [];
         _callstackArguments = [];
@@ -66,31 +70,36 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 
     private void OnLockAcquireAttempted(LockAcquireAttemptArgs args)
     {
-        _waitingForLocks[args.ThreadId] = args.LockObj;
+        var key = (args.ProcessId, args.ThreadId);
+        _waitingForLocks[key] = args.LockObj;
         CheckForDeadlocks(args.ProcessId, args.ThreadId);
     }
 
     private void OnLockAcquireReturned(LockAcquireResultArgs args)
     {
+        var key = (args.ProcessId, args.ThreadId);
         if (args.IsSuccess)
-            _takenLocks[args.ThreadId].Add(args.LockObj);
+            _takenLocks[key].Add(args.LockObj);
 
-        _waitingForLocks[args.ThreadId] = null;
+        _waitingForLocks[key] = null;
     }
 
     private void OnLockReleased(LockReleaseArgs args)
     {
-        _takenLocks[args.ThreadId].Remove(args.LockObj);
+        var key = (args.ProcessId, args.ThreadId);
+        _takenLocks[key].Remove(args.LockObj);
     }
 
     private void OnObjectWaitAttempted(ObjectWaitAttemptArgs args)
     {
-        _takenLocks[args.ThreadId].Remove(args.LockObj);
+        var key = (args.ProcessId, args.ThreadId);
+        _takenLocks[key].Remove(args.LockObj);
     }
 
     private void OnObjectWaitReturned(ObjectWaitResultArgs args)
     {
-        _takenLocks[args.ThreadId].Add(args.LockObj);
+        var key = (args.ProcessId, args.ThreadId);
+        _takenLocks[key].Add(args.LockObj);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
@@ -117,6 +126,14 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         base.Visit(metadata, args);
     }
 
+    protected override void Visit(RecordedEventMetadata metadata, StackTraceSnapshotsRecordedEvent args)
+    {
+        var key = (metadata.Pid, metadata.CommandId!.Value);
+        _deadlockStackTraces.Add(key, args);
+        
+        base.Visit(metadata, args);
+    }
+
     private void CheckForDeadlocks(uint processId, ThreadId threadId)
     {
         var stack = new Stack<ThreadId>();
@@ -127,7 +144,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         while (stack.Count > 0)
         {
             var currentThreadId = stack.Peek();
-            var blocked = _waitingForLocks[currentThreadId];
+            var blocked = _waitingForLocks[(processId, currentThreadId)];
 
             if (blocked is null)
             {
@@ -157,17 +174,22 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                 var deadlock = new List<(ThreadId ThreadId, string ThreadName, ThreadId BlockedOnThreadId, TrackedObjectId LockId)>();
                 foreach (var thread in stack)
                 {
-                    var blockedOnLock = _waitingForLocks[thread]!;
+                    var blockedOnLock = _waitingForLocks[(processId, thread)]!;
                     var blockedOnThreadId = blockedOnLock.Owner!.Value;
                     deadlock.Add((thread, Threads[thread], blockedOnThreadId, blockedOnLock.LockObjectId));
                 }
 
                 // Check if we recorded this deadlock
-                if (_deadlocks.Any(d => d.Cycle.SequenceEqual(deadlock)))
+                if (_deadlocks.Any(d => d.Key.Pid == processId && d.Value.Cycle.SequenceEqual(deadlock)))
                     return;
-
+                
+                // Request stack traces for all involved threads
+                var commandSender = GetCommandSender(processId);
+                var commandId = commandSender.SendCommand(new CreateStackTraceSnapshotsCommand(
+                    deadlock.Select(e => e.ThreadId).ToArray()));
+                
+                _deadlocks.Add((processId, commandId.Value), new DeadlockInfo(processId, deadlock));
                 Logger.LogWarning("[PID={Pid}] Deadlock detected (affects {ThreadsCount} threads).", processId, deadlock.Count);
-                _deadlocks.Add(new DeadlockInfo(processId, deadlock));
                 return;
             }
 
@@ -184,8 +206,9 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 
     private void StartNewThread(uint processId, ThreadId threadId)
     {
-        _waitingForLocks[threadId] = null;
-        _takenLocks[threadId] = [];
-        _callstackArguments[threadId] = new();
+        var key = (processId, threadId);
+        _waitingForLocks[key] = null;
+        _takenLocks[key] = [];
+        _callstackArguments[key] = new();
     }
 }

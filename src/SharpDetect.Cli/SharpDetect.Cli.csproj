@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Extensibility\SharpDetect.PluginHost\SharpDetect.PluginHost.csproj" />
+    <ProjectReference Include="..\SharpDetect.Communication\SharpDetect.Communication.csproj" />
     <ProjectReference Include="..\SharpDetect.Core\SharpDetect.Core.csproj" />
     <ProjectReference Include="..\SharpDetect.InterProcessQueue\SharpDetect.InterProcessQueue.csproj" />
     <ProjectReference Include="..\SharpDetect.Loader\SharpDetect.Loader.csproj" />

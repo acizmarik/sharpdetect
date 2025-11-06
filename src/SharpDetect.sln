@@ -48,6 +48,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpDetect.PluginHost", "E
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimpleNonDisposed", "Samples\SimpleNonDisposed\SimpleNonDisposed.csproj", "{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.InterProcessQueue.Tests", "Tests\SharpDetect.InterProcessQueue.Tests\SharpDetect.InterProcessQueue.Tests.csproj", "{C764A7FC-6A03-4DCC-8034-6AB84B263137}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.Communication", "SharpDetect.Communication\SharpDetect.Communication.csproj", "{71F106DC-87A2-40AF-B99F-A283A2D020BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -106,6 +110,14 @@ Global
 		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C764A7FC-6A03-4DCC-8034-6AB84B263137}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C764A7FC-6A03-4DCC-8034-6AB84B263137}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C764A7FC-6A03-4DCC-8034-6AB84B263137}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C764A7FC-6A03-4DCC-8034-6AB84B263137}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71F106DC-87A2-40AF-B99F-A283A2D020BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71F106DC-87A2-40AF-B99F-A283A2D020BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71F106DC-87A2-40AF-B99F-A283A2D020BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71F106DC-87A2-40AF-B99F-A283A2D020BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -117,6 +129,7 @@ Global
 		{D2FFD494-569A-499E-9898-004A10042B58} = {4158D903-2A66-4347-83D7-FDCFC4F5A884}
 		{97E7D625-C2D8-4657-9126-2410DBEDF70D} = {DDDE2C8F-D130-4B27-A8A9-D12F55098A39}
 		{5090CFCB-4FB5-4E90-9B68-908CC2062CD9} = {90D7D4DF-1967-4606-91B6-E0210F4F36C7}
+		{C764A7FC-6A03-4DCC-8034-6AB84B263137} = {4158D903-2A66-4347-83D7-FDCFC4F5A884}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85DE1FF1-4319-481E-AB39-C52687E142FA}

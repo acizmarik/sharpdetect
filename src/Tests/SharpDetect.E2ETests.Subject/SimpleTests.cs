@@ -367,7 +367,8 @@ namespace SharpDetect.E2ETests.Subject
             thread1.Start();
             thread2.Start();
 
-            Thread.Sleep(2000);
+            for (;;)
+                Thread.Sleep(2000);
         }
 
         public static void Test_DataRace_ReferenceType_Static_SimpleRace()

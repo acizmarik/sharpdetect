@@ -26,7 +26,7 @@ LibProfiler::CorProfilerBase::~CorProfilerBase()
 
 HRESULT STDMETHODCALLTYPE LibProfiler::CorProfilerBase::Initialize(IUnknown* pICorProfilerInfoUnk)
 {
-    return pICorProfilerInfoUnk->QueryInterface(__uuidof(ICorProfilerInfo8), (void**)&this->_corProfilerInfo);
+    return pICorProfilerInfoUnk->QueryInterface(__uuidof(ICorProfilerInfo10), (void**)&this->_corProfilerInfo);
 }
 
 HRESULT STDMETHODCALLTYPE LibProfiler::CorProfilerBase::Shutdown()

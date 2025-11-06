@@ -18,16 +18,20 @@
 #include "../LibProfiler/CorProfilerBase.h"
 #include "../LibProfiler/ModuleDef.h"
 #include "../LibProfiler/ObjectsTracker.h"
+#include "../LibProfiler/StackWalker.h"
 #include "../LibProfiler/WString.h"
 #include "Configuration.h"
 
 namespace Profiler
 {
-	class CorProfiler : public LibProfiler::CorProfilerBase
+	class CorProfiler : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler
 	{
 	public:
 		CorProfiler(Configuration configuration);
 		virtual HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
+		
+		virtual void OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId) override;
+		virtual void OnCreateStackSnapshots(UINT64 commandId, const std::vector<UINT64>& targetThreadIds) override;
 		virtual HRESULT STDMETHODCALLTYPE ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) override;
 		virtual HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason) override;
 		virtual HRESULT STDMETHODCALLTYPE GarbageCollectionFinished() override;
@@ -37,7 +41,7 @@ namespace Profiler
 		virtual HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
 		virtual HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
 
-		ICorProfilerInfo8& GetCorProfilerInfo();
+		ICorProfilerInfo10& GetCorProfilerInfo();
 		BOOL IsCollectFullStackTraces() const { return _collectFullStackTraces; }
 		Configuration& GetConfiguration() { return _configuration; }
 		BOOL HasModuleDef(ModuleID moduleId);
@@ -57,5 +61,7 @@ namespace Profiler
 		std::mutex _modulesMutex;
 
 		LibIPC::MetadataMsg CreateMetadataMsg();
+		LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId);
+		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
 	};
 }

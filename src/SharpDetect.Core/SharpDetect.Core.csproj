@@ -6,6 +6,7 @@
 		<PackageReference Include="OneOf" />
 		<PackageReference Include="dnlib" />
 		<PackageReference Include="CommunityToolkit.Diagnostics" />
+		<PackageReference Include="MessagePack" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -19,8 +19,8 @@
     }
   },
   "Analysis": {
-    "Path": "../../../../../Extensibility/SharpDetect.Plugins/bin/Debug/net8.0/SharpDetect.Plugins.dll",
-    "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
+    "Path": "SharpDetect.E2ETests.dll",
+    "FullTypeName": "SharpDetect.E2ETests.Utils.TestDeadlockPlugin",
     "RenderReport": false,
     "LogLevel": "Information"
   }

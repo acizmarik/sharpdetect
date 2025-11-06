@@ -17,7 +17,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
 {
     public string ReportCategory => "Test";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
+    public override PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
         eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
                    COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |

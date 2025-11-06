@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "../lib/msgpack-c/include/msgpack.hpp"
+#include "../lib/optional/include/tl/optional.hpp"
+#include "OptionalMsgpack.h"
 #include "cor.h"
 
 namespace LibIPC
@@ -64,10 +66,33 @@ namespace LibIPC
 		/* Profiler lifecycle */
 		ProfilerLoad = 33,
 		ProfilerInitialize = 34,
-		ProfilerDestroy = 35
+		ProfilerDestroy = 35,
+
+		/* Stack trace snapshots */
+		StackTraceSnapshot = 36,
+		StackTraceSnapshots = 37
 	};
 
-	using MetadataMsg = msgpack::type::tuple<UINT32, UINT64>;
+	enum class ProfilerCommandType
+	{
+		Unspecified = 0,
+
+		/* Stack snapshot commands */
+		CreateStackSnapshot = 1,
+		CreateStackSnapshots = 2
+	};
+
+	using CommandMetadataMsg = msgpack::type::tuple<UINT32, UINT64>;
+
+	using CreateStackSnapshotMsgArgs = msgpack::type::tuple<UINT64>;
+	using CreateStackSnapshotMsgArgsInstance = msgpack::type::tuple<INT32, CreateStackSnapshotMsgArgs>;
+	using CreateStackSnapshotMsg = msgpack::type::tuple<CommandMetadataMsg, CreateStackSnapshotMsgArgsInstance>;
+
+	using CreateStackSnapshotsMsgArgs = msgpack::type::tuple<std::vector<UINT64>>;
+	using CreateStackSnapshotsMsgArgsInstance = msgpack::type::tuple<INT32, CreateStackSnapshotsMsgArgs>;
+	using CreateStackSnapshotsMsg = msgpack::type::tuple<CommandMetadataMsg, CreateStackSnapshotsMsgArgsInstance>;
+
+	using MetadataMsg = msgpack::type::tuple<UINT32, UINT64, tl::optional<UINT64>>;
 
 	using ProfilerInitializeMsgArgs = msgpack::type::tuple<>;
 	using ProfilerInitializeMsgArgsInstance = msgpack::type::tuple<INT32, ProfilerInitializeMsgArgs>;
@@ -173,9 +198,18 @@ namespace LibIPC
 	using MethodBodyRewriteMsgArgsInstance = msgpack::type::tuple<INT32, MethodBodyRewriteMsgArgs>;
 	using MethodBodyRewriteMsg = msgpack::type::tuple<MetadataMsg, MethodBodyRewriteMsgArgsInstance>;
 
+	using StackTraceSnapshotMsgArgs = msgpack::type::tuple<UINT64, std::vector<UINT64>, std::vector<UINT32>>;
+	using StackTraceSnapshotMsgArgsInstance = msgpack::type::tuple<INT32, StackTraceSnapshotMsgArgs>;
+	using StackTraceSnapshotMsg = msgpack::type::tuple<MetadataMsg, StackTraceSnapshotMsgArgsInstance>;
+
+	using StackTraceSnapshotsMsgArgs = msgpack::type::tuple<std::vector<StackTraceSnapshotMsgArgs>>;
+	using StackTraceSnapshotsMsgArgsInstance = msgpack::type::tuple<INT32, StackTraceSnapshotsMsgArgs>;
+	using StackTraceSnapshotsMsg = msgpack::type::tuple<MetadataMsg, StackTraceSnapshotsMsgArgsInstance>;
+
 	namespace Helpers
 	{
 		MetadataMsg CreateMetadataMsg(UINT32 pid, UINT64 tid);
+		MetadataMsg CreateMetadataMsg(UINT32 pid, UINT64 tid, UINT64 commandId);
 		ProfilerInitializeMsg CreateProfilerInitiazeMsg(MetadataMsg&& metadataMsg);
 		ProfilerLoadMsg CreateProfilerLoadMsg(MetadataMsg&& metadataMsg, UINT32 runtime, UINT32 major, UINT32 minor, UINT32 build, UINT32 qfe);
 		ProfilerDestroyMsg CreateProfilerDestroyMsg(MetadataMsg&& metadataMsg);
@@ -206,5 +240,8 @@ namespace LibIPC
 		MethodRefenceInjectionMsg CreateMethodReferenceInjectionMsg(MetadataMsg&& metadataMsg, UINT64 targetModuleId, const std::string& fullName);
 		MethodWrapperInjectionMsg CreateMethodWrapperInjectionMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdTypeDef, UINT32 wrappedMethodToken, UINT32 wrapperMethodToken, const std::string& wrapperMethodName);
 		MethodBodyRewriteMsg CreateMethodBodyRewriteMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef);
+		
+		StackTraceSnapshotMsg CreateStackTraceSnapshotMsg(MetadataMsg&& metadataMsg, UINT64 threadId, std::vector<UINT64>&& moduleIds, std::vector<UINT32>&& methodTokens);
+		StackTraceSnapshotsMsg CreateStackTraceSnapshotsMsg(MetadataMsg&& metadataMsg, std::vector<StackTraceSnapshotMsgArgs>&& snapshots);
 	}
 }

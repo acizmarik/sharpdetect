@@ -1,8 +1,10 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Loader;
@@ -13,6 +15,7 @@ namespace SharpDetect.Core.Plugins;
 
 public abstract class PluginBase : RecordedEventActionVisitorBase
 {
+    public abstract PluginConfiguration Configuration { get; }
     protected SummaryBuilder Reporter { get; } = new SummaryBuilder();
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
@@ -20,12 +23,16 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
     protected IReadOnlyDictionary<ThreadId, Callstack> Callstacks => _callstacks;
     private readonly Dictionary<ThreadId, Callstack> _callstacks;
     private readonly Dictionary<ThreadId, string> _threads;
+    private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
+    private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
     private int nextFreeThreadId;
 
     protected PluginBase(IServiceProvider serviceProvider)
     {
         ModuleBindContext = serviceProvider.GetRequiredService<IModuleBindContext>();
         Logger = serviceProvider.GetRequiredService<ILogger<PluginBase>>();
+        _profilerCommandSenderProvider = serviceProvider.GetRequiredService<IProfilerCommandSenderProvider>();
+        _profilerCommandSenders = ImmutableDictionary<int, IProfilerCommandSender>.Empty;
         _callstacks = [];
         _threads = [];
     }
@@ -36,6 +43,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
             Type: args.RuntimeType,
             Version: new Version(args.MajorVersion, args.MinorVersion, args.BuildVersion, args.QfeVersion));
         Reporter.SetRuntimeInfo(runtimeInfo);
+        InitializeCommandsChannel(metadata.Pid);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)
@@ -148,10 +156,29 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
         /* Ignored event */
     }
 
+    protected IProfilerCommandSender GetCommandSender(uint pid)
+    {
+        return !_profilerCommandSenders.TryGetValue((int)pid, out var sender) 
+            ? throw new InvalidOperationException($"No command sender initialized for process {pid}.")
+            : sender;
+    }
+
     private void StartNewThread(uint processId, ThreadId threadId)
     {
         _threads[threadId] = $"T{nextFreeThreadId++}";
         _callstacks[threadId] = new(processId, threadId);
         Logger.LogInformation("Started thread {Name}.", _threads[threadId]);
+    }
+
+    private void InitializeCommandsChannel(uint processId)
+    {
+        // Initialize IPC queue for commands sending
+        var sender = _profilerCommandSenderProvider.Create(
+            ipcQueueName: $"{Configuration.CommandQueueName}.{processId}",
+            ipcQueueFileName: Configuration.CommandQueueFile is not null
+                ? $"{Configuration.CommandQueueFile}.{processId}"
+                : null,
+            Configuration.CommandQueueSize);
+        _profilerCommandSenders = _profilerCommandSenders.Add((int)processId, sender);
     }
 }

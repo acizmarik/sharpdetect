@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Plugins;
+using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Plugins.Deadlock;
@@ -30,18 +31,31 @@ public partial class DeadlockPlugin
         Reporter.SetDescription("See details below for more information.");
 
         var index = 0;
-        foreach (var (processId, cycle) in _deadlocks)
+        foreach (var deadlock in _deadlocks)
         {
+            var processId = deadlock.Key.Pid;
+            var requestId = deadlock.Key.RequestId;
+            var cycle = deadlock.Value.Cycle;
+            
             var reportBuilder = new ReportBuilder(index++, ReportCategory);
             var threadNames = cycle.ToDictionary(c => c.ThreadId, c => c.ThreadName);
             var reportedThreads = cycle
                 .Select(t => new ThreadInfo(t.ThreadId.Value, t.ThreadName))
                 .ToDictionary(t => t.Id, t => t);
             var stackTraces = new Dictionary<ThreadInfo, StackTrace>();
-            foreach (var (threadId, threadName, blockedOnThreadId, lockId) in cycle)
+            
+            var callstacks = _deadlockStackTraces[(processId, requestId)];
+            foreach (var (threadId, _, blockedOnThreadId, lockId) in cycle)
             {
+                var callstack = new Callstack(processId, threadId);
+                if (callstacks.Snapshots.SingleOrDefault(s => s.ThreadId == threadId) is { } snapshot)
+                {
+                    for (var frameIndex = snapshot.MethodTokens.Length - 1; frameIndex >= 0; frameIndex--)
+                        callstack.Push(snapshot.ModuleIds[frameIndex], snapshot.MethodTokens[frameIndex]);
+                }
+                
                 var threadInfo = reportedThreads[threadId.Value];
-                var stackTrace = _callStackResolver.Resolve(threadInfo, Callstacks[threadId]);
+                var stackTrace = _callStackResolver.Resolve(threadInfo, callstack);
                 reportBuilder.AddReportReason(threadInfo, $"Blocked - waiting for object: {lockId.Value} owned by thread {threadNames[blockedOnThreadId]}");
                 stackTraces.Add(threadInfo, stackTrace);
             }

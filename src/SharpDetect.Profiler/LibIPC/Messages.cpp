@@ -8,7 +8,12 @@ using namespace LibIPC::Helpers;
 
 MetadataMsg LibIPC::Helpers::CreateMetadataMsg(UINT32 pid, UINT64 tid)
 {
-    return MetadataMsg(pid, tid);
+    return MetadataMsg(pid, tid, tl::nullopt);
+}
+
+MetadataMsg LibIPC::Helpers::CreateMetadataMsg(UINT32 pid, UINT64 tid, UINT64 commandId)
+{
+    return MetadataMsg(pid, tid, tl::make_optional(commandId));
 }
 
 ProfilerInitializeMsg LibIPC::Helpers::CreateProfilerInitiazeMsg(LibIPC::MetadataMsg&& metadataMsg)
@@ -165,4 +170,16 @@ MethodBodyRewriteMsg LibIPC::Helpers::CreateMethodBodyRewriteMsg(MetadataMsg&& m
 {
     auto const discriminator = static_cast<INT32>(RecordedEventType::MethodBodyRewrite);
     return MethodBodyRewriteMsg(std::move(metadataMsg), MethodBodyRewriteMsgArgsInstance(discriminator, MethodBodyRewriteMsgArgs(moduleId, mdMethodDef)));
+}
+
+StackTraceSnapshotMsg LibIPC::Helpers::CreateStackTraceSnapshotMsg(MetadataMsg&& metadataMsg, UINT64 threadId, std::vector<UINT64>&& moduleIds, std::vector<UINT32>&& methodTokens)
+{
+    auto const discriminator = static_cast<INT32>(RecordedEventType::StackTraceSnapshot);
+    return StackTraceSnapshotMsg(std::move(metadataMsg), StackTraceSnapshotMsgArgsInstance(discriminator, StackTraceSnapshotMsgArgs(threadId, std::move(moduleIds), std::move(methodTokens))));
+}
+
+StackTraceSnapshotsMsg LibIPC::Helpers::CreateStackTraceSnapshotsMsg(MetadataMsg&& metadataMsg, std::vector<StackTraceSnapshotMsgArgs>&& snapshots)
+{
+    auto const discriminator = static_cast<INT32>(RecordedEventType::StackTraceSnapshots);
+    return StackTraceSnapshotsMsg(std::move(metadataMsg), StackTraceSnapshotsMsgArgsInstance(discriminator, StackTraceSnapshotsMsgArgs(std::move(snapshots))));
 }
