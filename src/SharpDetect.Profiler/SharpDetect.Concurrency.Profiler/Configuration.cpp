@@ -35,6 +35,7 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
     descriptor.sharedMemorySize = json.at("sharedMemorySize");
 
 	descriptor.commandQueueName = json.at("commandQueueName");
+	descriptor.commandQueueName = descriptor.commandQueueName + "." + std::to_string(LibProfiler::PAL_GetCurrentPid());
     if (json.find("commandQueueFile") != json.cend())
     {
         auto& commandQueueFile = json.at("commandQueueFile");

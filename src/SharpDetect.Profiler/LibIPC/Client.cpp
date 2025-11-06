@@ -75,6 +75,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	}
 	
 	// Create producer for events
+	LOG_F(INFO, "IPC event worker configuration: { name: %s, file: %s, size: %d }", _ipqName.c_str(), _mmfName.c_str(), _eventQueueSize);
 	_ffiProducer = reinterpret_cast<ipq_producer_create>(_ipqProducerCreateSymbolAddress)(_ipqName.c_str(), _mmfName.c_str(), _eventQueueSize);
 	if (_ffiProducer == nullptr)
 	{
@@ -83,6 +84,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	}
 
 	// Create consumer for commands
+	LOG_F(INFO, "IPC command worker configuration: { name: %s, file: %s, size: %d }", _commandQueueName.c_str(), _commandMmfName.c_str(), _commandQueueSize);
 	_ffiConsumer = reinterpret_cast<ipq_consumer_create>(_ipqConsumerCreateSymbolAddress)(_commandQueueName.c_str(), _commandMmfName.c_str(), _commandQueueSize);
 	if (_ffiConsumer == nullptr)
 	{

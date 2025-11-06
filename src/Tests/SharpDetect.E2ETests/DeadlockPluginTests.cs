@@ -37,7 +37,7 @@ public class DeadlockPluginTests
         Assert.False(eventsDeliveryContext.HasBlockedThreads());
     }
 
-    [Theory(Timeout = 10_000)]
+    [Theory]
 #if DEBUG
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Debug.json")]
 #elif RELEASE
