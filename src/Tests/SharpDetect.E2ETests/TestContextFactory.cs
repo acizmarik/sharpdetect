@@ -22,7 +22,11 @@ internal static class TestContextFactory
         return new AnalysisServiceProviderBuilder(args)
             .WithTimeProvider(TimeProvider.System)
             .WithPlugin(pluginType)
-            .ConfigureLogging(logging => logging.AddProvider(new XUnitLoggerProvider(output)))
+            .ConfigureLogging(logging =>
+            {
+                logging.AddProvider(new XUnitLoggerProvider(output));
+                logging.SetMinimumLevel(args.Analysis.LogLevel);
+            })
             .Build();
     }
 }

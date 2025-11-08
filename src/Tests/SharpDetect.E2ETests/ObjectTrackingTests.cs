@@ -13,19 +13,20 @@ namespace SharpDetect.E2ETests;
 [Collection("E2E")]
 public class ObjectTrackingTests(ITestOutputHelper testOutput)
 {
+    private const string TestMethodName = "Main";
     private const string ConfigurationFolder = "ObjectTrackingTestConfigurations";
 
     [Theory]
 #if DEBUG
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC_Debug.json", "Test_SingleGarbageCollection_ObjectTracking_Simple")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Debug.json", "Test_MultipleGarbageCollection_ObjectTracking_Simple")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting_Debug.json", "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC_Release.json", "Test_SingleGarbageCollection_ObjectTracking_Simple")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Release.json", "Test_MultipleGarbageCollection_ObjectTracking_Simple")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting_Release.json", "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC_Release.json")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Release.json")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting_Release.json")]
 #endif
-    public async Task ObjectsTracking(string configuration, string testMethod)
+    public async Task ObjectsTracking(string configuration)
     {
         // Arrange
         var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
@@ -37,13 +38,13 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 enteredTest = true;
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 exitedTest = true;
         };
         plugin.LockAcquireAttempted += e =>

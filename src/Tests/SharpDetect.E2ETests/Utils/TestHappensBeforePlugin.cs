@@ -31,7 +31,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
                    COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
-        additionalData: MonitorMethodDescriptors.GetAllMethods().ToImmutableArray());
+        additionalData: MonitorMethodDescriptors.GetAllMethods().Concat([TestMethodDescriptors.BuildTestEntryMethod()]).ToImmutableArray());
     public DirectoryInfo ReportTemplates => throw new NotSupportedException();
     public Summary CreateDiagnostics() => throw new NotSupportedException();
     public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports) => throw new NotSupportedException();

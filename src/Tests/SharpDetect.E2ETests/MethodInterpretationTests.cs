@@ -15,15 +15,16 @@ namespace SharpDetect.E2ETests;
 [Collection("E2E")]
 public class MethodInterpretationTests(ITestOutputHelper testOutput)
 {
+    private const string TestMethodName = "Main";
     private const string ConfigurationFolder = "MethodInterpretationTestConfigurations";
 
     [Theory]
 #if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1_Debug.json", "Test_MonitorMethods_EnterExit1")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1_Release.json", "Test_MonitorMethods_EnterExit1")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1_Release.json")]
 #endif
-    public async Task MethodInterpretation_Monitor_EnterExit_LockStatement(string configuration, string testMethod)
+    public async Task MethodInterpretation_Monitor_EnterExit_LockStatement(string configuration)
     {
         // Arrange
         var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
@@ -36,13 +37,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 enteredTest = true;
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 exitedTest = true;
         };
         plugin.LockAcquireAttempted += e =>
@@ -87,11 +88,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
 #if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2_Debug.json", "Test_MonitorMethods_EnterExit2")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2_Release.json", "Test_MonitorMethods_EnterExit2")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2_Release.json")]
 #endif
-    public async Task MethodInterpretation_Monitor_EnterExit_Unsafe(string configuration, string testMethod)
+    public async Task MethodInterpretation_Monitor_EnterExit_Unsafe(string configuration)
     {
         // Arrange
         var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
@@ -104,13 +105,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 enteredTest = true;
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 exitedTest = true;
         };
         plugin.LockAcquireAttempted += e =>
@@ -155,15 +156,15 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
 #if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1_Debug.json", "Test_MonitorMethods_TryEnterExit1")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2_Debug.json", "Test_MonitorMethods_TryEnterExit2")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3_Debug.json", "Test_MonitorMethods_TryEnterExit3")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1_Release.json", "Test_MonitorMethods_TryEnterExit1")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2_Release.json", "Test_MonitorMethods_TryEnterExit2")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3_Release.json", "Test_MonitorMethods_TryEnterExit3")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1_Release.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2_Release.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3_Release.json")]
 #endif
-    public async Task MethodInterpretation_Monitor_TryEnterExit(string configuration, string testMethod)
+    public async Task MethodInterpretation_Monitor_TryEnterExit(string configuration)
     {
         // Arrange
         var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
@@ -176,13 +177,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 enteredTest = true;
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == testMethod)
+            if (method.Name == TestMethodName)
                 exitedTest = true;
         };
         plugin.LockAcquireAttempted += e =>

@@ -1,42 +1,37 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using CliWrap;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Serialization;
-using SharpDetect.InterProcessQueue;
-using SharpDetect.InterProcessQueue.Configuration;
-using SharpDetect.InterProcessQueue.Memory;
 using SharpDetect.Worker.Commands.Run;
 
-namespace SharpDetect.Worker;
+namespace SharpDetect.Worker.Services;
 
 public sealed class AnalysisWorker : IAnalysisWorker
 {
     private readonly RunCommandArgs _arguments;
     private readonly IPlugin _plugin;
     private readonly IPluginHost _pluginHost;
+    private readonly IProfilerEventReceiver _eventReceiver;
     private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
-    private readonly IRecordedEventParser _eventsParser;
     private readonly ILogger<AnalysisWorker> _logger;
 
     public AnalysisWorker(
         RunCommandArgs arguments,
         IPlugin plugin,
         IPluginHost pluginHost,
-        IRecordedEventParser eventsParser,
+        IProfilerEventReceiver eventReceiver,
         IRecordedEventsDeliveryContext eventsDeliveryContext,
         ILogger<AnalysisWorker> logger)
     {
         _arguments = arguments;
         _plugin = plugin;
         _pluginHost = pluginHost;
-        _eventsParser = eventsParser;
+        _eventReceiver = eventReceiver;
         _eventsDeliveryContext = eventsDeliveryContext;
         _logger = logger;
     }
@@ -51,14 +46,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync();
         _logger.LogInformation("Started process with PID: {Pid}.", targetApplicationProcess.ProcessId);
 
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(
-            _plugin.Configuration.SharedMemoryName, 
-            _plugin.Configuration.SharedMemoryFile, 
-            _plugin.Configuration.SharedMemorySize);
-        using var eventConsumer = new Consumer(consumerOptions, ArrayPool<byte>.Shared);
-        _logger.LogTrace("Started event consumer of IPC queue with name: \"{Name}\" file:\"{File}\".", consumerOptions.Name, consumerOptions.File);
-
-        ExecuteAnalysis(eventConsumer, targetApplicationProcess.Task, cancellationToken);
+        ExecuteAnalysis(targetApplicationProcess.Task, cancellationToken);
         _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", targetApplicationProcess.ProcessId);
 
         return ValueTask.CompletedTask;
@@ -79,14 +67,13 @@ public sealed class AnalysisWorker : IAnalysisWorker
         var profilerDirectory = Path.GetDirectoryName(profilerPath)!;
         var ipqPath = $"{Path.Combine(profilerDirectory, "SharpDetect.InterProcessQueue")}{extension}";
 
-        var command = CliWrap.Cli.Wrap(host)
+        var command = Cli.Wrap(host)
             .WithArguments(argsBuilder)
             .WithEnvironmentVariables(builder =>
             {
                 builder.Set("CORECLR_ENABLE_PROFILING", "1");
                 builder.Set("CORECLR_PROFILER", _arguments.Runtime.Profiler.Clsid.ToString());
                 builder.Set("CORECLR_PROFILER_PATH", profilerPath);
-                builder.Set("SharpDetect_COLLECT_FULL_STACKTRACES", _arguments.Runtime.Profiler.CollectFullStackTraces ? "1" : "0");
                 builder.Set("SharpDetect_IPQ_PATH", ipqPath);
                 builder.Set("SharpDetect_CONFIGURATION_PATH", GetFullConfigurationPath());
                 builder.Set("SharpDetect_LOG_LEVEL", ((int)_arguments.Runtime.Profiler.LogLevel).ToString());
@@ -122,20 +109,18 @@ public sealed class AnalysisWorker : IAnalysisWorker
         return command;
     }
     
-    private void ExecuteAnalysis(Consumer consumer, Task targetProcessTask, CancellationToken cancellationToken)
+    private void ExecuteAnalysis(Task targetProcessTask, CancellationToken cancellationToken)
     {
         RecordedEvent? previousRecordedEvent = null;
         while (!ShouldTerminateAnalysis(targetProcessTask, previousRecordedEvent, cancellationToken))
         {
-            var result = consumer.Dequeue();
-            if (result.IsError)
+            if (!_eventReceiver.TryReceiveNotification(out var currentEvent))
             {
                 previousRecordedEvent = null;
                 continue;
             }
-
-            // Execute current event
-            if (!TryParseEvent(result.Value, _eventsParser, out var currentEvent) || ProcessEvent(currentEvent) == RecordedEventState.Failed)
+            
+            if (ProcessEvent(currentEvent) == RecordedEventState.Failed)
             {
                 _logger.LogCritical("Cannot continue with analysis due to previous errors.");
                 return;
@@ -168,28 +153,6 @@ public sealed class AnalysisWorker : IAnalysisWorker
         {
             _logger.LogError(ex, "Unhandled exception while processing event {Event}.", recordedEvent);
             return RecordedEventState.Failed;
-        }
-    }
-    
-    private bool TryParseEvent(
-        ILocalMemory<byte> memory, 
-        IRecordedEventParser parser, 
-        [NotNullWhen(true)] out RecordedEvent? recordedEvent)
-    {
-        try
-        {
-            recordedEvent = parser.Parse(memory.GetLocalMemory());
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unhandled exception while parsing recorded event.");
-            recordedEvent = null;
-            return false;
-        }
-        finally
-        {
-            (memory as IDisposable)?.Dispose();
         }
     }
     

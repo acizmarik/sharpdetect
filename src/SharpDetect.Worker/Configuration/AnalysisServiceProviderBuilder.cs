@@ -11,6 +11,7 @@ using SharpDetect.PluginHost;
 using SharpDetect.Reporting;
 using SharpDetect.Serialization;
 using SharpDetect.Worker.Commands.Run;
+using SharpDetect.Worker.Services;
 
 namespace SharpDetect.Worker.Configuration;
 
