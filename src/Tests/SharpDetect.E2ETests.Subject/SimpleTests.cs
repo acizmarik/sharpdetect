@@ -335,13 +335,16 @@ namespace SharpDetect.E2ETests.Subject
         {
             var lockObj1 = new object();
             var lockObj2 = new object();
-
+            var syncEvent = new AutoResetEvent(true);
+            
             var thread1 = new Thread(() =>
             {
                 for (;;)
                 {
+                    syncEvent.WaitOne();
                     lock (lockObj1)
                     {
+                        syncEvent.Set();
                         lock (lockObj2)
                         {
                         }
@@ -353,8 +356,10 @@ namespace SharpDetect.E2ETests.Subject
             {
                 for (;;)
                 {
+                    syncEvent.WaitOne();
                     lock (lockObj2)
                     {
+                        syncEvent.Set();
                         lock (lockObj1)
                         {
                         }
@@ -367,8 +372,7 @@ namespace SharpDetect.E2ETests.Subject
             thread1.Start();
             thread2.Start();
 
-            for (;;)
-                Thread.Sleep(2000);
+            Thread.Sleep(2500);
         }
 
         public static void Test_DataRace_ReferenceType_Static_SimpleRace()

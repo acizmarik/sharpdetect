@@ -21,7 +21,7 @@ internal class CallstackResolver : ICallstackResolver
 
     public StackTrace Resolve(ThreadInfo threadInfo, Callstack callstack)
     {
-        var pid = callstack.Pid;
+        var pid = callstack.ProcessThreadId.ProcessId;
         var resolver = _metadataContext.GetResolver(pid);
         var resolvedFrames = ImmutableArray.CreateBuilder<StackFrame>();
         foreach (var frame in callstack)

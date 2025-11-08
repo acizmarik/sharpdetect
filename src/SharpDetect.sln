@@ -52,6 +52,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.InterProcessQue
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.Communication", "SharpDetect.Communication\SharpDetect.Communication.csproj", "{71F106DC-87A2-40AF-B99F-A283A2D020BF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDetect.Worker", "SharpDetect.Worker\SharpDetect.Worker.csproj", "{9F8A382D-B938-4B52-9782-2CA97337C484}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -118,6 +120,10 @@ Global
 		{71F106DC-87A2-40AF-B99F-A283A2D020BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71F106DC-87A2-40AF-B99F-A283A2D020BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{71F106DC-87A2-40AF-B99F-A283A2D020BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F8A382D-B938-4B52-9782-2CA97337C484}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F8A382D-B938-4B52-9782-2CA97337C484}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F8A382D-B938-4B52-9782-2CA97337C484}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F8A382D-B938-4B52-9782-2CA97337C484}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

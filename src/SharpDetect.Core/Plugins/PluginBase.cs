@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
-using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Loader;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
@@ -19,10 +18,10 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
     protected SummaryBuilder Reporter { get; } = new SummaryBuilder();
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
-    protected IReadOnlyDictionary<ThreadId, string> Threads => _threads;
-    protected IReadOnlyDictionary<ThreadId, Callstack> Callstacks => _callstacks;
-    private readonly Dictionary<ThreadId, Callstack> _callstacks;
-    private readonly Dictionary<ThreadId, string> _threads;
+    protected IReadOnlyDictionary<ProcessThreadId, string> Threads => _threads;
+    protected IReadOnlyDictionary<ProcessThreadId, Callstack> Callstacks => _callstacks;
+    private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
+    private readonly Dictionary<ProcessThreadId, string> _threads;
     private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
     private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
     private int nextFreeThreadId;
@@ -65,11 +64,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
     {
-        var threadId = args.ThreadId;
-        if (!Threads.ContainsKey(threadId))
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        if (!Threads.ContainsKey(id))
         {
             // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
-            StartNewThread(metadata.Pid, args.ThreadId);
+            StartNewThread(id);
         }
 
         base.Visit(metadata, args);
@@ -77,25 +76,25 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)
     {
-        var threadId = args.ThreadId;
-        if (!Threads.ContainsKey(threadId))
+        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
+        if (!Threads.ContainsKey(id))
         {
             // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
-            StartNewThread(metadata.Pid, args.ThreadId);
+            StartNewThread(id);
         }
 
-        var oldName = Threads[threadId];
+        var oldName = Threads[id];
         var newName = $"{oldName} ({args.NewName})";
-        _threads[threadId] = newName;
+        _threads[id] = newName;
         Logger.LogInformation("Renamed thread {OldName} -> {NewName}.", oldName, newName);
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadDestroyRecordedEvent args)
     {
-        var threadId = args.ThreadId;
-        var name = Threads[threadId];
-        _threads.Remove(threadId);
+        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
+        var name = Threads[id];
+        _threads.Remove(id);
         Logger.LogInformation("Destroyed thread {Name}.", name);
         base.Visit(metadata, args);
     }
@@ -127,27 +126,31 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
 
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterRecordedEvent args)
     {
-        _callstacks[metadata.Tid].Push(args.ModuleId, args.MethodToken);
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        _callstacks[id].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterExitCounter();
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        _callstacks[metadata.Tid].Push(args.ModuleId, args.MethodToken);
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        _callstacks[id].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterExitCounter();
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
-        _callstacks[metadata.Tid].Pop();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        _callstacks[id].Pop();
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
-        _callstacks[metadata.Tid].Pop();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        _callstacks[id].Pop();
         base.Visit(metadata, args);
     }
 
@@ -163,11 +166,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
             : sender;
     }
 
-    private void StartNewThread(uint processId, ThreadId threadId)
+    private void StartNewThread(ProcessThreadId processThreadId)
     {
-        _threads[threadId] = $"T{nextFreeThreadId++}";
-        _callstacks[threadId] = new(processId, threadId);
-        Logger.LogInformation("Started thread {Name}.", _threads[threadId]);
+        _threads[processThreadId] = $"T{nextFreeThreadId++}";
+        _callstacks[processThreadId] = new Callstack(processThreadId);
+        Logger.LogInformation("Started thread {Name}.", _threads[processThreadId]);
     }
 
     private void InitializeCommandsChannel(uint processId)

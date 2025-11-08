@@ -2,15 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Cli.Handlers;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.E2ETests.Utils;
+using SharpDetect.Worker;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
 [Collection("E2E")]
-public class ObjectTrackingTests
+public class ObjectTrackingTests(ITestOutputHelper testOutput)
 {
     private const string ConfigurationFolder = "ObjectTrackingTestConfigurations";
 
@@ -27,9 +28,9 @@ public class ObjectTrackingTests
     public async Task ObjectsTracking(string configuration, string testMethod)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration, typeof(TestHappensBeforePlugin));
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
         var lockObjects = new HashSet<Lock>();
@@ -62,7 +63,7 @@ public class ObjectTrackingTests
         };
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
         Assert.True(enteredTest);

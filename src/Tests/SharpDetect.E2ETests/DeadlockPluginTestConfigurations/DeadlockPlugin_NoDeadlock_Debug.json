@@ -4,8 +4,7 @@
     "Args": "Test_NoDeadlock",
     "Architecture": "X64",
     "RedirectInputOutput": {
-      "StdoutFilePath": "test_stdout.log",
-      "StderrFilePath": "test_stderr.log"
+      "SingleConsoleMode": true
     }
   },
   "Runtime": {

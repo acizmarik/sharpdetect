@@ -47,7 +47,8 @@ public partial class DeadlockPlugin
             var callstacks = _deadlockStackTraces[(processId, requestId)];
             foreach (var (threadId, _, blockedOnThreadId, lockId) in cycle)
             {
-                var callstack = new Callstack(processId, threadId);
+                var processThreadId = new ProcessThreadId(processId, threadId);
+                var callstack = new Callstack(processThreadId);
                 if (callstacks.Snapshots.SingleOrDefault(s => s.ThreadId == threadId) is { } snapshot)
                 {
                     for (var frameIndex = snapshot.MethodTokens.Length - 1; frameIndex >= 0; frameIndex--)

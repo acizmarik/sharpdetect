@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Meziantou.Extensions.Logging.Xunit" />
     <PackageReference Include="coverlet.collector">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -20,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Extensibility\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
-    <ProjectReference Include="..\..\SharpDetect.Cli\SharpDetect.Cli.csproj" />
+    <ProjectReference Include="..\..\SharpDetect.Worker\SharpDetect.Worker.csproj" />
     <ProjectReference Include="..\SharpDetect.E2ETests.Subject\SharpDetect.E2ETests.Subject.csproj" />
   </ItemGroup>
 

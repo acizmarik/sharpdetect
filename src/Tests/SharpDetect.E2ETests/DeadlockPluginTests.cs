@@ -2,18 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Cli.Handlers;
 using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
+using SharpDetect.Plugins.Deadlock;
+using SharpDetect.Worker;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
 [Collection("E2E")]
-public class DeadlockPluginTests
+public class DeadlockPluginTests(ITestOutputHelper testOutput)
 {
     private const string ConfigurationFolder = "DeadlockPluginTestConfigurations";
-
+    
     [Theory]
 #if DEBUG
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}_Debug.json")]
@@ -23,13 +25,13 @@ public class DeadlockPluginTests
     public async Task DeadlockPlugin_NoDeadlock(string configuration)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration);
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<IPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var eventsDeliveryContext = services.GetRequiredService<IRecordedEventsDeliveryContext>();
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert
@@ -46,17 +48,18 @@ public class DeadlockPluginTests
     public async Task DeadlockPlugin_CanDetectDeadlock(string configuration)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration, typeof(TestDeadlockPlugin));
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
-        using var cts = new CancellationTokenSource();
-        plugin.StackTraceSnapshotsCreated += _ => cts.Cancel();;
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var snapshotCreated = false;
+        plugin.StackTraceSnapshotsCreated += _ => snapshotCreated = true;
 
         // Execute
-        await handler.ExecuteAsync(null!, cts.Token);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert
+        Assert.True(snapshotCreated);
         Assert.NotNull(report);
         Assert.Equal(plugin.ReportCategory, report.Category);
     }

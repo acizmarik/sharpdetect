@@ -4,8 +4,7 @@
     "Args": "Test_MultipleGarbageCollection_ObjectTracking_Simple",
     "Architecture": "X64",
     "RedirectInputOutput": {
-      "StdoutFilePath": "test_stdout.log",
-      "StderrFilePath": "test_stderr.log"
+      "SingleConsoleMode": true
     }
   },
   "Runtime": {

@@ -3,16 +3,17 @@
 
 using dnlib.DotNet;
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Cli.Handlers;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.E2ETests.Utils;
+using SharpDetect.Worker;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
 [Collection("E2E")]
-public class MethodInterpretationTests
+public class MethodInterpretationTests(ITestOutputHelper testOutput)
 {
     private const string ConfigurationFolder = "MethodInterpretationTestConfigurations";
 
@@ -25,9 +26,9 @@ public class MethodInterpretationTests
     public async Task MethodInterpretation_Monitor_EnterExit_LockStatement(string configuration, string testMethod)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration, typeof(TestHappensBeforePlugin));
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
         var methods = new List<MethodDef>();
@@ -70,7 +71,7 @@ public class MethodInterpretationTests
         };
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
         Assert.True(enteredTest);
@@ -93,9 +94,9 @@ public class MethodInterpretationTests
     public async Task MethodInterpretation_Monitor_EnterExit_Unsafe(string configuration, string testMethod)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration, typeof(TestHappensBeforePlugin));
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
         var methods = new List<MethodDef>();
@@ -138,7 +139,7 @@ public class MethodInterpretationTests
         };
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
         Assert.True(enteredTest);
@@ -165,9 +166,9 @@ public class MethodInterpretationTests
     public async Task MethodInterpretation_Monitor_TryEnterExit(string configuration, string testMethod)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration, typeof(TestHappensBeforePlugin));
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
         var methods = new List<MethodDef>();
@@ -210,7 +211,7 @@ public class MethodInterpretationTests
         };
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
         Assert.True(enteredTest);
