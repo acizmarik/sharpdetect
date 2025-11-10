@@ -15,7 +15,6 @@ namespace SharpDetect.E2ETests;
 [Collection("E2E")]
 public class MethodInterpretationTests(ITestOutputHelper testOutput)
 {
-    private const string TestMethodName = "Main";
     private const string ConfigurationFolder = "MethodInterpretationTestConfigurations";
 
     [Theory]
@@ -32,23 +31,30 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
+        var insideTestMethod = false;
         var methods = new List<MethodDef>();
         var lockObjects = new HashSet<Lock>();
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = true;
                 enteredTest = true;
+            }
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = false;
                 exitedTest = true;
+            }
         };
         plugin.LockAcquireAttempted += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -56,7 +62,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         };
         plugin.LockAcquireReturned += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -64,7 +70,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         };
         plugin.LockReleased += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -100,23 +106,30 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
+        var insideTestMethod = false;
         var methods = new List<MethodDef>();
         var lockObjects = new HashSet<Lock>();
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = true;
                 enteredTest = true;
+            }
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = false;
                 exitedTest = true;
+            }
         };
         plugin.LockAcquireAttempted += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -124,7 +137,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         };
         plugin.LockAcquireReturned += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -132,7 +145,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         };
         plugin.LockReleased += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -172,23 +185,30 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
+        var insideTestMethod = false;
         var methods = new List<MethodDef>();
         var lockObjects = new HashSet<Lock>();
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = true;
                 enteredTest = true;
+            }
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = false;
                 exitedTest = true;
+            }
         };
         plugin.LockAcquireAttempted += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -196,7 +216,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         };
         plugin.LockAcquireReturned += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);
@@ -204,7 +224,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         };
         plugin.LockReleased += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
             {
                 methods.Add(plugin.Resolve(new RecordedEventMetadata(e.ProcessId, e.ThreadId), e.ModuleId, e.MethodToken));
                 lockObjects.Add(e.LockObj);

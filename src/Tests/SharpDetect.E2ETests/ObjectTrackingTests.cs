@@ -34,32 +34,39 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
+        var insideTestMethod = false;
         var lockObjects = new HashSet<Lock>();
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = true;
                 enteredTest = true;
+            }
         };
         plugin.MethodExited += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name == TestMethodName)
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = false;
                 exitedTest = true;
+            }
         };
         plugin.LockAcquireAttempted += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
                 lockObjects.Add(e.LockObj);
         };
         plugin.LockAcquireReturned += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
                 lockObjects.Add(e.LockObj);
         };
         plugin.LockReleased += e =>
         {
-            if (enteredTest && !exitedTest)
+            if (insideTestMethod)
                 lockObjects.Add(e.LockObj);
         };
 

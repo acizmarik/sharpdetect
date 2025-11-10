@@ -8,11 +8,11 @@ namespace SharpDetect.E2ETests.Utils;
 
 internal static class TestMethodDescriptors
 {
-    private static readonly MethodSignatureDescriptor VoidMethodWithStringArraySignature = new (
+    private static readonly MethodSignatureDescriptor VoidMethodNoArgsSignature = new (
         CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-        ParametersCount: 1,
+        ParametersCount: 0,
         ReturnType: CorElementType.ELEMENT_TYPE_VOID,
-        ArgumentTypeElements: [CorElementType.ELEMENT_TYPE_SZARRAY, CorElementType.ELEMENT_TYPE_STRING]);
+        ArgumentTypeElements: []);
 
     private static readonly MethodRewritingDescriptor InjectHooksRewritingDescriptor = new(
         InjectHooks: true,
@@ -22,12 +22,28 @@ internal static class TestMethodDescriptors
         MethodEnterInterpretation: null,
         MethodExitInterpretation: null);
     
-    public static MethodDescriptor BuildTestEntryMethod()
+    public static IEnumerable<MethodDescriptor> GetAllTestMethods()
     {
-        return new MethodDescriptor(
-            MethodName: "Main",
-            DeclaringTypeFullName: "SharpDetect.E2ETests.Subject.Program",
-            VoidMethodWithStringArraySignature,
-            InjectHooksRewritingDescriptor);
+        // Return descriptors for all test methods that need hooks
+        var testMethodNames = new[]
+        {
+            "Test_MonitorMethods_EnterExit1",
+            "Test_MonitorMethods_EnterExit2",
+            "Test_MonitorMethods_TryEnterExit1",
+            "Test_MonitorMethods_TryEnterExit2",
+            "Test_MonitorMethods_TryEnterExit3",
+            "Test_SingleGarbageCollection_ObjectTracking_Simple",
+            "Test_MultipleGarbageCollection_ObjectTracking_Simple",
+            "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject"
+        };
+
+        foreach (var methodName in testMethodNames)
+        {
+            yield return new MethodDescriptor(
+                MethodName: methodName,
+                DeclaringTypeFullName: "SharpDetect.E2ETests.Subject.Program",
+                VoidMethodNoArgsSignature,
+                InjectHooksRewritingDescriptor);
+        }
     }
 }
