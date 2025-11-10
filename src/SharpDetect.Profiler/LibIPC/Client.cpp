@@ -25,6 +25,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_commandMmfName(commandQueueFile),
 	_eventQueueSize(eventQueueSize),
 	_commandQueueSize(commandQueueSize),
+	_terminating(false),
 	_ipqModuleHandle(nullptr),
 	_ffiProducer(nullptr),
 	_ffiConsumer(nullptr),

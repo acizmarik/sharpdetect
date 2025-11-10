@@ -42,7 +42,6 @@ Profiler::CorProfiler::CorProfiler(Configuration configuration) :
         configuration.sharedMemoryName,
         configuration.sharedMemoryFile.value_or(std::string()),
         configuration.sharedMemorySize),
-    _collectFullStackTraces(false),
     _coreModule(0)
 {
     _terminating = false;
@@ -55,18 +54,10 @@ EXTERN_C void TailcallNaked(FunctionIDOrClientID functionIDOrClientID, COR_PRF_E
 
 UINT_PTR STDMETHODCALLTYPE FunctionMapper(FunctionID funcId, void* clientData, BOOL* pbHookFunction)
 {
-    if (ProfilerInstance->ShouldCollectFullStackTraces())
-    {
-        // Inject hooks for all methods
-        *pbHookFunction = true;
-    }
-    else
-    {
-        // Inject hooks only for methods where we explicitly requested them
-        auto const descriptor = ProfilerInstance->FindMethodDescriptor(funcId);
-        auto const shouldInjectHooks = descriptor != nullptr && descriptor->rewritingDescriptor.injectHooks;
-        *pbHookFunction = shouldInjectHooks;
-    }
+    // Inject hooks only for methods where we explicitly requested them
+    auto const descriptor = ProfilerInstance->FindMethodDescriptor(funcId);
+    auto const shouldInjectHooks = descriptor != nullptr && descriptor->rewritingDescriptor.injectHooks;
+    *pbHookFunction = shouldInjectHooks;
 
     return funcId;
 }
@@ -83,17 +74,6 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
 
     for (auto&& item : _configuration.additionalData)
         _methodDescriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
-    
-    auto rawShouldCollectFullStackTraces = std::getenv("SharpDetect_COLLECT_FULL_STACKTRACES");
-    if (rawShouldCollectFullStackTraces == nullptr)
-    {
-        // Default: set to false
-        _collectFullStackTraces = false;
-    }
-    else
-    {
-        _collectFullStackTraces = std::stoi(rawShouldCollectFullStackTraces);
-    }
 
     COR_PRF_RUNTIME_TYPE runtimeType;
     USHORT majorVersion;

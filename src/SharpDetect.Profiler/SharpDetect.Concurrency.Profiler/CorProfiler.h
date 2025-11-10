@@ -46,7 +46,6 @@ namespace Profiler
 		virtual HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
 		virtual HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
 		
-		const BOOL ShouldCollectFullStackTraces() const { return _collectFullStackTraces; }
 		HRESULT EnterMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT TailcallMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
@@ -92,7 +91,6 @@ namespace Profiler
 			tcb::span<BYTE>& argOffset);
 
 		std::atomic_bool _terminating;
-		BOOL _collectFullStackTraces;
 		Configuration _configuration;
 		LibIPC::Client _client;
 		ModuleID _coreModule;

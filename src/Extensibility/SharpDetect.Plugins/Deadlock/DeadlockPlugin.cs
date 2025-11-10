@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Plugins.Deadlock.Descriptors;
 using System.Collections.Immutable;
 using SharpDetect.Core.Commands;
@@ -35,11 +34,9 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     public DirectoryInfo ReportTemplates { get; }
     
     private readonly ICallstackResolver _callStackResolver;
+    private readonly ConcurrencyContext _concurrencyContext;
     private readonly Dictionary<(uint Pid, ulong RequestId), DeadlockInfo> _deadlocks;
     private readonly Dictionary<(uint Pid, ulong RequestId), StackTraceSnapshotsRecordedEvent> _deadlockStackTraces;
-    private readonly Dictionary<(uint Pid, ThreadId Tid), Lock?> _waitingForLocks;
-    private readonly Dictionary<(uint Pid, ThreadId Tid), HashSet<Lock>> _takenLocks;
-    private readonly Dictionary<(uint Pid, ThreadId Tid), Stack<RuntimeArgumentList>> _callstackArguments;
 
     public DeadlockPlugin(
         ICallstackResolver callstackResolver,
@@ -50,9 +47,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 
         _deadlocks = [];
         _deadlockStackTraces = [];
-        _waitingForLocks = [];
-        _takenLocks = [];
-        _callstackArguments = [];
+        _concurrencyContext = new ConcurrencyContext();
 
         LockAcquireAttempted += OnLockAcquireAttempted;
         LockAcquireReturned += OnLockAcquireReturned;
@@ -70,58 +65,49 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 
     private void OnLockAcquireAttempted(LockAcquireAttemptArgs args)
     {
-        var key = (args.ProcessId, args.ThreadId);
-        _waitingForLocks[key] = args.LockObj;
-        CheckForDeadlocks(args.ProcessId, args.ThreadId);
+        var id = new ProcessThreadId(args.ProcessId, args.ThreadId);
+        _concurrencyContext.RecordLockAcquireCalled(id, args.LockObj);
+        CheckForDeadlocks(id);
     }
 
     private void OnLockAcquireReturned(LockAcquireResultArgs args)
     {
-        var key = (args.ProcessId, args.ThreadId);
-        if (args.IsSuccess)
-            _takenLocks[key].Add(args.LockObj);
-
-        _waitingForLocks[key] = null;
+        var id = new ProcessThreadId(args.ProcessId, args.ThreadId);
+        _concurrencyContext.RecordLockAcquireReturned(id, args.LockObj, args.IsSuccess);
     }
 
     private void OnLockReleased(LockReleaseArgs args)
     {
-        var key = (args.ProcessId, args.ThreadId);
-        _takenLocks[key].Remove(args.LockObj);
+        var id = new ProcessThreadId(args.ProcessId, args.ThreadId);
+        _concurrencyContext.RecordLockReleaseReturned(id, args.LockObj);
     }
 
     private void OnObjectWaitAttempted(ObjectWaitAttemptArgs args)
     {
-        var key = (args.ProcessId, args.ThreadId);
-        _takenLocks[key].Remove(args.LockObj);
+        var id = new ProcessThreadId(args.ProcessId, args.ThreadId);
+        _concurrencyContext.RecordObjectWaitCalled(id, args.LockObj);
     }
 
     private void OnObjectWaitReturned(ObjectWaitResultArgs args)
     {
-        var key = (args.ProcessId, args.ThreadId);
-        _takenLocks[key].Add(args.LockObj);
+        var id = new ProcessThreadId(args.ProcessId, args.ThreadId);
+        _concurrencyContext.RecordObjectWaitReturned(id, args.LockObj);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
     {
-        var threadId = args.ThreadId;
-        if (!Threads.ContainsKey(threadId))
-        {
-            // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
-            StartNewThread(metadata.Pid, args.ThreadId);
-        }
+        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
+        if (!_concurrencyContext.HasThread(id))
+            _concurrencyContext.RecordThreadCreated(id);
 
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)
     {
-        var threadId = args.ThreadId;
-        if (!Threads.ContainsKey(threadId))
-        {
-            // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
-            StartNewThread(metadata.Pid, args.ThreadId);
-        }
+        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
+        if (!_concurrencyContext.HasThread(id))
+            _concurrencyContext.RecordThreadCreated(id);
 
         base.Visit(metadata, args);
     }
@@ -134,81 +120,80 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         base.Visit(metadata, args);
     }
 
-    private void CheckForDeadlocks(uint processId, ThreadId threadId)
+    private void CheckForDeadlocks(ProcessThreadId sourceId)
     {
+        var processId = sourceId.ProcessId;
         var stack = new Stack<ThreadId>();
         var visited = new HashSet<ThreadId>();
-        stack.Push(threadId);
-        visited.Add(threadId);
+        stack.Push(sourceId.ThreadId);
+        visited.Add(sourceId.ThreadId);
 
         while (stack.Count > 0)
         {
             var currentThreadId = stack.Peek();
-            var blocked = _waitingForLocks[(processId, currentThreadId)];
+            var currentId = sourceId with { ThreadId = currentThreadId };
 
-            if (blocked is null)
+            if (!_concurrencyContext.TryGetWaitingLock(currentId, out var blocked) ||
+                blocked.Owner is not { } owner ||
+                owner == currentThreadId)
             {
-                // Current thread is not waiting for any lock
-                stack.Pop();
-                continue;
-            }
-
-            if (blocked?.Owner is null)
-            {
-                // Lock is not acquired
-                stack.Pop();
-                continue;
-            }
-
-            var owner = blocked.Owner.Value;
-            if (owner == currentThreadId)
-            {
-                // Reentrancy
+                // Skip current thread - one of the following situation happened:
+                // 1) it is not waiting for any lock
+                // 2) the lock it is waiting for is not owned by any thread
+                // 3) the lock it is waiting for is owned by itself (re-entrance)
                 stack.Pop();
                 continue;
             }
 
             if (stack.Contains(owner))
             {
-                // Construct deadlock chain
-                var deadlock = new List<(ThreadId ThreadId, string ThreadName, ThreadId BlockedOnThreadId, TrackedObjectId LockId)>();
-                foreach (var thread in stack)
-                {
-                    var blockedOnLock = _waitingForLocks[(processId, thread)]!;
-                    var blockedOnThreadId = blockedOnLock.Owner!.Value;
-                    deadlock.Add((thread, Threads[thread], blockedOnThreadId, blockedOnLock.LockObjectId));
-                }
-
-                // Check if we recorded this deadlock
-                if (_deadlocks.Any(d => d.Key.Pid == processId && d.Value.Cycle.SequenceEqual(deadlock)))
-                    return;
-                
-                // Request stack traces for all involved threads
-                var commandSender = GetCommandSender(processId);
-                var commandId = commandSender.SendCommand(new CreateStackTraceSnapshotsCommand(
-                    deadlock.Select(e => e.ThreadId).ToArray()));
-                
-                _deadlocks.Add((processId, commandId.Value), new DeadlockInfo(processId, deadlock));
-                Logger.LogWarning("[PID={Pid}] Deadlock detected (affects {ThreadsCount} threads).", processId, deadlock.Count);
+                // Found deadlock
+                var deadlock = ConstructDeadlockInfo(processId, stack);
+                RecordDeadlockInfo(deadlock);
                 return;
             }
-
+            
             if (visited.Add(owner))
             {
+                // Continue searching by current lock owner
                 stack.Push(owner);
             }
             else
             {
+                // Lock owner already visited - backtrack
                 stack.Pop();
             }
         }
     }
 
-    private void StartNewThread(uint processId, ThreadId threadId)
+    private DeadlockInfo ConstructDeadlockInfo(uint processId, IEnumerable<ThreadId> blockedThreadsIds)
     {
-        var key = (processId, threadId);
-        _waitingForLocks[key] = null;
-        _takenLocks[key] = [];
-        _callstackArguments[key] = new();
+        return new DeadlockInfo(
+            ProcessId: processId, 
+            Cycle: (from threadId in blockedThreadsIds
+                    let id = new ProcessThreadId(processId, threadId)
+                    let blockedOnLock = _concurrencyContext.GetWaitingLock(id)
+                    select new DeadlockThreadInfo(
+                        ThreadId: threadId,
+                        ThreadName: Threads[id], 
+                        BlockedOn: blockedOnLock.Owner!.Value,
+                        LockId: blockedOnLock.LockObjectId)).ToList());
+    }
+
+    private void RecordDeadlockInfo(DeadlockInfo deadlock)
+    {
+        if (_deadlocks.Any(d => d.Key.Pid == deadlock.ProcessId && d.Value.Cycle.SequenceEqual(deadlock.Cycle)))
+        {
+            // Already recorded
+            return;
+        }
+        
+        var commandSender = GetCommandSender(deadlock.ProcessId);
+        var threadIds = deadlock.Cycle.Select(t => t.ThreadId).ToArray();
+        var commandId = commandSender.SendCommand(new CreateStackTraceSnapshotsCommand(threadIds));
+        _deadlocks.Add((deadlock.ProcessId, commandId.Value), deadlock);
+
+        var threadsCount = deadlock.Cycle.Count;
+        Logger.LogWarning("[PID={Pid}] Deadlock detected (affects {ThreadsCount} threads).", deadlock.ProcessId, threadsCount);
     }
 }

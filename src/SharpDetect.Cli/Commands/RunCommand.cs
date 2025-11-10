@@ -4,10 +4,7 @@
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
-using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Cli.Handlers;
-using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Reporting;
 
 namespace SharpDetect.Cli.Commands;
 
@@ -22,30 +19,19 @@ public sealed class RunCommand : ICommand
         var previousDirectory = Directory.GetCurrentDirectory();
         var workingDirectory = Path.GetDirectoryName(ArgumentsFile)
             ?? throw new DirectoryNotFoundException($"Cannot find parent directory of file \"{ArgumentsFile}\".");
-        RunCommandHandler commandHandler;
+        RunCommandHandler? commandHandler = null;
 
         try
         {
             Directory.SetCurrentDirectory(workingDirectory);
             var fileName = Path.GetFileName(ArgumentsFile);
-            commandHandler = RunCommandHandler.Create(fileName);
-            await commandHandler.ExecuteAsync(console);
+            commandHandler = new RunCommandHandler(fileName);
+            await commandHandler.ExecuteAsync(console, CancellationToken.None);
         }
         finally
         {
             Directory.SetCurrentDirectory(previousDirectory);
+            commandHandler?.Dispose();
         }
-
-        if (commandHandler.Args.Analysis.RenderReport)
-            ShowReportSummary(commandHandler.ServiceProvider);
-    }
-
-    private static void ShowReportSummary(IServiceProvider serviceProvider)
-    {
-        var displayer = serviceProvider.GetRequiredService<IReportSummaryDisplayer>();
-        var plugin = serviceProvider.GetRequiredService<IPlugin>();
-        var summary = plugin.CreateDiagnostics();
-
-        displayer.Display(summary, plugin, plugin.ReportTemplates);
     }
 }

@@ -16,8 +16,7 @@ Profiler::CorProfiler::CorProfiler(Configuration configuration) :
 		configuration.commandQueueSize,
         configuration.sharedMemoryName,
         configuration.sharedMemoryFile.value_or(std::string()),
-        configuration.sharedMemorySize),
-    _collectFullStackTraces(false)
+        configuration.sharedMemorySize)
 {
     _terminating = false;
     ProfilerInstance = this;
@@ -52,11 +51,9 @@ void MarkAnalyzedMethod(Profiler::MethodHookInfo* methodHookInfo, void* clientDa
 
 void MarkNotAnalyzedMethod(Profiler::MethodHookInfo* methodHookInfo, void* clientData, BOOL* pbHookFunction)
 {
-    auto collectFullStackTraces = ProfilerInstance->IsCollectFullStackTraces();
     methodHookInfo->GetInstance = false;
-    methodHookInfo->Hook = collectFullStackTraces;
-    clientData = methodHookInfo;
-    *pbHookFunction = collectFullStackTraces;
+    methodHookInfo->Hook = false;
+    *pbHookFunction = false;
 }
 
 BOOL IsTypeIgnored(const std::string& typeName)
@@ -175,17 +172,6 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
     {
         LOG_F(ERROR, "Could not obtain profiling API. Terminating.");
         return E_FAIL;
-    }
-
-    auto rawShouldCollectFullStackTraces = std::getenv("SharpDetect_COLLECT_FULL_STACKTRACES");
-    if (rawShouldCollectFullStackTraces == nullptr)
-    {
-        // Default: set to false
-        _collectFullStackTraces = false;
-    }
-    else
-    {
-        _collectFullStackTraces = std::stoi(rawShouldCollectFullStackTraces);
     }
 
     COR_PRF_RUNTIME_TYPE runtimeType;

@@ -42,7 +42,6 @@ namespace Profiler
 		virtual HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
 
 		ICorProfilerInfo10& GetCorProfilerInfo();
-		BOOL IsCollectFullStackTraces() const { return _collectFullStackTraces; }
 		Configuration& GetConfiguration() { return _configuration; }
 		BOOL HasModuleDef(ModuleID moduleId);
 		std::shared_ptr<LibProfiler::ModuleDef> GetModuleDef(ModuleID moduleId);
@@ -52,7 +51,6 @@ namespace Profiler
 
 	private:
 		std::atomic_bool _terminating;
-		BOOL _collectFullStackTraces;
 		Configuration _configuration;
 		LibIPC::Client _client;
 		LibProfiler::ObjectsTracker _objectsTracker;

@@ -2,15 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Cli.Handlers;
 using SharpDetect.Core.Plugins;
-using SharpDetect.E2ETests.Subject.Helpers;
+using SharpDetect.Plugins.Disposables;
+using SharpDetect.Worker;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
 [Collection("E2E")]
-public class DisposablesPluginTests
+public class DisposablesPluginTests(ITestOutputHelper testOutput)
 {
     private const string ConfigurationFolder = "DisposablesPluginTestConfigurations";
 
@@ -23,12 +24,12 @@ public class DisposablesPluginTests
     public async Task DisposablesPlugin_CanDetectNonDisposed_CustomObject(string configuration)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration);
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<IPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
         var reports = plugin.CreateDiagnostics().GetAllReports();
 
         // Assert
@@ -49,12 +50,12 @@ public class DisposablesPluginTests
     public async Task DisposablesPlugin_CanDetectDisposed_CustomObject(string configuration)
     {
         // Arrange
-        var handler = RunCommandHandler.Create(configuration);
-        var services = handler.ServiceProvider;
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<IPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
         // Execute
-        await handler.ExecuteAsync(null!);
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
         var reports = plugin.CreateDiagnostics().GetAllReports();
 
         // Assert

@@ -4,8 +4,7 @@
     "Args": "Test_MonitorMethods_TryEnterExit1",
     "Architecture": "X64",
     "RedirectInputOutput": {
-      "StdoutFilePath": "test_stdout.log",
-      "StderrFilePath": "test_stderr.log"
+      "SingleConsoleMode": true
     }
   },
   "Runtime": {
@@ -15,7 +14,6 @@
         "WindowsX64": "../../../../../artifacts/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
         "LinuxX64": "../../../../../artifacts/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so"
       },
-      "CollectFullStackTraces": true,
       "LogLevel": "Information"
     }
   },

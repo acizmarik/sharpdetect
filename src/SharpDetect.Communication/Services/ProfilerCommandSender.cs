@@ -29,6 +29,11 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
         _commandSerializer = commandSerializer;
         _logger = logger;
         _processId = (uint)Environment.ProcessId;
+        
+        _logger.LogInformation("Started command sender of IPC queue with name: \"{Name}\", file: \"{File}\", capacity: {Capacity} bytes.",
+            options.Name,
+            options.File,
+            options.Capacity);
     }
 
     public CommandId SendCommand(IProfilerCommandArgs commandArgs)

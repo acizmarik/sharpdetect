@@ -6,10 +6,9 @@ using System.Collections;
 
 namespace SharpDetect.Core.Plugins.Models;
 
-public class Callstack(uint pid, ThreadId tid) : IReadOnlyCollection<StackFrame>
+public class Callstack(ProcessThreadId processThreadId) : IReadOnlyCollection<StackFrame>
 {
-    public readonly uint Pid = pid;
-    public readonly ThreadId Tid = tid;
+    public ProcessThreadId ProcessThreadId { get; } = processThreadId;
     private readonly Stack<StackFrame> stack = [];
 
     public int Count => stack.Count;
@@ -28,7 +27,7 @@ public class Callstack(uint pid, ThreadId tid) : IReadOnlyCollection<StackFrame>
 
     public Callstack Clone()
     {
-        var copy = new Callstack(Pid, Tid);
+        var copy = new Callstack(ProcessThreadId);
         foreach (var item in stack.Reverse())
             copy.Push(item.ModuleId, item.MethodToken);
         return copy;

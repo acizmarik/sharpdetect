@@ -78,12 +78,13 @@ public partial class DisposablesPlugin : PluginBase, IPlugin
         var methodDef = methodDefResolveResult.Value;
         var trackedDisposableObjectId = MemoryMarshal.Read<TrackedObjectId>(args.ArgumentValues);
 
-        var threadInfo = new ThreadInfo(metadata.Tid.Value, Threads[metadata.Tid]);
+        var processThreadId = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var threadInfo = new ThreadInfo(metadata.Tid.Value, Threads[processThreadId]);
         Logger.LogInformation("Invoked {method} with {objectId}", methodDef.FullName, trackedDisposableObjectId);
 
         if (methodDef.IsConstructor)
         {
-            var callstackCopy = Callstacks[metadata.Tid].Clone();
+            var callstackCopy = Callstacks[processThreadId].Clone();
             callstackCopy.Push(args.ModuleId, args.MethodToken);
             var allocationInfo = new AllocationInfo(methodDef, metadata.Pid, threadInfo, callstackCopy);
             if (_notDisposed.Add(trackedDisposableObjectId))
