@@ -9,7 +9,6 @@ var nativeArtifactsDirectory = artifactsDirectory + "/Profilers/" + rid + "/";
 var profilers = new string[]
 {
     "SharpDetect.Concurrency.Profiler",
-    "SharpDetect.Disposables.Profiler"
 };
 
 Task("Clean")
