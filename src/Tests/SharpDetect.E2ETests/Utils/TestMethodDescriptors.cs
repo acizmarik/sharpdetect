@@ -3,6 +3,7 @@
 
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins.Descriptors;
+using SharpDetect.Plugins.Deadlock.Descriptors;
 
 namespace SharpDetect.E2ETests.Utils;
 
@@ -11,7 +12,7 @@ internal static class TestMethodDescriptors
     private static readonly MethodSignatureDescriptor VoidMethodNoArgsSignature = new (
         CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
         ParametersCount: 0,
-        ReturnType: CorElementType.ELEMENT_TYPE_VOID,
+        ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
         ArgumentTypeElements: []);
 
     private static readonly MethodRewritingDescriptor InjectHooksRewritingDescriptor = new(

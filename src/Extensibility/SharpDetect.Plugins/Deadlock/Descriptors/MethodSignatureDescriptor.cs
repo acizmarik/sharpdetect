@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Plugins.Deadlock.Descriptors;
 
 namespace SharpDetect.Core.Plugins.Descriptors;
 
 public record MethodSignatureDescriptor(
     CorCallingConvention CallingConvention,
     byte ParametersCount,
-    CorElementType ReturnType,
-    CorElementType[] ArgumentTypeElements);
+    ArgumentTypeDescriptor ReturnType,
+    ArgumentTypeDescriptor[] ArgumentTypeElements);

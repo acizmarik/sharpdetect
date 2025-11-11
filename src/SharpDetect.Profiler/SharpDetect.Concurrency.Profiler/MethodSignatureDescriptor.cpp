@@ -15,6 +15,6 @@ void Profiler::from_json(const nlohmann::json& json, MethodSignatureDescriptor& 
 {
     descriptor.callingConvention = json.at("callingConvention");
     descriptor.parametersCount = json.at("parametersCount");
-    descriptor.returnType = json.at("returnType");
-    descriptor.argumentTypeElements = json.at("argumentTypeElements").template get<std::vector<CorElementType>>();
+    descriptor.returnType = json.at("returnType").get<ArgumentTypeDescriptor>();
+    descriptor.argumentTypeElements = json.at("argumentTypeElements").get<std::vector<ArgumentTypeDescriptor>>();
 }
