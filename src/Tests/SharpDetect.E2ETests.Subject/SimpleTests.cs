@@ -45,6 +45,27 @@ namespace SharpDetect.E2ETests.Subject
                 Monitor.Exit(obj);
         }
 
+        public static void Test_ThreadMethods_Join1()
+        {
+            var thread = new Thread(() => { }) { IsBackground = true };
+            thread.Start();
+            thread.Join();
+        }
+        
+        public static void Test_ThreadMethods_Join2()
+        {
+            var thread = new Thread(() => { }) { IsBackground = true };
+            thread.Start();
+            thread.Join(millisecondsTimeout: 1000);
+        }
+        
+        public static void Test_ThreadMethods_Join3()
+        {
+            var thread = new Thread(() => { }) { IsBackground = true };
+            thread.Start();
+            thread.Join(timeout: TimeSpan.FromSeconds(1));
+        }
+
         public static void Test_Field_ValueType_Instance_Read()
         {
             var instance = new InstanceFieldValueType();

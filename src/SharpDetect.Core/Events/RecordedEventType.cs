@@ -65,5 +65,7 @@ public enum RecordedEventType : ushort
     MonitorPulseAllAttempt = 107,
     MonitorPulseAllResult = 108,
     MonitorWaitAttempt = 109,
-    MonitorWaitResult = 110
+    MonitorWaitResult = 110,
+    ThreadJoinAttempt = 111,
+    ThreadJoinResult = 112
 }

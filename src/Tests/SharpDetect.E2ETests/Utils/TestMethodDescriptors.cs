@@ -33,6 +33,9 @@ internal static class TestMethodDescriptors
             "Test_MonitorMethods_TryEnterExit1",
             "Test_MonitorMethods_TryEnterExit2",
             "Test_MonitorMethods_TryEnterExit3",
+            "Test_ThreadMethods_Join1",
+            "Test_ThreadMethods_Join2",
+            "Test_ThreadMethods_Join3",
             "Test_SingleGarbageCollection_ObjectTracking_Simple",
             "Test_MultipleGarbageCollection_ObjectTracking_Simple",
             "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject"

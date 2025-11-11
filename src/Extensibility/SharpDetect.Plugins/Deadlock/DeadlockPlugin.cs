@@ -30,7 +30,9 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                    COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
-        additionalData: MonitorMethodDescriptors.GetAllMethods().ToImmutableArray());
+        additionalData: MonitorMethodDescriptors.GetAllMethods().Concat(
+            ThreadMethodDescriptors.GetAllMethods())
+            .ToImmutableArray());
     public DirectoryInfo ReportTemplates { get; }
     
     private readonly ICallstackResolver _callStackResolver;

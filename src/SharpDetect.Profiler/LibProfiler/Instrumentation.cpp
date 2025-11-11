@@ -125,8 +125,15 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 	}
 
 	// First byte in signature is enum for calling convention
+	auto const isStatic = (methodSignature[0] & CorCallingConvention::IMAGE_CEE_CS_CALLCONV_HASTHIS) == 0;
+
 	// Second byte in signature determines number of arguments
-	auto const parametersCount = static_cast<BYTE>(methodSignature[1]);
+	auto parametersCount = static_cast<BYTE>(methodSignature[1]);
+	if (!isStatic)
+	{
+		// Instance method has hidden this parameter
+		parametersCount += 1;
+	}
 
 	methodFlags = static_cast<CorMethodAttr>(
 		methodFlags | 

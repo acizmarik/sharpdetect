@@ -599,7 +599,13 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(LibProfiler::Modul
         PCCOR_SIGNATURE signaturePointer = signature.data();
         hr = moduleDef.FindMethodDef(method.methodName, signaturePointer, signature.size(), typeDef, &methodDef);
         if (FAILED(hr))
+        {
+            LOG_F(WARNING, "Could not find method %s::%s in module %s for custom event mapping.",
+                method.declaringTypeFullName.c_str(),
+                method.methodName.c_str(),
+                moduleDef.GetName().c_str());
             continue;
+        }
         
         auto const wrapperIt = moduleRewritings.find(methodDef);
         auto const hasWrapper = wrapperIt != moduleRewritings.cend();

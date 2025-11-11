@@ -32,6 +32,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
                    COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                    COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
         additionalData: MonitorMethodDescriptors.GetAllMethods()
+            .Concat(ThreadMethodDescriptors.GetAllMethods())
             .Concat(TestMethodDescriptors.GetAllTestMethods())
             .ToImmutableArray());
     public DirectoryInfo ReportTemplates => throw new NotSupportedException();
