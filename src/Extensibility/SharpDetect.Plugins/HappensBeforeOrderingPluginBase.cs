@@ -21,6 +21,8 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     public readonly record struct ObjectPulseAllArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
     public readonly record struct ObjectWaitAttemptArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
     public readonly record struct ObjectWaitResultArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
+    public readonly record struct ThreadJoinAttemptArgs(uint ProcessId, ThreadId BlockedThreadId, ThreadId JoiningThreadId, ModuleId ModuleId, MdMethodDef MethodToken);
+    public readonly record struct ThreadJoinResultArgs(uint ProcessId, ThreadId BlockedThreadId, ThreadId JoinedThreadId, ModuleId ModuleId, MdMethodDef MethodToken, bool IsSuccess);
 
     public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
     public event Action<LockAcquireResultArgs>? LockAcquireReturned;
@@ -29,6 +31,8 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     public event Action<ObjectPulseAllArgs>? ObjectPulsedAll;
     public event Action<ObjectWaitAttemptArgs>? ObjectWaitAttempted;
     public event Action<ObjectWaitResultArgs>? ObjectWaitReturned;
+    public event Action<ThreadJoinAttemptArgs>? ThreadJoinAttempted;
+    public event Action<ThreadJoinResultArgs>? ThreadJoinReturned;
 
     private readonly Dictionary<ThreadId, Stack<RuntimeArgumentList>> _callstackArguments = [];
     private readonly Dictionary<TrackedObjectId, Lock> _locks = [];
@@ -174,6 +178,27 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var success = MemoryMarshal.Read<bool>(args.ReturnValue);
         if (TryConsumeOrDeferLockAcquire(threadId, lockObj))
             ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj, success));
+    }
+    
+    [RecordedEventBind((ushort)RecordedEventType.ThreadJoinAttempt)]
+    public void ThreadJoinAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var threadId = metadata.Tid;
+        var arguments = ParseArguments(metadata, args);
+        // FIXME: Use the correct joined thread id
+        var threadObj = arguments[0].Value.AsT1;
+        _callstackArguments[threadId].Push(arguments);
+        ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(metadata.Pid, threadId, new ThreadId(0), args.ModuleId, args.MethodToken));
+    }
+    
+    [RecordedEventBind((ushort)RecordedEventType.ThreadJoinResult)]
+    public void ThreadJoinResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+    {
+        var threadId = metadata.Tid;
+        var arguments = _callstackArguments[threadId].Pop();
+        // FIXME: Use the correct joined thread id
+        var threadObj = arguments[0].Value.AsT1;
+        ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(metadata.Pid, threadId, new ThreadId(0), args.ModuleId, args.MethodToken, IsSuccess: true));
     }
 
     private bool TryConsumeOrDeferLockAcquire(ThreadId threadId, Lock lockObj)

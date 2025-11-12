@@ -7,7 +7,7 @@ namespace SharpDetect.E2ETests.Subject
     {
         public static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            Console.WriteLine("Args: " + args[0]);
 
             // Method interpretation events
             switch (args[0])
@@ -26,6 +26,15 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_MonitorMethods_TryEnterExit3):
                     Test_MonitorMethods_TryEnterExit3();
+                    break;
+                case nameof(Test_ThreadMethods_Join1):
+                    Test_ThreadMethods_Join1();
+                    break;
+                case nameof(Test_ThreadMethods_Join2):
+                    Test_ThreadMethods_Join2();
+                    break;
+                case nameof(Test_ThreadMethods_Join3):
+                    Test_ThreadMethods_Join3();
                     break;
             }
 

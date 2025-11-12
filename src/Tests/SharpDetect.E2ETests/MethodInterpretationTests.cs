@@ -245,4 +245,64 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
             "System.Void System.Threading.Monitor::Exit(System.Object)",
         }, methods.Select(m => m.FullName));
     }
+    
+        [Theory]
+#if DEBUG
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3_Debug.json")]
+#elif RELEASE
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1_Release.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2_Release.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3_Release.json")]
+#endif
+    public async Task MethodInterpretation_Thread_Join(string configuration)
+    {
+        // Arrange
+        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var enteredTest = false;
+        var exitedTest = false;
+        var joinAttempted = false;
+        var joinReturned = false;
+        var insideTestMethod = false;
+        plugin.MethodEntered += e =>
+        {
+            var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = true;
+                enteredTest = true;
+            }
+        };
+        plugin.MethodExited += e =>
+        {
+            var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
+            if (method.Name.StartsWith("Test_"))
+            {
+                insideTestMethod = false;
+                exitedTest = true;
+            }
+        };
+        plugin.ThreadJoinAttempted += e =>
+        {
+            if (insideTestMethod)
+                joinAttempted = true;
+        };
+        plugin.LockAcquireReturned += e =>
+        {
+            if (insideTestMethod)
+                joinReturned = true;
+        };
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(enteredTest);
+        Assert.True(exitedTest);
+        Assert.True(joinAttempted);
+        Assert.True(joinReturned);
+    }
 }

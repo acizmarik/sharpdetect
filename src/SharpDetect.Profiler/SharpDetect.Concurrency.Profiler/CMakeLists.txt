@@ -1,4 +1,5 @@
 set(SOURCES
+    "ArgumentTypeDescriptor.cpp"
     "CorProfiler.cpp"
     "Configuration.cpp"
     "dllmain.cpp"

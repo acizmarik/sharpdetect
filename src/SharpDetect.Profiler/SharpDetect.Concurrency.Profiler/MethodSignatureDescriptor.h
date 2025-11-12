@@ -5,9 +5,9 @@
 
 #include <vector>
 
-#include "../lib/json/single_include/nlohmann/json.hpp"
-
 #include "cor.h"
+#include "ArgumentTypeDescriptor.h"
+#include "../lib/json/single_include/nlohmann/json.hpp"
 
 namespace Profiler
 {
@@ -15,8 +15,8 @@ namespace Profiler
 	{
 		CorCallingConvention callingConvention;
 		BYTE parametersCount;
-		CorElementType returnType;
-		std::vector<CorElementType> argumentTypeElements;
+		ArgumentTypeDescriptor returnType;
+		std::vector<ArgumentTypeDescriptor> argumentTypeElements;
 	};
 
     void to_json(nlohmann::json& json, const MethodSignatureDescriptor& descriptor);

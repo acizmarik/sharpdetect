@@ -26,8 +26,8 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 1,
-                CorElementType.ELEMENT_TYPE_VOID,
-                [CorElementType.ELEMENT_TYPE_OBJECT]),
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: true,
@@ -42,11 +42,10 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 2,
-                CorElementType.ELEMENT_TYPE_VOID,
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
                 [
-                    CorElementType.ELEMENT_TYPE_OBJECT,
-                    CorElementType.ELEMENT_TYPE_BYREF,
-                    CorElementType.ELEMENT_TYPE_BOOLEAN
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT),
+                    ArgumentTypeDescriptor.CreateByRef(ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN))
                 ]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
@@ -66,12 +65,11 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 3,
-                CorElementType.ELEMENT_TYPE_VOID,
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
                 [
-                     CorElementType.ELEMENT_TYPE_OBJECT,
-                     CorElementType.ELEMENT_TYPE_I4,
-                     CorElementType.ELEMENT_TYPE_BYREF,
-                     CorElementType.ELEMENT_TYPE_BOOLEAN
+                     ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT),
+                     ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
+                     ArgumentTypeDescriptor.CreateByRef(ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN))
                 ]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
@@ -91,8 +89,8 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 1,
-                CorElementType.ELEMENT_TYPE_VOID,
-                [CorElementType.ELEMENT_TYPE_OBJECT]),
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: true,
@@ -107,8 +105,8 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 1,
-                CorElementType.ELEMENT_TYPE_VOID,
-                [CorElementType.ELEMENT_TYPE_OBJECT]),
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
@@ -123,8 +121,8 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 1,
-                CorElementType.ELEMENT_TYPE_VOID,
-                [CorElementType.ELEMENT_TYPE_OBJECT]),
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
@@ -139,8 +137,8 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 1,
-                CorElementType.ELEMENT_TYPE_BOOLEAN,
-                [CorElementType.ELEMENT_TYPE_OBJECT]),
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
+                [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
@@ -155,8 +153,8 @@ internal static class MonitorMethodDescriptors
             new MethodSignatureDescriptor(
                 CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 2,
-                CorElementType.ELEMENT_TYPE_BOOLEAN,
-                [CorElementType.ELEMENT_TYPE_OBJECT, CorElementType.ELEMENT_TYPE_I4]),
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
+                [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT), ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4)]),
             new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,

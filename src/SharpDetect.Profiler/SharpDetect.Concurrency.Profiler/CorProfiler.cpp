@@ -355,18 +355,63 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
     return S_OK;
 }
 
-static std::vector<COR_SIGNATURE> SerializeMethodSignatureDescriptor(const Profiler::MethodSignatureDescriptor& descriptor)
+static HRESULT SerializeArgumentTypeDescriptor(
+    const Profiler::ArgumentTypeDescriptor& descriptor,
+    LibProfiler::ModuleDef& moduleDef,
+    std::vector<COR_SIGNATURE>& result)
 {
-    const INT signatureLength = 3 * sizeof(BYTE) + descriptor.argumentTypeElements.size() * sizeof(BYTE);
-    std::vector<COR_SIGNATURE> result;
-    result.resize(signatureLength);
-    auto signaturePointer = 0;
+    for (size_t i = 0; i < descriptor.elementTypes.size(); i++)
+    {
+        auto elementType = descriptor.elementTypes[i];
+        result.push_back(elementType);
 
-    result[signaturePointer++] = descriptor.callingConvention;
-    result[signaturePointer++] = descriptor.parametersCount;
-    result[signaturePointer++] = descriptor.returnType;
-    for (auto&& elementType : descriptor.argumentTypeElements)
-        result[signaturePointer++] = elementType;
+        if (elementType == CorElementType::ELEMENT_TYPE_CLASS || elementType == CorElementType::ELEMENT_TYPE_VALUETYPE)
+        {
+            mdTypeDef typeDef;
+            auto hr = moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef);
+            
+            if (SUCCEEDED(hr))
+            {
+                // Compress the token into the signature
+                BYTE tokenBytes[4];
+                ULONG tokenLength = CorSigCompressToken(typeDef, tokenBytes);
+                
+                for (ULONG j = 0; j < tokenLength; j++)
+                    result.push_back(tokenBytes[j]);
+            }
+            else
+            {
+                // FIXME: add support for type references
+                LOG_F(ERROR, "Type %s not found in module", descriptor.typeName.value().c_str());
+                return E_FAIL;
+            }
+        }
+    }
+
+    return S_OK;
+}
+
+static std::vector<COR_SIGNATURE> SerializeMethodSignatureDescriptor(
+    const Profiler::MethodSignatureDescriptor& descriptor,
+    LibProfiler::ModuleDef& moduleDef)
+{
+    std::vector<COR_SIGNATURE> result;
+    result.push_back(descriptor.callingConvention);
+    result.push_back(descriptor.parametersCount);
+    if (FAILED(SerializeArgumentTypeDescriptor(descriptor.returnType, moduleDef, result)))
+    {
+        LOG_F(ERROR, "Could not serialize return type of method signature.");
+        return {};
+    }
+
+    for (auto&& argumentType : descriptor.argumentTypeElements)
+    {
+        if (FAILED(SerializeArgumentTypeDescriptor(argumentType, moduleDef, result)))
+        {
+            LOG_F(ERROR, "Could not serialize argument type of method signature.");
+            return {};
+        }
+    }
 
     return result;
 }
@@ -391,7 +436,7 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
                 continue;
 
             mdMethodDef methodDef;
-            auto methodSignature = SerializeMethodSignatureDescriptor(method.signatureDescriptor);
+            auto methodSignature = SerializeMethodSignatureDescriptor(method.signatureDescriptor, moduleDef);
             hr = moduleDef.FindMethodDef(
                 method.methodName,
                 methodSignature.data(),
@@ -475,7 +520,7 @@ HRESULT Profiler::CorProfiler::ImportMethodWrapper(
         
     // Try to find reference to the wrapped method
     mdMemberRef methodRef;
-    auto const signature = SerializeMethodSignatureDescriptor(method.signatureDescriptor);
+    auto const signature = SerializeMethodSignatureDescriptor(method.signatureDescriptor, moduleDef);
     hr = moduleDef.FindMethodRef(
         method.methodName,
         signature.data(),
@@ -550,11 +595,17 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(LibProfiler::Modul
 
         // Get method
         mdMethodDef methodDef;
-        auto const signature = SerializeMethodSignatureDescriptor(method.signatureDescriptor);
+        auto const signature = SerializeMethodSignatureDescriptor(method.signatureDescriptor, moduleDef);
         PCCOR_SIGNATURE signaturePointer = signature.data();
         hr = moduleDef.FindMethodDef(method.methodName, signaturePointer, signature.size(), typeDef, &methodDef);
         if (FAILED(hr))
+        {
+            LOG_F(WARNING, "Could not find method %s::%s in module %s for custom event mapping.",
+                method.declaringTypeFullName.c_str(),
+                method.methodName.c_str(),
+                moduleDef.GetName().c_str());
             continue;
+        }
         
         auto const wrapperIt = moduleRewritings.find(methodDef);
         auto const hasWrapper = wrapperIt != moduleRewritings.cend();
