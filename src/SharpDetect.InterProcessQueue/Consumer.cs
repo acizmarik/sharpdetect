@@ -37,11 +37,20 @@ public sealed class Consumer : IDisposable
 
     public Result<ILocalMemory<byte>, DequeueErrorType> Dequeue()
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         return _queue.Dequeue();
     }
 
     public Result<ILocalMemory<byte>, DequeueErrorType> Dequeue(TimeSpan timeout)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (timeout < TimeSpan.Zero)
+            return Error(DequeueErrorType.TimeoutExceeded);
+
+        if (timeout == TimeSpan.Zero)
+            return Dequeue();
+
         var endTimeStamp = _timeProvider.GetUtcNow() + timeout;
         while (_timeProvider.GetUtcNow() < endTimeStamp)
         {

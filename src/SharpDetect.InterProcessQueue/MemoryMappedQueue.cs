@@ -42,7 +42,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         var capacityWithoutHeader = options.Capacity - headerSize;
         var minimumViableSize = headerSize + sizeof(int) + 1;
         if (_options.Capacity < minimumViableSize)
-            throw new Exception("Capacity is too small for a queue to function properly.");
+            throw new ArgumentException($"Capacity must be at least {minimumViableSize} bytes (header: {headerSize}, size prefix: {sizeof(int)}, minimum data: 1).", nameof(options));
 
         _arrayPool = arrayPool;
         _timeProvider = timeProvider;
@@ -51,7 +51,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         {
             ConsumerMemoryMappedQueueOptions => SharedMemoryProvider.CreateForConsumer(options.Name, options.File, options.Capacity),
             ProducerMemoryMappedQueueOptions => SharedMemoryProvider.CreateForProducer(options.Name, options.File, options.Capacity),
-            _ => throw new NotSupportedException(_options.GetType().FullName)
+            _ => throw new NotSupportedException($"Unsupported queue options type: {_options.GetType().FullName}.")
         };
         _sharedMemory = _sharedMemoryProvider.CreateAccessor();
 
@@ -124,6 +124,9 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             _buffer.Read(readOffset, 4, sizeBuffer);
             var dataSize = MemoryMarshal.Read<int>(sizeBuffer);
             ReturnArray(sizeBuffer);
+
+            if (dataSize < 0 || dataSize > _options.Capacity)
+                ThrowDataCorruptionDetected();
 
             var resultBuffer = GetArray(size: dataSize);
             _buffer.Read(readOffset + 4, dataSize, resultBuffer);

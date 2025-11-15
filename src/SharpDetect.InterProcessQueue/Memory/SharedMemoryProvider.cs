@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 
@@ -22,20 +23,19 @@ internal sealed class SharedMemoryProvider : IDisposable
                 MemoryMappedFileOptions.None,
                 HandleInheritability.None));
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            ArgumentNullException.ThrowIfNull(nameof(file));
+            ArgumentNullException.ThrowIfNull(file);
 
             return new(MemoryMappedFile.CreateFromFile(
-                file!,
+                file,
                 FileMode.OpenOrCreate,
                 null,
                 capacity));
         }
-        else
-        {
-            throw new PlatformNotSupportedException();
-        }
+
+        return ThrowPlatformNotSupported<SharedMemoryProvider>();
     }
 
     public static SharedMemoryProvider CreateForConsumer(string memoryMappingName, string? file, long capacity)
@@ -49,21 +49,20 @@ internal sealed class SharedMemoryProvider : IDisposable
                 MemoryMappedFileOptions.None,
                 HandleInheritability.None));
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            ArgumentNullException.ThrowIfNull(nameof(file));
+            ArgumentNullException.ThrowIfNull(file);
 
             return new(MemoryMappedFile.CreateFromFile(
-                file!,
+                file,
                 FileMode.OpenOrCreate,
                 null,
                 capacity,
                 MemoryMappedFileAccess.ReadWrite));
         }
-        else
-        {
-            throw new PlatformNotSupportedException();
-        }
+
+        return ThrowPlatformNotSupported<SharedMemoryProvider>();
     }
 
     public SharedMemory CreateAccessor()
@@ -88,5 +87,11 @@ internal sealed class SharedMemoryProvider : IDisposable
 
         _disposed = true;
         _memoryMappedFile.Dispose();
+    }
+
+    [DoesNotReturn]
+    private static TResult ThrowPlatformNotSupported<TResult>()
+    {
+        throw new PlatformNotSupportedException($"Memory-mapped queue is not supported on platform: {RuntimeInformation.OSDescription}");
     }
 }

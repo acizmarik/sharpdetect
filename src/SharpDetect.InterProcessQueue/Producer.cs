@@ -27,11 +27,20 @@ public sealed class Producer : IDisposable
 
     public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
         return _queue.Enqueue(data);
     }
 
     public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data, TimeSpan timeout)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (timeout < TimeSpan.Zero)
+            return Error(EnqueueErrorType.TimeoutExceeded);
+
+        if (timeout == TimeSpan.Zero)
+            return Enqueue(data);
+
         var endTimeStamp = _timeProvider.GetUtcNow() + timeout;
         while (_timeProvider.GetUtcNow() < endTimeStamp)
         {

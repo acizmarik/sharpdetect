@@ -5,7 +5,7 @@ using System.IO.MemoryMappedFiles;
 
 namespace SharpDetect.InterProcessQueue.Memory;
 
-internal unsafe sealed class SharedMemory : IMemory<byte>, IDisposable
+internal sealed unsafe class SharedMemory : IMemory<byte>, IDisposable
 {
     private readonly MemoryMappedViewAccessor _view;
     private readonly byte* _acquiredPointer;
@@ -16,7 +16,7 @@ internal unsafe sealed class SharedMemory : IMemory<byte>, IDisposable
         _view = view;
         _view.SafeMemoryMappedViewHandle.AcquirePointer(ref _acquiredPointer);
         if (_acquiredPointer == null)
-            throw new Exception("Could not retrieve a valid pointer to the shared memory.");
+            throw new InvalidOperationException("Failed to acquire a valid pointer to the memory-mapped view. The view handle may be invalid or closed.");
     }
 
     public byte* GetPointer()
