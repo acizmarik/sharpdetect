@@ -32,7 +32,7 @@ internal unsafe sealed class SharedMemory : IMemory<byte>, IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
+        if (_disposed)
             return;
 
         _disposed = true;
