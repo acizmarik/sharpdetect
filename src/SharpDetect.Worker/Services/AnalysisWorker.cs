@@ -201,7 +201,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         try
         {
             File.Delete(configurationPath);
-            _logger.LogInformation("Deleted configuration file: \"{File}\".", configurationPath);
+            _logger.LogTrace("Deleted configuration file: \"{File}\".", configurationPath);
         }
         catch (Exception ex)
         {

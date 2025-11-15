@@ -117,7 +117,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
             try
             {
                 File.Delete(fileName);
-                _logger.LogInformation("Deleted IPC queue file: \"{File}\".", fileName);
+                _logger.LogTrace("Deleted IPC queue file: \"{File}\".", fileName);
             }
             catch (Exception ex)
             {

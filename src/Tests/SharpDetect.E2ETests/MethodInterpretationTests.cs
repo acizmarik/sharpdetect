@@ -26,7 +26,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Monitor_EnterExit_LockStatement(string configuration)
     {
         // Arrange
-        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
@@ -101,7 +101,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Monitor_EnterExit_Unsafe(string configuration)
     {
         // Arrange
-        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
@@ -180,7 +180,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Monitor_TryEnterExit(string configuration)
     {
         // Arrange
-        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
@@ -259,7 +259,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Thread_Join(string configuration)
     {
         // Arrange
-        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;

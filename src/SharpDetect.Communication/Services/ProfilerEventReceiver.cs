@@ -91,7 +91,7 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
             try
             {
                 File.Delete(_queueFilePath);
-                _logger.LogInformation("Deleted IPC queue file: \"{File}\".", _queueFilePath);
+                _logger.LogTrace("Deleted IPC queue file: \"{File}\".", _queueFilePath);
             }
             catch (Exception ex)
             {

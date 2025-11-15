@@ -4,7 +4,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
-using SharpDetect.Plugins.Deadlock;
 using SharpDetect.Worker;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,7 +24,7 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     public async Task DeadlockPlugin_NoDeadlock(string configuration)
     {
         // Arrange
-        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<IPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var eventsDeliveryContext = services.GetRequiredService<IRecordedEventsDeliveryContext>();
@@ -48,7 +47,7 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     public async Task DeadlockPlugin_CanDetectDeadlock(string configuration)
     {
         // Arrange
-        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var snapshotCreated = false;

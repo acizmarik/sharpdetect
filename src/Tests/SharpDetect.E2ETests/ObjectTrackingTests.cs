@@ -29,7 +29,7 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
     public async Task ObjectsTracking(string configuration)
     {
         // Arrange
-        var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
