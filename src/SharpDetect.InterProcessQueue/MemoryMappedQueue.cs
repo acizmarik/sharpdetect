@@ -208,7 +208,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
     [DoesNotReturn]
     private static void ThrowDataCorruptionDetected()
     {
-        throw new Exception("Detected shared buffer corruption.");
+        throw new QueueMemoryCorruptionException();
     }
 
     public void Dispose()
