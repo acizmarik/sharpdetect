@@ -30,8 +30,8 @@ public sealed class RunCommand : ICommand
         }
         finally
         {
-            Directory.SetCurrentDirectory(previousDirectory);
             commandHandler?.Dispose();
+            Directory.SetCurrentDirectory(previousDirectory);
         }
     }
 }

@@ -18,6 +18,7 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
     private readonly IRecordedEventParser _recordedEventParser;
     private readonly ILogger<IProfilerEventReceiver> _logger;
     private readonly Consumer _consumer;
+    private readonly string? _queueFilePath;
     private bool _disposed;
 
     public ProfilerEventReceiver(
@@ -28,6 +29,7 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
         _consumer = new Consumer(options, ArrayPool<byte>.Shared);
         _recordedEventParser = recordedEventParser;
         _logger = logger;
+        _queueFilePath = options.File;
         
         _logger.LogInformation("Started event receiver of IPC queue with name: \"{Name}\", file: \"{File}\", capacity: {Capacity} bytes.",
             options.Name,
@@ -83,5 +85,18 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
         
         _disposed = true;
         _consumer.Dispose();
+        
+        if (_queueFilePath is not null && File.Exists(_queueFilePath))
+        {
+            try
+            {
+                File.Delete(_queueFilePath);
+                _logger.LogTrace("Deleted IPC queue file: \"{File}\".", _queueFilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete IPC queue file: \"{File}\".", _queueFilePath);
+            }
+        }
     }
 }
