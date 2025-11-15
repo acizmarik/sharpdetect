@@ -12,7 +12,7 @@ using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Core.Plugins;
 
-public abstract class PluginBase : RecordedEventActionVisitorBase
+public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 {
     public abstract PluginConfiguration Configuration { get; }
     protected SummaryBuilder Reporter { get; } = new SummaryBuilder();
@@ -25,6 +25,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
     private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
     private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
     private int nextFreeThreadId;
+    private bool _disposed;
 
     protected PluginBase(IServiceProvider serviceProvider)
     {
@@ -183,5 +184,20 @@ public abstract class PluginBase : RecordedEventActionVisitorBase
                 : null,
             Configuration.CommandQueueSize);
         _profilerCommandSenders = _profilerCommandSenders.Add((int)processId, sender);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        foreach (var sender in _profilerCommandSenders.Values)
+        {
+            if (sender is IDisposable disposable)
+                disposable.Dispose();
+        }
+
+        GC.SuppressFinalize(this);
     }
 }

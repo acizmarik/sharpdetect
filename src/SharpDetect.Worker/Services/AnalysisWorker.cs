@@ -38,17 +38,26 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
     public ValueTask ExecuteAsync(CancellationToken cancellationToken)
     {
+        var configurationPath = GetFullConfigurationPath();
         _logger.LogTrace("Running with arguments: {Arguments}.", _arguments);
+        _logger.LogTrace("Configuration file: {ConfigFile}.", configurationPath);
+
+        try
+        {
+            _plugin.Configuration.SerializeToFile(configurationPath);
+            _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
+
+            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync();
+            _logger.LogInformation("Started process with PID: {Pid}.", targetApplicationProcess.ProcessId);
+
+            ExecuteAnalysis(targetApplicationProcess.Task, cancellationToken);
+            _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", targetApplicationProcess.ProcessId);
+        }
+        finally
+        {
+            CleanupConfigurationFile(configurationPath);
+        }
         
-        _plugin.Configuration.SerializeToFile(GetFullConfigurationPath());
-        _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", GetFullConfigurationPath());
-
-        var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync();
-        _logger.LogInformation("Started process with PID: {Pid}.", targetApplicationProcess.ProcessId);
-
-        ExecuteAnalysis(targetApplicationProcess.Task, cancellationToken);
-        _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", targetApplicationProcess.ProcessId);
-
         return ValueTask.CompletedTask;
     }
     
@@ -182,5 +191,21 @@ public sealed class AnalysisWorker : IAnalysisWorker
     private static string GetFullConfigurationPath()
     {
         return Path.Combine(Path.GetTempPath(), PluginConfiguration.ConfigurationFileName);
+    }
+
+    private void CleanupConfigurationFile(string configurationPath)
+    {
+        if (!File.Exists(configurationPath))
+            return;
+        
+        try
+        {
+            File.Delete(configurationPath);
+            _logger.LogInformation("Deleted configuration file: \"{File}\".", configurationPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete configuration file: \"{File}\".", configurationPath);
+        }
     }
 }

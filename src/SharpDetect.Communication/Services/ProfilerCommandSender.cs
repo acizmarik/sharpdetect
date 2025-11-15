@@ -13,8 +13,9 @@ namespace SharpDetect.Communication.Services;
 
 internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposable
 {
-    private static ulong LastAssignedCommandId;
+    private static ulong _lastAssignedCommandId;
     private readonly Producer _producer;
+    private readonly ProducerMemoryMappedQueueOptions _options;
     private readonly IProfilerCommandSerializer _commandSerializer;
     private readonly ILogger<ProfilerCommandSender> _logger;
     private readonly uint _processId;
@@ -25,6 +26,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
         IProfilerCommandSerializer commandSerializer,
         ILogger<ProfilerCommandSender> logger)
     {
+        _options = options;
         _producer = new Producer(options);
         _commandSerializer = commandSerializer;
         _logger = logger;
@@ -38,7 +40,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
 
     public CommandId SendCommand(IProfilerCommandArgs commandArgs)
     {
-        var commandId = Interlocked.Increment(ref LastAssignedCommandId);
+        var commandId = Interlocked.Increment(ref _lastAssignedCommandId);
         var command = new ProfilerCommand(new RecordedCommandMetadata(_processId, commandId), commandArgs);
         var serializedCommand = _commandSerializer.Serialize(command);
         
@@ -57,7 +59,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
         IProfilerCommandArgs commandArgs,
         [NotNullWhen(true)] out CommandId? commandId)
     {
-        var rawCommandId = Interlocked.Increment(ref LastAssignedCommandId);
+        var rawCommandId = Interlocked.Increment(ref _lastAssignedCommandId);
         var command = new ProfilerCommand(new RecordedCommandMetadata(_processId, rawCommandId), commandArgs);
         var serializedCommand = _commandSerializer.Serialize(command);
             
@@ -81,7 +83,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
         TimeSpan timeout,
         [NotNullWhen(true)] out CommandId? commandId)
     {
-        var rawCommandId = Interlocked.Increment(ref LastAssignedCommandId);
+        var rawCommandId = Interlocked.Increment(ref _lastAssignedCommandId);
         var command = new ProfilerCommand(new RecordedCommandMetadata(_processId, rawCommandId), commandArgs);
         var serializedCommand = _commandSerializer.Serialize(command);
             
@@ -108,5 +110,19 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
 
         _disposed = true;
         _producer.Dispose();
+
+        var fileName = _options.File;
+        if (fileName is not null && File.Exists(fileName))
+        {
+            try
+            {
+                File.Delete(fileName);
+                _logger.LogInformation("Deleted IPC queue file: \"{File}\".", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete IPC queue file: \"{File}\".", fileName);
+            }
+        }
     }
 }
