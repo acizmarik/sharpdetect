@@ -23,7 +23,6 @@ public sealed class Producer : IDisposable
     {
         _queue = new MemoryMappedQueue(queueOptions);
         _timeProvider = timeProvider;
-        _queue.Clear();
     }
 
     public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data)
