@@ -6,11 +6,16 @@ using Xunit;
 
 namespace SharpDetect.InterProcessQueue.Tests;
 
-public class EnqueueDequeueTests
+public class EnqueueDequeueTests : InterProcessQueueTestsBase
 {
-    private const string TestQueueName = "SharpDetect_IPQ_EnqueueDequeue_Test_Queue";
-    private const string TestFileName = "SharpDetect_IPQ_EnqueueDequeue__Test.data";
-    private const int TestQueueSize = 1024 * 1024;
+    public EnqueueDequeueTests()
+        : base(
+            queueName: "SharpDetect_IPQ_EnqueueDequeue_Test_Queue",
+            queueFile: "SharpDetect_IPQ_EnqueueDequeue__Test.data",
+            size: 1024 * 1024)
+    {
+        
+    }
     
     [Fact]
     public void InterProcessQueue_Enqueue_SingleMessage_Succeeds()

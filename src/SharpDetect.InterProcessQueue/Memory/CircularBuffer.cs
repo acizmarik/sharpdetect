@@ -12,8 +12,11 @@ internal unsafe sealed class CircularBuffer
 
     public CircularBuffer(byte* pointer, long capacity)
     {
+        if (pointer == null)
+            throw new ArgumentNullException(nameof(pointer));
+
         if (capacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(capacity));
+            throw new ArgumentOutOfRangeException(nameof(capacity), capacity, "Capacity must be greater than zero.");
 
         _pointer = pointer;
         _capacity = capacity;
@@ -79,7 +82,10 @@ internal unsafe sealed class CircularBuffer
 
     private void EnsureEnoughSpace(long length)
     {
+        if (length < 0)
+            throw new ArgumentOutOfRangeException(nameof(length), length, "Length cannot be negative.");
+
         if (length > _capacity)
-            throw new InvalidOperationException($"Can not work with larger data ({length}) than the size of buffer ({_capacity}).");
+            throw new InvalidOperationException($"Cannot work with data of size {length} bytes when buffer capacity is {_capacity} bytes.");
     }
 }

@@ -3,11 +3,16 @@ using Xunit;
 
 namespace SharpDetect.InterProcessQueue.Tests;
 
-public class InitializationTests
+public class InitializationTests : InterProcessQueueTestsBase
 {
-    private const string TestQueueName = "SharpDetect_IPQ_Initialization_Test_Queue";
-    private const string TestFileName = "SharpDetect_IPQ_Initialization_Test.data";
-    private const int TestQueueSize = 1024 * 1024;
+    public InitializationTests()
+        : base(
+            queueName: "SharpDetect_IPQ_Initialization_Test_Queue",
+            queueFile: "SharpDetect_IPQ_Initialization_Test.data",
+            size: 1024 * 1024)
+    {
+        
+    }
     
     [Fact]
     public void InterProcessQueue_Initialize_CreatesEmpty()
