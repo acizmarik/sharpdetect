@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\Extensibility\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Worker\SharpDetect.Worker.csproj" />
     <ProjectReference Include="..\SharpDetect.E2ETests.Subject\SharpDetect.E2ETests.Subject.csproj" />
+    <ProjectReference Include="..\SharpDetect.TemporalAsserts\SharpDetect.TemporalAsserts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
