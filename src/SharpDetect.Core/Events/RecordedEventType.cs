@@ -16,6 +16,8 @@ public enum RecordedEventType : ushort
     TailcallWithArguments = 6,
 
     /* Threading */
+    ThreadStart = 11,
+    ThreadMapping = 12,
     ThreadCreate = 13,
     ThreadRename = 14,
     ThreadDestroy = 15,
@@ -67,5 +69,5 @@ public enum RecordedEventType : ushort
     MonitorWaitAttempt = 109,
     MonitorWaitResult = 110,
     ThreadJoinAttempt = 111,
-    ThreadJoinResult = 112
+    ThreadJoinResult = 112,
 }
