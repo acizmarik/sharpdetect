@@ -195,6 +195,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         _objectIdtoThreadIdLookup[threadObjectId] = id;
         ThreadStarted?.Invoke(new ThreadStartArgs(metadata.Pid, metadata.Tid, threadObjectId));
         Logger.LogInformation("Thread started {Name}.", Threads[id]);
+        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(threadObjectId);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.ThreadMapping)]
@@ -205,17 +206,21 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         _objectIdtoThreadIdLookup[threadObjectId] = id;
         ThreadMappingUpdated?.Invoke(new ThreadMappingArgs(metadata.Pid, metadata.Tid, threadObjectId));
         Logger.LogInformation("ThreadObjectID {Id} is mapped to thread {Name}.", threadObjectId.Value, Threads[id]);
+        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(threadObjectId);
     }
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadJoinAttempt)]
     public void ThreadJoinAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var threadId = metadata.Tid;
         var arguments = ParseArguments(metadata, args);
         var joinedThreadObjectId = arguments[0].Value.AsT1;
-        var joinedThreadId = _objectIdtoThreadIdLookup[joinedThreadObjectId].ThreadId;
-        _callstackArguments[threadId].Push(arguments);
-        ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(metadata.Pid, threadId, joinedThreadId, args.ModuleId, args.MethodToken));
+        if (TryConsumeOrDeferThreadJoin(id, joinedThreadObjectId, out var joinedThreadId))
+        {
+            _callstackArguments[threadId].Push(arguments);
+            ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(metadata.Pid, threadId, joinedThreadId.ThreadId, args.ModuleId, args.MethodToken));
+        }
     }
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadJoinResult)]
@@ -240,6 +245,23 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
 
         // It needs to be deferred
         _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForObject(threadId, lockObj);
+        return false;
+    }
+    
+    private bool TryConsumeOrDeferThreadJoin(
+        ProcessThreadId processThreadId,
+        TrackedObjectId joiningThreadObjectId,
+        out ProcessThreadId joiningProcessThreadId)
+    {
+        if (_objectIdtoThreadIdLookup.TryGetValue(joiningThreadObjectId, out joiningProcessThreadId))
+        {
+            // It can be executed right away
+            return true;
+        }
+
+        // It needs to be deferred
+        joiningProcessThreadId = default;
+        _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForThreadStart(processThreadId.ThreadId, joiningThreadObjectId);
         return false;
     }
 
