@@ -35,5 +35,9 @@ public sealed class NotOperator<TId, TType> : AssertBase<TId, TType>
             _ => AssertStatus.Unknown
         };
     }
-}
 
+    public override string GetDiagnosticInfo()
+    {
+        return $"Not({_argument.GetDiagnosticInfo()}) [Status: {Status}]";
+    }
+}

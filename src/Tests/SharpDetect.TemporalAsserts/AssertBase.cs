@@ -10,6 +10,7 @@ public abstract class AssertBase<TId, TType>
 
     public abstract void ProcessEvent(IEvent<TId, TType> @event);
     public abstract void Complete();
+    public abstract string GetDiagnosticInfo();
 
     public AssertStatus Evaluate(IEnumerable<IEvent<TId, TType>> events)
     {

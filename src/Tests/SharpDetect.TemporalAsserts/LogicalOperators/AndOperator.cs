@@ -53,4 +53,9 @@ public sealed class AndOperator<TId, TType> : AssertBase<TId, TType>
             ? AssertStatus.Satisfied
             : AssertStatus.Violated;
     }
+
+    public override string GetDiagnosticInfo()
+    {
+        return $"({_left.GetDiagnosticInfo()}) And ({_right.GetDiagnosticInfo()}) [Status: {Status}]";
+    }
 }

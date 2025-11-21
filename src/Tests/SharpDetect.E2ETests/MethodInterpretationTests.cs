@@ -51,7 +51,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(AssertStatus.Satisfied, assert.Evaluate(events));
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
     
     [Theory]
@@ -81,7 +81,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(AssertStatus.Satisfied, assert.Evaluate(events));
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
 
     [Theory]
@@ -109,6 +109,6 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         
         // Assert
-        Assert.Equal(AssertStatus.Satisfied, assert.Evaluate(events));
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
 }

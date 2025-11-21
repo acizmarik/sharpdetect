@@ -30,4 +30,9 @@ public sealed class EventuallyOperator<TId, TType> : AssertBase<TId, TType>
         if (Status == AssertStatus.Unknown)
             Status = AssertStatus.Violated;
     }
+
+    public override string GetDiagnosticInfo()
+    {
+        return $"Eventually({_argument.GetDiagnosticInfo()}) [Status: {Status}]";
+    }
 }
