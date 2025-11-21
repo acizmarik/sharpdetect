@@ -188,6 +188,9 @@ namespace SharpDetect.E2ETests.Subject
             // Concurrency issues detection
             switch (args[0])
             {
+                case nameof(Test_NoDeadlock):
+                    Test_NoDeadlock();
+                    break;
                 case nameof(Test_Deadlock_SimpleDeadlock):
                     Test_Deadlock_SimpleDeadlock();
                     break;
