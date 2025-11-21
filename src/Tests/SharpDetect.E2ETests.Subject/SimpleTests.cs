@@ -70,11 +70,12 @@ namespace SharpDetect.E2ETests.Subject
         {
             var thread = new Thread(() => { }) { IsBackground = true };
             thread.Start();
+            thread.Join();
         }
 
-        public static Task Test_ThreadMethods_StartCallback2()
+        public static void Test_ThreadMethods_StartCallback2()
         {
-            return Task.Run(() => { });
+            Task.Run(() => { }).Wait();
         }
 
         public static void Test_Field_ValueType_Instance_Read()
