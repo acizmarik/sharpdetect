@@ -69,7 +69,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         if (!Threads.ContainsKey(id))
         {
             // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
-            StartNewThread(id);
+            CreateNewThread(id);
         }
 
         base.Visit(metadata, args);
@@ -81,7 +81,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         if (!Threads.ContainsKey(id))
         {
             // Note: if runtime spawns a thread with a custom name, we first receive the rename notification
-            StartNewThread(id);
+            CreateNewThread(id);
         }
 
         var oldName = Threads[id];
@@ -167,11 +167,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
             : sender;
     }
 
-    private void StartNewThread(ProcessThreadId processThreadId)
+    private void CreateNewThread(ProcessThreadId processThreadId)
     {
         _threads[processThreadId] = $"T{nextFreeThreadId++}";
         _callstacks[processThreadId] = new Callstack(processThreadId);
-        Logger.LogInformation("Started thread {Name}.", _threads[processThreadId]);
+        Logger.LogInformation("Created thread {Name}.", _threads[processThreadId]);
     }
 
     private void InitializeCommandsChannel(uint processId)
