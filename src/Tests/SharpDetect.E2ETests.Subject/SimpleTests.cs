@@ -418,6 +418,34 @@ namespace SharpDetect.E2ETests.Subject
             Thread.Sleep(2500);
         }
 
+        public static void Test_Deadlock_ThreadJoinDeadlock()
+        {
+            Thread? thread1 = null;
+            Thread? thread2 = null;
+            var syncEvent = new AutoResetEvent(false);
+
+            thread1 = new Thread(() =>
+            {
+                syncEvent.Set();
+                syncEvent.WaitOne();
+                thread2!.Join();
+            });
+
+            thread2 = new Thread(() =>
+            {
+                syncEvent.WaitOne();
+                syncEvent.Set();
+                thread1!.Join();
+            });
+
+            thread1.IsBackground = true;
+            thread2.IsBackground = true;
+            thread1.Start();
+            thread2.Start();
+
+            Thread.Sleep(2500);
+        }
+
         public static void Test_DataRace_ReferenceType_Static_SimpleRace()
         {
             var task1 = Task.Run(() => DataRace.Test_DataRace_ReferenceType_Static = new object());
@@ -656,3 +684,4 @@ namespace SharpDetect.E2ETests.Subject
         }
     }
 }
+

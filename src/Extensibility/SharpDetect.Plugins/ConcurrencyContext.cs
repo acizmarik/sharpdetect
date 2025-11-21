@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics.CodeAnalysis;
+using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 
@@ -11,6 +12,7 @@ public sealed class ConcurrencyContext
 {
     private readonly Dictionary<ProcessThreadId, Lock?> _waitingForLocks = [];
     private readonly Dictionary<ProcessThreadId, HashSet<Lock>> _takenLocks = [];
+    private readonly Dictionary<ProcessThreadId, ThreadId?> _waitingForThreads = [];
 
     public bool HasThread(ProcessThreadId id) => _waitingForLocks.ContainsKey(id);
     public bool HasLock(ProcessThreadId id, Lock lockObj) => _takenLocks[id].Contains(lockObj);
@@ -18,6 +20,11 @@ public sealed class ConcurrencyContext
     public bool TryGetWaitingLock(ProcessThreadId id, [NotNullWhen(true)] out Lock? lockObj)
     {
         return _waitingForLocks.TryGetValue(id, out lockObj) && lockObj is not null;
+    }
+    
+    public bool TryGetWaitingThread(ProcessThreadId id, [NotNullWhen(true)] out ThreadId? threadId)
+    {
+        return _waitingForThreads.TryGetValue(id, out threadId) && threadId is not null;
     }
     
     public Lock GetWaitingLock(ProcessThreadId id)
@@ -64,11 +71,23 @@ public sealed class ConcurrencyContext
     {
         _waitingForLocks[id] = null;
         _takenLocks[id] = new HashSet<Lock>();
+        _waitingForThreads[id] = null;
     }
     
     public void RecordThreadDestroyed(ProcessThreadId id)
     {
         _waitingForLocks.Remove(id);
         _takenLocks.Remove(id);
+        _waitingForThreads.Remove(id);
+    }
+    
+    public void RecordThreadJoinCalled(ProcessThreadId id, ThreadId joiningThreadId)
+    {
+        _waitingForThreads[id] = joiningThreadId;
+    }
+    
+    public void RecordThreadJoinReturned(ProcessThreadId id)
+    {
+        _waitingForThreads[id] = null;
     }
 }

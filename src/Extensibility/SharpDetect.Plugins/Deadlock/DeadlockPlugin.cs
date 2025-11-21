@@ -56,6 +56,8 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
         LockReleased += OnLockReleased;
         ObjectWaitAttempted += OnObjectWaitAttempted;
         ObjectWaitReturned += OnObjectWaitReturned;
+        ThreadJoinAttempted += OnThreadJoinAttempted;
+        ThreadJoinReturned += OnThreadJoinReturned;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -94,6 +96,19 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     {
         var id = new ProcessThreadId(args.ProcessId, args.ThreadId);
         _concurrencyContext.RecordObjectWaitReturned(id, args.LockObj);
+    }
+
+    private void OnThreadJoinAttempted(ThreadJoinAttemptArgs args)
+    {
+        var id = new ProcessThreadId(args.ProcessId, args.BlockedThreadId);
+        _concurrencyContext.RecordThreadJoinCalled(id, args.JoiningThreadId);
+        CheckForDeadlocks(id);
+    }
+
+    private void OnThreadJoinReturned(ThreadJoinResultArgs args)
+    {
+        var id = new ProcessThreadId(args.ProcessId, args.BlockedThreadId);
+        _concurrencyContext.RecordThreadJoinReturned(id);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
@@ -135,34 +150,62 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
             var currentThreadId = stack.Peek();
             var currentId = sourceId with { ThreadId = currentThreadId };
 
-            if (!_concurrencyContext.TryGetWaitingLock(currentId, out var blocked) ||
-                blocked.Owner is not { } owner ||
-                owner == currentThreadId)
+            // Check if thread is blocked on a lock
+            if (_concurrencyContext.TryGetWaitingLock(currentId, out var blockedLock))
             {
-                // Skip current thread - one of the following situation happened:
-                // 1) it is not waiting for any lock
-                // 2) the lock it is waiting for is not owned by any thread
-                // 3) the lock it is waiting for is owned by itself (re-entrance)
-                stack.Pop();
-                continue;
-            }
+                var lockOwner = blockedLock.Owner;
+                
+                if (lockOwner is null || lockOwner == currentThreadId)
+                {
+                    // Lock is not owned or owned by current thread (re-entrance)
+                    stack.Pop();
+                    continue;
+                }
 
-            if (stack.Contains(owner))
-            {
-                // Found deadlock
-                var deadlock = ConstructDeadlockInfo(processId, stack);
-                RecordDeadlockInfo(deadlock);
-                return;
+                if (stack.Contains(lockOwner.Value))
+                {
+                    // Found deadlock
+                    var deadlock = ConstructDeadlockInfo(processId, stack);
+                    RecordDeadlockInfo(deadlock);
+                    return;
+                }
+                
+                if (visited.Add(lockOwner.Value))
+                {
+                    // Continue searching by current lock owner
+                    stack.Push(lockOwner.Value);
+                }
+                else
+                {
+                    // Lock owner already visited - backtrack
+                    stack.Pop();
+                }
             }
-            
-            if (visited.Add(owner))
+            // Check if thread is blocked on Thread.Join
+            else if (_concurrencyContext.TryGetWaitingThread(currentId, out var joiningThreadId))
             {
-                // Continue searching by current lock owner
-                stack.Push(owner);
+                if (stack.Contains(joiningThreadId.Value))
+                {
+                    // Found deadlock
+                    var deadlock = ConstructDeadlockInfo(processId, stack);
+                    RecordDeadlockInfo(deadlock);
+                    return;
+                }
+                
+                if (visited.Add(joiningThreadId.Value))
+                {
+                    // Continue searching by the thread being joined
+                    stack.Push(joiningThreadId.Value);
+                }
+                else
+                {
+                    // Thread already visited - backtrack
+                    stack.Pop();
+                }
             }
             else
             {
-                // Lock owner already visited - backtrack
+                // Thread is not blocked on anything - backtrack
                 stack.Pop();
             }
         }
@@ -174,12 +217,35 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
             ProcessId: processId, 
             Cycle: (from threadId in blockedThreadsIds
                     let id = new ProcessThreadId(processId, threadId)
-                    let blockedOnLock = _concurrencyContext.GetWaitingLock(id)
-                    select new DeadlockThreadInfo(
-                        ThreadId: threadId,
-                        ThreadName: Threads[id], 
-                        BlockedOn: blockedOnLock.Owner!.Value,
-                        LockId: blockedOnLock.LockObjectId)).ToList());
+                    let threadInfo = GetThreadBlockingInfo(id)
+                    select threadInfo).ToList());
+    }
+
+    private DeadlockThreadInfo GetThreadBlockingInfo(ProcessThreadId id)
+    {
+        // Check if blocked on a lock
+        if (_concurrencyContext.TryGetWaitingLock(id, out var blockedLock))
+        {
+            return new DeadlockThreadInfo(
+                ThreadId: id.ThreadId,
+                ThreadName: Threads[id],
+                BlockedOn: blockedLock.Owner!.Value,
+                BlockedOnType: BlockedOnType.Lock,
+                LockId: blockedLock.LockObjectId);
+        }
+        
+        // Check if blocked on Thread.Join
+        if (_concurrencyContext.TryGetWaitingThread(id, out var joiningThreadId))
+        {
+            return new DeadlockThreadInfo(
+                ThreadId: id.ThreadId,
+                ThreadName: Threads[id],
+                BlockedOn: joiningThreadId.Value,
+                BlockedOnType: BlockedOnType.Thread,
+                LockId: null);
+        }
+        
+        throw new InvalidOperationException($"Thread {id} is not blocked on anything.");
     }
 
     private void RecordDeadlockInfo(DeadlockInfo deadlock)
