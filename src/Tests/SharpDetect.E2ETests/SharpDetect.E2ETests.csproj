@@ -117,6 +117,12 @@
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback2_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
