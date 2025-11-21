@@ -45,6 +45,12 @@
     <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectThreadJoinDeadlock_Debug.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMixedDeadlock_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMixedDeadlock_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit2_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

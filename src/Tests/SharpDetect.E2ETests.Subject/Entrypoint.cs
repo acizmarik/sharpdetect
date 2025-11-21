@@ -197,6 +197,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Deadlock_ThreadJoinDeadlock):
                     Test_Deadlock_ThreadJoinDeadlock();
                     break;
+                case nameof(Test_Deadlock_MixedMonitorAndThreadJoinDeadlock):
+                    Test_Deadlock_MixedMonitorAndThreadJoinDeadlock();
+                    break;
                 case nameof(Test_DataRace_ReferenceType_Static_SimpleRace):
                     Test_DataRace_ReferenceType_Static_SimpleRace();
                     break;

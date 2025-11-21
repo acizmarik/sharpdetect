@@ -61,8 +61,8 @@ public partial class DeadlockPlugin
                 // Generate appropriate reason based on blocking type
                 var reason = threadInfo.BlockedOnType switch
                 {
-                    BlockedOnType.Lock => $"Blocked - waiting for lock object: {threadInfo.LockId!.Value.Value} owned by thread {threadNames[threadInfo.BlockedOn]}",
-                    BlockedOnType.Thread => $"Blocked - waiting for thread {threadNames[threadInfo.BlockedOn]} to complete (Thread.Join)",
+                    BlockedOnType.Lock => $"Blocked - waiting for lock object [{threadInfo.LockId!.Value.Value}] owned by thread {threadNames[threadInfo.BlockedOn]}",
+                    BlockedOnType.Thread => $"Blocked - waiting for thread {threadNames[threadInfo.BlockedOn]} to complete",
                     _ => throw new InvalidOperationException($"Unknown blocking type: {threadInfo.BlockedOnType}")
                 };
                 
