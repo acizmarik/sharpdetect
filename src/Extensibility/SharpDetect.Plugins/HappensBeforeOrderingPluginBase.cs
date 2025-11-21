@@ -205,7 +205,6 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var threadObjectId = new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ReturnValue));
         _objectIdtoThreadIdLookup[threadObjectId] = id;
         ThreadMappingUpdated?.Invoke(new ThreadMappingArgs(metadata.Pid, metadata.Tid, threadObjectId));
-        Logger.LogInformation("ThreadObjectID {Id} is mapped to thread {Name}.", threadObjectId.Value, Threads[id]);
         _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(threadObjectId);
     }
     
