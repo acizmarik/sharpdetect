@@ -46,15 +46,9 @@ dotnet tool restore
 dotnet cake --rid=linux-x64
 ```
 
-##### Alternative: Testing Build
-
-```bash
-docker build -t sharpdetect/ubuntu-24.04
-```
-
 ## Available Tools
 
-* **Deadlock Analyzer** - Monitors all lock-related operations on `System.Threading.Monitor`. If a deadlock is detected, user receives a report with details (affected threads, stack traces).
+* **Deadlock Analyzer** - Monitors all lock-related operations on `System.Threading.Monitor` and `Thread.Join` calls. If a deadlock is detected, user receives a report with details (affected threads, stack traces).
 
 ## State of Development
 
