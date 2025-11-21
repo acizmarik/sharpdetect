@@ -40,11 +40,11 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
 
     [Theory]
 #if DEBUG
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Release.json")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}_Release.json")]
 #endif
-    public async Task DeadlockPlugin_CanDetectDeadlock(string configuration)
+    public async Task DeadlockPlugin_CanDetectMonitorDeadlock(string configuration)
     {
         // Arrange
         using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);

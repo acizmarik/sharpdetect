@@ -33,10 +33,10 @@
     <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_NoDeadlock_Debug.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectDeadlock_Release.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMonitorDeadlock_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectDeadlock_Debug.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMonitorDeadlock_Debug.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectThreadJoinDeadlock_Release.json">
