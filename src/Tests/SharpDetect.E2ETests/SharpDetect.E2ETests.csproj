@@ -33,10 +33,22 @@
     <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_NoDeadlock_Debug.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectDeadlock_Release.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMonitorDeadlock_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectDeadlock_Debug.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMonitorDeadlock_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectThreadJoinDeadlock_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectThreadJoinDeadlock_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMixedDeadlock_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMixedDeadlock_Debug.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit2_Release.json">
@@ -103,6 +115,24 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join3_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback1_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback2_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback1_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback2_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

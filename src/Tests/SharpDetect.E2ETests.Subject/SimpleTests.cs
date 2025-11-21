@@ -66,6 +66,28 @@ namespace SharpDetect.E2ETests.Subject
             thread.Join(timeout: TimeSpan.FromSeconds(1));
         }
 
+        public static void Test_ThreadMethods_StartCallback1()
+        {
+            var thread = new Thread(() => { }) { IsBackground = true };
+            thread.Start();
+            thread.Join();
+        }
+
+        public static void Test_ThreadMethods_StartCallback2()
+        {
+            Task.Run(() => { }).Wait();
+        }
+
+        public static void Test_ThreadMethods_get_CurrentThread()
+        {
+            var thread = new Thread(() =>
+            {
+                var currentThread = Thread.CurrentThread;
+            }) { IsBackground = true };
+            thread.Start();
+            thread.Join();
+        }
+
         public static void Test_Field_ValueType_Instance_Read()
         {
             var instance = new InstanceFieldValueType();
@@ -396,6 +418,84 @@ namespace SharpDetect.E2ETests.Subject
             Thread.Sleep(2500);
         }
 
+        public static void Test_Deadlock_ThreadJoinDeadlock()
+        {
+            Thread? thread1 = null;
+            Thread? thread2 = null;
+            var syncEvent = new AutoResetEvent(false);
+
+            thread1 = new Thread(() =>
+            {
+                syncEvent.Set();
+                syncEvent.WaitOne();
+                thread2!.Join();
+            });
+
+            thread2 = new Thread(() =>
+            {
+                syncEvent.WaitOne();
+                syncEvent.Set();
+                thread1!.Join();
+            });
+
+            thread1.IsBackground = true;
+            thread2.IsBackground = true;
+            thread1.Start();
+            thread2.Start();
+
+            Thread.Sleep(2500);
+        }
+
+        public static void Test_Deadlock_MixedMonitorAndThreadJoinDeadlock()
+        {
+            Thread? thread1 = null;
+            Thread? thread2 = null;
+            Thread? thread3 = null;
+            var lockObj = new object();
+            var sync1 = new AutoResetEvent(false);
+            var sync2 = new AutoResetEvent(false);
+            var sync3 = new AutoResetEvent(false);
+
+            // Thread 1: Acquires lock, then waits for Thread 2 to join
+            thread1 = new Thread(() =>
+            {
+                lock (lockObj)
+                {
+                    sync1.Set();
+                    sync2.WaitOne();
+                    thread2!.Join();
+                }
+            });
+
+            // Thread 2: Waits for Thread 3 to join
+            thread2 = new Thread(() =>
+            {
+                sync1.WaitOne();
+                sync2.Set();
+                sync3.WaitOne();
+                thread3!.Join();
+            });
+
+            // Thread 3: Tries to acquire the lock held by Thread 1
+            thread3 = new Thread(() =>
+            {
+                sync3.Set();
+                lock (lockObj)
+                {
+                    // Never reached
+                }
+            });
+
+            thread1.IsBackground = true;
+            thread2.IsBackground = true;
+            thread3.IsBackground = true;
+            thread1.Start();
+            thread2.Start();
+            thread3.Start();
+
+            Thread.Sleep(2500);
+        }
+
         public static void Test_DataRace_ReferenceType_Static_SimpleRace()
         {
             var task1 = Task.Run(() => DataRace.Test_DataRace_ReferenceType_Static = new object());
@@ -634,3 +734,4 @@ namespace SharpDetect.E2ETests.Subject
         }
     }
 }
+

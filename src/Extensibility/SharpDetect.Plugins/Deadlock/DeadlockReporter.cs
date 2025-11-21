@@ -22,7 +22,7 @@ public partial class DeadlockPlugin
     private void PrepareNoViolationDiagnostics()
     {
         Reporter.SetTitle("No violations found");
-        Reporter.SetDescription("All analyzed lock acquires were correctly ordered.");
+        Reporter.SetDescription("All analyzed synchronizations events were correctly ordered.");
     }
 
     private void PrepareViolationDiagnostics()
@@ -45,20 +45,29 @@ public partial class DeadlockPlugin
             var stackTraces = new Dictionary<ThreadInfo, StackTrace>();
             
             var callstacks = _deadlockStackTraces[(processId, requestId)];
-            foreach (var (threadId, _, blockedOnThreadId, lockId) in cycle)
+            foreach (var threadInfo in cycle)
             {
-                var processThreadId = new ProcessThreadId(processId, threadId);
+                var processThreadId = new ProcessThreadId(processId, threadInfo.ThreadId);
                 var callstack = new Callstack(processThreadId);
-                if (callstacks.Snapshots.SingleOrDefault(s => s.ThreadId == threadId) is { } snapshot)
+                if (callstacks.Snapshots.SingleOrDefault(s => s.ThreadId == threadInfo.ThreadId) is { } snapshot)
                 {
                     for (var frameIndex = snapshot.MethodTokens.Length - 1; frameIndex >= 0; frameIndex--)
                         callstack.Push(snapshot.ModuleIds[frameIndex], snapshot.MethodTokens[frameIndex]);
                 }
                 
-                var threadInfo = reportedThreads[threadId.Value];
-                var stackTrace = _callStackResolver.Resolve(threadInfo, callstack);
-                reportBuilder.AddReportReason(threadInfo, $"Blocked - waiting for object: {lockId.Value} owned by thread {threadNames[blockedOnThreadId]}");
-                stackTraces.Add(threadInfo, stackTrace);
+                var reportedThreadInfo = reportedThreads[threadInfo.ThreadId.Value];
+                var stackTrace = _callStackResolver.Resolve(reportedThreadInfo, callstack);
+                
+                // Generate appropriate reason based on blocking type
+                var reason = threadInfo.BlockedOnType switch
+                {
+                    BlockedOnType.Lock => $"Blocked - waiting for lock object [{threadInfo.LockId!.Value.Value}] owned by thread {threadNames[threadInfo.BlockedOn]}",
+                    BlockedOnType.Thread => $"Blocked - waiting for thread {threadNames[threadInfo.BlockedOn]} to complete",
+                    _ => throw new InvalidOperationException($"Unknown blocking type: {threadInfo.BlockedOnType}")
+                };
+                
+                reportBuilder.AddReportReason(reportedThreadInfo, reason);
+                stackTraces.Add(reportedThreadInfo, stackTrace);
             }
 
             reportBuilder.SetTitle($"Deadlock {reportBuilder.Identifier}");

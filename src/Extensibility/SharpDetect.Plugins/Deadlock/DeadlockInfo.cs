@@ -5,6 +5,18 @@ using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.Deadlock;
 
-public record DeadlockThreadInfo(ThreadId ThreadId, string ThreadName, ThreadId BlockedOn, TrackedObjectId LockId);
+public enum BlockedOnType
+{
+    Lock,
+    Thread
+}
+
+public record DeadlockThreadInfo(
+    ThreadId ThreadId, 
+    string ThreadName, 
+    ThreadId BlockedOn, 
+    BlockedOnType BlockedOnType,
+    TrackedObjectId? LockId = null);
+
 public readonly record struct DeadlockInfo(uint ProcessId, List<DeadlockThreadInfo> Cycle);
 

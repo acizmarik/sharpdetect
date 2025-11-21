@@ -12,6 +12,7 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
 {
     private readonly Dictionary<ThreadId, Queue<RecordedEvent>> _undelivered;
     private readonly Dictionary<Lock, Queue<ThreadId>> _waitForLockQueue;
+    private readonly Dictionary<TrackedObjectId, Queue<ThreadId>> _waitForThreadStartQueue;
     private readonly HashSet<ThreadId> _blockedThreads;
     private readonly HashSet<ThreadId> _unblockedThreads;
 
@@ -19,6 +20,7 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
     {
         _undelivered = [];
         _waitForLockQueue = [];
+        _waitForThreadStartQueue = [];
         _blockedThreads = [];
         _unblockedThreads = [];
     }
@@ -34,6 +36,17 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         _waitForLockQueue[lockObj].Enqueue(threadId);
     }
 
+    public void BlockEventsDeliveryForThreadWaitingForThreadStart(ThreadId threadId, TrackedObjectId threadObjectId)
+    {
+        if (!_undelivered.ContainsKey(threadId))
+            _undelivered[threadId] = new Queue<RecordedEvent>();
+        _blockedThreads.Add(threadId);
+        
+        if (!_waitForThreadStartQueue.ContainsKey(threadObjectId))
+            _waitForThreadStartQueue[threadObjectId] = new Queue<ThreadId>();
+        _waitForThreadStartQueue[threadObjectId].Enqueue(threadId);
+    }
+
     public void UnblockEventsDeliveryForThreadWaitingForObject(Lock lockObj)
     {
         if (_waitForLockQueue.TryGetValue(lockObj, out var waitQueue) && waitQueue.Count > 0)
@@ -41,6 +54,19 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
             var firstThreadId = waitQueue.Dequeue();
             _blockedThreads.Remove(firstThreadId);
             _unblockedThreads.Add(firstThreadId);
+        }
+    }
+
+    public void UnblockEventsDeliveryForThreadWaitingForThreadStart(TrackedObjectId threadObjectId)
+    {
+        if (_waitForThreadStartQueue.TryGetValue(threadObjectId, out var waitQueue))
+        {
+            while (waitQueue.Count > 0)
+            {
+                var currentThreadId = waitQueue.Dequeue();
+                _blockedThreads.Remove(currentThreadId);
+                _unblockedThreads.Add(currentThreadId);
+            }
         }
     }
 

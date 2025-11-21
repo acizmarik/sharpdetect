@@ -89,6 +89,10 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadJoinAttemptArgs)>(GetNextId(), RecordedEventType.ThreadJoinAttempt, (new RecordedEventMetadata(args.ProcessId, args.BlockedThreadId), args)));
         _plugin.ThreadJoinReturned += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadJoinResultArgs)>(GetNextId(), RecordedEventType.ThreadJoinResult, (new RecordedEventMetadata(args.ProcessId, args.BlockedThreadId), args)));
+        _plugin.ThreadStarted += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadStartArgs)>(GetNextId(), RecordedEventType.ThreadStart, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+        _plugin.ThreadMappingUpdated += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadMappingArgs)>(GetNextId(), RecordedEventType.ThreadMapping, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
     }
     
     public IEnumerator<IEvent<ulong, RecordedEventType>> GetEnumerator()

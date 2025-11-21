@@ -40,11 +40,61 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
 
     [Theory]
 #if DEBUG
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}_Debug.json")]
 #elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectDeadlock)}_Release.json")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}_Release.json")]
 #endif
-    public async Task DeadlockPlugin_CanDetectDeadlock(string configuration)
+    public async Task DeadlockPlugin_CanDetectMonitorDeadlock(string configuration)
+    {
+        // Arrange
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        var plugin = services.GetRequiredService<TestDeadlockPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var snapshotCreated = false;
+        plugin.StackTraceSnapshotsCreated += _ => snapshotCreated = true;
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
+
+        // Assert
+        Assert.True(snapshotCreated);
+        Assert.NotNull(report);
+        Assert.Equal(plugin.ReportCategory, report.Category);
+    }
+
+    [Theory]
+#if DEBUG
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}_Debug.json")]
+#elif RELEASE
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}_Release.json")]
+#endif
+    public async Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string configuration)
+    {
+        // Arrange
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        var plugin = services.GetRequiredService<TestDeadlockPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var snapshotCreated = false;
+        plugin.StackTraceSnapshotsCreated += _ => snapshotCreated = true;
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
+
+        // Assert
+        Assert.True(snapshotCreated);
+        Assert.NotNull(report);
+        Assert.Equal(plugin.ReportCategory, report.Category);
+    }
+
+    [Theory]
+#if DEBUG
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}_Debug.json")]
+#elif RELEASE
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}_Release.json")]
+#endif
+    public async Task DeadlockPlugin_CanDetectMixedDeadlock(string configuration)
     {
         // Arrange
         using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);

@@ -51,7 +51,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(AssertStatus.Satisfied, assert.Evaluate(events));
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
     
     [Theory]
@@ -81,6 +81,61 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
-        Assert.Equal(AssertStatus.Satisfied, assert.Evaluate(events));
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+#if DEBUG
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback1_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback2_Debug.json")]
+#elif RELEASE
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback1_Release.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback2_Release.json")]
+#endif
+    public async Task MethodInterpretation_Thread_StartCallback(string configuration)
+    {
+        // Arrange
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.ThreadCreate))
+            .Then(EventuallyEventType(RecordedEventType.ThreadStart))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+    
+    [Theory]
+#if DEBUG
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread_Debug.json")]
+#elif RELEASE
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread_Debug.json")]
+#endif
+    public async Task MethodInterpretation_Thread_CurrentThread(string configuration)
+    {
+        // Arrange
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.ThreadCreate))
+            .Then(EventuallyEventType(RecordedEventType.ThreadStart))
+            .Then(EventuallyEventType(RecordedEventType.ThreadMapping))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
 }

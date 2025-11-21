@@ -10,7 +10,9 @@ namespace SharpDetect.Core.Plugins
     public interface IRecordedEventsDeliveryContext
     {
         void BlockEventsDeliveryForThreadWaitingForObject(ThreadId threadId, Lock lockObj);
+        void BlockEventsDeliveryForThreadWaitingForThreadStart(ThreadId threadId, TrackedObjectId threadObjectId);
         void UnblockEventsDeliveryForThreadWaitingForObject(Lock lockObj);
+        void UnblockEventsDeliveryForThreadWaitingForThreadStart(TrackedObjectId threadObjectId);
         bool IsBlockedEventsDeliveryForThread(ThreadId threadId);
         void EnqueueBlockedEventForThread(ThreadId threadId, RecordedEvent recordedEvent);
 

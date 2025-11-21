@@ -7,10 +7,12 @@ public class AtomicPredicate<TId, TType> : AssertBase<TId, TType>
     where TId : IComparable<TId>
 {
     private readonly Predicate<IEvent<TId, TType>> _predicate;
+    private readonly string _description;
 
-    public AtomicPredicate(Predicate<IEvent<TId, TType>> predicate)
+    public AtomicPredicate(Predicate<IEvent<TId, TType>> predicate, string description = "AtomicPredicate")
     {
         _predicate = predicate;
+        _description = description;
         Status = AssertStatus.Unknown;
     }
     
@@ -22,5 +24,10 @@ public class AtomicPredicate<TId, TType> : AssertBase<TId, TType>
     public override void Complete()
     {
         /* Nothing to do */
+    }
+
+    public override string GetDiagnosticInfo()
+    {
+        return $"{_description} [Status: {Status}]";
     }
 }

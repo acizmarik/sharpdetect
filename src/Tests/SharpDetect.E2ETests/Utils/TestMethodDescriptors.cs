@@ -36,6 +36,9 @@ internal static class TestMethodDescriptors
             "Test_ThreadMethods_Join1",
             "Test_ThreadMethods_Join2",
             "Test_ThreadMethods_Join3",
+            "Test_ThreadMethods_StartCallback1",
+            "Test_ThreadMethods_StartCallback2",
+            "Test_ThreadMethods_get_CurrentThread",
             "Test_SingleGarbageCollection_ObjectTracking_Simple",
             "Test_MultipleGarbageCollection_ObjectTracking_Simple",
             "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject"

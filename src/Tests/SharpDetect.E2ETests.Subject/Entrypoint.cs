@@ -36,6 +36,15 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ThreadMethods_Join3):
                     Test_ThreadMethods_Join3();
                     break;
+                case nameof(Test_ThreadMethods_StartCallback1):
+                    Test_ThreadMethods_StartCallback1();
+                    break;
+                case nameof(Test_ThreadMethods_StartCallback2):
+                    Test_ThreadMethods_StartCallback2();
+                    break;
+                case nameof(Test_ThreadMethods_get_CurrentThread):
+                    Test_ThreadMethods_get_CurrentThread();
+                    break;
             }
 
             // Field events
@@ -179,8 +188,17 @@ namespace SharpDetect.E2ETests.Subject
             // Concurrency issues detection
             switch (args[0])
             {
+                case nameof(Test_NoDeadlock):
+                    Test_NoDeadlock();
+                    break;
                 case nameof(Test_Deadlock_SimpleDeadlock):
                     Test_Deadlock_SimpleDeadlock();
+                    break;
+                case nameof(Test_Deadlock_ThreadJoinDeadlock):
+                    Test_Deadlock_ThreadJoinDeadlock();
+                    break;
+                case nameof(Test_Deadlock_MixedMonitorAndThreadJoinDeadlock):
+                    Test_Deadlock_MixedMonitorAndThreadJoinDeadlock();
                     break;
                 case nameof(Test_DataRace_ReferenceType_Static_SimpleRace):
                     Test_DataRace_ReferenceType_Static_SimpleRace();
