@@ -913,6 +913,18 @@ HRESULT Profiler::CorProfiler::LeaveMethod(FunctionIDOrClientID functionOrClient
     }
     std::vector<BYTE> returnValue;
     returnValue.resize(returnValueInfo.length);
+    if (hasReturnValue)
+    {
+        hr = GetReturnValue(
+            descriptor.rewritingDescriptor.returnValue.value(),
+            returnValueInfo,
+            tcb::span<BYTE>(returnValue.data(), returnValueInfo.length));
+        if (FAILED(hr))
+        {
+            LOG_F(ERROR, "Could not parse return value data for method %d. Error: 0x%x.", methodDef, hr);
+            return E_FAIL;
+        }
+    }
     
     // Retrieve by-ref arguments data
     std::vector<BYTE> argumentValues;
@@ -1069,6 +1081,30 @@ HRESULT Profiler::CorProfiler::GetArgument(
     }
 
     argOffset = argOffset.subspan(sizeof(UINT));
+    return S_OK;
+}
+
+HRESULT Profiler::CorProfiler::GetReturnValue(
+    const CapturedValueDescriptor& value,
+    const COR_PRF_FUNCTION_ARGUMENT_RANGE range,
+    const tcb::span<BYTE>& returnValue)
+{
+    auto const flags = value.flags;
+
+    if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
+    {
+        // Managed reference (object can be later moved by GC)
+        ObjectID objectId;
+        std::memcpy(&objectId, reinterpret_cast<LPVOID>(range.startAddress), sizeof(ObjectID));
+        auto const trackedObjectId = _objectsTracker.GetTrackedObject(objectId);
+        std::memcpy(returnValue.data(), &trackedObjectId, sizeof(ObjectID));
+    }
+    else
+    {
+        // Read the value
+        std::memcpy(returnValue.data(), reinterpret_cast<LPVOID>(range.startAddress), range.length);
+    }
+
     return S_OK;
 }
 

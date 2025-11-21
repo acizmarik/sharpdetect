@@ -90,6 +90,11 @@ namespace Profiler
 			tcb::span<BYTE>& argValue,
 			tcb::span<BYTE>& argOffset);
 
+		HRESULT GetReturnValue(
+			const CapturedValueDescriptor& value,
+			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
+			const tcb::span<BYTE>& returnValue);
+
 		std::atomic_bool _terminating;
 		Configuration _configuration;
 		LibIPC::Client _client;
