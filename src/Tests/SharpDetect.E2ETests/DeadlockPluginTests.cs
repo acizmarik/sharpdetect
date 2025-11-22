@@ -14,6 +14,7 @@ namespace SharpDetect.E2ETests;
 public class DeadlockPluginTests(ITestOutputHelper testOutput)
 {
     private const string ConfigurationFolder = "DeadlockPluginTestConfigurations";
+    private const string SynchronizationMutexName = "SharpDetect_E2E_Tests";
     
     [Theory]
 #if DEBUG
@@ -48,10 +49,15 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     {
         // Arrange
         using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var snapshotCreated = false;
-        plugin.StackTraceSnapshotsCreated += _ => snapshotCreated = true;
+        plugin.StackTraceSnapshotsCreated += _ =>
+        {
+            snapshotCreated = true;
+            mutex.ReleaseMutex();
+        };
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -73,10 +79,15 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     {
         // Arrange
         using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var snapshotCreated = false;
-        plugin.StackTraceSnapshotsCreated += _ => snapshotCreated = true;
+        plugin.StackTraceSnapshotsCreated += _ =>
+        {
+            snapshotCreated = true;
+            mutex.ReleaseMutex();
+        };
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -98,10 +109,15 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     {
         // Arrange
         using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var snapshotCreated = false;
-        plugin.StackTraceSnapshotsCreated += _ => snapshotCreated = true;
+        plugin.StackTraceSnapshotsCreated += _ =>
+        {
+            snapshotCreated = true;
+            mutex.ReleaseMutex();
+        };
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);

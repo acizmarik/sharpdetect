@@ -10,6 +10,8 @@ namespace SharpDetect.E2ETests.Subject
 {
     public static partial class Program
     {
+        private static readonly TimeSpan _waitTimeout = TimeSpan.FromSeconds(5);
+        
         public static void Test_MonitorMethods_EnterExit1()
         {
             lock (new object()) { }
@@ -376,6 +378,7 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_Deadlock_SimpleDeadlock()
         {
+            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
             var lockObj1 = new object();
             var lockObj2 = new object();
             var syncEvent = new AutoResetEvent(true);
@@ -414,27 +417,28 @@ namespace SharpDetect.E2ETests.Subject
             thread2.IsBackground = true;
             thread1.Start();
             thread2.Start();
-
-            Thread.Sleep(2500);
+            mutex.WaitOne(_waitTimeout);
         }
 
         public static void Test_Deadlock_ThreadJoinDeadlock()
         {
+            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
             Thread? thread1 = null;
             Thread? thread2 = null;
-            var syncEvent = new AutoResetEvent(false);
+            var thread1Ready = new AutoResetEvent(false);
+            var thread2Ready = new AutoResetEvent(false);
 
             thread1 = new Thread(() =>
             {
-                syncEvent.Set();
-                syncEvent.WaitOne();
+                thread1Ready.Set();
+                thread2Ready.WaitOne();
                 thread2!.Join();
             });
 
             thread2 = new Thread(() =>
             {
-                syncEvent.WaitOne();
-                syncEvent.Set();
+                thread2Ready.Set();
+                thread1Ready.WaitOne();
                 thread1!.Join();
             });
 
@@ -442,12 +446,12 @@ namespace SharpDetect.E2ETests.Subject
             thread2.IsBackground = true;
             thread1.Start();
             thread2.Start();
-
-            Thread.Sleep(2500);
+            mutex.WaitOne(_waitTimeout);
         }
 
         public static void Test_Deadlock_MixedMonitorAndThreadJoinDeadlock()
         {
+            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
             Thread? thread1 = null;
             Thread? thread2 = null;
             Thread? thread3 = null;
@@ -492,8 +496,7 @@ namespace SharpDetect.E2ETests.Subject
             thread1.Start();
             thread2.Start();
             thread3.Start();
-
-            Thread.Sleep(2500);
+            mutex.WaitOne(_waitTimeout);
         }
 
         public static void Test_DataRace_ReferenceType_Static_SimpleRace()
