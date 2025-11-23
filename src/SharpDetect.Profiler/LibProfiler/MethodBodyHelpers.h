@@ -4,17 +4,14 @@
 #pragma once
 
 #include <cstring>
-#include <exception>
+#include <optional>
 #include <tuple>
 #include <utility>
 
 #include "cor.h"
-#include "../lib/optional/include/tl/optional.hpp"
 
-#include "Code.h"
 #include "Instruction.h"
 #include "OpCode.h"
-#include "OpCodes.h"
 
 namespace LibProfiler
 {
@@ -24,7 +21,7 @@ namespace LibProfiler
 
     OpCode ReadOpCode(const BYTE* data, INT& index);
 
-    tl::optional<Operand> ReadOperand(OpCode opCode, const BYTE* data, INT& index);
+    std::optional<Operand> ReadOperand(OpCode opCode, const BYTE* data, INT& index);
 
     template <class TInput>
     TInput Read(const BYTE* data, INT& index)

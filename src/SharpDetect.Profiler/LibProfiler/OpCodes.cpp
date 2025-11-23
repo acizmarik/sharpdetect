@@ -1,12 +1,11 @@
 // dnlib: See LICENSE.dnlib.txt for more info
 
-#include "../lib/optional/include/tl/optional.hpp"
-
+#include <optional>
 
 #include "OpCodes.h"
 
 namespace LibProfiler
 {
-	std::array<tl::optional<LibProfiler::OpCode>, 256> OpCodes::OneByteOpCodes;
-	std::array<tl::optional<LibProfiler::OpCode>, 256> OpCodes::TwoByteOpCodes;
+	std::array<std::optional<LibProfiler::OpCode>, 256> OpCodes::OneByteOpCodes;
+	std::array<std::optional<LibProfiler::OpCode>, 256> OpCodes::TwoByteOpCodes;
 }

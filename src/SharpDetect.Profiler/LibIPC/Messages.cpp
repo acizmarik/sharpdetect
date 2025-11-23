@@ -8,12 +8,12 @@ using namespace LibIPC::Helpers;
 
 MetadataMsg LibIPC::Helpers::CreateMetadataMsg(UINT32 pid, UINT64 tid)
 {
-    return MetadataMsg(pid, tid, tl::nullopt);
+    return MetadataMsg(pid, tid, std::nullopt);
 }
 
 MetadataMsg LibIPC::Helpers::CreateMetadataMsg(UINT32 pid, UINT64 tid, UINT64 commandId)
 {
-    return MetadataMsg(pid, tid, tl::make_optional(commandId));
+    return MetadataMsg(pid, tid, std::make_optional(commandId));
 }
 
 ProfilerInitializeMsg LibIPC::Helpers::CreateProfilerInitiazeMsg(LibIPC::MetadataMsg&& metadataMsg)

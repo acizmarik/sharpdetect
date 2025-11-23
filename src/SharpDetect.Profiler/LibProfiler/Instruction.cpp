@@ -51,7 +51,7 @@ const LibProfiler::OpCode& LibProfiler::Instruction::GetOpCode() const
     return _opCode;
 }
 
-const tl::optional<LibProfiler::Operand> LibProfiler::Instruction::GetOperand() const
+const std::optional<LibProfiler::Operand> LibProfiler::Instruction::GetOperand() const
 {
     return _operand;
 }

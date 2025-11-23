@@ -5,10 +5,10 @@
 
 #include <atomic>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
-#include "../lib/optional/include/tl/optional.hpp"
 #include "../lib/span/include/tcb/span.hpp"
 
 #include "GarbageCollectionContext.h"
@@ -33,7 +33,7 @@ namespace LibProfiler
 		const UINT GetTrackedObjectsCount();
 
 	private:
-		tl::optional<GarbageCollectionContext> _gcContext;
+		std::optional<GarbageCollectionContext> _gcContext;
 		std::atomic<TrackedObjectId> _currentObjectId;
 		std::unordered_map<ObjectID, TrackedObjectId> _allocations;
 		std::mutex _allocationMutex;

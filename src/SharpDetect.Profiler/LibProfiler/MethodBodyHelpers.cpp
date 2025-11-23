@@ -7,6 +7,7 @@
 
 #include "Instruction.h"
 #include "MethodBodyHelpers.h"
+#include "OpCodes.h"
 
 std::tuple<UINT, UINT> LibProfiler::ReadHeaderInfo(const BYTE* data, INT& index)
 {
@@ -65,7 +66,7 @@ LibProfiler::OpCode LibProfiler::ReadOpCode(const BYTE* data, INT& index)
     return opcode.value();
 }
 
-tl::optional<LibProfiler::Operand> LibProfiler::ReadOperand(OpCode opCode, const BYTE* data, INT& index)
+std::optional<LibProfiler::Operand> LibProfiler::ReadOperand(OpCode opCode, const BYTE* data, INT& index)
 {
     switch (opCode.GetOperandType())
     {
