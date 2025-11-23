@@ -20,11 +20,11 @@
 #include "../LibIPC/Client.h"
 #include "../LibIPC/Messages.h"
 #include "../LibProfiler/AssemblyDef.h"
-#include "../LibProfiler/ComPtr.h"
 #include "../LibProfiler/ModuleDef.h"
 #include "../LibProfiler/OpCodes.h"
 #include "../LibProfiler/Instrumentation.h"
 #include "../LibProfiler/PAL.h"
+#include "../LibProfiler/StackWalker.h"
 #include "../LibProfiler/WString.h"
 #include "CorProfiler.h"
 
@@ -262,9 +262,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::MovedReferences2(
     SIZE_T cObjectIDRangeLength[])
 {
     _objectsTracker.ProcessMovingReferences(
-        tcb::span<ObjectID>(oldObjectIDRangeStart, cMovedObjectIDRanges),
-        tcb::span<ObjectID>(newObjectIDRangeStart, cMovedObjectIDRanges),
-        tcb::span<SIZE_T>(cObjectIDRangeLength, cMovedObjectIDRanges));
+        std::span<ObjectID>(oldObjectIDRangeStart, cMovedObjectIDRanges),
+        std::span<ObjectID>(newObjectIDRangeStart, cMovedObjectIDRanges),
+        std::span<SIZE_T>(cObjectIDRangeLength, cMovedObjectIDRanges));
     return S_OK;
 }
 
@@ -274,8 +274,8 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::SurvivingReferences2(
     SIZE_T cObjectIDRangeLength[])
 {
     _objectsTracker.ProcessSurvivingReferences(
-        tcb::span<ObjectID>(objectIDRangeStart, cSurvivingObjectIDRanges), 
-        tcb::span<SIZE_T>(cObjectIDRangeLength, cSurvivingObjectIDRanges));
+        std::span<ObjectID>(objectIDRangeStart, cSurvivingObjectIDRanges),
+        std::span<SIZE_T>(cObjectIDRangeLength, cSurvivingObjectIDRanges));
     return S_OK;
 }
 
@@ -816,8 +816,8 @@ HRESULT Profiler::CorProfiler::EnterMethod(FunctionIDOrClientID functionOrClient
         descriptor,
         indirects,
         argumentInfos,
-        tcb::span<BYTE>(argumentValues.data(), argumentValuesLength),
-        tcb::span<BYTE>(argumentOffsets.data(), argumentOffsetsLength));
+        std::span<BYTE>(argumentValues.data(), argumentValuesLength),
+        std::span<BYTE>(argumentOffsets.data(), argumentOffsetsLength));
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not parse arguments data for method %d. Error: 0x%x.", methodDef, hr);
@@ -918,7 +918,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(FunctionIDOrClientID functionOrClient
         hr = GetReturnValue(
             descriptor.rewritingDescriptor.returnValue.value(),
             returnValueInfo,
-            tcb::span<BYTE>(returnValue.data(), returnValueInfo.length));
+            std::span<BYTE>(returnValue.data(), returnValueInfo.length));
         if (FAILED(hr))
         {
             LOG_F(ERROR, "Could not parse return value data for method %d. Error: 0x%x.", methodDef, hr);
@@ -954,8 +954,8 @@ HRESULT Profiler::CorProfiler::LeaveMethod(FunctionIDOrClientID functionOrClient
             hr = GetByRefArguments(
                 descriptor,
                 indirects,
-                tcb::span<BYTE>(argumentValues.data(), argumentValues.size()),
-                tcb::span<BYTE>(argumentOffsets.data(), argumentOffsets.size()));
+                std::span<BYTE>(argumentValues.data(), argumentValues.size()),
+                std::span<BYTE>(argumentOffsets.data(), argumentOffsets.size()));
             if (FAILED(hr))
             {
                 LOG_F(ERROR, "Could not parse by-ref arguments data for method %d. Error: 0x%x.", methodDef, hr);
@@ -994,8 +994,8 @@ HRESULT Profiler::CorProfiler::GetArguments(
     const MethodDescriptor& methodDescriptor,
     std::vector<UINT_PTR>& indirects,
     const COR_PRF_FUNCTION_ARGUMENT_INFO& argumentInfos,
-    tcb::span<BYTE> argumentValues,
-    tcb::span<BYTE> argumentOffsets)
+    std::span<BYTE> argumentValues,
+    std::span<BYTE> argumentOffsets)
 {
     for (auto&& argument : methodDescriptor.rewritingDescriptor.arguments)
     {
@@ -1019,8 +1019,8 @@ HRESULT Profiler::CorProfiler::GetArguments(
 HRESULT Profiler::CorProfiler::GetByRefArguments(
     const MethodDescriptor& methodDescriptor,
     const std::vector<UINT_PTR>& indirects,
-    tcb::span<BYTE> indirectValues,
-    tcb::span<BYTE> indirectOffsets)
+    std::span<BYTE> indirectValues,
+    std::span<BYTE> indirectOffsets)
 {
     auto indirectsPointer = 0;
     for (auto&& argument : methodDescriptor.rewritingDescriptor.arguments)
@@ -1044,8 +1044,8 @@ HRESULT Profiler::CorProfiler::GetArgument(
     const CapturedArgumentDescriptor& argument,
     COR_PRF_FUNCTION_ARGUMENT_RANGE range,
     std::vector<UINT_PTR>& indirects,
-    tcb::span<BYTE>& argValue,
-    tcb::span<BYTE>& argOffset)
+    std::span<BYTE>& argValue,
+    std::span<BYTE>& argOffset)
 {
     auto const flags = argument.value.flags;
 
@@ -1087,7 +1087,7 @@ HRESULT Profiler::CorProfiler::GetArgument(
 HRESULT Profiler::CorProfiler::GetReturnValue(
     const CapturedValueDescriptor& value,
     const COR_PRF_FUNCTION_ARGUMENT_RANGE range,
-    const tcb::span<BYTE>& returnValue)
+    const std::span<BYTE>& returnValue)
 {
     auto const flags = value.flags;
 

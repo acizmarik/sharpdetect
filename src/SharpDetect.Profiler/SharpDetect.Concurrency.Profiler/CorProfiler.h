@@ -18,8 +18,6 @@
 #include "../LibProfiler/CorProfilerBase.h"
 #include "../LibProfiler/ModuleDef.h"
 #include "../LibProfiler/ObjectsTracker.h"
-#include "../LibProfiler/StackWalker.h"
-#include "../LibProfiler/WString.h"
 
 #include "Configuration.h"
 #include "HashingUtils.h"
@@ -74,26 +72,26 @@ namespace Profiler
 			const MethodDescriptor& methodDescriptor,
 			std::vector<UINT_PTR>& indirects,
 			const COR_PRF_FUNCTION_ARGUMENT_INFO& argumentInfos,
-			tcb::span<BYTE> argumentValues,
-			tcb::span<BYTE> argumentOffsets);
+			std::span<BYTE> argumentValues,
+			std::span<BYTE> argumentOffsets);
 
 		HRESULT GetByRefArguments(
 			const MethodDescriptor& methodDescriptor,
 			const std::vector<UINT_PTR>& indirects,
-			tcb::span<BYTE> indirectValues,
-			tcb::span<BYTE> indirectOffsets);
+			std::span<BYTE> indirectValues,
+			std::span<BYTE> indirectOffsets);
 
 		HRESULT GetArgument(
 			const CapturedArgumentDescriptor& argument,
 			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
 			std::vector<UINT_PTR>& indirects,
-			tcb::span<BYTE>& argValue,
-			tcb::span<BYTE>& argOffset);
+			std::span<BYTE>& argValue,
+			std::span<BYTE>& argOffset);
 
 		HRESULT GetReturnValue(
 			const CapturedValueDescriptor& value,
 			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
-			const tcb::span<BYTE>& returnValue);
+			const std::span<BYTE>& returnValue);
 
 		std::atomic_bool _terminating;
 		Configuration _configuration;

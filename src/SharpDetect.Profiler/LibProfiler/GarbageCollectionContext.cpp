@@ -3,8 +3,6 @@
 
 #include <algorithm>
 
-#include "../lib/loguru/loguru.hpp"
-
 #include "GarbageCollectionContext.h"
 
 LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unordered_map<ObjectID, TrackedObjectId>& oldHeap, std::vector<BOOL>&& generationsCollected, std::vector<COR_PRF_GC_GENERATION_RANGE>&& bounds)	:
@@ -36,11 +34,11 @@ LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unord
 			continue;
 		}
 
-		ProcessSurvivingReferences(tcb::span<ObjectID>(&bound.rangeStart, 1), tcb::span<SIZE_T>(&bound.rangeLength, 1));
+		ProcessSurvivingReferences(std::span<ObjectID>(&bound.rangeStart, 1), std::span<SIZE_T>(&bound.rangeLength, 1));
 	}
 }
 
-void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(tcb::span<ObjectID> starts, tcb::span<SIZE_T> lengths)
+void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths)
 {
 	for (size_t index = 0; index < starts.size(); index++) 
 	{
@@ -69,7 +67,7 @@ void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(tcb::span
 	}
 }
 
-void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(tcb::span<ObjectID> oldStarts, tcb::span<ObjectID> newStarts, tcb::span<SIZE_T> lengths)
+void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths)
 {
 	for (size_t index = 0; index < oldStarts.size(); index++)
 	{

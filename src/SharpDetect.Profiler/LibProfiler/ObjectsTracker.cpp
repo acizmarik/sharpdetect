@@ -31,13 +31,13 @@ namespace LibProfiler
         return gcContextCopy;
     }
 
-    void ObjectsTracker::ProcessSurvivingReferences(tcb::span<ObjectID> starts, tcb::span<SIZE_T> lengths)
+    void ObjectsTracker::ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths)
     {
         std::lock_guard<std::mutex> guard(_allocationMutex);
         _gcContext.value().ProcessSurvivingReferences(starts, lengths);
     }
 
-    void ObjectsTracker::ProcessMovingReferences(tcb::span<ObjectID> oldStarts, tcb::span<ObjectID> newStarts, tcb::span<SIZE_T> lengths)
+    void ObjectsTracker::ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths)
     {
         std::lock_guard<std::mutex> guard(_allocationMutex);
         _gcContext.value().ProcessMovingReferences(oldStarts, newStarts, lengths);
