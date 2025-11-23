@@ -47,12 +47,12 @@ namespace LibProfiler
             }
         }
 
-        operator TInterface* ()
+        explicit operator TInterface* ()
         {
             return this->pointer;
         }
 
-        operator TInterface* () const
+        explicit operator TInterface* () const
         {
             return this->pointer;
         }

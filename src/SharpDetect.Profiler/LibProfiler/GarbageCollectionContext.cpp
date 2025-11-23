@@ -5,24 +5,30 @@
 
 #include "GarbageCollectionContext.h"
 
-LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unordered_map<ObjectID, TrackedObjectId>& oldHeap, std::vector<BOOL>&& generationsCollected, std::vector<COR_PRF_GC_GENERATION_RANGE>&& bounds)	:
+#include <ranges>
+
+LibProfiler::GarbageCollectionContext::GarbageCollectionContext(
+	const std::unordered_map<ObjectID,
+	TrackedObjectId>& oldHeap,
+	std::vector<BOOL>&& generationsCollected,
+	std::vector<COR_PRF_GC_GENERATION_RANGE>&& bounds) :
 	_newHeapBuilder({ }), 
 	_previousTrackedObjects({ }),
 	_nextTrackedObjects({ }),
 	_previousSortedHeap(std::vector<std::tuple<ObjectID, TrackedObjectId>>(oldHeap.cbegin(), oldHeap.cend())), 
-	_generationsCollected(std::move(generationsCollected)),
-	_bounds(std::move(bounds))
+	_bounds(std::move(bounds)),
+	_generationsCollected(std::move(generationsCollected))
 {
-	for (auto&& record : oldHeap)
+	for (const auto &val: oldHeap | std::views::values)
 	{
-		auto trackedObjectId = record.second;
+		auto trackedObjectId = val;
 		_previousTrackedObjects.insert(trackedObjectId);
 	}
 
-	std::sort(std::begin(_previousSortedHeap), std::end(_previousSortedHeap),
+	std::ranges::sort(_previousSortedHeap,
 		[](std::tuple<ObjectID, TrackedObjectId> const& t1, std::tuple<ObjectID, TrackedObjectId> const& t2)
-		{ 
-			return std::get<0>(t1) < std::get<0>(t2); 
+		{
+			return std::get<0>(t1) < std::get<0>(t2);
 		});
 
 	/* All generations that are not being collected automatically survived */
@@ -30,7 +36,7 @@ LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unord
 	{
 		if (_generationsCollected[bound.generation])
 		{
-			// We need to resolve Surviving / Moving refernces notifications for this GC
+			// We need to resolve Surviving / Moving references notifications for this GC
 			continue;
 		}
 
@@ -38,12 +44,14 @@ LibProfiler::GarbageCollectionContext::GarbageCollectionContext(const std::unord
 	}
 }
 
-void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths)
+void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(
+	const std::span<ObjectID> starts,
+	const std::span<SIZE_T> lengths)
 {
 	for (size_t index = 0; index < starts.size(); index++) 
 	{
-		auto start = starts[index];
-		auto length = lengths[index];
+		const auto start = starts[index];
+		const auto length = lengths[index];
 		
 		// Find element in segment that is closest to the segment start
 		auto startIndex = BinarySearch(start);
@@ -67,7 +75,10 @@ void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(std::span
 	}
 }
 
-void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths)
+void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(
+	const std::span<ObjectID> oldStarts,
+	const std::span<ObjectID> newStarts,
+	const std::span<SIZE_T> lengths)
 {
 	for (size_t index = 0; index < oldStarts.size(); index++)
 	{
@@ -98,7 +109,7 @@ void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(std::span<Ob
 	}
 }
 
-INT LibProfiler::GarbageCollectionContext::BinarySearch(ObjectID objId)
+INT LibProfiler::GarbageCollectionContext::BinarySearch(const ObjectID objId) const
 {
 	if (_previousSortedHeap.empty())
 		return ~0;
@@ -107,7 +118,7 @@ INT LibProfiler::GarbageCollectionContext::BinarySearch(ObjectID objId)
 	INT rightIndex = _previousSortedHeap.size() - 1;
 	while (leftIndex <= rightIndex)
 	{
-		auto middleIndex = (leftIndex + rightIndex) / 2;
+		const auto middleIndex = (leftIndex + rightIndex) / 2;
 		ObjectID middleValue;
 		std::tie(middleValue, std::ignore) = _previousSortedHeap[middleIndex];
 

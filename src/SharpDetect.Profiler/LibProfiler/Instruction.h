@@ -4,6 +4,7 @@
 #pragma once
 
 #include <optional>
+#include <utility>
 
 #include "cor.h"
 
@@ -15,16 +16,16 @@ namespace LibProfiler
     class Instruction
     {
     public:
-        Instruction(OpCode opCode, std::optional<Operand> operand, INT offset)
-            : _opCode(opCode), _operand(operand), _offset(offset)
+        Instruction(OpCode opCode, const std::optional<Operand> operand, const INT offset)
+            : _offset(offset), _opCode(std::move(opCode)), _operand(operand)
         {
 
         }
 
-        [[nodiscard]] const INT GetSize() const;
-        [[nodiscard]] const INT GetOffset() const;
+        [[nodiscard]] INT GetSize() const;
+        [[nodiscard]] INT GetOffset() const;
         [[nodiscard]] const OpCode& GetOpCode() const;
-        [[nodiscard]] const std::optional<Operand> GetOperand() const;
+        [[nodiscard]] std::optional<Operand> GetOperand() const;
 
     private:
         INT _offset;

@@ -30,7 +30,7 @@ namespace LibProfiler
 
 	private:
 
-		INT BinarySearch(ObjectID objId);
+		INT BinarySearch(ObjectID objId) const;
 		std::unordered_map<ObjectID, TrackedObjectId> _newHeapBuilder;
 		std::unordered_set<TrackedObjectId> _previousTrackedObjects;
 		std::unordered_set<TrackedObjectId> _nextTrackedObjects;

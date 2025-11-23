@@ -30,7 +30,7 @@ namespace Profiler
 	public:
 		explicit CorProfiler(Configuration configuration);
 		HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
-
+		
 		void OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId) override;
 		void OnCreateStackSnapshots(UINT64 commandId, const std::vector<UINT64>& targetThreadIds) override;
 
@@ -43,7 +43,7 @@ namespace Profiler
 		HRESULT STDMETHODCALLTYPE ThreadCreated(ThreadID threadId) override;
 		HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
 		HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
-
+		
 		HRESULT EnterMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT TailcallMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);

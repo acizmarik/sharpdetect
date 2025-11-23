@@ -15,7 +15,7 @@ namespace LibProfiler
 {
 	HRESULT PatchMethodBody(
 		IN ICorProfilerInfo& corProfilerInfo,
-		IN ModuleDef& moduleDef,
+		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch);
 

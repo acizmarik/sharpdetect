@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 #include "cor.h"
 #include "corprof.h"
@@ -13,8 +14,17 @@ namespace LibProfiler
 	class AssemblyRef
 	{
 	public:
-		AssemblyRef(mdAssemblyRef mdAssemblyRef, std::string name, const void* publicKeyData, ULONG publicKeyDataLength, DWORD flags)
-			: _mdAssemblyRef(mdAssemblyRef), _name(name), _publicKeyData(publicKeyData), _publicKeyDataLength(publicKeyDataLength), _flags(flags)
+		AssemblyRef(
+			const mdAssemblyRef mdAssemblyRef,
+			std::string name,
+			const void* publicKeyData,
+			const ULONG publicKeyDataLength,
+			const DWORD flags) :
+				_mdAssemblyRef(mdAssemblyRef),
+				_name(std::move(name)),
+				_publicKeyData(publicKeyData),
+				_publicKeyDataLength(publicKeyDataLength),
+				_flags(flags)
 		{
 
 		}

@@ -18,7 +18,7 @@ namespace LibProfiler
 	{
 	public:
 		ObjectsTracker()
-			: _gcContext(), _currentObjectId({ }), _allocations({ })
+			: _currentObjectId({ }), _allocations({ })
 		{
 
 		}
@@ -27,8 +27,8 @@ namespace LibProfiler
 		[[nodiscard]] GarbageCollectionContext ProcessGarbageCollectionFinished();
 		void ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths);
 		void ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths);
-		[[nodiscard]] const TrackedObjectId GetTrackedObject(ObjectID objectId);
-		[[nodiscard]] const UINT GetTrackedObjectsCount();
+		[[nodiscard]] TrackedObjectId GetTrackedObject(ObjectID objectId);
+		[[nodiscard]] UINT GetTrackedObjectsCount();
 
 	private:
 		std::optional<GarbageCollectionContext> _gcContext;

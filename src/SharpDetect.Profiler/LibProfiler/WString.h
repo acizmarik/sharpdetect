@@ -4,7 +4,6 @@
 #pragma once
 
 #include <corhlpr.h>
-#include <iomanip>
 #include <locale>
 #include <sstream>
 #include <string>

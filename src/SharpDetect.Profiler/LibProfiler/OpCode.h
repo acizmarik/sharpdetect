@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 #include "cor.h"
 
@@ -18,14 +19,14 @@ namespace LibProfiler
     {
     public:
         OpCode(
-            const std::string& name,
-            Code code,
-            OperandType operandType,
-            FlowControl flowControl,
-            OpCodeType opCodeType,
-            StackBehaviour stackBehaviourPush,
-            StackBehaviour stackBehaviourPop) :
-            _name(name),
+            std::string name,
+            const Code code,
+            const OperandType operandType,
+            const FlowControl flowControl,
+            const OpCodeType opCodeType,
+            const StackBehaviour stackBehaviourPush,
+            const StackBehaviour stackBehaviourPop) :
+            _name(std::move(name)),
             _code(code),
             _operandType(operandType),
             _flowControl(flowControl),

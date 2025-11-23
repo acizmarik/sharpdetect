@@ -6,7 +6,6 @@
 #include <cstring>
 #include <optional>
 #include <tuple>
-#include <utility>
 
 #include "cor.h"
 
@@ -21,12 +20,12 @@ namespace LibProfiler
 
     OpCode ReadOpCode(const BYTE* data, INT& index);
 
-    std::optional<Operand> ReadOperand(OpCode opCode, const BYTE* data, INT& index);
+    std::optional<Operand> ReadOperand(const OpCode &opCode, const BYTE* data, INT& index);
 
     template <class TInput>
     TInput Read(const BYTE* data, INT& index)
     {
-        auto readFrom = index;
+        const auto readFrom = index;
         index += sizeof(TInput);
 
         TInput result { };

@@ -6,6 +6,6 @@
 
 namespace LibProfiler
 {
-	std::array<std::optional<LibProfiler::OpCode>, 256> OpCodes::OneByteOpCodes;
-	std::array<std::optional<LibProfiler::OpCode>, 256> OpCodes::TwoByteOpCodes;
+	std::array<std::optional<OpCode>, 256> OpCodes::OneByteOpCodes;
+	std::array<std::optional<OpCode>, 256> OpCodes::TwoByteOpCodes;
 }

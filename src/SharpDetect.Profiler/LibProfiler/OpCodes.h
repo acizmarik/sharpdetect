@@ -28,11 +28,11 @@ namespace LibProfiler
 
         static void Register(LibProfiler::OpCode&& opCode)
         {
-            auto code = opCode.GetCode();
-            if (((USHORT)code >> 8) == 0)
-                OpCodes::OneByteOpCodes[(BYTE)code] = std::move(opCode);
-            else if (((USHORT)code >> 8) == 0xFE)
-                OpCodes::TwoByteOpCodes[(BYTE)code] = std::move(opCode);
+            const auto code = opCode.GetCode();
+            if ((static_cast<USHORT>(code) >> 8) == 0)
+                OneByteOpCodes[static_cast<BYTE>(code)] = std::move(opCode);
+            else if ((static_cast<USHORT>(code) >> 8) == 0xFE)
+                TwoByteOpCodes[static_cast<BYTE>(code)] = std::move(opCode);
         }
 
         static void Initialize()
