@@ -130,10 +130,10 @@ namespace LibProfiler
 			IN const std::string& interfaceName,
 			OUT mdTypeDef* implementedInterface);
 
-		const std::string& GetName() const { return _name; }
-		const std::string& GetFullPath() const { return _fullPath; }
-		const AssemblyID GetAssemblyId() const { return _assemblyId; }
-		const ModuleID GetModuleId() const { return _moduleId; }
+		[[nodiscard]] const std::string& GetName() const { return _name; }
+		[[nodiscard]] const std::string& GetFullPath() const { return _fullPath; }
+		[[nodiscard]] constexpr AssemblyID GetAssemblyId() const { return _assemblyId; }
+		[[nodiscard]] constexpr ModuleID GetModuleId() const { return _moduleId; }
 
 	private:
 		IMetaDataImport2& GetMetadataImport() const;

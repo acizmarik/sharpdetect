@@ -21,10 +21,10 @@ namespace LibProfiler
 
         }
 
-        const INT GetSize() const;
-        const INT GetOffset() const;
-        const OpCode& GetOpCode() const;
-        const std::optional<Operand> GetOperand() const;
+        [[nodiscard]] const INT GetSize() const;
+        [[nodiscard]] const INT GetOffset() const;
+        [[nodiscard]] const OpCode& GetOpCode() const;
+        [[nodiscard]] const std::optional<Operand> GetOperand() const;
 
     private:
         INT _offset;

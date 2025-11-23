@@ -28,37 +28,37 @@ namespace Profiler
 	class CorProfiler : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler
 	{
 	public:
-		CorProfiler(Configuration configuration);
-		virtual HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
-		
-		virtual void OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId) override;
-		virtual void OnCreateStackSnapshots(UINT64 commandId, const std::vector<UINT64>& targetThreadIds) override;
+		explicit CorProfiler(Configuration configuration);
+		HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
 
-		virtual HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason) override;
-		virtual HRESULT STDMETHODCALLTYPE GarbageCollectionFinished() override;
-		virtual HRESULT STDMETHODCALLTYPE JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock) override;
-		virtual HRESULT STDMETHODCALLTYPE ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) override;
-		virtual HRESULT STDMETHODCALLTYPE MovedReferences2(ULONG cMovedObjectIDRanges, ObjectID oldObjectIDRangeStart[], ObjectID newObjectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
-		virtual HRESULT STDMETHODCALLTYPE SurvivingReferences2(ULONG cSurvivingObjectIDRanges, ObjectID objectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
-		virtual HRESULT STDMETHODCALLTYPE ThreadCreated(ThreadID threadId) override;
-		virtual HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
-		virtual HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
-		
+		void OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId) override;
+		void OnCreateStackSnapshots(UINT64 commandId, const std::vector<UINT64>& targetThreadIds) override;
+
+		HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason) override;
+		HRESULT STDMETHODCALLTYPE GarbageCollectionFinished() override;
+		HRESULT STDMETHODCALLTYPE JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock) override;
+		HRESULT STDMETHODCALLTYPE ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) override;
+		HRESULT STDMETHODCALLTYPE MovedReferences2(ULONG cMovedObjectIDRanges, ObjectID oldObjectIDRangeStart[], ObjectID newObjectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
+		HRESULT STDMETHODCALLTYPE SurvivingReferences2(ULONG cSurvivingObjectIDRanges, ObjectID objectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
+		HRESULT STDMETHODCALLTYPE ThreadCreated(ThreadID threadId) override;
+		HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
+		HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
+
 		HRESULT EnterMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT TailcallMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
-		std::shared_ptr<MethodDescriptor> FindMethodDescriptor(FunctionID functionId);
+		[[nodiscard]] std::shared_ptr<MethodDescriptor> FindMethodDescriptor(FunctionID functionId);
 
 	private:
-		LibIPC::MetadataMsg CreateMetadataMsg();
-		LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId);
+		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg();
+		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId);
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
-		BOOL HasModuleDef(ModuleID moduleId);
-		BOOL HasAssemblyDef(AssemblyID assemblyId);
-		BOOL HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
-		std::shared_ptr<LibProfiler::ModuleDef> GetModuleDef(ModuleID moduleId);
-		std::shared_ptr<LibProfiler::AssemblyDef> GetAssemblyDef(AssemblyID assemblyID);
-		std::shared_ptr<MethodDescriptor> GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
+		[[nodiscard]] BOOL HasModuleDef(ModuleID moduleId);
+		[[nodiscard]] BOOL HasAssemblyDef(AssemblyID assemblyId);
+		[[nodiscard]] BOOL HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
+		[[nodiscard]] std::shared_ptr<LibProfiler::ModuleDef> GetModuleDef(ModuleID moduleId);
+		[[nodiscard]] std::shared_ptr<LibProfiler::AssemblyDef> GetAssemblyDef(AssemblyID assemblyID);
+		[[nodiscard]] std::shared_ptr<MethodDescriptor> GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
 		HRESULT PatchMethodBody(LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
 
 		HRESULT WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef);

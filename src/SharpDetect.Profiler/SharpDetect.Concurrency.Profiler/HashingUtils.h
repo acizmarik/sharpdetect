@@ -16,26 +16,8 @@ namespace Profiler
         seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 
-    template <std::size_t... Ints>
-    struct index_sequence
-    {
-
-    };
-
-    template <std::size_t N, std::size_t... Ints>
-    struct make_index_sequence : make_index_sequence<N - 1, N - 1, Ints...>
-    {
-
-    };
-
-    template <std::size_t... Ints>
-    struct make_index_sequence<0, Ints...> : index_sequence<Ints...>
-    {
-
-    };
-
     template <typename Tuple, std::size_t... Is>
-    void hash_tuple(std::size_t& seed, const Tuple& tuple, index_sequence<Is...>)
+    void hash_tuple(std::size_t& seed, const Tuple& tuple, std::index_sequence<Is...>)
     {
         (void)std::initializer_list<int>{
             (hash_combine(seed, std::get<Is>(tuple)), 0)...};
@@ -57,7 +39,7 @@ namespace Profiler
         std::size_t operator()(const std::tuple<Types...>& t) const
         {
             std::size_t seed = 0;
-            hash_tuple(seed, t, make_index_sequence<sizeof...(Types)>{});
+            hash_tuple(seed, t, std::make_index_sequence<sizeof...(Types)>{});
             return seed;
         }
     };

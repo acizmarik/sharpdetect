@@ -19,11 +19,11 @@ namespace LibProfiler
 
 		}
 
-		const mdAssemblyRef GetMdAssemblyRef() const { return _mdAssemblyRef; }
-		const std::string& GetName() const { return _name; }
-		const void* GetPublicKeyData() const { return _publicKeyData; }
-		const ULONG GetPublicKeyDataLength() const { return _publicKeyDataLength; }
-		const DWORD GetFlags() const { return _flags; }
+		[[nodiscard]] constexpr mdAssemblyRef GetMdAssemblyRef() const { return _mdAssemblyRef; }
+		[[nodiscard]] const std::string& GetName() const { return _name; }
+		[[nodiscard]] constexpr const void* GetPublicKeyData() const { return _publicKeyData; }
+		[[nodiscard]] constexpr ULONG GetPublicKeyDataLength() const { return _publicKeyDataLength; }
+		[[nodiscard]] constexpr DWORD GetFlags() const { return _flags; }
 
 	private:
 		mdAssemblyRef _mdAssemblyRef;

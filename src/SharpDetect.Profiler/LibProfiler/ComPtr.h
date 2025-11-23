@@ -3,9 +3,16 @@
 
 #pragma once
 
+#include <concepts>
+
 namespace LibProfiler
 {
-    template<class TInterface>
+    template<typename T>
+    concept ComInterface = requires(T* ptr) {
+        { ptr->Release() } -> std::convertible_to<unsigned long>;
+    };
+
+    template<ComInterface TInterface>
     class ComPtr
     {
     private:
@@ -21,12 +28,11 @@ namespace LibProfiler
         void operator delete(void* ptr) = delete;
         void operator delete[](void* ptr) = delete;
 
-        ComPtr()
+        ComPtr() : pointer(nullptr)
         {
-            this->pointer = nullptr;
         }
 
-        ComPtr(ComPtr&& other)
+        ComPtr(ComPtr&& other) noexcept
             : pointer(other.pointer)
         {
             other.pointer = nullptr;

@@ -24,11 +24,11 @@ namespace LibProfiler
 		}
 
 		void ProcessGarbageCollectionStarted(std::vector<BOOL>&& collectedGenerations, std::vector<COR_PRF_GC_GENERATION_RANGE>&& bounds);
-		GarbageCollectionContext ProcessGarbageCollectionFinished();
+		[[nodiscard]] GarbageCollectionContext ProcessGarbageCollectionFinished();
 		void ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths);
 		void ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths);
-		const TrackedObjectId GetTrackedObject(ObjectID objectId);
-		const UINT GetTrackedObjectsCount();
+		[[nodiscard]] const TrackedObjectId GetTrackedObject(ObjectID objectId);
+		[[nodiscard]] const UINT GetTrackedObjectsCount();
 
 	private:
 		std::optional<GarbageCollectionContext> _gcContext;

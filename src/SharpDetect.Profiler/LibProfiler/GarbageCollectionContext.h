@@ -24,9 +24,9 @@ namespace LibProfiler
 		void ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths);
 		void ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths);
 
-		const std::unordered_map<ObjectID, TrackedObjectId>& GetHeap() const { return _newHeapBuilder; }
-		const std::unordered_set<TrackedObjectId>& GetPreviousTrackedObjects() const { return _previousTrackedObjects; }
-		const std::unordered_set<TrackedObjectId>& GetNextTrackedObjects() const { return _nextTrackedObjects; }
+		[[nodiscard]] const std::unordered_map<ObjectID, TrackedObjectId>& GetHeap() const { return _newHeapBuilder; }
+		[[nodiscard]] const std::unordered_set<TrackedObjectId>& GetPreviousTrackedObjects() const { return _previousTrackedObjects; }
+		[[nodiscard]] const std::unordered_set<TrackedObjectId>& GetNextTrackedObjects() const { return _nextTrackedObjects; }
 
 	private:
 

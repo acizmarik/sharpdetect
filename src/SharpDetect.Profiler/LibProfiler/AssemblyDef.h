@@ -71,10 +71,10 @@ namespace LibProfiler
 			IN mdAssemblyRef assemblyRef,
 			OUT std::string& name);
 
-		const std::string& GetName() const { return _name; }
-		const AssemblyID GetAssemblyId() const { return _assemblyId; }
-		const std::vector<LibProfiler::AssemblyRef>& GetOriginalReferences() const { return _originalReferences; }
-		
+		[[nodiscard]] const std::string& GetName() const { return _name; }
+		[[nodiscard]] constexpr AssemblyID GetAssemblyId() const { return _assemblyId; }
+		[[nodiscard]] const std::vector<LibProfiler::AssemblyRef>& GetOriginalReferences() const { return _originalReferences; }
+
 	private:
 		IMetaDataAssemblyImport& GetMetadataAssemblyImport() const;
 		IMetaDataAssemblyEmit& GetMetadataAssemblyEmit() const;

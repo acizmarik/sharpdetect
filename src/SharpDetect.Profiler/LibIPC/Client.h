@@ -51,7 +51,7 @@ namespace LibIPC
 		}
 
 		void SetCommandHandler(ICommandHandler* handler);
-		bool IsCommandReceivingEnabled() const { return _commandReceivingEnabled; }
+		[[nodiscard]] bool IsCommandReceivingEnabled() const { return _commandReceivingEnabled; }
 
 	private:
 		void EventThreadLoop();
@@ -65,13 +65,13 @@ namespace LibIPC
 		static const std::string _ipqConsumerDequeueSymbolName;
 		static const std::string _ipqFreeMemorySymbolName;
 
-		typedef PVOID(*ipq_producer_create)(const char*, const char*, INT);
-		typedef void (*ipq_producer_destroy)(PVOID);
-		typedef INT(*ipq_producer_enqueue)(PVOID, BYTE*, INT);
-		typedef PVOID(*ipq_consumer_create)(const char*, const char*, INT);
-		typedef void (*ipq_consumer_destroy)(PVOID);
-		typedef INT(*ipq_consumer_dequeue)(PVOID, BYTE**, INT*);
-		typedef void (*ipq_free_memory)(BYTE*);
+		using ipq_producer_create = PVOID(*)(const char*, const char*, INT);
+		using ipq_producer_destroy = void (*)(PVOID);
+		using ipq_producer_enqueue = INT(*)(PVOID, BYTE*, INT);
+		using ipq_consumer_create = PVOID(*)(const char*, const char*, INT);
+		using ipq_consumer_destroy = void (*)(PVOID);
+		using ipq_consumer_dequeue = INT(*)(PVOID, BYTE**, INT*);
+		using ipq_free_memory = void (*)(BYTE*);
 
 		std::string _ipqName;
 		std::string _mmfName;
