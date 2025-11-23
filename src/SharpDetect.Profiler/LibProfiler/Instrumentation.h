@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -15,7 +15,7 @@ namespace LibProfiler
 {
 	HRESULT PatchMethodBody(
 		IN ICorProfilerInfo& corProfilerInfo,
-		IN ModuleDef& moduleDef,
+		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch);
 

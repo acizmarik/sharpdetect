@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "../lib/json/single_include/nlohmann/json.hpp"
-#include "../lib/optional/include/tl/optional.hpp"
 
 #include "cor.h"
 
@@ -20,9 +20,9 @@ namespace Profiler
 		BOOL injectHooks;
 		BOOL injectManagedWrapper;
 		std::vector<CapturedArgumentDescriptor> arguments;
-		tl::optional<CapturedValueDescriptor> returnValue;
-		tl::optional<USHORT> methodEnterInterpretation;
-		tl::optional<USHORT> methodExitInterpretation;
+		std::optional<CapturedValueDescriptor> returnValue;
+		std::optional<USHORT> methodEnterInterpretation;
+		std::optional<USHORT> methodExitInterpretation;
 	};
 
     void to_json(nlohmann::json& json, const MethodRewritingDescriptor& descriptor);

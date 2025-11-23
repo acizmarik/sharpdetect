@@ -9,7 +9,7 @@ using namespace LibProfiler;
 
 HRESULT StackWalker::CaptureStackTrace(
 	ICorProfilerInfo10* corProfilerInfo,
-	ThreadID threadId,
+	const ThreadID threadId,
 	std::vector<UINT64>& moduleIds,
 	std::vector<UINT32>& methodTokens)
 {
@@ -28,7 +28,7 @@ HRESULT StackWalker::CaptureStackTrace(
 		return E_FAIL;
 	}
 
-	StackWalkContext context;
+	StackWalkContext context { };
 	context.CorProfilerInfo = corProfilerInfo;
 	context.ModuleIds = &moduleIds;
 	context.MethodTokens = &methodTokens;
@@ -77,12 +77,12 @@ HRESULT StackWalker::CaptureStackTraces(
 	frames.reserve(threadIds.size());
 
 	HRESULT overallResult = S_OK;
-	for (auto threadId : threadIds)
+	for (auto&& threadId : threadIds)
 	{
 		std::vector<UINT64> moduleIds;
 		std::vector<UINT32> methodTokens;
 
-		StackWalkContext context;
+		StackWalkContext context { };
 		context.CorProfilerInfo = corProfilerInfo;
 		context.ModuleIds = &moduleIds;
 		context.MethodTokens = &methodTokens;
@@ -109,7 +109,7 @@ HRESULT StackWalker::CaptureStackTraces(
 		{
 			LOG_F(WARNING, "Failed to capture stack trace for thread %" UINT_PTR_FORMAT ". Error: 0x%x.", threadId, hr);
 			// Add empty frame list to maintain order
-			frames.push_back(std::vector<StackFrame>());
+			frames.emplace_back();
 			overallResult = hr;
 		}
 	}
@@ -124,14 +124,14 @@ HRESULT StackWalker::CaptureStackTraces(
 }
 
 HRESULT STDMETHODCALLTYPE StackWalker::StackSnapshotCallback(
-	FunctionID funcId,
+	const FunctionID funcId,
 	UINT_PTR ip,
 	COR_PRF_FRAME_INFO frameInfo,
 	ULONG32 contextSize,
 	BYTE context[],
 	void* clientData)
 {
-	auto* walkContext = static_cast<StackWalkContext*>(clientData);
+	const auto* walkContext = static_cast<StackWalkContext*>(clientData);
 
 	if (funcId == 0)
 		return S_OK;

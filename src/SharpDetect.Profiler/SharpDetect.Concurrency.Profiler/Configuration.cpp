@@ -47,5 +47,5 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
     }
     descriptor.commandQueueSize = json.at("commandQueueSize");
 
-    descriptor.additionalData = json.at("additionalData").template get<std::vector<MethodDescriptor>>();;
+    descriptor.additionalData = json.at("additionalData").get<std::vector<MethodDescriptor>>();;
 }

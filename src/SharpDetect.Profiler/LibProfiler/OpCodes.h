@@ -3,8 +3,7 @@
 #pragma once
 
 #include <array>
-
-#include "../lib/optional/include/tl/optional.hpp"
+#include <optional>
 
 #include "Code.h"
 #include "OpCode.h"
@@ -20,20 +19,20 @@ namespace LibProfiler
         /// <summary>
         /// All one-byte opcodes
         /// </summary>
-        static std::array<tl::optional<LibProfiler::OpCode>, 256> OneByteOpCodes;
+        static std::array<std::optional<LibProfiler::OpCode>, 256> OneByteOpCodes;
 
         /// <summary>
         /// All two-byte opcodes (first byte is <c>0xFE</c>)
         /// </summary>
-        static std::array<tl::optional<LibProfiler::OpCode>, 256> TwoByteOpCodes;
+        static std::array<std::optional<LibProfiler::OpCode>, 256> TwoByteOpCodes;
 
         static void Register(LibProfiler::OpCode&& opCode)
         {
-            auto code = opCode.GetCode();
-            if (((USHORT)code >> 8) == 0)
-                OpCodes::OneByteOpCodes[(BYTE)code] = std::move(opCode);
-            else if (((USHORT)code >> 8) == 0xFE)
-                OpCodes::TwoByteOpCodes[(BYTE)code] = std::move(opCode);
+            const auto code = opCode.GetCode();
+            if ((static_cast<USHORT>(code) >> 8) == 0)
+                OneByteOpCodes[static_cast<BYTE>(code)] = std::move(opCode);
+            else if ((static_cast<USHORT>(code) >> 8) == 0xFE)
+                TwoByteOpCodes[static_cast<BYTE>(code)] = std::move(opCode);
         }
 
         static void Initialize()

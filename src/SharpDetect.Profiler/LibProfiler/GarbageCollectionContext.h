@@ -3,15 +3,14 @@
 
 #pragma once
 
-#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include <span>
 #include <tuple>
 #include <vector>
 
 #include "cor.h"
 #include "corprof.h"
-#include "../lib/span/include/tcb/span.hpp"
 
 #include "TrackedObjectId.h"
 
@@ -22,16 +21,16 @@ namespace LibProfiler
 	public:
 		GarbageCollectionContext(const std::unordered_map<ObjectID, TrackedObjectId>& oldHeap, std::vector<BOOL>&& generationsCollected, std::vector<COR_PRF_GC_GENERATION_RANGE>&& bounds);
 
-		void ProcessSurvivingReferences(tcb::span<ObjectID> starts, tcb::span<SIZE_T> lengths);
-		void ProcessMovingReferences(tcb::span<ObjectID> oldStarts, tcb::span<ObjectID> newStarts, tcb::span<SIZE_T> lengths);
+		void ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths);
+		void ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths);
 
-		const std::unordered_map<ObjectID, TrackedObjectId>& GetHeap() const { return _newHeapBuilder; }
-		const std::unordered_set<TrackedObjectId>& GetPreviousTrackedObjects() const { return _previousTrackedObjects; }
-		const std::unordered_set<TrackedObjectId>& GetNextTrackedObjects() const { return _nextTrackedObjects; }
+		[[nodiscard]] const std::unordered_map<ObjectID, TrackedObjectId>& GetHeap() const { return _newHeapBuilder; }
+		[[nodiscard]] const std::unordered_set<TrackedObjectId>& GetPreviousTrackedObjects() const { return _previousTrackedObjects; }
+		[[nodiscard]] const std::unordered_set<TrackedObjectId>& GetNextTrackedObjects() const { return _nextTrackedObjects; }
 
 	private:
 
-		INT BinarySearch(ObjectID objId);
+		INT BinarySearch(ObjectID objId) const;
 		std::unordered_map<ObjectID, TrackedObjectId> _newHeapBuilder;
 		std::unordered_set<TrackedObjectId> _previousTrackedObjects;
 		std::unordered_set<TrackedObjectId> _nextTrackedObjects;

@@ -15,7 +15,7 @@ namespace LibProfiler
 	class ModuleDef
 	{
 	public:
-		ModuleDef(ICorProfilerInfo3& corProfilerInfo) :
+		explicit ModuleDef(ICorProfilerInfo3& corProfilerInfo) :
 			_moduleId(),
 			_assemblyId(),
 			_name(),
@@ -45,7 +45,7 @@ namespace LibProfiler
 		{
 
 		}
-		
+
 		ModuleDef& operator=(ModuleDef&&) = delete;
 		ModuleDef(const ModuleDef& other) = delete;
 		ModuleDef& operator=(const ModuleDef&) = delete;
@@ -57,18 +57,18 @@ namespace LibProfiler
 			IN const std::string& name, 
 			IN CorTypeAttr flags, 
 			IN mdToken baseType, 
-			OUT mdTypeDef* typeDef);
+			OUT mdTypeDef* typeDef) const;
 
 		HRESULT AddMethodRef(
 			IN const std::string& name,
 			IN mdTypeRef typeRef,
 			IN PCCOR_SIGNATURE signature,
 			IN ULONG signatureLength,
-			OUT mdMemberRef* memberReference);
+			OUT mdMemberRef* memberReference) const;
 
 		HRESULT AllocMethodBody(
 			IN ULONG size,
-			OUT void** body);
+			OUT void** body) const;
 
 		HRESULT AddMethodDef(
 			IN const std::string& name,
@@ -82,30 +82,30 @@ namespace LibProfiler
 		HRESULT AddTypeRef(
 			IN mdAssemblyRef declaringAssemblyRef,
 			IN const std::string& typeName,
-			OUT mdTypeRef* typeRef);
+			OUT mdTypeRef* typeRef) const;
 
 		HRESULT FindTypeDef(
 			IN const std::string& name,
-			OUT mdTypeDef* typeDef);
+			OUT mdTypeDef* typeDef) const;
 
 		HRESULT FindTypeRef(
 			IN mdAssemblyRef assemblyRef,
 			IN const std::string& name,
-			OUT mdTypeRef* typeRef);
+			OUT mdTypeRef* typeRef) const;
 
 		HRESULT FindMethodDef(
 			IN const std::string& name,
 			IN PCCOR_SIGNATURE signature,
 			IN ULONG signatureLength,
 			IN mdTypeDef typeDef,
-			OUT mdMethodDef* methodDef);
+			OUT mdMethodDef* methodDef) const;
 
 		HRESULT FindMethodRef(
 			IN const std::string& name,
 			IN PCCOR_SIGNATURE signature,
 			IN ULONG signatureLength,
 			IN mdTypeRef typeRef,
-			OUT mdMemberRef* methodRef);
+			OUT mdMemberRef* methodRef) const;
 
 		HRESULT GetMethodProps(
 			IN mdMethodDef methodDef,
@@ -113,34 +113,35 @@ namespace LibProfiler
 			OUT std::string& name,
 			OUT CorMethodAttr* flags,
 			OUT PCCOR_SIGNATURE* signature,
-			OUT ULONG* signatureLength);
+			OUT ULONG* signatureLength) const;
 
 		HRESULT GetTypeProps(
 			IN mdTypeDef typeDef,
 			OUT mdToken* extendsTypeDef,
-			OUT std::string& name);
+			OUT std::string& name) const;
 
 		HRESULT GetTypeRefProps(
 			IN mdTypeRef typeRef,
 			OUT mdToken* resolutionScope,
-			OUT std::string& name);
+			OUT std::string& name) const;
 
 		HRESULT FindImplementedInterface(
 			IN mdTypeDef typeDef,
 			IN const std::string& interfaceName,
-			OUT mdTypeDef* implementedInterface);
+			OUT mdTypeDef* implementedInterface) const;
 
-		const std::string& GetName() const { return _name; }
-		const std::string& GetFullPath() const { return _fullPath; }
-		const AssemblyID GetAssemblyId() const { return _assemblyId; }
-		const ModuleID GetModuleId() const { return _moduleId; }
+		[[nodiscard]] const std::string& GetName() const { return _name; }
+		[[nodiscard]] const std::string& GetFullPath() const { return _fullPath; }
+		[[nodiscard]] constexpr AssemblyID GetAssemblyId() const { return _assemblyId; }
+		[[nodiscard]] constexpr ModuleID GetModuleId() const { return _moduleId; }
 
 	private:
-		IMetaDataImport2& GetMetadataImport() const;
-		IMetaDataEmit2& GetMetadataEmit() const;
-		IMethodMalloc& GetMethodMalloc() const;
+		[[nodiscard]] IMetaDataImport2& GetMetadataImport() const;
+		[[nodiscard]] IMetaDataEmit2& GetMetadataEmit() const;
+		[[nodiscard]] IMethodMalloc& GetMethodMalloc() const;
 		HRESULT GetPlaceHolderMethodRVA(OUT UINT* rva);
-		std::string GetFileNameFromPath(const std::string& path);
+
+		static std::string GetFileNameFromPath(const std::string& path);
 
 		ModuleID _moduleId;
 		AssemblyID _assemblyId;

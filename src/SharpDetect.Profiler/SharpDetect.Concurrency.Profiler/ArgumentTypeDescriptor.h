@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "cor.h"
-#include "../lib/optional/include/tl/optional.hpp"
 #include "../lib/json/single_include/nlohmann/json.hpp"
 
 namespace Profiler
@@ -15,10 +15,10 @@ namespace Profiler
     struct ArgumentTypeDescriptor
     {
         std::vector<CorElementType> elementTypes;
-        tl::optional<std::string> typeName;
+        std::optional<std::string> typeName;
 
         ArgumentTypeDescriptor()
-            : elementTypes(), typeName("")
+            : typeName("")
         {
 
         }

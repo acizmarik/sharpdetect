@@ -4,7 +4,6 @@
 #pragma once
 
 #include <vector>
-#include "cor.h"
 #include "corprof.h"
 
 namespace LibProfiler

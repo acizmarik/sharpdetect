@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <chrono>
+#include <utility>
 
 #include "../lib/loguru/loguru.hpp"
 #include "../LibProfiler/PAL.h"
@@ -17,18 +18,18 @@ const std::string LibIPC::Client::_ipqConsumerDequeueSymbolName = "ipq_consumer_
 const std::string LibIPC::Client::_ipqFreeMemorySymbolName = "ipq_free_memory";
 
 
-LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFile, UINT commandQueueSize,
-					   std::string eventQueueName, std::string eventQueueFile, UINT eventQueueSize) :
-	_ipqName(eventQueueName),
-	_mmfName(eventQueueFile),
-	_commandQueueName(commandQueueName),
-	_commandMmfName(commandQueueFile),
-	_eventQueueSize(eventQueueSize),
-	_commandQueueSize(commandQueueSize),
-	_terminating(false),
+LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFile, const UINT commandQueueSize,
+					   std::string eventQueueName, std::string eventQueueFile, const UINT eventQueueSize) :
+	_ipqName(std::move(eventQueueName)),
+	_mmfName(std::move(eventQueueFile)),
+	_commandQueueName(std::move(commandQueueName)),
+	_commandMmfName(std::move(commandQueueFile)),
 	_ipqModuleHandle(nullptr),
 	_ffiProducer(nullptr),
 	_ffiConsumer(nullptr),
+	_eventQueueSize(eventQueueSize),
+	_commandQueueSize(commandQueueSize),
+	_terminating(false),
 	_commandReceivingEnabled(true),
 	_commandHandler(nullptr),
 	_ipqProducerCreateSymbolAddress(nullptr),
@@ -101,7 +102,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 void LibIPC::Client::EventThreadLoop()
 {
 	LOG_F(INFO, "IPC event worker thread started.");
-	auto enqueueFn = reinterpret_cast<ipq_producer_enqueue>(_ipqProducerEnqueueSymbolAddress);
+	const auto enqueueFn = reinterpret_cast<ipq_producer_enqueue>(_ipqProducerEnqueueSymbolAddress);
 	while (!_terminating)
 	{
 		auto lock = std::unique_lock<std::mutex>(_eventMutex);
@@ -132,8 +133,8 @@ void LibIPC::Client::EventThreadLoop()
 void LibIPC::Client::CommandThreadLoop()
 {
 	LOG_F(INFO, "IPC command worker thread started.");
-	auto dequeueFn = reinterpret_cast<ipq_consumer_dequeue>(_ipqConsumerDequeueSymbolAddress);
-	auto freeMemoryFn = reinterpret_cast<ipq_free_memory>(_ipqFreeMemorySymbolAddress);
+	const auto dequeueFn = reinterpret_cast<ipq_consumer_dequeue>(_ipqConsumerDequeueSymbolAddress);
+	const auto freeMemoryFn = reinterpret_cast<ipq_free_memory>(_ipqFreeMemorySymbolAddress);
 
 	while (!_terminating)
 	{
@@ -150,7 +151,7 @@ void LibIPC::Client::CommandThreadLoop()
 		try
 		{
 			msgpack::object_handle objectHandle = msgpack::unpack(reinterpret_cast<const char*>(dataPtr), size);
-			msgpack::object obj = objectHandle.get();
+			const msgpack::object obj = objectHandle.get();
 
 			// Extract command structure: [[pid, commandId], [discriminator, args]]
 			if (obj.type != msgpack::type::ARRAY || obj.via.array.size != 2)
@@ -161,7 +162,7 @@ void LibIPC::Client::CommandThreadLoop()
 			}
 
 			// Extract metadata: [pid, commandId]
-			auto& metadataObj = obj.via.array.ptr[0];
+			const auto& metadataObj = obj.via.array.ptr[0];
 			if (metadataObj.type != msgpack::type::ARRAY || metadataObj.via.array.size != 2)
 			{
 				LOG_F(WARNING, "Invalid command metadata format.");
@@ -169,11 +170,10 @@ void LibIPC::Client::CommandThreadLoop()
 				continue;
 			}
 			
-			UINT32 pid = metadataObj.via.array.ptr[0].as<UINT32>();
-			UINT64 commandId = metadataObj.via.array.ptr[1].as<UINT64>();
+			const UINT64 commandId = metadataObj.via.array.ptr[1].as<UINT64>();
 			
 			// Extract union: [discriminator, args]
-			auto& unionObj = obj.via.array.ptr[1];
+			const auto& unionObj = obj.via.array.ptr[1];
 			if (unionObj.type != msgpack::type::ARRAY || unionObj.via.array.size != 2)
 			{
 				LOG_F(WARNING, "Invalid command union format.");
@@ -182,7 +182,7 @@ void LibIPC::Client::CommandThreadLoop()
 			}
 
 			INT32 discriminator = unionObj.via.array.ptr[0].as<INT32>();
-			auto& argsObj = unionObj.via.array.ptr[1];
+			const auto& argsObj = unionObj.via.array.ptr[1];
 
 			// Handle based on command type
 			if (_commandHandler != nullptr)
@@ -193,7 +193,7 @@ void LibIPC::Client::CommandThreadLoop()
 				{
 					if (argsObj.type == msgpack::type::ARRAY && argsObj.via.array.size == 1)
 					{
-						UINT64 targetThreadId = argsObj.via.array.ptr[0].as<UINT64>();
+						const UINT64 targetThreadId = argsObj.via.array.ptr[0].as<UINT64>();
 						_commandHandler->OnCreateStackSnapshot(commandId, targetThreadId);
 					}
 					else

@@ -13,11 +13,11 @@
 
 HRESULT LibProfiler::PatchMethodBody(
 	IN ICorProfilerInfo& corProfilerInfo, 
-	IN ModuleDef& moduleDef, 
-	IN mdMethodDef mdMethodDef, 
+	IN const ModuleDef& moduleDef,
+	IN const mdMethodDef mdMethodDef,
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch)
 {
-	if (tokensToPatch.size() == 0)
+	if (tokensToPatch.empty())
 		return E_FAIL;
 
 	// Obtain current method
@@ -37,9 +37,7 @@ HRESULT LibProfiler::PatchMethodBody(
 	// Check if any instructions need to be patched
 	INT ip = 0;
 	std::vector<Instruction> instructionsToPatch;
-	UINT headerSize;
-	UINT codeSize;
-	std::tie(headerSize, codeSize) = ReadHeaderInfo(methodBody, ip);
+	auto [headerSize, codeSize] = ReadHeaderInfo(methodBody, ip);
 	while (ip < codeSize + headerSize)
 	{
 		auto instruction = ReadInstruction(methodBody, ip);
@@ -48,15 +46,15 @@ HRESULT LibProfiler::PatchMethodBody(
 		if (opCode.GetCode() != Code::Call && opCode.GetCode() != Code::Callvirt)
 			continue;
 
-		auto originalMethodToken = mdToken(instruction.GetOperand().value().Arg32);
-		if (tokensToPatch.find(originalMethodToken) == tokensToPatch.cend())
+		auto originalMethodToken = static_cast<mdToken>(instruction.GetOperand().value().Arg32);
+		if (!tokensToPatch.contains(originalMethodToken))
 			continue;
 
 		instructionsToPatch.push_back(std::move(instruction));
 	}
 
 	// Patch body if needed
-	if (instructionsToPatch.size() > 0)
+	if (!instructionsToPatch.empty())
 	{
 		// Allocate new method
 		void* newMethodBody = nullptr;
@@ -73,11 +71,11 @@ HRESULT LibProfiler::PatchMethodBody(
 		// Patch found instructions
 		for (auto&& instruction : instructionsToPatch)
 		{
-			auto const originalToken = mdToken(instruction.GetOperand().value().Arg32);
-			auto const newTokenValue = (*tokensToPatch.find(originalToken)).second;
+			auto const originalToken = static_cast<mdToken>(instruction.GetOperand().value().Arg32);
+			auto const newTokenValue = tokensToPatch.find(originalToken)->second;
 
 			// Rewrite operand
-			auto operandOffset = static_cast<BYTE*>(newMethodBody) + instruction.GetOffset() + 1;
+			const auto operandOffset = static_cast<BYTE*>(newMethodBody) + instruction.GetOffset() + 1;
 			std::memcpy(operandOffset, &newTokenValue, sizeof(INT));
 		}
 
@@ -101,8 +99,8 @@ HRESULT LibProfiler::PatchMethodBody(
 HRESULT LibProfiler::CreateManagedWrapperMethod(
 	IN ICorProfilerInfo& corProfilerInfo, 
 	IN ModuleDef& moduleDef, 
-	IN mdTypeDef mdTypeDef, 
-	IN mdMethodDef mdWrappedMethodDef, 
+	IN const mdTypeDef mdTypeDef,
+	IN const mdMethodDef mdWrappedMethodDef,
 	OUT mdMethodDef& mdWrapperMethodDef, 
 	OUT std::string& wrapperMethodName)
 {
@@ -140,8 +138,7 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 		CorMethodAttr::mdSpecialName | 
 		CorMethodAttr::mdRTSpecialName);
 
-	auto const methodImplFlags = static_cast<CorMethodImpl>(
-		CorMethodImpl::miIL | 
+	constexpr auto methodImplFlags = static_cast<CorMethodImpl>(
 		CorMethodImpl::miManaged | 
 		CorMethodImpl::miNoInlining | 
 		CorMethodImpl::miNoOptimization);
@@ -172,10 +169,10 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 	}
 	// Call <token>
 	code.push_back(static_cast<BYTE>(Code::Call));
-	code.push_back((BYTE)(mdWrappedMethodDef));
-	code.push_back((BYTE)(mdWrappedMethodDef >> 8));
-	code.push_back((BYTE)(mdWrappedMethodDef >> 16));
-	code.push_back((BYTE)(mdWrappedMethodDef >> 24));
+	code.push_back(static_cast<BYTE>(mdWrappedMethodDef));
+	code.push_back(static_cast<BYTE>(mdWrappedMethodDef >> 8));
+	code.push_back(static_cast<BYTE>(mdWrappedMethodDef >> 16));
+	code.push_back(static_cast<BYTE>(mdWrappedMethodDef >> 24));
 	// Ret
 	code.push_back(static_cast<BYTE>(Code::Ret));
 
@@ -186,7 +183,7 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 	}
 
 	// Fix header with real code size
-	header |= (BYTE)(code.size() << 2);
+	header |= static_cast<BYTE>(code.size() << 2);
 
 	// Allocate method body
 	void* rawNewMethodBody;
@@ -198,7 +195,7 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 	}
 
 	// Prepare method body
-	auto newMethodBody = static_cast<BYTE*>(rawNewMethodBody);
+	const auto newMethodBody = static_cast<BYTE*>(rawNewMethodBody);
 	*newMethodBody = header;
 	std::memcpy(newMethodBody + 1, code.data(), code.size());
 

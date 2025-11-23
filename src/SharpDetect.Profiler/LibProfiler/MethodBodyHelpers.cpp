@@ -3,27 +3,26 @@
 
 #include <stdexcept>
 
-#include "../lib/loguru/loguru.hpp"
-
 #include "Instruction.h"
 #include "MethodBodyHelpers.h"
+#include "OpCodes.h"
 
 std::tuple<UINT, UINT> LibProfiler::ReadHeaderInfo(const BYTE* data, INT& index)
 {
-    auto header = data[index];
-    auto isFat = (header & 0x03) == 0x03;
+    const auto header = data[index];
+    const auto isFat = (header & 0x03) == 0x03;
     if (!isFat)
     {
         // Tiny header
         index++;
-        return std::make_tuple(1, (UINT)((header & 0xFC) >> 2));
+        return std::make_tuple(1, static_cast<UINT>((header & 0xFC) >> 2));
     }
     else
     {
         // Fat header
-        auto header = (IMAGE_COR_ILMETHOD_FAT*)data;
-        const UINT headerSize = sizeof(IMAGE_COR_ILMETHOD_FAT);
-        const UINT codeSize = header->CodeSize;
+        const auto fatHeader = (IMAGE_COR_ILMETHOD_FAT*)data;
+        constexpr UINT headerSize = sizeof(IMAGE_COR_ILMETHOD_FAT);
+        const UINT codeSize = fatHeader->CodeSize;
         index += headerSize;
         return std::make_tuple(headerSize, codeSize);
     }
@@ -31,9 +30,9 @@ std::tuple<UINT, UINT> LibProfiler::ReadHeaderInfo(const BYTE* data, INT& index)
 
 LibProfiler::Instruction LibProfiler::ReadInstruction(const BYTE* data, INT& index)
 {
-    auto offset = index;
-    auto opCode = ReadOpCode(data, index);
-    auto operand = ReadOperand(opCode, data, index);
+    const auto offset = index;
+    const auto opCode = ReadOpCode(data, index);
+    const auto operand = ReadOperand(opCode, data, index);
     auto instruction = Instruction(opCode, operand, offset);
 
     if (opCode.GetCode() == Code::Switch)
@@ -44,49 +43,46 @@ LibProfiler::Instruction LibProfiler::ReadInstruction(const BYTE* data, INT& ind
 
 LibProfiler::OpCode LibProfiler::ReadOpCode(const BYTE* data, INT& index)
 {
-    auto op = data[index++];
+    const auto op = data[index++];
     if (op == 0xFE)
     {
         auto& opcode = OpCodes::TwoByteOpCodes[data[index++]];
-        if (!opcode.has_value())
-        {
-            LOG_F(ERROR, "UPS");
-        }
-
         return opcode.value();
     }
         
     auto& opcode = OpCodes::OneByteOpCodes[op];
-    if (!opcode.has_value())
-    {
-        LOG_F(ERROR, "UPS");
-    }
-
     return opcode.value();
 }
 
-tl::optional<LibProfiler::Operand> LibProfiler::ReadOperand(OpCode opCode, const BYTE* data, INT& index)
+std::optional<LibProfiler::Operand> LibProfiler::ReadOperand(const OpCode &opCode, const BYTE* data, INT& index)
 {
     switch (opCode.GetOperandType())
     {
-        case OperandType::InlineBrTarget: return ReadInlineI32(data, index);
-        case OperandType::InlineField: return ReadInlineI32(data, index);
-        case OperandType::InlineI: return ReadInlineI32(data, index);
-        case OperandType::InlineI8: return ReadInlineI64(data, index);
-        case OperandType::InlineMethod: return ReadInlineI32(data, index);
-        case OperandType::InlineNone: return { };
-        case OperandType::InlinePhi: return { };
-        case OperandType::InlineR: return ReadInlineR(data, index);
-        case OperandType::InlineSig: return ReadInlineI32(data, index);
-        case OperandType::InlineString: return ReadInlineI32(data, index);
-        case OperandType::InlineSwitch: return ReadInlineI32(data, index);
-        case OperandType::InlineTok: return ReadInlineI32(data, index);
-        case OperandType::InlineType: return ReadInlineI32(data, index);
-        case OperandType::InlineVar: return ReadInlineI16(data, index);
-        case OperandType::ShortInlineBrTarget: return ReadInlineI8(data, index);
-        case OperandType::ShortInlineI: return ReadInlineI8(data, index);
-        case OperandType::ShortInlineR: return ReadShortInlineR(data, index);
-        case OperandType::ShortInlineVar: return ReadInlineI8(data, index);
+        case OperandType::InlineI8:
+            return ReadInlineI64(data, index);
+        case OperandType::InlineNone:
+        case OperandType::InlinePhi:
+            return { };
+        case OperandType::InlineR:
+            return ReadInlineR(data, index);
+        case OperandType::ShortInlineR:
+            return ReadShortInlineR(data, index);
+        case OperandType::InlineMethod:
+        case OperandType::InlineBrTarget:
+        case OperandType::InlineField:
+        case OperandType::InlineI:
+        case OperandType::InlineSig:
+        case OperandType::InlineString:
+        case OperandType::InlineSwitch:
+        case OperandType::InlineTok:
+        case OperandType::InlineType:
+            return ReadInlineI32(data, index);
+        case OperandType::InlineVar:
+            return ReadInlineI16(data, index);
+        case OperandType::ShortInlineBrTarget:
+        case OperandType::ShortInlineI:
+        case OperandType::ShortInlineVar:
+            return ReadInlineI8(data, index);
         default: throw std::runtime_error("Invalid OpCode.OperandType");
     }
 }

@@ -3,7 +3,7 @@
 
 #include "Instruction.h"
 
-const INT LibProfiler::Instruction::GetSize() const
+INT LibProfiler::Instruction::GetSize() const
 {
     auto& opCode = _opCode;
     switch (opCode.GetOperandType())
@@ -41,7 +41,7 @@ const INT LibProfiler::Instruction::GetSize() const
     }
 }
 
-const INT LibProfiler::Instruction::GetOffset() const
+INT LibProfiler::Instruction::GetOffset() const
 {
     return _offset;
 }
@@ -51,7 +51,7 @@ const LibProfiler::OpCode& LibProfiler::Instruction::GetOpCode() const
     return _opCode;
 }
 
-const tl::optional<LibProfiler::Operand> LibProfiler::Instruction::GetOperand() const
+std::optional<LibProfiler::Operand> LibProfiler::Instruction::GetOperand() const
 {
     return _operand;
 }

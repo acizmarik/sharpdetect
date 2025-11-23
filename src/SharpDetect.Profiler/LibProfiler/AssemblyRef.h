@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 #include "cor.h"
 #include "corprof.h"
@@ -13,17 +14,26 @@ namespace LibProfiler
 	class AssemblyRef
 	{
 	public:
-		AssemblyRef(mdAssemblyRef mdAssemblyRef, std::string name, const void* publicKeyData, ULONG publicKeyDataLength, DWORD flags)
-			: _mdAssemblyRef(mdAssemblyRef), _name(name), _publicKeyData(publicKeyData), _publicKeyDataLength(publicKeyDataLength), _flags(flags)
+		AssemblyRef(
+			const mdAssemblyRef mdAssemblyRef,
+			std::string name,
+			const void* publicKeyData,
+			const ULONG publicKeyDataLength,
+			const DWORD flags) :
+				_mdAssemblyRef(mdAssemblyRef),
+				_name(std::move(name)),
+				_publicKeyData(publicKeyData),
+				_publicKeyDataLength(publicKeyDataLength),
+				_flags(flags)
 		{
 
 		}
 
-		const mdAssemblyRef GetMdAssemblyRef() const { return _mdAssemblyRef; }
-		const std::string& GetName() const { return _name; }
-		const void* GetPublicKeyData() const { return _publicKeyData; }
-		const ULONG GetPublicKeyDataLength() const { return _publicKeyDataLength; }
-		const DWORD GetFlags() const { return _flags; }
+		[[nodiscard]] constexpr mdAssemblyRef GetMdAssemblyRef() const { return _mdAssemblyRef; }
+		[[nodiscard]] const std::string& GetName() const { return _name; }
+		[[nodiscard]] constexpr const void* GetPublicKeyData() const { return _publicKeyData; }
+		[[nodiscard]] constexpr ULONG GetPublicKeyDataLength() const { return _publicKeyDataLength; }
+		[[nodiscard]] constexpr DWORD GetFlags() const { return _flags; }
 
 	private:
 		mdAssemblyRef _mdAssemblyRef;

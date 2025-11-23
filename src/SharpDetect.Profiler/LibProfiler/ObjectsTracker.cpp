@@ -13,15 +13,15 @@ namespace LibProfiler
 {
     void ObjectsTracker::ProcessGarbageCollectionStarted(std::vector<BOOL>&& collectedGenerations, std::vector<COR_PRF_GC_GENERATION_RANGE>&& bounds)
     {
-        std::lock_guard<std::mutex> guard(_allocationMutex);
+        std::lock_guard guard(_allocationMutex);
         _gcContext = GarbageCollectionContext(_allocations, std::move(collectedGenerations), std::move(bounds));
     }
 
     GarbageCollectionContext ObjectsTracker::ProcessGarbageCollectionFinished()
     {
-        std::lock_guard<std::mutex> guard(_allocationMutex);
-        auto gcPreviousTrackedObjectsCount = _gcContext.value().GetPreviousTrackedObjects().size();
-        auto gcNextTrackedObjectsCount = _gcContext.value().GetNextTrackedObjects().size();
+        std::lock_guard guard(_allocationMutex);
+        const auto gcPreviousTrackedObjectsCount = _gcContext.value().GetPreviousTrackedObjects().size();
+        const auto gcNextTrackedObjectsCount = _gcContext.value().GetNextTrackedObjects().size();
         LOG_F(INFO, "GC removed %" SIZE_FORMAT " tracked objects.", gcPreviousTrackedObjectsCount - gcNextTrackedObjectsCount);
 
         _allocations = _gcContext.value().GetHeap();
@@ -31,24 +31,26 @@ namespace LibProfiler
         return gcContextCopy;
     }
 
-    void ObjectsTracker::ProcessSurvivingReferences(tcb::span<ObjectID> starts, tcb::span<SIZE_T> lengths)
+    void ObjectsTracker::ProcessSurvivingReferences(const std::span<ObjectID> starts, const std::span<SIZE_T> lengths)
     {
-        std::lock_guard<std::mutex> guard(_allocationMutex);
+        std::lock_guard guard(_allocationMutex);
         _gcContext.value().ProcessSurvivingReferences(starts, lengths);
     }
 
-    void ObjectsTracker::ProcessMovingReferences(tcb::span<ObjectID> oldStarts, tcb::span<ObjectID> newStarts, tcb::span<SIZE_T> lengths)
+    void ObjectsTracker::ProcessMovingReferences(
+        const std::span<ObjectID> oldStarts,
+        const std::span<ObjectID> newStarts,
+        const std::span<SIZE_T> lengths)
     {
-        std::lock_guard<std::mutex> guard(_allocationMutex);
+        std::lock_guard guard(_allocationMutex);
         _gcContext.value().ProcessMovingReferences(oldStarts, newStarts, lengths);
     }
 
-    const TrackedObjectId ObjectsTracker::GetTrackedObject(ObjectID objectId)
-    {
+    TrackedObjectId ObjectsTracker::GetTrackedObject(ObjectID objectId) {
         std::lock_guard<std::mutex> guard(_allocationMutex);
         auto const it = _allocations.find(objectId);
         if (it != _allocations.cend())
-            return (*it).second;
+            return it->second;
 
         static TrackedObjectId lastAssignedTrackedObjectId = 1;
         auto const newTrackedObjectId = lastAssignedTrackedObjectId++;
@@ -56,8 +58,7 @@ namespace LibProfiler
         return newTrackedObjectId;
     }
 
-    const UINT ObjectsTracker::GetTrackedObjectsCount()
-    {
+    UINT ObjectsTracker::GetTrackedObjectsCount() {
         std::lock_guard<std::mutex> guard(_allocationMutex);
         return _allocations.size();
     }

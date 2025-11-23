@@ -5,10 +5,9 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "../lib/msgpack-c/include/msgpack.hpp"
-#include "../lib/optional/include/tl/optional.hpp"
-#include "OptionalMsgpack.h"
 #include "cor.h"
 
 namespace LibIPC
@@ -92,7 +91,7 @@ namespace LibIPC
 	using CreateStackSnapshotsMsgArgsInstance = msgpack::type::tuple<INT32, CreateStackSnapshotsMsgArgs>;
 	using CreateStackSnapshotsMsg = msgpack::type::tuple<CommandMetadataMsg, CreateStackSnapshotsMsgArgsInstance>;
 
-	using MetadataMsg = msgpack::type::tuple<UINT32, UINT64, tl::optional<UINT64>>;
+	using MetadataMsg = msgpack::type::tuple<UINT32, UINT64, std::optional<UINT64>>;
 
 	using ProfilerInitializeMsgArgs = msgpack::type::tuple<>;
 	using ProfilerInitializeMsgArgsInstance = msgpack::type::tuple<INT32, ProfilerInitializeMsgArgs>;

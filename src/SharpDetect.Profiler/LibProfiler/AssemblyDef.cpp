@@ -11,7 +11,7 @@
 #include "WString.h"
 #include "PAL.h"
 
-HRESULT LibProfiler::AssemblyDef::Initialize(ModuleID moduleId)
+HRESULT LibProfiler::AssemblyDef::Initialize(const ModuleID moduleId)
 {
 	auto hr = _corProfilerInfo.GetModuleInfo2(moduleId, nullptr, 0, nullptr, nullptr, &_assemblyId, nullptr);
 	if (FAILED(hr))
@@ -52,7 +52,7 @@ HRESULT LibProfiler::AssemblyDef::Initialize(ModuleID moduleId)
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
+	const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
 	hr = metadataImport.GetAssemblyProps(mdAssembly, nullptr, nullptr, nullptr, nameBuffer.get(), nameLength, nullptr, nullptr, nullptr);
 	if (FAILED(hr))
 	{
@@ -60,7 +60,7 @@ HRESULT LibProfiler::AssemblyDef::Initialize(ModuleID moduleId)
 		return E_FAIL;
 	}
 
-	_name = LibProfiler::ToString(nameBuffer.get());
+	_name = ToString(nameBuffer.get());
 	hr = LoadReferences();
 	if (FAILED(hr))
 	{
@@ -71,7 +71,14 @@ HRESULT LibProfiler::AssemblyDef::Initialize(ModuleID moduleId)
 	return S_OK;
 }
 
-HRESULT LibProfiler::AssemblyDef::AddOrGetAssemblyRef(IN const std::string& name, IN const void* publicKeyData, IN ULONG publicKeyDataLength, IN ASSEMBLYMETADATA& metadata, IN DWORD flags, OUT mdAssemblyRef* assemblyRef, OUT BOOL* injectedReference)
+HRESULT LibProfiler::AssemblyDef::AddOrGetAssemblyRef(
+	IN const std::string& name,
+	IN const void* publicKeyData,
+	IN const ULONG publicKeyDataLength,
+	IN const ASSEMBLYMETADATA& metadata,
+	IN const DWORD flags,
+	OUT mdAssemblyRef* assemblyRef,
+	OUT BOOL* injectedReference) const
 {
 	// Check if assembly reference already exists
 	if (SUCCEEDED(FindAssemblyRef(name, assemblyRef)))
@@ -82,7 +89,7 @@ HRESULT LibProfiler::AssemblyDef::AddOrGetAssemblyRef(IN const std::string& name
 
 	// Otherwise create a new assembly reference
 	auto& metadataAssemblyEmit = GetMetadataAssemblyEmit();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	auto hr = metadataAssemblyEmit.DefineAssemblyRef(publicKeyData, publicKeyDataLength, nameWstring.c_str(), &metadata, nullptr, 0, flags, assemblyRef);
 	if (FAILED(hr))
 	{
@@ -95,10 +102,10 @@ HRESULT LibProfiler::AssemblyDef::AddOrGetAssemblyRef(IN const std::string& name
 	return S_OK;
 }
 
-HRESULT LibProfiler::AssemblyDef::FindAssemblyRef(IN const std::string& name, OUT mdAssemblyRef* assemblyRef)
+HRESULT LibProfiler::AssemblyDef::FindAssemblyRef(IN const std::string& name, OUT mdAssemblyRef* assemblyRef) const
 {
 	// Search in original references
-	auto it = std::find_if(_originalReferences.cbegin(), _originalReferences.cend(), [&name](const AssemblyRef& ref) { return ref.GetName() == name; });
+	auto it = std::ranges::find_if(_originalReferences, [&name](const AssemblyRef& ref) { return ref.GetName() == name; });
 	if (it != _originalReferences.cend())
 	{
 		*assemblyRef = it->GetMdAssemblyRef();
@@ -106,7 +113,7 @@ HRESULT LibProfiler::AssemblyDef::FindAssemblyRef(IN const std::string& name, OU
 	}
 
 	// Search in injected references
-	it = std::find_if(_injectedReferences.cbegin(), _injectedReferences.cend(), [&name](const AssemblyRef& ref) { return ref.GetName() == name; });
+	it = std::ranges::find_if(_injectedReferences, [&name](const AssemblyRef& ref) { return ref.GetName() == name; });
 	if (it != _injectedReferences.cend())
 	{
 		*assemblyRef = it->GetMdAssemblyRef();
@@ -117,7 +124,11 @@ HRESULT LibProfiler::AssemblyDef::FindAssemblyRef(IN const std::string& name, OU
 	return E_FAIL;
 }
 
-HRESULT LibProfiler::AssemblyDef::GetProps(OUT const void** publicKeyData, OUT ULONG* publicKeyDataLength, OUT ASSEMBLYMETADATA* metadata, OUT DWORD* flags)
+HRESULT LibProfiler::AssemblyDef::GetProps(
+	OUT const void** publicKeyData,
+	OUT ULONG* publicKeyDataLength,
+	OUT ASSEMBLYMETADATA* metadata,
+	OUT DWORD* flags) const
 {
 	auto& metadataImport = GetMetadataAssemblyImport();
 
@@ -149,7 +160,10 @@ IMetaDataAssemblyEmit& LibProfiler::AssemblyDef::GetMetadataAssemblyEmit() const
 	return *_metadataAssemblyEmit;
 }
 
-BOOL LibProfiler::AssemblyDef::ArePublicKeysEqual(const void* keyData1, ULONG keyData1Length, LibProfiler::AssemblyRef other)
+BOOL LibProfiler::AssemblyDef::ArePublicKeysEqual(
+	const void* keyData1,
+	const ULONG keyData1Length,
+	const AssemblyRef &other)
 {
 	if (keyData1Length != other.GetPublicKeyDataLength())
 		return false;
@@ -157,7 +171,7 @@ BOOL LibProfiler::AssemblyDef::ArePublicKeysEqual(const void* keyData1, ULONG ke
 	return memcmp(keyData1, other.GetPublicKeyData(), other.GetPublicKeyDataLength()) == 0;
 }
 
-HRESULT LibProfiler::AssemblyDef::GetAssemblyRefProps(mdAssemblyRef assemblyRef, std::string& name)
+HRESULT LibProfiler::AssemblyDef::GetAssemblyRefProps(const mdAssemblyRef assemblyRef, std::string& name) const
 {
 	auto& metadataAssemblyImport = GetMetadataAssemblyImport();
 	
@@ -179,7 +193,7 @@ HRESULT LibProfiler::AssemblyDef::GetAssemblyRefProps(mdAssemblyRef assemblyRef,
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
+	const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
 	hr = metadataAssemblyImport.GetAssemblyRefProps(
 		assemblyRef,
 		nullptr,
@@ -197,7 +211,7 @@ HRESULT LibProfiler::AssemblyDef::GetAssemblyRefProps(mdAssemblyRef assemblyRef,
 		return E_FAIL;
 	}
 
-	name = LibProfiler::ToString(nameBuffer.get());
+	name = ToString(nameBuffer.get());
 	return S_OK;
 }
 
@@ -257,7 +271,7 @@ HRESULT LibProfiler::AssemblyDef::LoadReferences()
 			continue;
 		}
 
-		auto name = LibProfiler::ToString(nameBuffer.get());
+		const auto name = LibProfiler::ToString(nameBuffer.get());
 		_originalReferences.push_back(std::move(AssemblyRef(assemblyRef, name, publicKeyData, publicKeyDataLength, flags)));
 
 	} while (SUCCEEDED(hr));

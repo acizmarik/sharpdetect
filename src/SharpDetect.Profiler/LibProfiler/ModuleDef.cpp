@@ -10,7 +10,7 @@
 #include "PAL.h"
 #include "WString.h"
 
-HRESULT LibProfiler::ModuleDef::Initialize(ModuleID moduleId)
+HRESULT LibProfiler::ModuleDef::Initialize(const ModuleID moduleId)
 {
 	auto hr = _corProfilerInfo.GetModuleMetaData(moduleId, ofRead, IID_IMetaDataImport2, reinterpret_cast<IUnknown**>(&_metadataModuleImport));
 	if (FAILED(hr))
@@ -41,7 +41,7 @@ HRESULT LibProfiler::ModuleDef::Initialize(ModuleID moduleId)
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
+	const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
 	hr = _corProfilerInfo.GetModuleInfo2(moduleId, nullptr, nameLength, nullptr, nameBuffer.get(), nullptr, nullptr);
 	if (FAILED(hr))
 	{
@@ -55,8 +55,9 @@ HRESULT LibProfiler::ModuleDef::Initialize(ModuleID moduleId)
 	return S_OK;
 }
 
-std::string LibProfiler::ModuleDef::GetFileNameFromPath(const std::string& path) {
-	auto lastDelimiter = path.find_last_of("/\\");
+std::string LibProfiler::ModuleDef::GetFileNameFromPath(const std::string& path)
+{
+	const auto lastDelimiter = path.find_last_of("/\\");
 	if (lastDelimiter == std::string::npos) {
 		return path;
 	}
@@ -64,17 +65,21 @@ std::string LibProfiler::ModuleDef::GetFileNameFromPath(const std::string& path)
 	return path.substr(lastDelimiter + 1);
 }
 
-HRESULT LibProfiler::ModuleDef::AddTypeDef(IN const std::string& name, IN CorTypeAttr flags, IN mdToken baseType, OUT mdTypeDef* typeDef)
+HRESULT LibProfiler::ModuleDef::AddTypeDef(
+	IN const std::string& name,
+	IN const CorTypeAttr flags,
+	IN const mdToken baseType,
+	OUT mdTypeDef* typeDef) const
 {
 	auto& metadataEmit = GetMetadataEmit();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	return metadataEmit.DefineTypeDef(nameWstring.c_str(), flags, baseType, nullptr, typeDef);
 }
 
-HRESULT LibProfiler::ModuleDef::AllocMethodBody(IN ULONG size, OUT void** body)
+HRESULT LibProfiler::ModuleDef::AllocMethodBody(IN const ULONG size, OUT void** body) const
 {
 	auto& methodMalloc = GetMethodMalloc();
-	auto memory = methodMalloc.Alloc(size);
+	const auto memory = methodMalloc.Alloc(size);
 	if (memory == nullptr)
 	{
 		LOG_F(ERROR, "Could not allocate method body for size=%" ULONG_FORMAT ".", size);
@@ -85,7 +90,14 @@ HRESULT LibProfiler::ModuleDef::AllocMethodBody(IN ULONG size, OUT void** body)
 	return S_OK;
 }
 
-HRESULT LibProfiler::ModuleDef::AddMethodDef(IN const std::string& name, IN CorMethodAttr flags, IN mdTypeDef typeDef, IN PCCOR_SIGNATURE signature, IN ULONG signatureLength, IN CorMethodImpl implFlags, OUT mdMethodDef* methodDefinition)
+HRESULT LibProfiler::ModuleDef::AddMethodDef(
+	IN const std::string& name,
+	IN const CorMethodAttr flags,
+	IN const mdTypeDef typeDef,
+	IN const PCCOR_SIGNATURE signature,
+	IN const ULONG signatureLength,
+	IN const CorMethodImpl implFlags,
+	OUT mdMethodDef* methodDefinition)
 {
 	UINT rva;
 	auto hr = GetPlaceHolderMethodRVA(&rva);
@@ -96,7 +108,7 @@ HRESULT LibProfiler::ModuleDef::AddMethodDef(IN const std::string& name, IN CorM
 	}
 
 	auto& metadataEmit = GetMetadataEmit();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	hr = metadataEmit.DefineMethod(typeDef, nameWstring.c_str(), flags, signature, signatureLength, rva, implFlags, methodDefinition);
 	if (FAILED(hr))
 	{
@@ -107,45 +119,66 @@ HRESULT LibProfiler::ModuleDef::AddMethodDef(IN const std::string& name, IN CorM
 	return S_OK;
 }
 
-HRESULT LibProfiler::ModuleDef::AddTypeRef(IN mdAssemblyRef declaringAssemblyRef, IN const std::string& typeName, OUT mdTypeRef* typeRef)
+HRESULT LibProfiler::ModuleDef::AddTypeRef(
+	IN const mdAssemblyRef declaringAssemblyRef,
+	IN const std::string& typeName,
+	OUT mdTypeRef* typeRef) const
 {
 	auto& metadataEmit = GetMetadataEmit();
-	auto nameWstring = LibProfiler::ToWSTRING(typeName);
+	const auto nameWstring = ToWSTRING(typeName);
 	return metadataEmit.DefineTypeRefByName(declaringAssemblyRef, nameWstring.c_str(), typeRef);
 }
 
-HRESULT LibProfiler::ModuleDef::FindTypeDef(IN const std::string& name, OUT mdTypeDef* typeDef)
+HRESULT LibProfiler::ModuleDef::FindTypeDef(IN const std::string& name, OUT mdTypeDef* typeDef) const
 {
 	auto& metadataImport = GetMetadataImport();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	return metadataImport.FindTypeDefByName(nameWstring.c_str(), mdTokenNil, typeDef);
 }
 
-HRESULT LibProfiler::ModuleDef::FindTypeRef(IN mdAssemblyRef assemblyRef, IN const std::string& name, OUT mdTypeRef* typeRef)
+HRESULT LibProfiler::ModuleDef::FindTypeRef(
+	IN const mdAssemblyRef assemblyRef,
+	IN const std::string& name,
+	OUT mdTypeRef* typeRef) const
 {
 	auto& metadataImport = GetMetadataImport();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	return metadataImport.FindTypeRef(assemblyRef, nameWstring.c_str(), typeRef);
 }
 
-HRESULT LibProfiler::ModuleDef::FindMethodDef(IN const std::string& name, IN PCCOR_SIGNATURE signature, IN ULONG signatureLength, IN mdTypeDef typeDef, OUT mdMethodDef* methodDef)
+HRESULT LibProfiler::ModuleDef::FindMethodDef(
+	IN const std::string& name,
+	IN const PCCOR_SIGNATURE signature,
+	IN const ULONG signatureLength,
+	IN const mdTypeDef typeDef,
+	OUT mdMethodDef* methodDef) const
 {
 	auto& metadataImport = GetMetadataImport();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	return metadataImport.FindMethod(typeDef, nameWstring.c_str(), signature, signatureLength, methodDef);
 }
 
-HRESULT LibProfiler::ModuleDef::FindMethodRef(IN const std::string& name, IN PCCOR_SIGNATURE signature, IN ULONG signatureLength, IN mdTypeRef typeRef, OUT mdMemberRef* methodRef)
+HRESULT LibProfiler::ModuleDef::FindMethodRef(
+	IN const std::string& name,
+	IN const PCCOR_SIGNATURE signature,
+	IN const ULONG signatureLength,
+	IN const mdTypeRef typeRef,
+	OUT mdMemberRef* methodRef) const
 {
 	auto& metadataImport = GetMetadataImport();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	return metadataImport.FindMemberRef(typeRef, nameWstring.c_str(), signature, signatureLength, methodRef);
 }
 
-HRESULT LibProfiler::ModuleDef::AddMethodRef(IN const std::string& name, IN mdTypeRef typeRef, IN PCCOR_SIGNATURE signature, IN ULONG signatureLength, OUT mdMemberRef* memberReference)
+HRESULT LibProfiler::ModuleDef::AddMethodRef(
+	IN const std::string& name,
+	IN const mdTypeRef typeRef,
+	IN const PCCOR_SIGNATURE signature,
+	IN const ULONG signatureLength,
+	OUT mdMemberRef* memberReference) const
 {
 	auto& metadataEmit = GetMetadataEmit();
-	auto nameWstring = LibProfiler::ToWSTRING(name);
+	const auto nameWstring = ToWSTRING(name);
 	return metadataEmit.DefineMemberRef(typeRef, nameWstring.c_str(), signature, signatureLength, memberReference);
 }
 
@@ -165,12 +198,12 @@ IMethodMalloc& LibProfiler::ModuleDef::GetMethodMalloc() const
 }
 
 HRESULT LibProfiler::ModuleDef::GetMethodProps(
-	IN mdMethodDef methodDef,
+	IN const mdMethodDef methodDef,
 	OUT mdTypeDef* typeDef,
 	OUT std::string& name,
 	OUT CorMethodAttr* flags,
 	OUT PCCOR_SIGNATURE* signature,
-	OUT ULONG* signatureLength)
+	OUT ULONG* signatureLength) const
 {
 	auto& metadataImport = GetMetadataImport();
 	ULONG methodNameLength;
@@ -182,7 +215,7 @@ HRESULT LibProfiler::ModuleDef::GetMethodProps(
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[methodNameLength]);
+	const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[methodNameLength]);
 	hr = metadataImport.GetMethodProps(methodDef, nullptr, nameBuffer.get(), methodNameLength, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
 	if (FAILED(hr))
 	{
@@ -193,14 +226,14 @@ HRESULT LibProfiler::ModuleDef::GetMethodProps(
 	if (flags != nullptr)
 		*flags = static_cast<CorMethodAttr>(methodFlags);
 
-	name = LibProfiler::ToString(nameBuffer.get());
+	name = ToString(nameBuffer.get());
 	return S_OK;
 }
 
 HRESULT LibProfiler::ModuleDef::GetTypeProps(
-	IN mdTypeDef typeDef,
+	IN const mdTypeDef typeDef,
 	OUT mdToken* extendsTypeDef,
-	OUT std::string& name)
+	OUT std::string& name) const
 {
 	auto& metadataImport = GetMetadataImport();
 	ULONG typeNameLength;
@@ -211,7 +244,7 @@ HRESULT LibProfiler::ModuleDef::GetTypeProps(
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[typeNameLength]);
+	const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[typeNameLength]);
 	hr = metadataImport.GetTypeDefProps(typeDef, nameBuffer.get(), typeNameLength, nullptr, nullptr, nullptr);
 	if (FAILED(hr))
 	{
@@ -219,14 +252,14 @@ HRESULT LibProfiler::ModuleDef::GetTypeProps(
 		return E_FAIL;
 	}
 
-	name = LibProfiler::ToString(nameBuffer.get());
+	name = ToString(nameBuffer.get());
 	return S_OK;
 }
 
 HRESULT LibProfiler::ModuleDef::GetTypeRefProps(
-	IN mdTypeRef typeRef,
+	IN const mdTypeRef typeRef,
 	OUT mdToken* resolutionScope,
-	OUT std::string& name)
+	OUT std::string& name) const
 {
 	auto& metadataImport = GetMetadataImport();
 
@@ -238,7 +271,7 @@ HRESULT LibProfiler::ModuleDef::GetTypeRefProps(
 		return E_FAIL;
 	}
 
-	auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[typeNameLength]);
+	const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[typeNameLength]);
 	hr = metadataImport.GetTypeRefProps(typeRef, nullptr, nameBuffer.get(), typeNameLength, nullptr);
 	if (FAILED(hr))
 	{
@@ -246,14 +279,14 @@ HRESULT LibProfiler::ModuleDef::GetTypeRefProps(
 		return E_FAIL;
 	}
 
-	name = LibProfiler::ToString(nameBuffer.get());
+	name = ToString(nameBuffer.get());
 	return S_OK;
 }
 
 HRESULT LibProfiler::ModuleDef::FindImplementedInterface(
-	IN mdTypeDef typeDef, 
+	IN const mdTypeDef typeDef,
 	IN const std::string& interfaceName, 
-	OUT mdTypeDef* implementedInterface)
+	OUT mdTypeDef* implementedInterface) const
 {
 	auto& metadataImport = GetMetadataImport();
 	*implementedInterface = mdTypeDefNil;
@@ -334,7 +367,7 @@ HRESULT LibProfiler::ModuleDef::GetPlaceHolderMethodRVA(OUT UINT* rva)
 
 	if (_objectCtorDef == mdMethodDefNil)
 	{
-		COR_SIGNATURE signature[] = {
+		constexpr COR_SIGNATURE signature[] = {
 			// Calling convention
 			CorCallingConvention::IMAGE_CEE_CS_CALLCONV_HASTHIS,
 			// Parameters count
@@ -343,7 +376,7 @@ HRESULT LibProfiler::ModuleDef::GetPlaceHolderMethodRVA(OUT UINT* rva)
 			CorElementType::ELEMENT_TYPE_VOID
 		};
 
-		ULONG signatureLength = sizeof(signature) / sizeof(*signature);
+		constexpr ULONG signatureLength = std::size(signature);
 		hr = FindMethodDef(systemObjectCtorMethodName, signature, signatureLength, _objectTypeDef, &_objectCtorDef);
 		if (FAILED(hr))
 		{

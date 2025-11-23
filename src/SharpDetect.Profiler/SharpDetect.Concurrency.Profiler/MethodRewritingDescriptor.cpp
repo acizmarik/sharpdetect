@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Andrej Čižmárik and Contributors
+// Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
 #include "MethodRewritingDescriptor.h"
@@ -23,7 +23,7 @@ void Profiler::from_json(const nlohmann::json& json, MethodRewritingDescriptor& 
     descriptor.arguments = json.at("arguments");
     auto const returnValueIt = json.find("returnValue");
 
-    if (returnValueIt != json.cend() && !(*returnValueIt).is_null())
+    if (returnValueIt != json.cend() && !returnValueIt->is_null())
         descriptor.returnValue = json.at("returnValue");
 
     if (json.find("methodEnterInterpretation") != json.cend())

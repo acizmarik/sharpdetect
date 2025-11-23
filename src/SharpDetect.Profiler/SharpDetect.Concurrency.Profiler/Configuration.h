@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "../lib/json/single_include/nlohmann/json.hpp"
-#include "../lib/optional/include/tl/optional.hpp"
 #include "cor.h"
 
 #include "MethodDescriptor.h"
@@ -19,11 +19,11 @@ namespace Profiler
 		UINT eventMask;
 
 		std::string sharedMemoryName;
-		tl::optional<std::string> sharedMemoryFile;
+		std::optional<std::string> sharedMemoryFile;
 		UINT sharedMemorySize;
 
 		std::string commandQueueName;
-		tl::optional<std::string> commandQueueFile;
+		std::optional<std::string> commandQueueFile;
         UINT commandQueueSize;
 
 		std::vector<MethodDescriptor> additionalData;
