@@ -7,8 +7,6 @@
 
 #include "../lib/json/single_include/nlohmann/json.hpp"
 
-#include "cor.h"
-
 #include "MethodSignatureDescriptor.h"
 #include "MethodRewritingDescriptor.h"
 

@@ -13,7 +13,7 @@ using json = nlohmann::json;
 
 const IID IID_IUnknown = { 0x00000000, 0x0000, 0x0000, { 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };
 const IID IID_IClassFactory = { 0x00000001, 0x0000, 0x0000, { 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };
-const IID IID_Profiler = { 0xB2C60596, 0xB36D, 0x460B, {0x90, 0x2A, 0x3D, 0x91, 0xF5, 0x87, 0x85, 0x29} };
+constexpr IID IID_Profiler = { 0xB2C60596, 0xB36D, 0x460B, {0x90, 0x2A, 0x3D, 0x91, 0xF5, 0x87, 0x85, 0x29} };
 
 EXTERN_C BOOL STDMETHODCALLTYPE DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -46,7 +46,7 @@ _Check_return_ EXTERN_C HRESULT STDAPICALLTYPE DllGetClassObject(_In_ REFCLSID r
     }
 
     auto configPath = std::string(rawConfigPath);
-    Profiler::Configuration configuration{ };
+    Profiler::Configuration configuration { };
 
     try
     {
@@ -61,10 +61,5 @@ _Check_return_ EXTERN_C HRESULT STDAPICALLTYPE DllGetClassObject(_In_ REFCLSID r
     }
 
     auto factory = new LibProfiler::ClassFactory<Profiler::CorProfiler, Profiler::Configuration>(configuration);
-    if (factory == nullptr)
-    {
-        return E_FAIL;
-    }
-
     return factory->QueryInterface(riid, ppv);
 }

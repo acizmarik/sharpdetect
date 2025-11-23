@@ -18,7 +18,7 @@ namespace Profiler
         std::optional<std::string> typeName;
 
         ArgumentTypeDescriptor()
-            : elementTypes(), typeName("")
+            : typeName("")
         {
 
         }

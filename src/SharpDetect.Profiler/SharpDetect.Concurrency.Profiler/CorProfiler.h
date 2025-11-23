@@ -25,10 +25,10 @@
 
 namespace Profiler
 {
-	class CorProfiler : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler
+	class CorProfiler final : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler
 	{
 	public:
-		explicit CorProfiler(Configuration configuration);
+		explicit CorProfiler(const Configuration &configuration);
 		HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
 		
 		void OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId) override;
@@ -50,8 +50,8 @@ namespace Profiler
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> FindMethodDescriptor(FunctionID functionId);
 
 	private:
-		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg();
-		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId);
+		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
+		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
 		[[nodiscard]] BOOL HasModuleDef(ModuleID moduleId);
 		[[nodiscard]] BOOL HasAssemblyDef(AssemblyID assemblyId);
@@ -59,14 +59,14 @@ namespace Profiler
 		[[nodiscard]] std::shared_ptr<LibProfiler::ModuleDef> GetModuleDef(ModuleID moduleId);
 		[[nodiscard]] std::shared_ptr<LibProfiler::AssemblyDef> GetAssemblyDef(AssemblyID assemblyID);
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
-		HRESULT PatchMethodBody(LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
+		HRESULT PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
 
 		HRESULT WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef);
-		HRESULT ImportMethodWrappers(LibProfiler::AssemblyDef& assemblyDef, LibProfiler::ModuleDef& moduleDef);
-		HRESULT ImportMethodWrapper(LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
-		HRESULT ImportCustomRecordedEventTypes(LibProfiler::ModuleDef& moduleDef);
+		HRESULT ImportMethodWrappers(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
+		HRESULT ImportMethodWrapper(const LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
+		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef);
 
-		HRESULT InitializeProfilingFeatures();
+		HRESULT InitializeProfilingFeatures() const;
 
 		HRESULT GetArguments(
 			const MethodDescriptor& methodDescriptor,
@@ -75,7 +75,7 @@ namespace Profiler
 			std::span<BYTE> argumentValues,
 			std::span<BYTE> argumentOffsets);
 
-		HRESULT GetByRefArguments(
+		static HRESULT GetByRefArguments(
 			const MethodDescriptor& methodDescriptor,
 			const std::vector<UINT_PTR>& indirects,
 			std::span<BYTE> indirectValues,
@@ -106,7 +106,7 @@ namespace Profiler
 		std::mutex _rewritingsMutex;
 
 		using MethodId = std::pair<ModuleID, mdMethodDef>;
-		using MethodIdHasher = Profiler::pair_hash<ModuleID, mdMethodDef>;
+		using MethodIdHasher = pair_hash<ModuleID, mdMethodDef>;
 		std::unordered_map<MethodId, BOOL, MethodIdHasher> _wrappers;
 		std::mutex _wrappersMutex;
 
@@ -116,7 +116,7 @@ namespace Profiler
 		std::mutex _methodDescriptorsMutex;
 
 		using MethodInvocationId = std::tuple<ModuleID, mdMethodDef, USHORT>;
-		using MethodInvocationIdHasher = Profiler::tuple_hash<ModuleID, mdMethodDef, USHORT>;
+		using MethodInvocationIdHasher = tuple_hash<ModuleID, mdMethodDef, USHORT>;
 		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodEntryLookup;
 		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodExitLookup;
 		std::mutex _customEventLookupsMutex;
