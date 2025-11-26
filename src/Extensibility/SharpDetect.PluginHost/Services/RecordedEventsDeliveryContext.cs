@@ -10,11 +10,11 @@ namespace SharpDetect.PluginHost.Services;
 
 internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
 {
-    private readonly Dictionary<ThreadId, Queue<RecordedEvent>> _undelivered;
-    private readonly Dictionary<Lock, Queue<ThreadId>> _waitForLockQueue;
-    private readonly Dictionary<TrackedObjectId, Queue<ThreadId>> _waitForThreadStartQueue;
-    private readonly HashSet<ThreadId> _blockedThreads;
-    private readonly HashSet<ThreadId> _unblockedThreads;
+    private readonly Dictionary<ProcessThreadId, Queue<RecordedEvent>> _undelivered;
+    private readonly Dictionary<Lock, Queue<ProcessThreadId>> _waitForLockQueue;
+    private readonly Dictionary<ProcessTrackedObjectId, Queue<ProcessThreadId>> _waitForThreadStartQueue;
+    private readonly HashSet<ProcessThreadId> _blockedThreads;
+    private readonly HashSet<ProcessThreadId> _unblockedThreads;
 
     public RecordedEventsDeliveryContext()
     {
@@ -25,26 +25,26 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         _unblockedThreads = [];
     }
 
-    public void BlockEventsDeliveryForThreadWaitingForObject(ThreadId threadId, Lock lockObj)
+    public void BlockEventsDeliveryForThreadWaitingForObject(ProcessThreadId processThreadId, Lock lockObj)
     {
-        if (!_undelivered.ContainsKey(threadId))
-            _undelivered[threadId] = new Queue<RecordedEvent>();
-        _blockedThreads.Add(threadId);
+        if (!_undelivered.ContainsKey(processThreadId))
+            _undelivered[processThreadId] = new Queue<RecordedEvent>();
+        _blockedThreads.Add(processThreadId);
 
         if (!_waitForLockQueue.ContainsKey(lockObj))
-            _waitForLockQueue[lockObj] = new Queue<ThreadId>();
-        _waitForLockQueue[lockObj].Enqueue(threadId);
+            _waitForLockQueue[lockObj] = new Queue<ProcessThreadId>();
+        _waitForLockQueue[lockObj].Enqueue(processThreadId);
     }
 
-    public void BlockEventsDeliveryForThreadWaitingForThreadStart(ThreadId threadId, TrackedObjectId threadObjectId)
+    public void BlockEventsDeliveryForThreadWaitingForThreadStart(ProcessThreadId processThreadId, ProcessTrackedObjectId threadObjectId)
     {
-        if (!_undelivered.ContainsKey(threadId))
-            _undelivered[threadId] = new Queue<RecordedEvent>();
-        _blockedThreads.Add(threadId);
+        if (!_undelivered.ContainsKey(processThreadId))
+            _undelivered[processThreadId] = new Queue<RecordedEvent>();
+        _blockedThreads.Add(processThreadId);
         
         if (!_waitForThreadStartQueue.ContainsKey(threadObjectId))
-            _waitForThreadStartQueue[threadObjectId] = new Queue<ThreadId>();
-        _waitForThreadStartQueue[threadObjectId].Enqueue(threadId);
+            _waitForThreadStartQueue[threadObjectId] = new Queue<ProcessThreadId>();
+        _waitForThreadStartQueue[threadObjectId].Enqueue(processThreadId);
     }
 
     public void UnblockEventsDeliveryForThreadWaitingForObject(Lock lockObj)
@@ -57,7 +57,7 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         }
     }
 
-    public void UnblockEventsDeliveryForThreadWaitingForThreadStart(TrackedObjectId threadObjectId)
+    public void UnblockEventsDeliveryForThreadWaitingForThreadStart(ProcessTrackedObjectId threadObjectId)
     {
         if (_waitForThreadStartQueue.TryGetValue(threadObjectId, out var waitQueue))
         {
@@ -70,9 +70,9 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         }
     }
 
-    public IEnumerable<RecordedEvent> ConsumeUndeliveredEvents(ThreadId threadId)
+    public IEnumerable<RecordedEvent> ConsumeUndeliveredEvents(ProcessThreadId processThreadId)
     {
-        if (!_undelivered.TryGetValue(threadId, out Queue<RecordedEvent>? undelivereds))
+        if (!_undelivered.TryGetValue(processThreadId, out Queue<RecordedEvent>? undelivereds))
             yield break;
 
         while (undelivereds.Count > 0)
@@ -92,7 +92,7 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         return _blockedThreads.Count > 0;
     }
 
-    public IEnumerable<ThreadId> ConsumeUnblockedThreads()
+    public IEnumerable<ProcessThreadId> ConsumeUnblockedThreads()
     {
         while (_unblockedThreads.Count > 0)
         {
@@ -102,13 +102,13 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         }
     }
 
-    public void EnqueueBlockedEventForThread(ThreadId threadId, RecordedEvent recordedEvent)
+    public void EnqueueBlockedEventForThread(ProcessThreadId processThreadId, RecordedEvent recordedEvent)
     {
-        _undelivered[threadId].Enqueue(recordedEvent);
+        _undelivered[processThreadId].Enqueue(recordedEvent);
     }
 
-    public bool IsBlockedEventsDeliveryForThread(ThreadId threadId)
+    public bool IsBlockedEventsDeliveryForThread(ProcessThreadId processThreadId)
     {
-        return _blockedThreads.Contains(threadId);
+        return _blockedThreads.Contains(processThreadId);
     }
 }
