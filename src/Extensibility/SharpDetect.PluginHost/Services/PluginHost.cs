@@ -42,20 +42,20 @@ internal class PluginHost : IPluginHost, IDisposable
 
         try
         {
-            var threadId = recordedEvent.Metadata.Tid;
-            if (_recordedEventsDeliveryContext.IsBlockedEventsDeliveryForThread(threadId))
+            var processThreadId = new ProcessThreadId(recordedEvent.Metadata.Pid, recordedEvent.Metadata.Tid);
+            if (_recordedEventsDeliveryContext.IsBlockedEventsDeliveryForThread(processThreadId))
             {
                 // Do not execute if thread is blocked
-                _recordedEventsDeliveryContext.EnqueueBlockedEventForThread(threadId, recordedEvent);
+                _recordedEventsDeliveryContext.EnqueueBlockedEventForThread(processThreadId, recordedEvent);
                 return RecordedEventState.Defered;
             }
 
             customHandler?.Invoke(_plugin, recordedEvent.Metadata, recordedEvent.EventArgs);
-            if (_recordedEventsDeliveryContext.IsBlockedEventsDeliveryForThread(threadId))
+            if (_recordedEventsDeliveryContext.IsBlockedEventsDeliveryForThread(processThreadId))
             {
                 // Plugin just requested thread blocking
                 // We will attempt to replay this event once the thread gets unblocked
-                _recordedEventsDeliveryContext.EnqueueBlockedEventForThread(threadId, recordedEvent);
+                _recordedEventsDeliveryContext.EnqueueBlockedEventForThread(processThreadId, recordedEvent);
                 return RecordedEventState.Defered;
             }
 

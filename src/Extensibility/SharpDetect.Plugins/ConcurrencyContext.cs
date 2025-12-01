@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics.CodeAnalysis;
-using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 
@@ -12,7 +11,7 @@ public sealed class ConcurrencyContext
 {
     private readonly Dictionary<ProcessThreadId, Lock?> _waitingForLocks = [];
     private readonly Dictionary<ProcessThreadId, HashSet<Lock>> _takenLocks = [];
-    private readonly Dictionary<ProcessThreadId, ThreadId?> _waitingForThreads = [];
+    private readonly Dictionary<ProcessThreadId, ProcessThreadId?> _waitingForThreads = [];
 
     public bool HasThread(ProcessThreadId id) => _waitingForLocks.ContainsKey(id);
     public bool HasLock(ProcessThreadId id, Lock lockObj) => _takenLocks[id].Contains(lockObj);
@@ -22,9 +21,9 @@ public sealed class ConcurrencyContext
         return _waitingForLocks.TryGetValue(id, out lockObj) && lockObj is not null;
     }
     
-    public bool TryGetWaitingThread(ProcessThreadId id, [NotNullWhen(true)] out ThreadId? threadId)
+    public bool TryGetWaitingThread(ProcessThreadId id, [NotNullWhen(true)] out ProcessThreadId? processThreadId)
     {
-        return _waitingForThreads.TryGetValue(id, out threadId) && threadId is not null;
+        return _waitingForThreads.TryGetValue(id, out processThreadId) && processThreadId is not null;
     }
     
     public Lock GetWaitingLock(ProcessThreadId id)
@@ -81,9 +80,9 @@ public sealed class ConcurrencyContext
         _waitingForThreads.Remove(id);
     }
     
-    public void RecordThreadJoinCalled(ProcessThreadId id, ThreadId joiningThreadId)
+    public void RecordThreadJoinCalled(ProcessThreadId id, ProcessThreadId processJoiningThreadId)
     {
-        _waitingForThreads[id] = joiningThreadId;
+        _waitingForThreads[id] = processJoiningThreadId;
     }
     
     public void RecordThreadJoinReturned(ProcessThreadId id)

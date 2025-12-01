@@ -15,17 +15,17 @@ namespace SharpDetect.Plugins;
 
 public abstract class HappensBeforeOrderingPluginBase : PluginBase
 {
-    public readonly record struct LockAcquireAttemptArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct LockAcquireResultArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
-    public readonly record struct LockReleaseArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectPulseOneArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectPulseAllArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectWaitAttemptArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectWaitResultArgs(uint ProcessId, ThreadId ThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
-    public readonly record struct ThreadStartArgs(uint ProcessId, ThreadId ThreadId, TrackedObjectId ThreadObjectId);
-    public readonly record struct ThreadMappingArgs(uint ProcessId, ThreadId ThreadId, TrackedObjectId ThreadObjectId);
-    public readonly record struct ThreadJoinAttemptArgs(uint ProcessId, ThreadId BlockedThreadId, ThreadId JoiningThreadId, ModuleId ModuleId, MdMethodDef MethodToken);
-    public readonly record struct ThreadJoinResultArgs(uint ProcessId, ThreadId BlockedThreadId, ThreadId JoinedThreadId, ModuleId ModuleId, MdMethodDef MethodToken, bool IsSuccess);
+    public readonly record struct LockAcquireAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct LockAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
+    public readonly record struct LockReleaseArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectPulseOneArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectPulseAllArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectWaitAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
+    public readonly record struct ObjectWaitResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
+    public readonly record struct ThreadStartArgs(ProcessThreadId ProcessThreadId, TrackedObjectId ThreadObjectId);
+    public readonly record struct ThreadMappingArgs(ProcessThreadId ProcessThreadId, TrackedObjectId ThreadObjectId);
+    public readonly record struct ThreadJoinAttemptArgs(ProcessThreadId BlockedProcessThreadId, ProcessThreadId JoiningProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken);
+    public readonly record struct ThreadJoinResultArgs(ProcessThreadId BlockedProcessThreadId, ProcessThreadId JoinedProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, bool IsSuccess);
 
     public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
     public event Action<LockAcquireResultArgs>? LockAcquireReturned;
@@ -39,9 +39,9 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     public event Action<ThreadJoinAttemptArgs>? ThreadJoinAttempted;
     public event Action<ThreadJoinResultArgs>? ThreadJoinReturned;
 
-    private readonly Dictionary<ThreadId, Stack<RuntimeArgumentList>> _callstackArguments = [];
-    private readonly Dictionary<TrackedObjectId, Lock> _locks = [];
-    private readonly Dictionary<TrackedObjectId, ProcessThreadId> _objectIdtoThreadIdLookup = [];
+    private readonly Dictionary<ProcessThreadId, Stack<RuntimeArgumentList>> _callstackArguments = [];
+    private readonly Dictionary<ProcessTrackedObjectId, Lock> _locks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _objectIdToThreadIdLookup = [];
     private readonly IMetadataContext _metadataContext;
     private readonly IArgumentsParser _argumentsParser;
     private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
@@ -57,23 +57,25 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockAcquire)]
     public void MonitorLockAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetOrAddLock(lockObjectId);
-        _callstackArguments[threadId].Push(arguments);
-        LockAcquireAttempted?.Invoke(new(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetOrAddLock(processLockObjectId);
+        _callstackArguments[id].Push(arguments);
+        LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, lockObj));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockTryAcquire)]
     public void MonitorLockTryAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetOrAddLock(lockObjectId);
-        _callstackArguments[threadId].Push(arguments);
-        LockAcquireAttempted?.Invoke(new(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetOrAddLock(processLockObjectId);
+        _callstackArguments[id].Push(arguments);
+        LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, lockObj));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockAcquireResult)]
@@ -90,100 +92,106 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
 
     private void MonitorLockAcquireExit(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef functionToken, bool lockTaken)
     {
-        var threadId = metadata.Tid;
-        var arguments = _callstackArguments[threadId].Peek();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = _callstackArguments[id].Peek();
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetLock(lockObjectId);
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetLock(processLockObjectId);
         if (!lockTaken)
         {
-            LockAcquireReturned?.Invoke(new(metadata.Pid, threadId, moduleId, functionToken, lockObj, false));
+            LockAcquireReturned?.Invoke(new(id, moduleId, functionToken, lockObj, false));
             return;
         }
 
-        if (TryConsumeOrDeferLockAcquire(threadId, lockObj))
-            LockAcquireReturned?.Invoke(new(metadata.Pid, threadId, moduleId, functionToken, lockObj, true));
+        if (TryConsumeOrDeferLockAcquire(id, lockObj))
+            LockAcquireReturned?.Invoke(new(id, moduleId, functionToken, lockObj, true));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockRelease)]
     public void MonitorLockReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
-        _callstackArguments[threadId].Push(arguments);
+        _callstackArguments[id].Push(arguments);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockReleaseResult)]
     public void MonitorLockReleaseResultExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
-        var threadId = metadata.Tid;
-        var arguments = _callstackArguments[threadId].Pop();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = _callstackArguments[id].Pop();
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetLock(lockObjectId);
-        lockObj.Release(threadId);
-        LockReleased?.Invoke(new(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetLock(processLockObjectId);
+        lockObj.Release(id);
+        LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, lockObj));
         _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorPulseOneAttempt)]
     public void MonitorPulseOneAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
-        _callstackArguments[threadId].Push(arguments);
+        _callstackArguments[id].Push(arguments);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorPulseOneAttempt)]
     public void MonitorPulseOneResult(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
-        var arguments = _callstackArguments[threadId].Pop();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = _callstackArguments[id].Pop();
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetLock(lockObjectId);
-        _callstackArguments[threadId].Push(arguments);
-        ObjectPulsedOne?.Invoke(new ObjectPulseOneArgs(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetLock(processLockObjectId);
+        _callstackArguments[id].Push(arguments);
+        ObjectPulsedOne?.Invoke(new ObjectPulseOneArgs(id, args.ModuleId, args.MethodToken, lockObj));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorPulseAllAttempt)]
     public void MonitorPulseAllAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
-        _callstackArguments[threadId].Push(arguments);
+        _callstackArguments[id].Push(arguments);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorPulseAllResult)]
     public void MonitorPulseAllResult(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
-        var arguments = _callstackArguments[threadId].Pop();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = _callstackArguments[id].Pop();
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetLock(lockObjectId);
-        ObjectPulsedAll?.Invoke(new ObjectPulseAllArgs(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetLock(processLockObjectId);
+        ObjectPulsedAll?.Invoke(new ObjectPulseAllArgs(id, args.ModuleId, args.MethodToken, lockObj));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorWaitAttempt)]
     public void MonitorWaitAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetOrAddLock(lockObjectId);
-        lockObj.Release(threadId);
-        _callstackArguments[threadId].Push(arguments);
-        ObjectWaitAttempted?.Invoke(new ObjectWaitAttemptArgs(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj));
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetOrAddLock(processLockObjectId);
+        lockObj.Release(id);
+        _callstackArguments[id].Push(arguments);
+        ObjectWaitAttempted?.Invoke(new ObjectWaitAttemptArgs(id, args.ModuleId, args.MethodToken, lockObj));
         _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorWaitResult)]
     public void MonitorWaitResult(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
-        var threadId = metadata.Tid;
-        var arguments = _callstackArguments[threadId].Peek();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = _callstackArguments[id].Peek();
         var lockObjectId = arguments[0].Value.AsT1;
-        var lockObj = GetLock(lockObjectId);
+        var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
+        var lockObj = GetLock(processLockObjectId);
         var success = MemoryMarshal.Read<bool>(args.ReturnValue);
-        if (TryConsumeOrDeferLockAcquire(threadId, lockObj))
-            ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(metadata.Pid, threadId, args.ModuleId, args.MethodToken, lockObj, success));
+        if (TryConsumeOrDeferLockAcquire(id, lockObj))
+            ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, args.ModuleId, args.MethodToken, lockObj, success));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.ThreadStart)]
@@ -191,11 +199,11 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
-        var threadObjectId = arguments[0].Value.AsT1;
-        _objectIdtoThreadIdLookup[threadObjectId] = id;
-        ThreadStarted?.Invoke(new ThreadStartArgs(metadata.Pid, metadata.Tid, threadObjectId));
+        var processThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
+        _objectIdToThreadIdLookup[processThreadObjectId] = id;
+        ThreadStarted?.Invoke(new ThreadStartArgs(id, processThreadObjectId.ObjectId));
         Logger.LogInformation("Thread started {Name}.", Threads[id]);
-        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(threadObjectId);
+        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(processThreadObjectId);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.ThreadMapping)]
@@ -203,56 +211,58 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var threadObjectId = new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ReturnValue));
-        _objectIdtoThreadIdLookup[threadObjectId] = id;
-        ThreadMappingUpdated?.Invoke(new ThreadMappingArgs(metadata.Pid, metadata.Tid, threadObjectId));
-        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(threadObjectId);
+        var processThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, threadObjectId);
+        _objectIdToThreadIdLookup[processThreadObjectId] = id;
+        ThreadMappingUpdated?.Invoke(new ThreadMappingArgs(id, threadObjectId));
+        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(processThreadObjectId);
     }
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadJoinAttempt)]
     public void ThreadJoinAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var threadId = metadata.Tid;
         var arguments = ParseArguments(metadata, args);
         var joinedThreadObjectId = arguments[0].Value.AsT1;
-        if (TryConsumeOrDeferThreadJoin(id, joinedThreadObjectId, out var joinedThreadId))
+        var processJoinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, joinedThreadObjectId);
+        if (TryConsumeOrDeferThreadJoin(id, processJoinedThreadObjectId, out var processJoinedThreadId))
         {
-            _callstackArguments[threadId].Push(arguments);
-            ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(metadata.Pid, threadId, joinedThreadId.ThreadId, args.ModuleId, args.MethodToken));
+            _callstackArguments[id].Push(arguments);
+            ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(id, processJoinedThreadId, args.ModuleId, args.MethodToken));
         }
     }
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadJoinResult)]
     public void ThreadJoinResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
-        var threadId = metadata.Tid;
-        var arguments = _callstackArguments[threadId].Pop();
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = _callstackArguments[id].Pop();
         var joinedThreadObjectId = arguments[0].Value.AsT1;
-        var joinedThreadId = _objectIdtoThreadIdLookup[joinedThreadObjectId].ThreadId;
-        ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(metadata.Pid, threadId, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: true));
+        var processJoinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, joinedThreadObjectId);
+        var processJoinedThreadId = _objectIdToThreadIdLookup[processJoinedThreadObjectId];
+        ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, processJoinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: true));
     }
 
-    private bool TryConsumeOrDeferLockAcquire(ThreadId threadId, Lock lockObj)
+    private bool TryConsumeOrDeferLockAcquire(ProcessThreadId processThreadId, Lock lockObj)
     {
-        if (lockObj.Owner is null || lockObj.Owner.Value == threadId)
+        if (lockObj.Owner is null || lockObj.Owner.Value == processThreadId)
         {
             // It can be executed right away
-            lockObj.Acquire(threadId);
-            _callstackArguments[threadId].Pop();
+            lockObj.Acquire(processThreadId);
+            _callstackArguments[processThreadId].Pop();
             return true;
         }
 
         // It needs to be deferred
-        _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForObject(threadId, lockObj);
+        _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForObject(processThreadId, lockObj);
         return false;
     }
     
     private bool TryConsumeOrDeferThreadJoin(
         ProcessThreadId processThreadId,
-        TrackedObjectId joiningThreadObjectId,
+        ProcessTrackedObjectId processJoiningThreadObjectId,
         out ProcessThreadId joiningProcessThreadId)
     {
-        if (_objectIdtoThreadIdLookup.TryGetValue(joiningThreadObjectId, out joiningProcessThreadId))
+        if (_objectIdToThreadIdLookup.TryGetValue(processJoiningThreadObjectId, out joiningProcessThreadId))
         {
             // It can be executed right away
             return true;
@@ -260,13 +270,14 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
 
         // It needs to be deferred
         joiningProcessThreadId = default;
-        _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForThreadStart(processThreadId.ThreadId, joiningThreadObjectId);
+        _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForThreadStart(processThreadId, processJoiningThreadObjectId);
         return false;
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
     {
-        _callstackArguments[args.ThreadId] = new Stack<RuntimeArgumentList>();
+        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
+        _callstackArguments[id] = new Stack<RuntimeArgumentList>();
         base.Visit(metadata, args);
     }
 
@@ -285,25 +296,25 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     protected override void Visit(RecordedEventMetadata metadata, GarbageCollectedTrackedObjectsRecordedEvent args)
     {
         foreach (var removedTrackedObjectId in args.RemovedTrackedObjectIds)
-            _locks.Remove(removedTrackedObjectId);
+            _locks.Remove(new ProcessTrackedObjectId(metadata.Pid, removedTrackedObjectId));
 
         base.Visit(metadata, args);
     }
 
-    private Lock GetOrAddLock(TrackedObjectId lockObjectId)
+    private Lock GetOrAddLock(ProcessTrackedObjectId processLockObjectId)
     {
-        if (_locks.TryGetValue(lockObjectId, out var lockObj))
+        if (_locks.TryGetValue(processLockObjectId, out var lockObj))
             return lockObj;
 
-        lockObj = new Lock(lockObjectId);
-        _locks.Add(lockObjectId, lockObj);
+        lockObj = new Lock(processLockObjectId);
+        _locks.Add(processLockObjectId, lockObj);
         return lockObj;
     }
 
-    private Lock GetLock(TrackedObjectId lockObjectId)
+    private Lock GetLock(ProcessTrackedObjectId processLockObjectId)
     {
-        if (!_locks.TryGetValue(lockObjectId, out var lockObj))
-            throw new PluginException($"Could not resolve objectId {lockObjectId.Value} to a known lock.");
+        if (!_locks.TryGetValue(processLockObjectId, out var lockObj))
+            throw new PluginException($"Could not resolve objectId {processLockObjectId.ObjectId.Value} to a known lock.");
 
         return lockObj;
     }

@@ -72,27 +72,27 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
         _plugin.TypeReferenceInjected += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TypeReferenceInjectionRecordedEvent)>(GetNextId(), RecordedEventType.TypeReferenceInjection, args));
         _plugin.LockAcquireAttempted += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireAttemptArgs)>(GetNextId(), RecordedEventType.MonitorLockAcquire, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireAttemptArgs)>(GetNextId(), RecordedEventType.MonitorLockAcquire, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.LockAcquireReturned += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireResultArgs)>(GetNextId(), RecordedEventType.MonitorLockAcquireResult, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireResultArgs)>(GetNextId(), RecordedEventType.MonitorLockAcquireResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.LockReleased += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockReleaseArgs)>(GetNextId(), RecordedEventType.MonitorLockRelease, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockReleaseArgs)>(GetNextId(), RecordedEventType.MonitorLockRelease, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ObjectPulsedAll += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectPulseAllArgs)>(GetNextId(), RecordedEventType.MonitorPulseAllResult, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectPulseAllArgs)>(GetNextId(), RecordedEventType.MonitorPulseAllResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ObjectPulsedOne += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectPulseOneArgs)>(GetNextId(), RecordedEventType.MonitorPulseOneResult, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectPulseOneArgs)>(GetNextId(), RecordedEventType.MonitorPulseOneResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ObjectWaitAttempted += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectWaitAttemptArgs)>(GetNextId(), RecordedEventType.MonitorWaitAttempt, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectWaitAttemptArgs)>(GetNextId(), RecordedEventType.MonitorWaitAttempt, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ObjectWaitReturned += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectWaitResultArgs)>(GetNextId(), RecordedEventType.MonitorWaitResult, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectWaitResultArgs)>(GetNextId(), RecordedEventType.MonitorWaitResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ThreadJoinAttempted += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadJoinAttemptArgs)>(GetNextId(), RecordedEventType.ThreadJoinAttempt, (new RecordedEventMetadata(args.ProcessId, args.BlockedThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadJoinAttemptArgs)>(GetNextId(), RecordedEventType.ThreadJoinAttempt, (new RecordedEventMetadata(args.BlockedProcessThreadId.ProcessId, args.BlockedProcessThreadId.ThreadId), args)));
         _plugin.ThreadJoinReturned += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadJoinResultArgs)>(GetNextId(), RecordedEventType.ThreadJoinResult, (new RecordedEventMetadata(args.ProcessId, args.BlockedThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadJoinResultArgs)>(GetNextId(), RecordedEventType.ThreadJoinResult, (new RecordedEventMetadata(args.BlockedProcessThreadId.ProcessId, args.BlockedProcessThreadId.ThreadId), args)));
         _plugin.ThreadStarted += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadStartArgs)>(GetNextId(), RecordedEventType.ThreadStart, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadStartArgs)>(GetNextId(), RecordedEventType.ThreadStart, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ThreadMappingUpdated += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadMappingArgs)>(GetNextId(), RecordedEventType.ThreadMapping, (new RecordedEventMetadata(args.ProcessId, args.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ThreadMappingArgs)>(GetNextId(), RecordedEventType.ThreadMapping, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
     }
     
     public IEnumerator<IEvent<ulong, RecordedEventType>> GetEnumerator()
