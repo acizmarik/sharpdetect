@@ -12,6 +12,8 @@ public class Summary
     public readonly string Description;
     public readonly RuntimeInfo RuntimeInfo;
     public readonly RewritingInfo RewritingInfo;
+    public readonly TimingInfo TimingInfo;
+    public readonly EnvironmentInfo EnvironmentInfo;
     private readonly ImmutableArray<Report> _reports;
     private readonly Dictionary<string, string> _collectionProperties;
     private readonly Dictionary<string, string> _runtimeProperties;
@@ -22,6 +24,8 @@ public class Summary
         string description,
         RuntimeInfo runtimeInfo,
         RewritingInfo rewritingInfo,
+        TimingInfo timingInfo,
+        EnvironmentInfo environmentInfo,
         Dictionary<string, string> runtimeProps,
         Dictionary<string, string> collectionProps,
         IEnumerable<ModuleInfo> modules,
@@ -31,6 +35,8 @@ public class Summary
         Description = description;
         RuntimeInfo = runtimeInfo;
         RewritingInfo = rewritingInfo;
+        TimingInfo = timingInfo;
+        EnvironmentInfo = environmentInfo;
         _runtimeProperties = runtimeProps;
         _collectionProperties = collectionProps;
         _modules = modules.ToImmutableArray();

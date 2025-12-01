@@ -10,6 +10,7 @@
 
 <div class="tab">
     <button id="btnRuntime" class="tablinks" data-group="1" onclick="openTab('Runtime')">Runtime</button>
+    <button id="btnEnvironment" class="tablinks" data-group="1" onclick="openTab('Environment')">Environment</button>
     <button id="btnAssemblies" class="tablinks" data-group="1" onclick="openTab('Assemblies')">Assemblies</button>
     {{#if reports}}
     <button id="btnViolations" class="tablinks" data-group="1" onclick="openTab('Violations')">Violations</button>
@@ -18,6 +19,9 @@
 
 <div id="Runtime" class="tabcontent" data-group="1">
     {{> runtime}}
+</div>
+<div id="Environment" class="tabcontent" data-group="1">
+    {{> environment}}
 </div>
 <div id="Assemblies" class="tabcontent" data-group="1">
     {{> assemblies}}

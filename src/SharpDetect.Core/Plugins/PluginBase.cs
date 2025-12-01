@@ -15,7 +15,7 @@ namespace SharpDetect.Core.Plugins;
 public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 {
     public abstract PluginConfiguration Configuration { get; }
-    protected SummaryBuilder Reporter { get; } = new SummaryBuilder();
+    protected SummaryBuilder Reporter { get; }
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
     protected IReadOnlyDictionary<ProcessThreadId, string> Threads => _threads;
@@ -31,6 +31,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     {
         ModuleBindContext = serviceProvider.GetRequiredService<IModuleBindContext>();
         Logger = serviceProvider.GetRequiredService<ILogger<PluginBase>>();
+        Reporter = new SummaryBuilder(serviceProvider.GetRequiredService<TimeProvider>());
         _profilerCommandSenderProvider = serviceProvider.GetRequiredService<IProfilerCommandSenderProvider>();
         _profilerCommandSenders = ImmutableDictionary<int, IProfilerCommandSender>.Empty;
         _callstacks = [];
@@ -39,6 +40,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected override void Visit(RecordedEventMetadata metadata, ProfilerLoadRecordedEvent args)
     {
+        Reporter.SetStartTime();
         var runtimeInfo = new RuntimeInfo(
             Type: args.RuntimeType,
             Version: new Version(args.MajorVersion, args.MinorVersion, args.BuildVersion, args.QfeVersion));

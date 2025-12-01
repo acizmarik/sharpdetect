@@ -10,16 +10,18 @@ namespace SharpDetect.Core.Plugins
     {
         public readonly string Category;
         public readonly int Identifier;
+        public readonly DateTime DetectionTime;
         private readonly List<ThreadInfo> _threads = [];
         private readonly Dictionary<ThreadInfo, StackTrace> _stackTraces = [];
         private readonly Dictionary<ThreadInfo, string> _reportReasons = [];
         private string? _title;
         private string? _description;
 
-        public ReportBuilder(int identifier, string category)
+        public ReportBuilder(int identifier, string category, DateTime detectionTime)
         {
             Identifier = identifier;
             Category = category;
+            DetectionTime = detectionTime;
         }
 
         public ReportBuilder AddThread(ThreadInfo threadInfo)
@@ -64,7 +66,8 @@ namespace SharpDetect.Core.Plugins
                 description: _description,
                 reportedThreads: _threads,
                 stackTraces: _stackTraces,
-                reportReasons: _reportReasons);
+                reportReasons: _reportReasons,
+                detectionTime: DetectionTime);
         }
     }
 }

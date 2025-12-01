@@ -11,6 +11,7 @@ public class Report
     public readonly string Title;
     public readonly string Category;
     public readonly string Description;
+    public readonly DateTime DetectionTime;
     private readonly ImmutableArray<ThreadInfo> _reportedThreads;
     private readonly ImmutableDictionary<ThreadInfo, string> _reportReasons;
     private readonly ImmutableDictionary<ThreadInfo, StackTrace> _stackTraces;
@@ -22,12 +23,14 @@ public class Report
         string description,
         IEnumerable<ThreadInfo> reportedThreads,
         IEnumerable<KeyValuePair<ThreadInfo, StackTrace>> stackTraces,
-        IEnumerable<KeyValuePair<ThreadInfo, string>> reportReasons)
+        IEnumerable<KeyValuePair<ThreadInfo, string>> reportReasons,
+        DateTime detectionTime)
     {
         Identifier = identifier;
         Category = category;
         Title = title;
         Description = description;
+        DetectionTime = detectionTime;
         _reportedThreads = reportedThreads.ToImmutableArray();
         _stackTraces = stackTraces.ToImmutableDictionary();
         _reportReasons = reportReasons.ToImmutableDictionary();

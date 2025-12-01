@@ -36,8 +36,9 @@ public partial class DeadlockPlugin
             var processId = deadlock.Key.Pid;
             var requestId = deadlock.Key.RequestId;
             var cycle = deadlock.Value.Cycle;
+            var timestamp = deadlock.Value.TimeStamp;
             
-            var reportBuilder = new ReportBuilder(index++, ReportCategory);
+            var reportBuilder = new ReportBuilder(index++, ReportCategory, timestamp);
             var threadNames = cycle.ToDictionary(c => c.ProcessThreadId, c => c.ThreadName);
             var reportedThreads = cycle
                 .Select(t => new ThreadInfo(t.ProcessThreadId.ThreadId.Value, t.ThreadName))
@@ -87,6 +88,7 @@ public partial class DeadlockPlugin
         {
             title = report.Title,
             description = report.Description,
+            timestamp = report.DetectionTime,
             threads = report.GetReportedThreads().Select(threadInfo =>
             {
                 report.TryGetStackTrace(threadInfo, out var st);

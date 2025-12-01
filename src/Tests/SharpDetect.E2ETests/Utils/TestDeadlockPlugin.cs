@@ -11,8 +11,8 @@ public sealed class TestDeadlockPlugin : DeadlockPlugin
 {
     public event Action<(RecordedEventMetadata Metadata, StackTraceSnapshotsRecordedEvent Args)>? StackTraceSnapshotsCreated;
     
-    public TestDeadlockPlugin(ICallstackResolver callstackResolver, IServiceProvider serviceProvider)
-        : base(callstackResolver, serviceProvider)
+    public TestDeadlockPlugin(ICallstackResolver callstackResolver, TimeProvider timeProvider, IServiceProvider serviceProvider)
+        : base(callstackResolver, timeProvider, serviceProvider)
     {
         
     }

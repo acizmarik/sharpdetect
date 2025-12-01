@@ -100,7 +100,10 @@ public partial class DeadlockPlugin
             threadInfos.Add(threadInfo);
         }
 
-        return new DeadlockInfo(ProcessId: processId, Cycle: threadInfos);
+        return new DeadlockInfo(
+            ProcessId: processId,
+            TimeStamp: _timeProvider.GetUtcNow().DateTime,
+            Cycle: threadInfos);
     }
     
     private DeadlockThreadInfo CreateDeadlockThreadInfo(

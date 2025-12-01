@@ -8,6 +8,7 @@ namespace SharpDetect.Core.Plugins
 {
     public class SummaryBuilder
     {
+        private readonly TimeProvider _timeProvider;
         private readonly Dictionary<string, string> _runtimeProperties;
         private readonly Dictionary<string, string> _collectionProperties;
         private readonly List<ModuleInfo> _modules;
@@ -19,11 +20,14 @@ namespace SharpDetect.Core.Plugins
         private ulong _analyzedMethodsCount;
         private ulong _garbageCollectionsCount;
         private ulong _methodEnterExitCount;
+        private DateTime _startTime;
         private string? _title;
         private string? _description;
 
-        public SummaryBuilder()
+        public SummaryBuilder(TimeProvider timeProvider)
         {
+            _timeProvider = timeProvider;
+            _startTime = timeProvider.GetUtcNow().DateTime;
             _runtimeProperties = [];
             _collectionProperties = [];
             _modules = [];
@@ -51,6 +55,12 @@ namespace SharpDetect.Core.Plugins
         public SummaryBuilder SetRuntimeInfo(RuntimeInfo runtimeInfo)
         {
             _runtimeInfo = runtimeInfo;
+            return this;
+        }
+        
+        public SummaryBuilder SetStartTime()
+        {
+            _startTime = _timeProvider.GetUtcNow().DateTime;
             return this;
         }
 
@@ -114,6 +124,12 @@ namespace SharpDetect.Core.Plugins
             Guard.IsNotNullOrWhiteSpace(_description);
             Guard.IsNotNull(_runtimeInfo);
 
+            var endTime = DateTime.UtcNow;
+            var timingInfo = new TimingInfo(
+                AnalysisStartTime: _startTime,
+                AnalysisEndTime: endTime,
+                AnalysisDuration: endTime - _startTime);
+
             _collectionProperties.Add("GarbageCollectionsCount", _garbageCollectionsCount.ToString());
             _collectionProperties.Add("MethodEnterExitCount", _methodEnterExitCount.ToString());
             return new Summary(
@@ -125,10 +141,35 @@ namespace SharpDetect.Core.Plugins
                     _injectedTypesCount,
                     _injectedMethodsCount,
                     _rewrittenMethodsCount),
+                timingInfo: timingInfo,
+                environmentInfo: CaptureEnvironmentInfo(),
                 runtimeProps: _runtimeProperties,
                 collectionProps: _collectionProperties,
                 modules: _modules,
                 reports: _reports);
+        }
+
+        private static EnvironmentInfo CaptureEnvironmentInfo()
+        {
+            var osDescription = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+            var architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString();
+            var processorCount = Environment.ProcessorCount;
+            
+            var gcMemoryInfo = GC.GetGCMemoryInfo();
+            var totalMemory = gcMemoryInfo.TotalAvailableMemoryBytes;
+
+            var machineName = Environment.MachineName;
+            var userName = Environment.UserName;
+            var workingDirectory = Environment.CurrentDirectory;
+
+            return new EnvironmentInfo(
+                OperatingSystem: osDescription,
+                ProcessorArchitecture: architecture,
+                ProcessorCount: processorCount,
+                TotalPhysicalMemoryBytes: totalMemory,
+                MachineName: machineName,
+                UserName: userName,
+                WorkingDirectory: workingDirectory);
         }
     }
 }

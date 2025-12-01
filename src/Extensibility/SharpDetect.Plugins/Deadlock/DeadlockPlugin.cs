@@ -34,6 +34,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     public DirectoryInfo ReportTemplates { get; }
     
     private readonly ICallstackResolver _callStackResolver;
+    private readonly TimeProvider _timeProvider;
     private readonly ConcurrencyContext _concurrencyContext;
     private readonly Dictionary<uint, WaitForGraph> _waitForGraphs;
     private readonly Dictionary<(uint Pid, ulong RequestId), DeadlockInfo> _deadlocks;
@@ -41,10 +42,12 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 
     public DeadlockPlugin(
         ICallstackResolver callstackResolver,
+        TimeProvider timeProvider,
         IServiceProvider serviceProvider)
         : base(serviceProvider)
     {
         _callStackResolver = callstackResolver;
+        _timeProvider = timeProvider;
 
         _waitForGraphs = [];
         _deadlocks = [];
