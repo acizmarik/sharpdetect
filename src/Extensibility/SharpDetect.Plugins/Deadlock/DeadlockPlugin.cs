@@ -4,8 +4,8 @@
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Plugins.Deadlock.Descriptors;
 using System.Collections.Immutable;
+using SharpDetect.Plugins.Descriptors;
 
 namespace SharpDetect.Plugins.Deadlock;
 

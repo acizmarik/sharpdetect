@@ -3,7 +3,7 @@
 
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Core.Plugins.Descriptors;
+namespace SharpDetect.Plugins.Descriptors;
 
 public static class MethodSignatureHelpers
 {

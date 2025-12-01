@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Events.Profiler;
-using SharpDetect.Core.Plugins.Descriptors;
-using SharpDetect.Plugins.Deadlock.Descriptors;
+using SharpDetect.Plugins.Descriptors;
 
 namespace SharpDetect.E2ETests.Utils;
 
