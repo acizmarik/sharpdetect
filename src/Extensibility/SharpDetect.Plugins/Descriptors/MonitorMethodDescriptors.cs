@@ -3,9 +3,8 @@
 
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
-using SharpDetect.Core.Plugins.Descriptors;
 
-namespace SharpDetect.Plugins.Deadlock.Descriptors;
+namespace SharpDetect.Plugins.Descriptors;
 
 internal static class MonitorMethodDescriptors
 {
@@ -179,3 +178,4 @@ internal static class MonitorMethodDescriptors
         yield return _monitorReliableEnterTimeout;
     }
 }
+

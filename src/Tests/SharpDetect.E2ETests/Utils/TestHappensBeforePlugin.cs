@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Immutable;
 using dnlib.DotNet;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
@@ -8,8 +9,7 @@ using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
 using SharpDetect.Plugins;
-using SharpDetect.Plugins.Deadlock.Descriptors;
-using System.Collections.Immutable;
+using SharpDetect.Plugins.Descriptors;
 
 namespace SharpDetect.E2ETests.Utils;
 

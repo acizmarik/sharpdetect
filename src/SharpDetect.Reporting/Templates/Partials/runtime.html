@@ -1,5 +1,34 @@
 ﻿{{#runtimeInfo}}
 
+<h2>Timing Information</h2>
+
+{{#timingInfo}}
+<table class="styled-table">
+    <colgroup>
+        <col span="1" style="width: 30%;">
+        <col span="1" style="width: 70%;">
+    </colgroup>
+    <thead>
+    <tr>
+        <th>Variable</th>
+        <th>Value</th>
+    </tr>
+    </thead>
+    <tr>
+        <td>Start time</td>
+        <td>{{startTime}}</td>
+    </tr>
+    <tr>
+        <td>End time</td>
+        <td>{{endTime}}</td>
+    </tr>
+    <tr>
+        <td>Duration</td>
+        <td>{{duration}}</td>
+    </tr>
+</table>
+{{/timingInfo}}
+
 <h2>Runtime Information</h2>
 
 <table class="styled-table">

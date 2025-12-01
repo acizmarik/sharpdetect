@@ -3,7 +3,7 @@
 
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Deadlock.Descriptors;
+namespace SharpDetect.Plugins.Descriptors;
 
 public record ArgumentTypeDescriptor
 {

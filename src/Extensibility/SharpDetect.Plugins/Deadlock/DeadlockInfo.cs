@@ -23,5 +23,5 @@ public sealed record DeadlockThreadInfo(
     BlockedOnType BlockedOnType,
     ProcessTrackedObjectId? ProcessLockObjectId = null);
 
-public readonly record struct DeadlockInfo(uint ProcessId, List<DeadlockThreadInfo> Cycle);
+public readonly record struct DeadlockInfo(uint ProcessId, DateTime TimeStamp, List<DeadlockThreadInfo> Cycle);
 

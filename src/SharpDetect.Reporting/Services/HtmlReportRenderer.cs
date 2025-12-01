@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Globalization;
 using HandlebarsDotNet;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
@@ -61,10 +62,27 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
         {
             title = summary.Title,
             description = summary.Description,
+            environmentInfo = new
+            {
+                operatingSystem = summary.EnvironmentInfo.OperatingSystem,
+                architecture = summary.EnvironmentInfo.ProcessorArchitecture,
+                processorCount = summary.EnvironmentInfo.ProcessorCount,
+                totalMemory = FormatBytes(summary.EnvironmentInfo.TotalPhysicalMemoryBytes),
+                machineName = summary.EnvironmentInfo.MachineName,
+                userName = summary.EnvironmentInfo.UserName,
+                workingDirectory = summary.EnvironmentInfo.WorkingDirectory
+            },
             runtimeInfo = new
             {
                 type = runtimeName,
                 version = summary.RuntimeInfo.Version,
+                timingInfo = new
+                {
+                    startTime = summary.TimingInfo.AnalysisStartTime.ToString("o", CultureInfo.InvariantCulture),
+                    endTime = summary.TimingInfo.AnalysisEndTime.ToString("o", CultureInfo.InvariantCulture),
+                    duration = FormatDuration(summary.TimingInfo.AnalysisDuration),
+                    durationSeconds = summary.TimingInfo.AnalysisDuration.TotalSeconds.ToString("F2")
+                },
                 rewritingProperties = new KeyValuePair<string, string>[]
                 {
                     new("AnalyzedMethodsCount", summary.RewritingInfo.AnalyzedMethodsCount.ToString()),
@@ -92,5 +110,34 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
             }),
             reports = plugin.CreateReportDataContext(summary.GetAllReports()).ToArray()
         };
+    }
+
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalSeconds < 1)
+            return $"{duration.TotalMilliseconds:F0}ms";
+        if (duration.TotalMinutes < 1)
+            return $"{duration.TotalSeconds:F2}s";
+        if (duration.TotalHours < 1)
+            return $"{duration.Minutes}m {duration.Seconds}s";
+        return $"{(int)duration.TotalHours}h {duration.Minutes}m {duration.Seconds}s";
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes == 0)
+            return "N/A";
+        
+        string[] sizes = ["B", "KB", "MB", "GB", "TB"];
+        var order = 0;
+        double size = bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        
+        return $"{size:F2} {sizes[order]}";
     }
 }
