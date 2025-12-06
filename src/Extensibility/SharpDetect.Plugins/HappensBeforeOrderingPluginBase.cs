@@ -42,6 +42,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     private readonly Dictionary<ProcessThreadId, Stack<RuntimeArgumentList>> _callstackArguments = [];
     private readonly Dictionary<ProcessTrackedObjectId, Lock> _locks = [];
     private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _objectIdToThreadIdLookup = [];
+    private readonly Dictionary<ProcessThreadId, Stack<int>> _monitorWaitReentrancyCounts = [];
     private readonly IMetadataContext _metadataContext;
     private readonly IArgumentsParser _argumentsParser;
     private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
@@ -175,7 +176,16 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var lockObjectId = arguments[0].Value.AsT1;
         var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
         var lockObj = GetOrAddLock(processLockObjectId);
-        lockObj.Release(id);
+        var reentrancyCount = lockObj.ReleaseAll(id);
+        
+        // We must store reentrancy count to be able to reacquire the lock correctly in MonitorWaitResult
+        if (!_monitorWaitReentrancyCounts.TryGetValue(id, out var stack))
+        {
+            stack = new Stack<int>();
+            _monitorWaitReentrancyCounts[id] = stack;
+        }
+        stack.Push(reentrancyCount);
+        
         _callstackArguments[id].Push(arguments);
         ObjectWaitAttempted?.Invoke(new ObjectWaitAttemptArgs(id, args.ModuleId, args.MethodToken, lockObj));
         _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
@@ -190,7 +200,9 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
         var lockObj = GetLock(processLockObjectId);
         var success = MemoryMarshal.Read<bool>(args.ReturnValue);
-        if (TryConsumeOrDeferLockAcquire(id, lockObj))
+        var reentrancyCount = _monitorWaitReentrancyCounts[id].Pop();
+        
+        if (TryConsumeOrDeferLockAcquireMultiple(id, lockObj, reentrancyCount))
             ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, args.ModuleId, args.MethodToken, lockObj, success));
     }
 
@@ -248,6 +260,21 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         {
             // It can be executed right away
             lockObj.Acquire(processThreadId);
+            _callstackArguments[processThreadId].Pop();
+            return true;
+        }
+        
+        // It needs to be deferred
+        _eventsDeliveryContext.BlockEventsDeliveryForThreadWaitingForObject(processThreadId, lockObj);
+        return false;
+    }
+
+    private bool TryConsumeOrDeferLockAcquireMultiple(ProcessThreadId processThreadId, Lock lockObj, int count)
+    {
+        if (lockObj.Owner is null || lockObj.Owner.Value == processThreadId)
+        {
+            // It can be executed right away
+            lockObj.AcquireMultiple(processThreadId, count);
             _callstackArguments[processThreadId].Pop();
             return true;
         }

@@ -24,6 +24,19 @@ public class Lock(ProcessTrackedObjectId processLockObjectId)
         Owner = processThreadId;
         LocksCount++;
     }
+    
+    public void AcquireMultiple(ProcessThreadId processThreadId, int count)
+    {
+        EnsureCorrectProcess(processThreadId.ProcessId);
+        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
+        {
+            throw new InvalidOperationException($"Lock {LockObjectId.ObjectId.Value} can not be acquired by {processThreadId.ThreadId.Value} " + 
+                $"because it is already acquired by {ownerThreadId.ThreadId.Value}");
+        }
+
+        Owner = processThreadId;
+        LocksCount += count;
+    }
 
     public void Release(ProcessThreadId processThreadId)
     {
@@ -36,6 +49,21 @@ public class Lock(ProcessTrackedObjectId processLockObjectId)
 
         if (--LocksCount == 0)
             Owner = null;
+    }
+
+    public int ReleaseAll(ProcessThreadId processThreadId)
+    {
+        EnsureCorrectProcess(processThreadId.ProcessId);
+        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
+        {
+            throw new InvalidOperationException($"Lock {LockObjectId.ObjectId.Value} can not be released by {processThreadId.ThreadId.Value} " +
+                $"because it is acquired by {ownerThreadId.ThreadId.Value}");
+        }
+
+        var previousLocksCount = LocksCount;
+        LocksCount = 0;
+        Owner = null;
+        return previousLocksCount;
     }
 
     private void EnsureCorrectProcess(uint processId)
