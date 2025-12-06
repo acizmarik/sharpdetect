@@ -92,6 +92,33 @@ namespace SharpDetect.E2ETests.Subject
             Monitor.Exit(obj);
         }
 
+        public static void Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse()
+        {
+            var obj = new object();
+            var ready = new ManualResetEvent(false);
+
+            var thread2 = new Thread(() =>
+            {
+                ready.WaitOne();
+                lock (obj)
+                    Monitor.Pulse(obj);
+            }) { IsBackground = true };
+
+            thread2.Start();
+            lock (obj)
+            {
+                lock (obj)
+                {
+                    lock (obj)
+                    {
+                        ready.Set();
+                        Monitor.Wait(obj);
+                    }
+                }
+            }
+            thread2.Join();
+        }
+
         public static void Test_ThreadMethods_Join1()
         {
             var thread = new Thread(() => { }) { IsBackground = true };

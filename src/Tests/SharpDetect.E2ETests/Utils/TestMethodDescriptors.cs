@@ -38,6 +38,7 @@ internal static class TestMethodDescriptors
             "Test_MonitorMethods_Wait1",
             "Test_MonitorMethods_Wait2",
             "Test_MonitorMethods_Wait3_Reentrancy",
+            "Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse",
             "Test_ThreadMethods_StartCallback1",
             "Test_ThreadMethods_StartCallback2",
             "Test_ThreadMethods_get_CurrentThread",

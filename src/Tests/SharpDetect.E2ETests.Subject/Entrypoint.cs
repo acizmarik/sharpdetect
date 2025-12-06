@@ -9,6 +9,14 @@ namespace SharpDetect.E2ETests.Subject
         {
             Console.WriteLine("Args: " + args[0]);
 
+            // Shadow runtime integrity tests
+            switch (args[0])
+            {
+                case nameof(Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse):
+                    Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse();
+                    break;
+            }
+            
             // Method interpretation events
             switch (args[0])
             {

@@ -99,6 +99,12 @@
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait3_Reentrancy_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Wait_ReentrancyWithPulse_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Wait_ReentrancyWithPulse_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC_Compacting_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
