@@ -27,6 +27,15 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_MonitorMethods_TryEnterExit3):
                     Test_MonitorMethods_TryEnterExit3();
                     break;
+                case nameof(Test_MonitorMethods_Wait1):
+                    Test_MonitorMethods_Wait1();
+                    break;
+                case nameof(Test_MonitorMethods_Wait2):
+                    Test_MonitorMethods_Wait2();
+                    break;
+                case nameof(Test_MonitorMethods_Wait3_Reentrancy):
+                    Test_MonitorMethods_Wait3_Reentrancy();
+                    break;
                 case nameof(Test_ThreadMethods_Join1):
                     Test_ThreadMethods_Join1();
                     break;

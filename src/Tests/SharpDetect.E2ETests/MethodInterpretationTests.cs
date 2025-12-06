@@ -56,6 +56,39 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     
     [Theory]
 #if DEBUG
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait1_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait2_Debug.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait3_Reentrancy_Debug.json")]
+#elif RELEASE
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait1_Release.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait2_Release.json")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait3_Reentrancy_Release.json")]
+#endif
+    public async Task MethodInterpretation_Monitor_Wait(string configuration)
+    {
+        // Arrange
+        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.MonitorLockAcquire))
+            .Then(EventuallyEventType(RecordedEventType.MonitorLockAcquireResult))
+            .Then(EventuallyEventType(RecordedEventType.MonitorWaitAttempt))
+            .Then(EventuallyEventType(RecordedEventType.MonitorWaitResult))
+            .Then(EventuallyEventType(RecordedEventType.MonitorLockRelease))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+    
+    [Theory]
+#if DEBUG
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1_Debug.json")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2_Debug.json")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3_Debug.json")]
