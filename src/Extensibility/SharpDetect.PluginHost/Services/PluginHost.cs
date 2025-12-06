@@ -66,7 +66,7 @@ internal class PluginHost : IPluginHost, IDisposable
         catch (Exception e)
         {
             _logger.LogError(e, "[PID={Pid}][Plugin={Plugin}] An unhandled exception was thrown during a callback for event \"{Event}\".",
-                recordedEvent.Metadata.Pid, _plugin.GetType().Name, recordedEvent.GetType().Name);
+                recordedEvent.Metadata.Pid, _plugin.GetType().Name, recordedEvent.EventArgs.GetType().Name);
             return RecordedEventState.Failed;
         }
     }

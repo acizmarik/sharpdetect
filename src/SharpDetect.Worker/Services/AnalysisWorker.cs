@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using CliWrap;
 using Microsoft.Extensions.Logging;
@@ -129,9 +130,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 continue;
             }
             
-            if (ProcessEvent(currentEvent) == RecordedEventState.Failed)
+            if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
             {
-                _logger.LogCritical("Cannot continue with analysis due to previous errors.");
+                LogFailureAndTerminateAnalysis();
                 return;
             }
 
@@ -142,26 +143,23 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 {
                     foreach (var undeliveredEvent in _eventsDeliveryContext.ConsumeUndeliveredEvents(unblockedThreadId))
                     {
-                        if (ProcessEvent(undeliveredEvent) != RecordedEventState.Executed)
+                        var processingResult = _pluginHost.ProcessEvent(undeliveredEvent);
+                        if (processingResult == RecordedEventState.Failed)
+                        {
+                            LogFailureAndTerminateAnalysis();
+                            return;
+                        }
+
+                        if (processingResult != RecordedEventState.Executed)
+                        {
+                            // Continue with the next thread
                             break;
+                        }
                     }
                 }
             }
 
             previousRecordedEvent = currentEvent;
-        }
-    }
-    
-    private RecordedEventState ProcessEvent(RecordedEvent recordedEvent)
-    {
-        try
-        {
-            return _pluginHost.ProcessEvent(recordedEvent);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unhandled exception while processing event {Event}.", recordedEvent);
-            return RecordedEventState.Failed;
         }
     }
     
@@ -207,5 +205,12 @@ public sealed class AnalysisWorker : IAnalysisWorker
         {
             _logger.LogWarning(ex, "Failed to delete configuration file: \"{File}\".", configurationPath);
         }
+    }
+    
+    [DoesNotReturn]
+    private void LogFailureAndTerminateAnalysis()
+    {
+        _logger.LogCritical("Cannot continue with analysis due to corrupted shadow runtime state.");
+        throw new AnalysisFailedException();
     }
 }

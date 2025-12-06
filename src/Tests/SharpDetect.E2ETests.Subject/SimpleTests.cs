@@ -47,6 +47,78 @@ namespace SharpDetect.E2ETests.Subject
                 Monitor.Exit(obj);
         }
 
+        public static void Test_MonitorMethods_Wait1()
+        {
+            var obj = new object();
+            var terminate = new ManualResetEvent(initialState: false);
+            
+            var thread = new Thread(() =>
+            {
+                while (!terminate.WaitOne(TimeSpan.FromMilliseconds(1)))
+                {
+                    lock (obj)
+                    {
+                        Monitor.Pulse(obj);
+                    }
+                }
+            });
+            thread.Start();
+            
+            lock (obj)
+            {
+                Monitor.Wait(obj, 1);
+            }
+            
+            terminate.Set();
+            thread.Join();
+        }
+
+        public static void Test_MonitorMethods_Wait2()
+        {
+            var obj = new object();
+            lock (obj)
+            {
+                Monitor.Wait(obj, 1);
+            }
+        }
+
+        public static void Test_MonitorMethods_Wait3_Reentrancy()
+        {
+            var obj = new object();
+            Monitor.Enter(obj);
+            Monitor.Enter(obj);
+            Monitor.Wait(obj, 1);
+            Monitor.Exit(obj);
+            Monitor.Exit(obj);
+        }
+
+        public static void Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse()
+        {
+            var obj = new object();
+            var ready = new ManualResetEvent(false);
+
+            var thread2 = new Thread(() =>
+            {
+                ready.WaitOne();
+                lock (obj)
+                    Monitor.Pulse(obj);
+            }) { IsBackground = true };
+
+            thread2.Start();
+            lock (obj)
+            {
+                lock (obj)
+                {
+                    lock (obj)
+                    {
+                        ready.Set();
+                        Monitor.Wait(obj);
+                    }
+                }
+            }
+            thread2.Join();
+        }
+
         public static void Test_ThreadMethods_Join1()
         {
             var thread = new Thread(() => { }) { IsBackground = true };
