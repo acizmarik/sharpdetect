@@ -100,6 +100,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var lockObj = GetLock(processLockObjectId);
         if (!lockTaken)
         {
+            _callstackArguments[id].Pop();
             LockAcquireReturned?.Invoke(new(id, moduleId, functionToken, lockObj, false));
             return;
         }
@@ -137,15 +138,14 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         _callstackArguments[id].Push(arguments);
     }
 
-    [RecordedEventBind((ushort)RecordedEventType.MonitorPulseOneAttempt)]
-    public void MonitorPulseOneResult(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    [RecordedEventBind((ushort)RecordedEventType.MonitorPulseOneResult)]
+    public void MonitorPulseOneResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = _callstackArguments[id].Pop();
         var lockObjectId = arguments[0].Value.AsT1;
         var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
         var lockObj = GetLock(processLockObjectId);
-        _callstackArguments[id].Push(arguments);
         ObjectPulsedOne?.Invoke(new ObjectPulseOneArgs(id, args.ModuleId, args.MethodToken, lockObj));
     }
 
@@ -158,7 +158,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorPulseAllResult)]
-    public void MonitorPulseAllResult(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    public void MonitorPulseAllResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = _callstackArguments[id].Pop();
@@ -200,10 +200,13 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var processLockObjectId = new ProcessTrackedObjectId(id.ProcessId, lockObjectId);
         var lockObj = GetLock(processLockObjectId);
         var success = MemoryMarshal.Read<bool>(args.ReturnValue);
-        var reentrancyCount = _monitorWaitReentrancyCounts[id].Pop();
+        var reentrancyCount = _monitorWaitReentrancyCounts[id].Peek();
         
         if (TryConsumeOrDeferLockAcquireMultiple(id, lockObj, reentrancyCount))
+        {
+            _monitorWaitReentrancyCounts[id].Pop();
             ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, args.ModuleId, args.MethodToken, lockObj, success));
+        }
     }
 
     [RecordedEventBind((ushort)RecordedEventType.ThreadStart)]
@@ -365,4 +368,17 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
 
         return result.Value;
     }
+    
+    internal RuntimeStateSnapshot DumpRuntimeState()
+    {
+        return new RuntimeStateSnapshot(
+            Callstacks: _callstackArguments.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+            Threads: _callstackArguments.Keys.ToHashSet(),
+            Locks: _locks.Values.ToHashSet());
+    }
+    
+    internal record RuntimeStateSnapshot(
+        IReadOnlyDictionary<ProcessThreadId, Stack<RuntimeArgumentList>> Callstacks,
+        IReadOnlySet<ProcessThreadId> Threads,
+        IReadOnlySet<Lock> Locks);
 }

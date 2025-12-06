@@ -92,6 +92,21 @@ namespace SharpDetect.E2ETests.Subject
             Monitor.Exit(obj);
         }
 
+        public static void Test_ShadowCallstack_MonitorPulse()
+        {
+            var obj1 = new object();
+            lock (obj1)
+                Monitor.Pulse(obj1);
+        }
+
+        public static void Test_ShadowCallstack_MonitorPulseAll()
+        {
+            var obj1 = new object();
+            lock (obj1)
+                Monitor.PulseAll(obj1);
+        }
+
+
         public static void Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse()
         {
             var obj = new object();
@@ -116,6 +131,30 @@ namespace SharpDetect.E2ETests.Subject
                     }
                 }
             }
+            thread2.Join();
+        }
+
+        public static void Test_ShadowCallstack_MonitorTryEnter_LockNotTaken()
+        {
+            var obj1 = new object();
+            var ready = new ManualResetEvent(false);
+            var finish = new ManualResetEvent(false);
+
+            var thread2 = new Thread(() =>
+            {
+                lock (obj1)
+                {
+                    ready.Set();
+                    finish.WaitOne();
+                }
+            }) { IsBackground = true };
+
+            thread2.Start();
+            ready.WaitOne();
+            
+            var lockTaken = false;
+            Monitor.TryEnter(obj1, ref lockTaken);
+            finish.Set();
             thread2.Join();
         }
 

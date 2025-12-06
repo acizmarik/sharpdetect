@@ -127,8 +127,8 @@ internal static class MonitorMethodDescriptors
                 InjectManagedWrapper: false,
                 Arguments: [new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference))],
                 ReturnValue: null,
-                (ushort)RecordedEventType.MonitorPulseOneAttempt,
-                (ushort)RecordedEventType.MonitorPulseOneResult));
+                (ushort)RecordedEventType.MonitorPulseAllAttempt,
+                (ushort)RecordedEventType.MonitorPulseAllResult));
 
         _monitorWaitObject = new MethodDescriptor(
             "Wait",

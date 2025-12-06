@@ -18,6 +18,8 @@ namespace SharpDetect.Core.Plugins
 
         bool HasUnblockedThreads();
         bool HasBlockedThreads();
+        bool HasAnyUndeliveredEvents();
+        bool HasUndeliveredEvents(ProcessThreadId threadId);
         IEnumerable<RecordedEvent> ConsumeUndeliveredEvents(ProcessThreadId threadId);
         IEnumerable<ProcessThreadId> ConsumeUnblockedThreads();
     }
