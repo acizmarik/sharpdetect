@@ -592,6 +592,7 @@ namespace SharpDetect.E2ETests.Subject
             var sync1 = new AutoResetEvent(false);
             var sync2 = new AutoResetEvent(false);
             var sync3 = new AutoResetEvent(false);
+            var sync4 = new AutoResetEvent(false);
 
             // Thread 1: Acquires lock, then waits for Thread 2 to join
             thread1 = new Thread(() =>
@@ -611,6 +612,8 @@ namespace SharpDetect.E2ETests.Subject
                 Thread.CurrentThread.Name = "TEST_Thread2";
                 sync1.WaitOne();
                 sync2.Set();
+                // Signal that we're ready to wait for thread3
+                sync4.Set();
                 sync3.WaitOne();
                 thread3!.Join();
             });
@@ -619,6 +622,8 @@ namespace SharpDetect.E2ETests.Subject
             thread3 = new Thread(() =>
             {
                 Thread.CurrentThread.Name = "TEST_Thread3";
+                // Wait for Thread2 to be ready before we signal sync3
+                sync4.WaitOne();
                 sync3.Set();
                 lock (lockObj)
                 {
