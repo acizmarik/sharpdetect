@@ -69,6 +69,12 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
                 select $"\tat {methodName}").ToList();
             
             var frames = string.Join(Environment.NewLine, frameDescriptions);
+            if (!ShouldReportThread(threadId, plugin))
+            {
+                // Ignore not our threads
+                continue;
+            }
+
             var threadName = plugin.GetThreadName(threadId);
             var leakInfo = $"Thread \"{threadName}\": {callstack.Count} leaked frame(s):{Environment.NewLine}{frames}";
             threadsWithLeakedFrames.Add(leakInfo);
@@ -87,6 +93,7 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
         // Check no locks are still held (unreleased locks)
         var locksStillHeld = runtimeState.Locks
             .Where(l => l.Owner != null)
+            .Where(l => ShouldReportThread(l.Owner!.Value, plugin))
             .Select(l => $"Lock objectId = {l.LockObjectId.ObjectId.Value} held by thread {l.Owner!.Value.ProcessId}:{l.Owner!.Value.ThreadId.Value} with reentrancy count {l.LocksCount}")
             .ToList();
         
@@ -99,6 +106,11 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
                  """;
             Assert.Fail(message);
         }
+    }
+
+    private static bool ShouldReportThread(ProcessThreadId processThreadId, TestHappensBeforePlugin plugin)
+    {
+        return plugin.GetThreadName(processThreadId).StartsWith("TEST_");
     }
 }
 

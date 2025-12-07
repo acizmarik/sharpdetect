@@ -7,6 +7,7 @@ namespace SharpDetect.E2ETests.Subject
     {
         public static void Main(string[] args)
         {
+            Thread.CurrentThread.Name = "TEST_MainThread";
             Console.WriteLine("Args: " + args[0]);
 
             // Shadow runtime integrity tests
