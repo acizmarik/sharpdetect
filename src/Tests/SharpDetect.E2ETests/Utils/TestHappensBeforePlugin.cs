@@ -83,6 +83,11 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
             .Value;
     }
 
+    public string GetThreadName(ProcessThreadId processThreadId)
+    {
+        return Threads[processThreadId];
+    }
+
     protected override void Visit(RecordedEventMetadata metadata, AssemblyLoadRecordedEvent args)
     {
         base.Visit(metadata, args);

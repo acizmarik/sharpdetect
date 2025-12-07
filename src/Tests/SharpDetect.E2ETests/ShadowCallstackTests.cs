@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
+using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.Worker;
@@ -34,17 +35,19 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var eventsDeliveryContext = services.GetRequiredService<IRecordedEventsDeliveryContext>();
+        var metadataContext = services.GetRequiredService<IMetadataContext>();
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         
         // Assert
-        AssertRuntimeStateIsClean(plugin, eventsDeliveryContext);
+        AssertRuntimeStateIsClean(plugin, eventsDeliveryContext, metadataContext);
     }
     
     private static void AssertRuntimeStateIsClean(
         TestHappensBeforePlugin plugin,
-        IRecordedEventsDeliveryContext eventsDeliveryContext)
+        IRecordedEventsDeliveryContext eventsDeliveryContext,
+        IMetadataContext metadataContext)
     {
         Assert.False(eventsDeliveryContext.HasBlockedThreads());
         Assert.False(eventsDeliveryContext.HasUnblockedThreads());
@@ -53,10 +56,23 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
         var runtimeState = plugin.DumpRuntimeState();
         
         // Check shadow callstacks are empty
-        var threadsWithLeakedFrames = runtimeState.Callstacks
-            .Where(kvp => kvp.Value.Count > 0)
-            .Select(kvp => $"Thread {kvp.Key.ProcessId}:{kvp.Key.ThreadId.Value}: {kvp.Value.Count} leaked frame(s)")
-            .ToList();
+        var threadsWithLeakedFrames = new List<string>();
+        foreach (var (threadId, callstack) in runtimeState.Callstacks.Where(kvp => kvp.Value.Count > 0))
+        {
+            var resolver = metadataContext.GetResolver(threadId.ProcessId);
+            var frameDescriptions = (from frame in callstack
+                let methodResolveResult = resolver.ResolveMethod(threadId.ProcessId, frame.ModuleId, frame.MethodToken)
+                select methodResolveResult.IsSuccess
+                    ? methodResolveResult.Value.FullName
+                    : $"<unknown method: module = {frame.ModuleId.Value}, token = {frame.MethodToken.Value}>"
+                into methodName
+                select $"\tat {methodName}").ToList();
+            
+            var frames = string.Join(Environment.NewLine, frameDescriptions);
+            var threadName = plugin.GetThreadName(threadId);
+            var leakInfo = $"Thread \"{threadName}\": {callstack.Count} leaked frame(s):{Environment.NewLine}{frames}";
+            threadsWithLeakedFrames.Add(leakInfo);
+        }
         
         if (threadsWithLeakedFrames.Count != 0)
         {
