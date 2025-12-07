@@ -70,6 +70,16 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         }
     }
 
+    public bool HasAnyUndeliveredEvents()
+    {
+        return _undelivered.Any(kv => kv.Value.Count > 0);
+    }
+
+    public bool HasUndeliveredEvents(ProcessThreadId threadId)
+    {
+        return _undelivered.ContainsKey(threadId) && _undelivered[threadId].Count > 0;
+    }
+
     public IEnumerable<RecordedEvent> ConsumeUndeliveredEvents(ProcessThreadId processThreadId)
     {
         if (!_undelivered.TryGetValue(processThreadId, out Queue<RecordedEvent>? undelivereds))
@@ -109,6 +119,6 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
 
     public bool IsBlockedEventsDeliveryForThread(ProcessThreadId processThreadId)
     {
-        return _blockedThreads.Contains(processThreadId);
+        return _blockedThreads.Contains(processThreadId) || _unblockedThreads.Contains(processThreadId);
     }
 }

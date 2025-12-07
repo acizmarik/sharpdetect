@@ -52,8 +52,9 @@ namespace SharpDetect.E2ETests.Subject
             var obj = new object();
             var terminate = new ManualResetEvent(initialState: false);
             
-            var thread = new Thread(() =>
+            var thread1 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread1";
                 while (!terminate.WaitOne(TimeSpan.FromMilliseconds(1)))
                 {
                     lock (obj)
@@ -62,7 +63,7 @@ namespace SharpDetect.E2ETests.Subject
                     }
                 }
             });
-            thread.Start();
+            thread1.Start();
             
             lock (obj)
             {
@@ -70,7 +71,7 @@ namespace SharpDetect.E2ETests.Subject
             }
             
             terminate.Set();
-            thread.Join();
+            thread1.Join();
         }
 
         public static void Test_MonitorMethods_Wait2()
@@ -92,19 +93,35 @@ namespace SharpDetect.E2ETests.Subject
             Monitor.Exit(obj);
         }
 
+        public static void Test_ShadowCallstack_MonitorPulse()
+        {
+            var obj1 = new object();
+            lock (obj1)
+                Monitor.Pulse(obj1);
+        }
+
+        public static void Test_ShadowCallstack_MonitorPulseAll()
+        {
+            var obj1 = new object();
+            lock (obj1)
+                Monitor.PulseAll(obj1);
+        }
+
+
         public static void Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse()
         {
             var obj = new object();
             var ready = new ManualResetEvent(false);
 
-            var thread2 = new Thread(() =>
+            var thread1 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread1";
                 ready.WaitOne();
                 lock (obj)
                     Monitor.Pulse(obj);
-            }) { IsBackground = true };
+            });
 
-            thread2.Start();
+            thread1.Start();
             lock (obj)
             {
                 lock (obj)
@@ -116,35 +133,72 @@ namespace SharpDetect.E2ETests.Subject
                     }
                 }
             }
-            thread2.Join();
+            thread1.Join();
+        }
+
+        public static void Test_ShadowCallstack_MonitorTryEnter_LockNotTaken()
+        {
+            var obj1 = new object();
+            var ready = new ManualResetEvent(false);
+            var finish = new ManualResetEvent(false);
+
+            var thread1 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread1";
+                lock (obj1)
+                {
+                    ready.Set();
+                    finish.WaitOne();
+                }
+            });
+
+            thread1.Start();
+            ready.WaitOne();
+            
+            var lockTaken = false;
+            Monitor.TryEnter(obj1, ref lockTaken);
+            finish.Set();
+            thread1.Join();
         }
 
         public static void Test_ThreadMethods_Join1()
         {
-            var thread = new Thread(() => { }) { IsBackground = true };
-            thread.Start();
-            thread.Join();
+            var thread1 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread1";
+            });
+            thread1.Start();
+            thread1.Join();
         }
         
         public static void Test_ThreadMethods_Join2()
         {
-            var thread = new Thread(() => { }) { IsBackground = true };
-            thread.Start();
-            thread.Join(millisecondsTimeout: 1000);
+            var thread1 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread1";
+            });
+            thread1.Start();
+            thread1.Join(millisecondsTimeout: 1000);
         }
         
         public static void Test_ThreadMethods_Join3()
         {
-            var thread = new Thread(() => { }) { IsBackground = true };
-            thread.Start();
-            thread.Join(timeout: TimeSpan.FromSeconds(1));
+            var thread1 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread1";
+            });
+            thread1.Start();
+            thread1.Join(timeout: TimeSpan.FromSeconds(1));
         }
 
         public static void Test_ThreadMethods_StartCallback1()
         {
-            var thread = new Thread(() => { }) { IsBackground = true };
-            thread.Start();
-            thread.Join();
+            var thread1 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread1";
+            });
+            thread1.Start();
+            thread1.Join();
         }
 
         public static void Test_ThreadMethods_StartCallback2()
@@ -154,12 +208,13 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_ThreadMethods_get_CurrentThread()
         {
-            var thread = new Thread(() =>
+            var thread1 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread1";
                 var currentThread = Thread.CurrentThread;
-            }) { IsBackground = true };
-            thread.Start();
-            thread.Join();
+            });
+            thread1.Start();
+            thread1.Join();
         }
 
         public static void Test_Field_ValueType_Instance_Read()
@@ -416,6 +471,7 @@ namespace SharpDetect.E2ETests.Subject
 
             var thread1 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread1";
                 for (;;)
                 {
                     lock (lockObj1)
@@ -429,6 +485,7 @@ namespace SharpDetect.E2ETests.Subject
 
             var thread2 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread2";
                 for (;;)
                 {
                     lock (lockObj1)
@@ -457,6 +514,7 @@ namespace SharpDetect.E2ETests.Subject
             
             var thread1 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread1";
                 for (;;)
                 {
                     syncEvent.WaitOne();
@@ -474,6 +532,7 @@ namespace SharpDetect.E2ETests.Subject
             {
                 for (;;)
                 {
+                    Thread.CurrentThread.Name = "TEST_Thread2";
                     syncEvent.WaitOne();
                     lock (lockObj2)
                     {
@@ -502,6 +561,7 @@ namespace SharpDetect.E2ETests.Subject
 
             thread1 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread1";
                 thread1Ready.Set();
                 thread2Ready.WaitOne();
                 thread2!.Join();
@@ -509,6 +569,7 @@ namespace SharpDetect.E2ETests.Subject
 
             thread2 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread2";
                 thread2Ready.Set();
                 thread1Ready.WaitOne();
                 thread1!.Join();
@@ -535,6 +596,7 @@ namespace SharpDetect.E2ETests.Subject
             // Thread 1: Acquires lock, then waits for Thread 2 to join
             thread1 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread1";
                 lock (lockObj)
                 {
                     sync1.Set();
@@ -546,6 +608,7 @@ namespace SharpDetect.E2ETests.Subject
             // Thread 2: Waits for Thread 3 to join
             thread2 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread2";
                 sync1.WaitOne();
                 sync2.Set();
                 sync3.WaitOne();
@@ -555,6 +618,7 @@ namespace SharpDetect.E2ETests.Subject
             // Thread 3: Tries to acquire the lock held by Thread 1
             thread3 = new Thread(() =>
             {
+                Thread.CurrentThread.Name = "TEST_Thread3";
                 sync3.Set();
                 lock (lockObj)
                 {

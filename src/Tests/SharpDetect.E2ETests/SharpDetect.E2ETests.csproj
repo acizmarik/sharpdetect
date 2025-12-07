@@ -105,6 +105,24 @@
     <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Wait_ReentrancyWithPulse_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_TryEnter_LockNotTaken_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_TryEnter_LockNotTaken_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Pulse_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Pulse_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_PulseAll_Debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_PulseAll_Release.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC_Compacting_Release.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

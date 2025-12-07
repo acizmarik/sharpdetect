@@ -7,6 +7,7 @@ namespace SharpDetect.E2ETests.Subject
     {
         public static void Main(string[] args)
         {
+            Thread.CurrentThread.Name = "TEST_MainThread";
             Console.WriteLine("Args: " + args[0]);
 
             // Shadow runtime integrity tests
@@ -14,6 +15,15 @@ namespace SharpDetect.E2ETests.Subject
             {
                 case nameof(Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse):
                     Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse();
+                    break;
+                case nameof(Test_ShadowCallstack_MonitorTryEnter_LockNotTaken):
+                    Test_ShadowCallstack_MonitorTryEnter_LockNotTaken();
+                    break;
+                case nameof(Test_ShadowCallstack_MonitorPulse):
+                    Test_ShadowCallstack_MonitorPulse();
+                    break;
+                case nameof(Test_ShadowCallstack_MonitorPulseAll):
+                    Test_ShadowCallstack_MonitorPulseAll();
                     break;
             }
             
