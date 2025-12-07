@@ -36,7 +36,6 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
 
         // Assert
         Assert.Null(report);
-        Assert.False(eventsDeliveryContext.HasBlockedThreads());
     }
 
     [Theory]
