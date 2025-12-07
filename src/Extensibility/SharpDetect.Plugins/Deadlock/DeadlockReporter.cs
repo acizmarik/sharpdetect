@@ -45,12 +45,14 @@ public partial class DeadlockPlugin
                 .ToDictionary(t => t.Id, t => t);
             var stackTraces = new Dictionary<ThreadInfo, StackTrace>();
             
-            var callstacks = _deadlockStackTraces[(processId, requestId)];
+            // Check if stack traces are available (they might not be if the program terminated early)
+            var hasStackTraces = _deadlockStackTraces.TryGetValue((processId, requestId), out var callstacks);
+            
             foreach (var threadInfo in cycle)
             {
                 var id = threadInfo.ProcessThreadId;
                 var callstack = new Callstack(id);
-                if (callstacks.Snapshots.SingleOrDefault(s => s.ThreadId == id.ThreadId) is { } snapshot)
+                if (hasStackTraces && callstacks!.Snapshots.SingleOrDefault(s => s.ThreadId == id.ThreadId) is { } snapshot)
                 {
                     for (var frameIndex = snapshot.MethodTokens.Length - 1; frameIndex >= 0; frameIndex--)
                         callstack.Push(snapshot.ModuleIds[frameIndex], snapshot.MethodTokens[frameIndex]);
@@ -72,7 +74,10 @@ public partial class DeadlockPlugin
             }
 
             reportBuilder.SetTitle($"Deadlock {reportBuilder.Identifier}");
-            reportBuilder.SetDescription($"Multiple threads ({reportedThreads.Count}) are blocked in a cycle. See details below for more information.");
+            var description = $"Multiple threads ({reportedThreads.Count}) are blocked in a cycle. See details below for more information.";
+            if (!hasStackTraces)
+                description += " Note: Stack traces are unavailable because the program terminated before they could be captured.";
+            reportBuilder.SetDescription(description);
             foreach (var threadInfo in reportedThreads.Values)
                 reportBuilder.AddThread(threadInfo);
             foreach (var (_, stackTrace) in stackTraces)

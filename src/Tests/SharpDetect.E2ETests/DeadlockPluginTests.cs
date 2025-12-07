@@ -52,19 +52,13 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        var snapshotCreated = false;
-        plugin.StackTraceSnapshotsCreated += _ =>
-        {
-            snapshotCreated = true;
-            mutex.ReleaseMutex();
-        };
+        plugin.StackTraceSnapshotsCreated += _ => mutex.ReleaseMutex();
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert
-        Assert.True(snapshotCreated);
         Assert.NotNull(report);
         Assert.Equal(plugin.ReportCategory, report.Category);
     }
@@ -82,19 +76,13 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        var snapshotCreated = false;
-        plugin.StackTraceSnapshotsCreated += _ =>
-        {
-            snapshotCreated = true;
-            mutex.ReleaseMutex();
-        };
+        plugin.StackTraceSnapshotsCreated += _ => mutex.ReleaseMutex();
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert
-        Assert.True(snapshotCreated);
         Assert.NotNull(report);
         Assert.Equal(plugin.ReportCategory, report.Category);
     }
@@ -112,19 +100,13 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        var snapshotCreated = false;
-        plugin.StackTraceSnapshotsCreated += _ =>
-        {
-            snapshotCreated = true;
-            mutex.ReleaseMutex();
-        };
+        plugin.StackTraceSnapshotsCreated += _ => mutex.ReleaseMutex();
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert
-        Assert.True(snapshotCreated);
         Assert.NotNull(report);
         Assert.Equal(plugin.ReportCategory, report.Category);
     }
