@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Configuration;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Plugins.Deadlock;
@@ -11,8 +12,8 @@ public sealed class TestDeadlockPlugin : DeadlockPlugin
 {
     public event Action<(RecordedEventMetadata Metadata, StackTraceSnapshotsRecordedEvent Args)>? StackTraceSnapshotsCreated;
     
-    public TestDeadlockPlugin(ICallstackResolver callstackResolver, TimeProvider timeProvider, IServiceProvider serviceProvider)
-        : base(callstackResolver, timeProvider, serviceProvider)
+    public TestDeadlockPlugin(ICallstackResolver callstackResolver, TimeProvider timeProvider, PathsConfiguration pathsConfiguration, IServiceProvider serviceProvider)
+        : base(callstackResolver, timeProvider, pathsConfiguration, serviceProvider)
     {
         
     }

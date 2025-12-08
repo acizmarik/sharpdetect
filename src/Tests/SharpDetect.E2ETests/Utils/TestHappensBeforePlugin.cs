@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using dnlib.DotNet;
+using SharpDetect.Core.Configuration;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
@@ -17,24 +18,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
 {
     public string ReportCategory => "Test";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public override PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
-        eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
-                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
-                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
-                   COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
-        additionalData: MonitorMethodDescriptors.GetAllMethods()
-            .Concat(ThreadMethodDescriptors.GetAllMethods())
-            .Concat(TestMethodDescriptors.GetAllTestMethods())
-            .ToImmutableArray());
+    public override PluginConfiguration Configuration { get; }
     public DirectoryInfo ReportTemplates => throw new NotSupportedException();
     public Summary CreateDiagnostics() => throw new NotSupportedException();
     public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports) => throw new NotSupportedException();
@@ -69,10 +53,30 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
 
     public TestHappensBeforePlugin(
         IMetadataContext metadataContext,
+        PathsConfiguration pathsConfiguration,
         IServiceProvider serviceProvider)
         : base(serviceProvider)
     {
         _metadataContext = metadataContext;
+        Configuration = PluginConfiguration.Create(
+            eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
+            additionalData: MonitorMethodDescriptors.GetAllMethods()
+                .Concat(ThreadMethodDescriptors.GetAllMethods())
+                .Concat(TestMethodDescriptors.GetAllTestMethods())
+                .ToImmutableArray(),
+            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
     }
 
     public MethodDef Resolve(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef methodToken)

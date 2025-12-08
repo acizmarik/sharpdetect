@@ -186,9 +186,10 @@ public sealed class AnalysisWorker : IAnalysisWorker
             throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
     }
     
-    private static string GetFullConfigurationPath()
+    private string GetFullConfigurationPath()
     {
-        return Path.Combine(Path.GetTempPath(), PluginConfiguration.ConfigurationFileName);
+        var tempFolder = _plugin.Configuration.TemporaryFilesFolder ?? Path.GetTempPath();
+        return Path.Combine(tempFolder, PluginConfiguration.ConfigurationFileName);
     }
 
     private void CleanupConfigurationFile(string configurationPath)

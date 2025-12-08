@@ -41,9 +41,15 @@ internal sealed class RunCommandHandler : IDisposable
         
         // Render and store report
         var report = GenerateReportSummary();
+        var reportsFolder = _arguments.Analysis.ReportsFolder ?? Directory.GetCurrentDirectory();
         var fileName = $"SharpDetect_Report_{TimeProvider.System.GetUtcNow().DateTime:O}.html";
-        await StoreReportSummary(report, fileName, cancellationToken);
-        await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(fileName)}.");
+        var fullPath = Path.Combine(reportsFolder, fileName);
+        
+        // Ensure reports folder exists
+        Directory.CreateDirectory(reportsFolder);
+        
+        await StoreReportSummary(report, fullPath, cancellationToken);
+        await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(fullPath)}.");
     }
 
     private Type LoadPluginInfo()

@@ -4,6 +4,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Communication;
+using SharpDetect.Core.Configuration;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Loader;
 using SharpDetect.Metadata;
@@ -46,6 +47,11 @@ public sealed class AnalysisServiceProviderBuilder(RunCommandArgs arguments)
     public IServiceProvider Build()
     {
         _services.AddSingleton(arguments);
+        _services.AddSingleton(new PathsConfiguration
+        {
+            TemporaryFilesFolder = arguments.Analysis.TemporaryFilesFolder,
+            ReportsFolder = arguments.Analysis.ReportsFolder
+        });
         _services.AddLogging(builder => _configureLogger?.Invoke(builder));
         _services.AddSharpDetectLoaderServices();
         _services.AddSharpDetectMetadataServices();
