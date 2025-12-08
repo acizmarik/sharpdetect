@@ -14,6 +14,7 @@ public record PluginConfiguration(
     string CommandQueueName,
     string? CommandQueueFile,
     uint CommandQueueSize,
+    string? TemporaryFilesFolder,
     object? AdditionalData)
 {
     public const string ConfigurationFileName = "SharpDetect_Configuration.json";
@@ -24,16 +25,19 @@ public record PluginConfiguration(
 
     public static PluginConfiguration Create(
         COR_PRF_MONITOR eventMask,
+        string? temporaryFilesFolder,
         object? additionalData)
     {
+        var tempFolder = temporaryFilesFolder ?? Path.GetTempPath();
         return new PluginConfiguration(
             EventMask: (uint)eventMask,
             SharedMemoryName: "SharpDetect_NotificationsQueue",
-            SharedMemoryFile: "SharpDetect_NotificationsQueue.data",
+            SharedMemoryFile: Path.Combine(tempFolder, "SharpDetect_NotificationsQueue.data"),
             SharedMemorySize: 20_971_520 /* 20 MB */,
             CommandQueueName: "SharpDetect_CommandQueue",
-            CommandQueueFile: "SharpDetect_CommandQueue.data",
+            CommandQueueFile: Path.Combine(tempFolder, "SharpDetect_CommandQueue.data"),
             CommandQueueSize: 1_048_576 /* 1 MB */,
+            temporaryFilesFolder,
             additionalData);
     }
 

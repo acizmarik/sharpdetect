@@ -1,6 +1,7 @@
 // Copyright 2025 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Configuration;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
@@ -13,24 +14,7 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Deadlock";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public override PluginConfiguration Configuration { get; } = PluginConfiguration.Create(
-        eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
-                   COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
-                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
-                   COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
-                   COR_PRF_MONITOR.COR_PRF_ENABLE_STACK_SNAPSHOT |
-                   COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
-                   COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
-        additionalData: MonitorMethodDescriptors.GetAllMethods().Concat(
-            ThreadMethodDescriptors.GetAllMethods())
-            .ToImmutableArray());
+    public override PluginConfiguration Configuration { get; }
     public DirectoryInfo ReportTemplates { get; }
     
     private readonly ICallstackResolver _callStackResolver;
@@ -43,11 +27,32 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
     public DeadlockPlugin(
         ICallstackResolver callstackResolver,
         TimeProvider timeProvider,
+        PathsConfiguration pathsConfiguration,
         IServiceProvider serviceProvider)
         : base(serviceProvider)
     {
         _callStackResolver = callstackResolver;
         _timeProvider = timeProvider;
+
+        Configuration = PluginConfiguration.Create(
+            eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_STACK_SNAPSHOT |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
+            additionalData: MonitorMethodDescriptors.GetAllMethods().Concat(
+                ThreadMethodDescriptors.GetAllMethods())
+                .ToImmutableArray(),
+            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 
         _waitForGraphs = [];
         _deadlocks = [];
