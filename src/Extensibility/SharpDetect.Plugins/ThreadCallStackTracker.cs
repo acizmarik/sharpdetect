@@ -2,36 +2,37 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Plugins;
+using SharpDetect.Core.Plugins.Models;
 
 namespace SharpDetect.Plugins;
 
 internal sealed class ThreadCallStackTracker
 {
-    private readonly Dictionary<ProcessThreadId, Stack<HappensBeforeOrderingPluginBase.CallstackFrame>> _callstacks = [];
+    private readonly Dictionary<ProcessThreadId, Callstack> _callstacks = [];
     
     public void InitializeCallStack(ProcessThreadId processThreadId)
     {
-        _callstacks[processThreadId] = new Stack<HappensBeforeOrderingPluginBase.CallstackFrame>();
+        _callstacks[processThreadId] = new Callstack(processThreadId);
     }
     
-    public void Push(ProcessThreadId processThreadId, HappensBeforeOrderingPluginBase.CallstackFrame frame)
+    public void Push(ProcessThreadId processThreadId, StackFrame frame)
     {
         _callstacks[processThreadId].Push(frame);
     }
     
-    public HappensBeforeOrderingPluginBase.CallstackFrame Pop(ProcessThreadId processThreadId)
+    public StackFrame Pop(ProcessThreadId processThreadId)
     {
         return _callstacks[processThreadId].Pop();
     }
     
-    public HappensBeforeOrderingPluginBase.CallstackFrame Peek(ProcessThreadId processThreadId)
+    public StackFrame Peek(ProcessThreadId processThreadId)
     {
         return _callstacks[processThreadId].Peek();
     }
-    
-    public IReadOnlyDictionary<ProcessThreadId, Stack<HappensBeforeOrderingPluginBase.CallstackFrame>> GetSnapshot()
+
+    public IReadOnlyDictionary<ProcessThreadId, Callstack> GetSnapshot()
     {
-        return _callstacks.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        return _callstacks.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Clone());
     }
     
     public IReadOnlySet<ProcessThreadId> GetThreadIds()
