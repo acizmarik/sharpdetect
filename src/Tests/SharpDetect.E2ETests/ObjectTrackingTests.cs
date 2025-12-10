@@ -35,7 +35,7 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         var enteredTest = false;
         var exitedTest = false;
         var insideTestMethod = false;
-        var lockObjects = new HashSet<Lock>();
+        var lockObjects = new HashSet<ShadowLock>();
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);

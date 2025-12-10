@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace SharpDetect.Core.Plugins.Models;
 
-public class Lock(ProcessTrackedObjectId processLockObjectId)
+public class ShadowLock(ProcessTrackedObjectId processLockObjectId)
 {
     public readonly uint ProcessId = processLockObjectId.ProcessId;
     public readonly ProcessTrackedObjectId LockObjectId = processLockObjectId;
