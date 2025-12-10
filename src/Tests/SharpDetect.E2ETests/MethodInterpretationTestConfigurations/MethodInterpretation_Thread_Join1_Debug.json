@@ -1,6 +1,6 @@
 {
   "Target": {
-    "Path": "../../../../SharpDetect.E2ETests.Subject/bin/Debug/net8.0/SharpDetect.E2ETests.Subject.dll",
+    "Path": "../../../../SharpDetect.E2ETests.Subject/bin/Debug/net10.0/SharpDetect.E2ETests.Subject.dll",
     "Args": "Test_ThreadMethods_Join1",
     "Architecture": "X64",
     "RedirectInputOutput": {

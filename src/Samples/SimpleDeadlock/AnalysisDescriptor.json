@@ -1,7 +1,7 @@
 {
     "Target": 
     {
-        "Path": "../../Samples/SimpleDeadlock/bin/Debug/net8.0/SimpleDeadlock.dll",
+        "Path": "../../Samples/SimpleDeadlock/bin/Debug/net10.0/SimpleDeadlock.dll",
         "Args": "",
         "Architecture": "X64",
         "RedirectInputOutput":
@@ -22,7 +22,7 @@
     },
     "Analysis": 
     {
-        "Path": "../../Extensibility/SharpDetect.Plugins/bin/Debug/net8.0/SharpDetect.Plugins.dll",
+        "Path": "../../Extensibility/SharpDetect.Plugins/bin/Debug/net10.0/SharpDetect.Plugins.dll",
         "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
         "RenderReport": true
     }
