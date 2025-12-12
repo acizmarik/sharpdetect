@@ -4,6 +4,7 @@ set(SOURCES
     "Configuration.cpp"
     "dllmain.cpp"
     "MethodDescriptor.cpp"
+    "MethodVersionDescriptor.cpp"
     "MethodRewritingDescriptor.cpp"
     "MethodSignatureDescriptor.cpp")
 

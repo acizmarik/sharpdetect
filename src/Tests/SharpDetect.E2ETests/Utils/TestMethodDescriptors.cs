@@ -55,6 +55,7 @@ internal static class TestMethodDescriptors
             yield return new MethodDescriptor(
                 MethodName: methodName,
                 DeclaringTypeFullName: "SharpDetect.E2ETests.Subject.Program",
+                VersionDescriptor: null,
                 VoidMethodNoArgsSignature,
                 InjectHooksRewritingDescriptor);
         }

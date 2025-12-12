@@ -19,6 +19,7 @@ internal static class ThreadMethodDescriptors
         _threadJoinInt32 = new MethodDescriptor(
             MethodName: "Join",
             DeclaringTypeFullName: typeFullName,
+            VersionDescriptor: null,
             SignatureDescriptor: new MethodSignatureDescriptor(
                 CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
                 ParametersCount: 1,
@@ -37,6 +38,7 @@ internal static class ThreadMethodDescriptors
         _threadStartCallback = new MethodDescriptor(
             MethodName: "StartCallback",
             DeclaringTypeFullName: typeFullName,
+            VersionDescriptor: null,
             SignatureDescriptor: new MethodSignatureDescriptor(
                 CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
                 ParametersCount: 0,
@@ -53,6 +55,7 @@ internal static class ThreadMethodDescriptors
         _threadGetCurrentThread = new MethodDescriptor(
             MethodName: "get_CurrentThread",
             DeclaringTypeFullName: typeFullName,
+            VersionDescriptor: null,
             SignatureDescriptor: new MethodSignatureDescriptor(
                 CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
                 ParametersCount: 0,
@@ -71,7 +74,9 @@ internal static class ThreadMethodDescriptors
     {
         // Common public API
         yield return _threadJoinInt32;
-        yield return _threadStartCallback;
         yield return _threadGetCurrentThread;
+        
+        // Internal runtime API
+        yield return _threadStartCallback;
     }
 }

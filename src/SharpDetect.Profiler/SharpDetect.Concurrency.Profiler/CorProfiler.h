@@ -67,6 +67,7 @@ namespace Profiler
 		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef);
 
 		HRESULT InitializeProfilingFeatures() const;
+		HRESULT ImportMethodDescriptors(INT32 versionMajor, INT32 versionMinor, INT32 versionBuild);
 
 		HRESULT GetArguments(
 			const MethodDescriptor& methodDescriptor,

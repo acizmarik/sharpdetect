@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "../lib/json/single_include/nlohmann/json.hpp"
 
+#include "MethodVersionDescriptor.h"
 #include "MethodSignatureDescriptor.h"
 #include "MethodRewritingDescriptor.h"
 
@@ -16,6 +18,7 @@ namespace Profiler
     {
         std::string methodName;
         std::string declaringTypeFullName;
+        std::optional<MethodVersionDescriptor> versionDescriptor;
         MethodSignatureDescriptor signatureDescriptor;
         MethodRewritingDescriptor rewritingDescriptor;
     };

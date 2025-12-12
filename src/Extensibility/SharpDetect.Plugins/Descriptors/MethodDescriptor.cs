@@ -6,5 +6,6 @@ namespace SharpDetect.Plugins.Descriptors;
 public record MethodDescriptor(
     string MethodName,
     string DeclaringTypeFullName,
+    MethodVersionDescriptor? VersionDescriptor,
     MethodSignatureDescriptor SignatureDescriptor,
     MethodRewritingDescriptor RewritingDescriptor);
