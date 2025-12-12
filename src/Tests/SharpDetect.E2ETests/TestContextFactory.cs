@@ -13,9 +13,27 @@ namespace SharpDetect.E2ETests;
 
 internal static class TestContextFactory
 {
-    public static TestDisposableServiceProvider CreateServiceProvider(string filename, ITestOutputHelper output)
+    public static TestDisposableServiceProvider CreateServiceProvider(string filename, string sdk, ITestOutputHelper output)
     {
+        #if DEBUG
+        var buildConfiguration = "Debug";
+        #elif RELEASE
+        var buildConfiguration = "Release";
+        #else
+        #error Unknown build configuration. Expected DEBUG or RELEASE.
+        #endif
+        
         var args = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(filename);
+        args = args with
+        {
+            Target = args.Target with
+            {
+                Path = args.Target.Path
+                    .Replace("%SDK%", sdk)
+                    .Replace("%BUILD_CONFIGURATION%", buildConfiguration)
+            }
+        };
+        
         var pluginType = Type.GetType(args.Analysis.FullTypeName)
                          ?? typeof(Plugins.ConcurrencyContext).Assembly.GetType(args.Analysis.FullTypeName)
                          ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.FullTypeName}.");

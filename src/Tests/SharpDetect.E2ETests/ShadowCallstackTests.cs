@@ -17,21 +17,22 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
     private const string ConfigurationFolder = "ShadowCallstackTestConfigurations";
 
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse_Release.json")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken_Release.json")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse_Release.json")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll_Release.json")]
-#endif
-    public async Task ShadowCallstack_IntegrityTest(string configuration)
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net10.0")]
+    public async Task ShadowCallstack_IntegrityTest(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var eventsDeliveryContext = services.GetRequiredService<IRecordedEventsDeliveryContext>();

@@ -20,23 +20,25 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     private const string ConfigurationFolder = "MethodInterpretationTestConfigurations";
 
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3_Release.json")]
-#endif
-    public async Task MethodInterpretation_Monitor_EnterExit(string configuration)
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_EnterExit2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3.json", "net10.0")]
+    public async Task MethodInterpretation_Monitor_EnterExit(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -55,19 +57,19 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
     
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait1_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait2_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait3_Reentrancy_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait1_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait2_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait3_Reentrancy_Release.json")]
-#endif
-    public async Task MethodInterpretation_Monitor_Wait(string configuration)
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait3_Reentrancy.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait3_Reentrancy.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_Wait3_Reentrancy.json", "net10.0")]
+    public async Task MethodInterpretation_Monitor_Wait(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -88,19 +90,19 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
     
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3_Release.json")]
-#endif
-    public async Task MethodInterpretation_Thread_Join(string configuration)
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join3.json", "net10.0")]
+    public async Task MethodInterpretation_Thread_Join(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -118,17 +120,16 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback1_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback2_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback1_Release.json")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback2_Release.json")]
-#endif
-    public async Task MethodInterpretation_Thread_StartCallback(string configuration)
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_StartCallback2.json", "net10.0")]
+    public async Task MethodInterpretation_Thread_StartCallback(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -146,15 +147,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
     
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread_Debug.json")]
-#endif
-    public async Task MethodInterpretation_Thread_CurrentThread(string configuration)
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread.json", "net10.0")]
+    public async Task MethodInterpretation_Thread_CurrentThread(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();

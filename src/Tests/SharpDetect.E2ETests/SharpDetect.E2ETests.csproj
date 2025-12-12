@@ -27,154 +27,79 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_NoDeadlock_Release.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_NoDeadlock.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_NoDeadlock_Debug.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMonitorDeadlock.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMonitorDeadlock_Release.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectThreadJoinDeadlock.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMonitorDeadlock_Debug.json">
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMixedDeadlock.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectThreadJoinDeadlock_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit3.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectThreadJoinDeadlock_Debug.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMixedDeadlock_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectMixedDeadlock_Debug.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_EnterExit2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit2_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_EnterExit1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit3_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit3_Debug.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit2_Debug.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait3_Reentrancy.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit1_Release.json">
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Wait_ReentrancyWithPulse.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_TryEnterExit1_Debug.json">
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_TryEnter_LockNotTaken.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_EnterExit2_Release.json">
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Pulse.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_EnterExit2_Debug.json">
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_PulseAll.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_EnterExit1_Debug.json">
+    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC_Compacting.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_EnterExit1_Release.json">
+    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait1_Debug.json">
+    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_SingleGC.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait1_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait2_Debug.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait2_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join3.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait3_Reentrancy_Debug.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_Wait3_Reentrancy_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Wait_ReentrancyWithPulse_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Wait_ReentrancyWithPulse_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_TryEnter_LockNotTaken_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_TryEnter_LockNotTaken_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Pulse_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_Pulse_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_PulseAll_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_PulseAll_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC_Compacting_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC_Compacting_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_MultiGC_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_SingleGC_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="ObjectTrackingTestConfigurations\ObjectTracking_SingleGC_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join1_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join1_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join2_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join3_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join2_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join3_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback1_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback2_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback1_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback2_Release.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread_Debug.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread_Release.json">
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
