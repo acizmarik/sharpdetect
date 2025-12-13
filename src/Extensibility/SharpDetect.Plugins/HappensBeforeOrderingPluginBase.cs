@@ -76,8 +76,17 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockAcquireResult)]
     public void OnMonitorLockAcquireExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
+        var hasReturnValue = args.ReturnValue.Length > 0;
         var byRefArguments = args.ByRefArgumentValues.Length > 0 ? ParseArguments(metadata, args) : default;
-        var lockTaken = byRefArguments == default || (bool)byRefArguments[0].Value.AsT0;
+        
+        bool lockTaken;
+        if (hasReturnValue)
+            lockTaken = MemoryMarshal.Read<bool>(args.ReturnValue);
+        else if (byRefArguments != default)
+            lockTaken = (bool)byRefArguments[0].Value.AsT0;
+        else
+            lockTaken = true;
+        
         HandleMonitorLockAcquireExit(metadata, args.ModuleId, args.MethodToken, lockTaken);
     }
 
