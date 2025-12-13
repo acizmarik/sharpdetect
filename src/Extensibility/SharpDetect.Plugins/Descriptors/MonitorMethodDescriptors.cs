@@ -10,6 +10,7 @@ internal static class MonitorMethodDescriptors
 {
     private static readonly MethodDescriptor _monitorEnterObject_v8;
     private static readonly MethodDescriptor _monitorEnterObject_v10;
+    private static readonly MethodDescriptor _monitorEnterObjectLockTaken_v10;
     private static readonly MethodDescriptor _monitorReliableEnter_v8;
     private static readonly MethodDescriptor _monitorReliableEnterTimeout_v8;
     private static readonly MethodDescriptor _monitorTryEnterObject_v10;
@@ -55,6 +56,30 @@ internal static class MonitorMethodDescriptors
                 InjectHooks: true,
                 InjectManagedWrapper: false,
                 Arguments: [new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference))],
+                ReturnValue: null,
+                (ushort)RecordedEventType.MonitorLockAcquire,
+                (ushort)RecordedEventType.MonitorLockAcquireResult));
+
+        _monitorEnterObjectLockTaken_v10 = new MethodDescriptor(
+            "Enter",
+            "System.Threading.Monitor",
+            MethodVersionDescriptor.Create(new Version(10, 0, 0), new Version(10, int.MaxValue, int.MaxValue)),
+            new MethodSignatureDescriptor(
+                CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                ParametersCount: 2,
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                [
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT),
+                    ArgumentTypeDescriptor.CreateByRef(ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN))
+                ]),
+            new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: true,
+                Arguments:
+                [
+                    new(0, new ((byte)nint.Size, CapturedValue.CaptureAsReference)),
+                    new(1, new (1, CapturedValue.CaptureAsValue | CapturedValue.IndirectLoad))
+                ],
                 ReturnValue: null,
                 (ushort)RecordedEventType.MonitorLockAcquire,
                 (ushort)RecordedEventType.MonitorLockAcquireResult));
@@ -310,6 +335,7 @@ internal static class MonitorMethodDescriptors
         // Common public API
         yield return _monitorEnterObject_v8;
         yield return _monitorEnterObject_v10;
+        yield return _monitorEnterObjectLockTaken_v10;
         yield return _monitorTryEnterObject_v10;
         yield return _monitorTryEnterTimeoutObject_v10;
         yield return _monitorTryReliableEnterObject_v10;
