@@ -17,18 +17,15 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     private const string SynchronizationMutexName = "SharpDetect_E2E_Tests";
     
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}_Release.json")]
-#endif
-    public async Task DeadlockPlugin_NoDeadlock(string configuration)
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}.json", "net10.0")]
+    public async Task DeadlockPlugin_NoDeadlock(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var plugin = services.GetRequiredService<IPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        var eventsDeliveryContext = services.GetRequiredService<IRecordedEventsDeliveryContext>();
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -39,15 +36,13 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}_Release.json")]
-#endif
-    public async Task DeadlockPlugin_CanDetectMonitorDeadlock(string configuration)
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net10.0")]
+    public async Task DeadlockPlugin_CanDetectMonitorDeadlock(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -63,15 +58,13 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}_Release.json")]
-#endif
-    public async Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string configuration)
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net10.0")]
+    public async Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -87,15 +80,13 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}_Release.json")]
-#endif
-    public async Task DeadlockPlugin_CanDetectMixedDeadlock(string configuration)
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net10.0")]
+    public async Task DeadlockPlugin_CanDetectMixedDeadlock(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();

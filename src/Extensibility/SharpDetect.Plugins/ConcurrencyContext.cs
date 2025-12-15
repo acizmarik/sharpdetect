@@ -9,14 +9,14 @@ namespace SharpDetect.Plugins;
 
 public sealed class ConcurrencyContext
 {
-    private readonly Dictionary<ProcessThreadId, Lock?> _waitingForLocks = [];
-    private readonly Dictionary<ProcessThreadId, HashSet<Lock>> _takenLocks = [];
+    private readonly Dictionary<ProcessThreadId, ShadowLock?> _waitingForLocks = [];
+    private readonly Dictionary<ProcessThreadId, HashSet<ShadowLock>> _takenLocks = [];
     private readonly Dictionary<ProcessThreadId, ProcessThreadId?> _waitingForThreads = [];
 
     public bool HasThread(ProcessThreadId id) => _waitingForLocks.ContainsKey(id);
-    public bool HasLock(ProcessThreadId id, Lock lockObj) => _takenLocks[id].Contains(lockObj);
+    public bool HasLock(ProcessThreadId id, ShadowLock lockObj) => _takenLocks[id].Contains(lockObj);
 
-    public bool TryGetWaitingLock(ProcessThreadId id, [NotNullWhen(true)] out Lock? lockObj)
+    public bool TryGetWaitingLock(ProcessThreadId id, [NotNullWhen(true)] out ShadowLock? lockObj)
     {
         return _waitingForLocks.TryGetValue(id, out lockObj) && lockObj is not null;
     }
@@ -26,7 +26,7 @@ public sealed class ConcurrencyContext
         return _waitingForThreads.TryGetValue(id, out processThreadId) && processThreadId is not null;
     }
     
-    public Lock GetWaitingLock(ProcessThreadId id)
+    public ShadowLock GetWaitingLock(ProcessThreadId id)
     {
         if (!_waitingForLocks.TryGetValue(id, out var lockObj) || lockObj == null)
             throw new InvalidOperationException($"Thread {id} is not waiting for any lock.");
@@ -34,34 +34,34 @@ public sealed class ConcurrencyContext
         return lockObj;
     }
     
-    public IEnumerable<Lock> GetTakenLocks(ProcessThreadId id)
+    public IEnumerable<ShadowLock> GetTakenLocks(ProcessThreadId id)
     {
         return _takenLocks[id];
     }
     
-    public void RecordLockAcquireCalled(ProcessThreadId id, Lock lockObj)
+    public void RecordLockAcquireCalled(ProcessThreadId id, ShadowLock lockObj)
     {
         _waitingForLocks[id] = lockObj;
     }
 
-    public void RecordLockAcquireReturned(ProcessThreadId id, Lock lockObj, bool success)
+    public void RecordLockAcquireReturned(ProcessThreadId id, ShadowLock lockObj, bool success)
     {
         if (success)
             _takenLocks[id].Add(lockObj);
         _waitingForLocks[id] = null;
     }
 
-    public void RecordLockReleaseReturned(ProcessThreadId id, Lock lockObj)
+    public void RecordLockReleaseReturned(ProcessThreadId id, ShadowLock lockObj)
     {
         _takenLocks[id].Remove(lockObj);
     }
     
-    public void RecordObjectWaitCalled(ProcessThreadId id, Lock lockObj)
+    public void RecordObjectWaitCalled(ProcessThreadId id, ShadowLock lockObj)
     {
         _takenLocks[id].Remove(lockObj);
     }
     
-    public void RecordObjectWaitReturned(ProcessThreadId id, Lock lockObj)
+    public void RecordObjectWaitReturned(ProcessThreadId id, ShadowLock lockObj)
     {
         _takenLocks[id].Add(lockObj);
     }
@@ -69,7 +69,7 @@ public sealed class ConcurrencyContext
     public void RecordThreadCreated(ProcessThreadId id)
     {
         _waitingForLocks[id] = null;
-        _takenLocks[id] = new HashSet<Lock>();
+        _takenLocks[id] = new HashSet<ShadowLock>();
         _waitingForThreads[id] = null;
     }
     

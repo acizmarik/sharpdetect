@@ -9,26 +9,26 @@ namespace SharpDetect.Plugins;
 
 internal sealed class LockRegistry
 {
-    private readonly Dictionary<ProcessTrackedObjectId, Lock> _locks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ShadowLock> _locks = [];
     
-    public Lock GetOrAdd(ProcessTrackedObjectId processLockObjectId)
+    public ShadowLock GetOrAdd(ProcessTrackedObjectId processLockObjectId)
     {
         if (_locks.TryGetValue(processLockObjectId, out var lockObj))
             return lockObj;
 
-        lockObj = new Lock(processLockObjectId);
+        lockObj = new ShadowLock(processLockObjectId);
         _locks.Add(processLockObjectId, lockObj);
         return lockObj;
     }
     
-    public Lock Get(ProcessTrackedObjectId processLockObjectId)
+    public ShadowLock Get(ProcessTrackedObjectId processLockObjectId)
     {
         return !TryGet(processLockObjectId, out var lockObj) 
             ? throw new KeyNotFoundException($"Could not resolve objectId {processLockObjectId.ObjectId.Value} to a known lock.")
             : lockObj;
     }
     
-    public bool TryGet(ProcessTrackedObjectId processLockObjectId, out Lock lockObj)
+    public bool TryGet(ProcessTrackedObjectId processLockObjectId, out ShadowLock lockObj)
     {
         return _locks.TryGetValue(processLockObjectId, out lockObj!);
     }
@@ -44,7 +44,7 @@ internal sealed class LockRegistry
             .Count(trackedObjectId => Remove(new ProcessTrackedObjectId(processId, trackedObjectId)));
     }
 
-    public IReadOnlySet<Lock> GetAllLocks()
+    public IReadOnlySet<ShadowLock> GetAllLocks()
     {
         return _locks.Values.ToHashSet();
     }

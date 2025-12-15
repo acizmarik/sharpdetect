@@ -72,9 +72,6 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         return E_FAIL;
     }
 
-    for (auto&& item : _configuration.additionalData)
-        _methodDescriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
-
     COR_PRF_RUNTIME_TYPE runtimeType;
     USHORT majorVersion;
     USHORT minorVersion;
@@ -94,6 +91,13 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         LOG_F(ERROR, "Could not determine .NET runtime information. Terminating.");
         return E_FAIL;
     }
+
+    if (FAILED(ImportMethodDescriptors(majorVersion, minorVersion, buildVersion)))
+    {
+        LOG_F(ERROR, "Could not import method descriptors. Terminating.");
+        return E_FAIL;
+    }
+
     _client.Send(LibIPC::Helpers::CreateProfilerLoadMsg(
         CreateMetadataMsg(), 
         runtimeType,
@@ -150,6 +154,44 @@ HRESULT Profiler::CorProfiler::InitializeProfilingFeatures() const
         {
             LOG_F(ERROR, "Could not register function ID mapper. Error: 0x%x.", hr);
             return E_FAIL;
+        }
+    }
+
+    return S_OK;
+}
+
+HRESULT Profiler::CorProfiler::ImportMethodDescriptors(
+    const INT32 versionMajor,
+    const INT32 versionMinor,
+    const INT32 versionBuild)
+{
+    for (auto&& item : _configuration.additionalData)
+    {
+        if (!item.versionDescriptor.has_value())
+        {
+            _methodDescriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
+        }
+        else
+        {
+            const auto& methodVersion = item.versionDescriptor.value();
+            const auto fromVersion = std::make_tuple(
+                methodVersion.fromMajorVersion,
+                methodVersion.fromMinorVersion,
+                methodVersion.fromBuildVersion);
+            const auto toVersion = std::make_tuple(
+                methodVersion.toMajorVersion,
+                methodVersion.toMinorVersion,
+                methodVersion.toBuildVersion);
+            const auto currentVersion = std::make_tuple(
+                versionMajor,
+                versionMinor,
+                versionBuild);
+            
+            // Check if currentVersion is within [fromVersion, toVersion] range
+            if (currentVersion >= fromVersion && currentVersion <= toVersion)
+            {
+                _methodDescriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
+            }
         }
     }
 
@@ -424,7 +466,12 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
         auto guard = std::unique_lock(_rewritingsMutex);
         for (auto&& methodPtr : _methodDescriptors)
         {
-            auto&[methodName, declaringTypeFullName, signatureDescriptor, rewritingDescriptor] = *methodPtr.get();
+            auto&[
+                methodName,
+                declaringTypeFullName,
+                versionDescriptor,
+                signatureDescriptor,
+                rewritingDescriptor] = *methodPtr.get();
 
             // Method should be marked for wrapper injection in order to continue
             if (!rewritingDescriptor.injectManagedWrapper)
@@ -584,7 +631,12 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(const LibProfiler:
 
     for (auto&& methodPointer : _methodDescriptors)
     {
-        auto&[methodName, declaringTypeFullName, signatureDescriptor, rewritingDescriptor] = *methodPointer.get();
+        auto&[
+            methodName,
+            declaringTypeFullName,
+            versionDescriptor,
+            signatureDescriptor,
+            rewritingDescriptor] = *methodPointer.get();
 
         // Get declaring type
         mdTypeDef typeDef;

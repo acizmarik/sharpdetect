@@ -11,7 +11,7 @@ namespace SharpDetect.PluginHost.Services;
 internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
 {
     private readonly Dictionary<ProcessThreadId, Queue<RecordedEvent>> _undelivered;
-    private readonly Dictionary<Lock, Queue<ProcessThreadId>> _waitForLockQueue;
+    private readonly Dictionary<ShadowLock, Queue<ProcessThreadId>> _waitForLockQueue;
     private readonly Dictionary<ProcessTrackedObjectId, Queue<ProcessThreadId>> _waitForThreadStartQueue;
     private readonly HashSet<ProcessThreadId> _blockedThreads;
     private readonly HashSet<ProcessThreadId> _unblockedThreads;
@@ -25,7 +25,7 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         _unblockedThreads = [];
     }
 
-    public void BlockEventsDeliveryForThreadWaitingForObject(ProcessThreadId processThreadId, Lock lockObj)
+    public void BlockEventsDeliveryForThreadWaitingForObject(ProcessThreadId processThreadId, ShadowLock lockObj)
     {
         if (!_undelivered.ContainsKey(processThreadId))
             _undelivered[processThreadId] = new Queue<RecordedEvent>();
@@ -47,7 +47,7 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
         _waitForThreadStartQueue[threadObjectId].Enqueue(processThreadId);
     }
 
-    public void UnblockEventsDeliveryForThreadWaitingForObject(Lock lockObj)
+    public void UnblockEventsDeliveryForThreadWaitingForObject(ShadowLock lockObj)
     {
         if (_waitForLockQueue.TryGetValue(lockObj, out var waitQueue) && waitQueue.Count > 0)
         {

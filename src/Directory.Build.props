@@ -19,7 +19,7 @@
   
     <!-- Compilation -->
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
         <ContinuousIntegrationBuild Condition="'$(GITHUB_RUN_ID)' != ''">true</ContinuousIntegrationBuild>
         <DebugType>embedded</DebugType>

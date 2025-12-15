@@ -17,25 +17,25 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
     private const string ConfigurationFolder = "ObjectTrackingTestConfigurations";
 
     [Theory]
-#if DEBUG
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Debug.json")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting_Debug.json")]
-#elif RELEASE
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC_Release.json")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Release.json")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting_Release.json")]
-#endif
-    public async Task ObjectsTracking(string configuration)
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting.json", "net10.0")]
+    public async Task ObjectsTracking(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, testOutput);
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
         var insideTestMethod = false;
-        var lockObjects = new HashSet<Lock>();
+        var lockObjects = new HashSet<ShadowLock>();
         plugin.MethodEntered += e =>
         {
             var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);

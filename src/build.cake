@@ -2,7 +2,7 @@ var rid = Argument<string>("rid");
 var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
-var sdk = Argument("sdk", "net8.0");
+var sdk = Argument("sdk", "net10.0");
 
 var artifactsDirectory = "./artifacts";
 var nativeArtifactsDirectory = artifactsDirectory + "/Profilers/" + rid + "/";

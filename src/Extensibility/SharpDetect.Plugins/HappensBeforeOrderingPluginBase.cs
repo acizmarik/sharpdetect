@@ -15,13 +15,13 @@ namespace SharpDetect.Plugins;
 
 public abstract class HappensBeforeOrderingPluginBase : PluginBase
 {
-    public readonly record struct LockAcquireAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct LockAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
-    public readonly record struct LockReleaseArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectPulseOneArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectPulseAllArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectWaitAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj);
-    public readonly record struct ObjectWaitResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, Lock LockObj, bool IsSuccess);
+    public readonly record struct LockAcquireAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj);
+    public readonly record struct LockAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj, bool IsSuccess);
+    public readonly record struct LockReleaseArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj);
+    public readonly record struct ObjectPulseOneArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj);
+    public readonly record struct ObjectPulseAllArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj);
+    public readonly record struct ObjectWaitAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj);
+    public readonly record struct ObjectWaitResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj, bool IsSuccess);
     public readonly record struct ThreadStartArgs(ProcessThreadId ProcessThreadId, TrackedObjectId ThreadObjectId);
     public readonly record struct ThreadMappingArgs(ProcessThreadId ProcessThreadId, TrackedObjectId ThreadObjectId);
     public readonly record struct ThreadJoinAttemptArgs(ProcessThreadId BlockedProcessThreadId, ProcessThreadId JoiningProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken);
@@ -76,8 +76,17 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockAcquireResult)]
     public void OnMonitorLockAcquireExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
+        var hasReturnValue = args.ReturnValue.Length > 0;
         var byRefArguments = args.ByRefArgumentValues.Length > 0 ? ParseArguments(metadata, args) : default;
-        var lockTaken = byRefArguments == default || (bool)byRefArguments[0].Value.AsT0;
+        
+        bool lockTaken;
+        if (hasReturnValue)
+            lockTaken = MemoryMarshal.Read<bool>(args.ReturnValue);
+        else if (byRefArguments != default)
+            lockTaken = (bool)byRefArguments[0].Value.AsT0;
+        else
+            lockTaken = true;
+        
         HandleMonitorLockAcquireExit(metadata, args.ModuleId, args.MethodToken, lockTaken);
     }
 
@@ -141,7 +150,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         ObjectPulsedAll?.Invoke(new ObjectPulseAllArgs(id, args.ModuleId, args.MethodToken, lockObj));
     }
     
-    private (ProcessThreadId Id, Lock LockObj) HandleMonitorOperationExit(
+    private (ProcessThreadId Id, ShadowLock LockObj) HandleMonitorOperationExit(
         RecordedEventMetadata metadata,
         MethodExitRecordedEvent args)
     {
@@ -236,21 +245,21 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, processJoinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: true));
     }
 
-    private Lock GetOrAddLockFromArguments(ProcessThreadId processThreadId, RuntimeArgumentList arguments)
+    private ShadowLock GetOrAddLockFromArguments(ProcessThreadId processThreadId, RuntimeArgumentList arguments)
     {
         var lockObjectId = arguments[0].Value.AsT1;
         var processLockObjectId = new ProcessTrackedObjectId(processThreadId.ProcessId, lockObjectId);
         return _lockRegistry.GetOrAdd(processLockObjectId);
     }
     
-    private Lock GetLockFromFrame(ProcessThreadId processThreadId, StackFrame frame)
+    private ShadowLock GetLockFromFrame(ProcessThreadId processThreadId, StackFrame frame)
     {
         var lockObjectId = frame.Arguments!.Value[0].Value.AsT1;
         var processLockObjectId = new ProcessTrackedObjectId(processThreadId.ProcessId, lockObjectId);
         return _lockRegistry.Get(processLockObjectId);
     }
     
-    private bool TryConsumeOrDeferLockAcquire(ProcessThreadId processThreadId, Lock lockObj)
+    private bool TryConsumeOrDeferLockAcquire(ProcessThreadId processThreadId, ShadowLock lockObj)
     {
         if (lockObj.Owner is null || lockObj.Owner.Value == processThreadId)
         {
@@ -265,7 +274,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         return false;
     }
 
-    private bool TryConsumeOrDeferLockAcquireMultiple(ProcessThreadId processThreadId, Lock lockObj, int count)
+    private bool TryConsumeOrDeferLockAcquireMultiple(ProcessThreadId processThreadId, ShadowLock lockObj, int count)
     {
         if (lockObj.Owner is null || lockObj.Owner.Value == processThreadId)
         {
@@ -362,5 +371,5 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     internal record RuntimeStateSnapshot(
         IReadOnlyDictionary<ProcessThreadId, Callstack> Callstacks,
         IReadOnlySet<ProcessThreadId> Threads,
-        IReadOnlySet<Lock> Locks);
+        IReadOnlySet<ShadowLock> Locks);
 }
