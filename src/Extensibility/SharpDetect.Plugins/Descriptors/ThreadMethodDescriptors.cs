@@ -8,15 +8,15 @@ namespace SharpDetect.Plugins.Descriptors;
 
 internal static class ThreadMethodDescriptors
 {
-    private static readonly MethodDescriptor _threadJoinInt32;
-    private static readonly MethodDescriptor _threadStartCallback;
-    private static readonly MethodDescriptor _threadGetCurrentThread;
+    private static readonly MethodDescriptor ThreadJoinInt32;
+    private static readonly MethodDescriptor ThreadStartCallback;
+    private static readonly MethodDescriptor ThreadGetCurrentThread;
 
     static ThreadMethodDescriptors()
     {
         const string typeFullName = "System.Threading.Thread";
         
-        _threadJoinInt32 = new MethodDescriptor(
+        ThreadJoinInt32 = new MethodDescriptor(
             MethodName: "Join",
             DeclaringTypeFullName: typeFullName,
             VersionDescriptor: null,
@@ -35,7 +35,7 @@ internal static class ThreadMethodDescriptors
                 MethodEnterInterpretation: (ushort)RecordedEventType.ThreadJoinAttempt,
                 MethodExitInterpretation: (ushort)RecordedEventType.ThreadJoinResult));
 
-        _threadStartCallback = new MethodDescriptor(
+        ThreadStartCallback = new MethodDescriptor(
             MethodName: "StartCallback",
             DeclaringTypeFullName: typeFullName,
             VersionDescriptor: null,
@@ -52,7 +52,7 @@ internal static class ThreadMethodDescriptors
                 MethodEnterInterpretation: (ushort)RecordedEventType.ThreadStart,
                 MethodExitInterpretation: null));
         
-        _threadGetCurrentThread = new MethodDescriptor(
+        ThreadGetCurrentThread = new MethodDescriptor(
             MethodName: "get_CurrentThread",
             DeclaringTypeFullName: typeFullName,
             VersionDescriptor: null,
@@ -73,10 +73,10 @@ internal static class ThreadMethodDescriptors
     public static IEnumerable<MethodDescriptor> GetAllMethods()
     {
         // Common public API
-        yield return _threadJoinInt32;
-        yield return _threadGetCurrentThread;
+        yield return ThreadJoinInt32;
+        yield return ThreadGetCurrentThread;
         
         // Internal runtime API
-        yield return _threadStartCallback;
+        yield return ThreadStartCallback;
     }
 }
