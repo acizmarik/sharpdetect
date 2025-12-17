@@ -3,7 +3,7 @@
 
 namespace SharpDetect.Core.Plugins;
 
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public class RecordedEventBindAttribute(ushort value) : Attribute
 {
     public readonly ushort Value = value;

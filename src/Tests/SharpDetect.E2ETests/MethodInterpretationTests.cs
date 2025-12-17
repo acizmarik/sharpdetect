@@ -44,9 +44,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyEventType(RecordedEventType.MonitorLockAcquire))
-            .Then(EventuallyEventType(RecordedEventType.MonitorLockAcquireResult))
-            .Then(EventuallyEventType(RecordedEventType.MonitorLockRelease))
+            .Then(EventuallyEventType(RecordedEventType.LockAcquire))
+            .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
+            .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute
@@ -75,11 +75,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyEventType(RecordedEventType.MonitorLockAcquire))
-            .Then(EventuallyEventType(RecordedEventType.MonitorLockAcquireResult))
+            .Then(EventuallyEventType(RecordedEventType.LockAcquire))
+            .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
             .Then(EventuallyEventType(RecordedEventType.MonitorWaitAttempt))
             .Then(EventuallyEventType(RecordedEventType.MonitorWaitResult))
-            .Then(EventuallyEventType(RecordedEventType.MonitorLockRelease))
+            .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute
@@ -167,6 +167,36 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+    
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_EnterExit1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_EnterExit1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_EnterExit2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_EnterExit2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_TryEnterExit1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_TryEnterExit1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_TryEnterExit2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Lock_TryEnterExit2.json", "net10.0")]
+    public async Task MethodInterpretation_Lock_EnterExit(string configuration, string sdk)
+    {
+        // Arrange
+        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.LockAcquire))
+            .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
+            .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }

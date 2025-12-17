@@ -39,51 +39,38 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net10.0")]
-    public async Task DeadlockPlugin_CanDetectMonitorDeadlock(string configuration, string sdk)
+    public Task DeadlockPlugin_CanDetectMonitorDeadlock(string configuration, string sdk)
     {
-        // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
-        using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
-        var plugin = services.GetRequiredService<TestDeadlockPlugin>();
-        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        plugin.StackTraceSnapshotsCreated += _ => mutex.ReleaseMutex();
-
-        // Execute
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
-        var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
-
-        // Assert
-        Assert.NotNull(report);
-        Assert.Equal(plugin.ReportCategory, report.Category);
+        return CanDetectDeadlock(configuration, sdk);
+    }
+    
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectLockDeadlock)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectLockDeadlock)}.json", "net10.0")]
+    public Task DeadlockPlugin_CanDetectLockDeadlock(string configuration, string sdk)
+    {
+        return CanDetectDeadlock(configuration, sdk);
     }
 
     [Theory]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net10.0")]
-    public async Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string configuration, string sdk)
+    public Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string configuration, string sdk)
     {
-        // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
-        using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
-        var plugin = services.GetRequiredService<TestDeadlockPlugin>();
-        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        plugin.StackTraceSnapshotsCreated += _ => mutex.ReleaseMutex();
-
-        // Execute
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
-        var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
-
-        // Assert
-        Assert.NotNull(report);
-        Assert.Equal(plugin.ReportCategory, report.Category);
+        return CanDetectDeadlock(configuration, sdk);
     }
 
     [Theory]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net10.0")]
-    public async Task DeadlockPlugin_CanDetectMixedDeadlock(string configuration, string sdk)
+    public Task DeadlockPlugin_CanDetectMixedDeadlock(string configuration, string sdk)
+    {
+        return CanDetectDeadlock(configuration, sdk);
+    }
+    
+    private async Task CanDetectDeadlock(string configuration, string sdk)
     {
         // Arrange
         using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);

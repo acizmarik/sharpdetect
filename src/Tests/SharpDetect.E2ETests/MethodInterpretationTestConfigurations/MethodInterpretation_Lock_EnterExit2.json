@@ -1,7 +1,7 @@
 {
   "Target": {
     "Path": "../../../../SharpDetect.E2ETests.Subject/bin/%BUILD_CONFIGURATION%/%SDK%/SharpDetect.E2ETests.Subject.dll",
-    "Args": "Test_Deadlock_SimpleDeadlock_UsingMonitor",
+    "Args": "Test_LockMethods_EnterExit2",
     "Architecture": "X64",
     "RedirectInputOutput": {
       "SingleConsoleMode": true
@@ -19,8 +19,9 @@
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
-    "FullTypeName": "SharpDetect.E2ETests.Utils.TestDeadlockPlugin",
+    "FullTypeName": "SharpDetect.E2ETests.Utils.TestHappensBeforePlugin",
     "RenderReport": false,
     "LogLevel": "Information"
   }
 }
+

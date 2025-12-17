@@ -1,7 +1,7 @@
 {
   "Target": {
     "Path": "../../../../SharpDetect.E2ETests.Subject/bin/%BUILD_CONFIGURATION%/%SDK%/SharpDetect.E2ETests.Subject.dll",
-    "Args": "Test_Deadlock_SimpleDeadlock_UsingMonitor",
+    "Args": "Test_Deadlock_SimpleDeadlock_UsingLock",
     "Architecture": "X64",
     "RedirectInputOutput": {
       "SingleConsoleMode": true

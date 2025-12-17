@@ -217,6 +217,42 @@ namespace SharpDetect.E2ETests.Subject
             thread1.Join();
         }
 
+#if NET9_0_OR_GREATER
+        public static void Test_LockMethods_EnterExit1()
+        {
+            var lockObj = new Lock();
+            lockObj.Enter();
+            lockObj.Exit();
+        }
+
+        public static void Test_LockMethods_EnterExit2()
+        {
+            var lockObj = new Lock();
+            using (lockObj.EnterScope())
+            {
+                
+            }
+        }
+
+        public static void Test_LockMethods_TryEnterExit1()
+        {
+            var lockObj = new Lock();
+            if (lockObj.TryEnter())
+            {
+                lockObj.Exit();
+            }
+        }
+
+        public static void Test_LockMethods_TryEnterExit2()
+        {
+            var lockObj = new Lock();
+            if (lockObj.TryEnter(millisecondsTimeout: 1000))
+            {
+                lockObj.Exit();
+            }
+        }
+#endif
+
         public static void Test_Field_ValueType_Instance_Read()
         {
             var instance = new InstanceFieldValueType();
@@ -505,7 +541,7 @@ namespace SharpDetect.E2ETests.Subject
             Thread.Sleep(2000);
         }
 
-        public static void Test_Deadlock_SimpleDeadlock()
+        public static void Test_Deadlock_SimpleDeadlock_UsingMonitor()
         {
             using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
             var lockObj1 = new object();
@@ -550,6 +586,54 @@ namespace SharpDetect.E2ETests.Subject
             thread2.Start();
             mutex.WaitOne(_waitTimeout);
         }
+        
+#if NET9_0_OR_GREATER
+        public static void Test_Deadlock_SimpleDeadlock_UsingLock()
+        {
+            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
+            var lockObj1 = new Lock();
+            var lockObj2 = new Lock();
+            var syncEvent = new AutoResetEvent(true);
+            
+            var thread1 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread1";
+                for (;;)
+                {
+                    syncEvent.WaitOne();
+                    lock (lockObj1)
+                    {
+                        syncEvent.Set();
+                        lock (lockObj2)
+                        {
+                        }
+                    }
+                }
+            });
+
+            var thread2 = new Thread(() =>
+            {
+                for (;;)
+                {
+                    Thread.CurrentThread.Name = "TEST_Thread2";
+                    syncEvent.WaitOne();
+                    lock (lockObj2)
+                    {
+                        syncEvent.Set();
+                        lock (lockObj1)
+                        {
+                        }
+                    }
+                }
+            });
+
+            thread1.IsBackground = true;
+            thread2.IsBackground = true;
+            thread1.Start();
+            thread2.Start();
+            mutex.WaitOne(_waitTimeout);
+        }
+#endif
 
         public static void Test_Deadlock_ThreadJoinDeadlock()
         {

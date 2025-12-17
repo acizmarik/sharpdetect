@@ -102,6 +102,21 @@
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Lock_EnterExit1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Lock_EnterExit2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Lock_TryEnterExit1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Lock_TryEnterExit2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectLockDeadlock.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
