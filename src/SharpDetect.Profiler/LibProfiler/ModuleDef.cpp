@@ -129,11 +129,55 @@ HRESULT LibProfiler::ModuleDef::AddTypeRef(
 	return metadataEmit.DefineTypeRefByName(declaringAssemblyRef, nameWstring.c_str(), typeRef);
 }
 
+template<typename TToken, typename TEnclosingToken, typename TFindFunc>
+HRESULT LibProfiler::ModuleDef::FindTypeWithNesting(
+	IN const std::string& name,
+	IN const TEnclosingToken enclosingToken,
+	OUT TToken* token,
+	TFindFunc findFunc) const
+{
+	// Split nested type name by '+'
+	TToken currentToken = enclosingToken;
+	size_t start = 0;
+	size_t end = 0;
+
+	while ((end = name.find('+', start)) != std::string::npos)
+	{
+		const auto currentTypeName = name.substr(start, end - start);
+		const auto currentTypeNameWstring = ToWSTRING(currentTypeName);
+
+		// Find the type at this level
+		TToken nextToken;
+		const auto hr = findFunc(currentToken, currentTypeNameWstring.c_str(), &nextToken);
+		if (FAILED(hr))
+		{
+			LOG_F(ERROR, "Could not find type '%s' (part of '%s') in module=%" UINT_PTR_FORMAT ". Error: 0x%x.",
+				currentTypeName.c_str(),
+				name.c_str(),
+				_moduleId,
+				hr);
+			return hr;
+		}
+
+		currentToken = nextToken;
+		start = end + 1;
+	}
+
+	const auto finalTypeName = name.substr(start);
+	const auto finalTypeNameWstring = ToWSTRING(finalTypeName);
+	return findFunc(currentToken, finalTypeNameWstring.c_str(), token);
+}
+
 HRESULT LibProfiler::ModuleDef::FindTypeDef(IN const std::string& name, OUT mdTypeDef* typeDef) const
 {
 	auto& metadataImport = GetMetadataImport();
-	const auto nameWstring = ToWSTRING(name);
-	return metadataImport.FindTypeDefByName(nameWstring.c_str(), mdTokenNil, typeDef);
+	return FindTypeWithNesting(
+		name,
+		mdTokenNil,
+		typeDef,
+		[&metadataImport](mdToken enclosing, const WCHAR* typeName, mdTypeDef* outToken) {
+			return metadataImport.FindTypeDefByName(typeName, enclosing, outToken);
+		});
 }
 
 HRESULT LibProfiler::ModuleDef::FindTypeRef(
@@ -142,8 +186,13 @@ HRESULT LibProfiler::ModuleDef::FindTypeRef(
 	OUT mdTypeRef* typeRef) const
 {
 	auto& metadataImport = GetMetadataImport();
-	const auto nameWstring = ToWSTRING(name);
-	return metadataImport.FindTypeRef(assemblyRef, nameWstring.c_str(), typeRef);
+	return FindTypeWithNesting(
+		name,
+		assemblyRef,
+		typeRef,
+		[&metadataImport](mdToken enclosing, const WCHAR* typeName, mdTypeRef* outToken) {
+			return metadataImport.FindTypeRef(enclosing, typeName, outToken);
+		});
 }
 
 HRESULT LibProfiler::ModuleDef::FindMethodDef(

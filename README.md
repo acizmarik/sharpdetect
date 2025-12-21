@@ -48,7 +48,10 @@ dotnet cake --rid=linux-x64
 
 ## Available Tools
 
-* **Deadlock Analyzer** - Monitors all lock-related operations on `System.Threading.Monitor` and `Thread.Join` calls. If a deadlock is detected, user receives a report with details (affected threads, stack traces).
+* **Deadlock Analyzer** - When a deadlock is detected, user receives a report with details (affected threads, stack traces). Monitors all lock-related operations on the following types:
+    * `System.Threading.Monitor`
+    * `System.Threading.Lock`
+    * `Thread.Join` 
 
 ## State of Development
 

@@ -45,6 +45,10 @@ internal static class TestMethodDescriptors
             "Test_ThreadMethods_StartCallback1",
             "Test_ThreadMethods_StartCallback2",
             "Test_ThreadMethods_get_CurrentThread",
+            "Test_LockMethods_EnterExit1",
+            "Test_LockMethods_EnterExit2",
+            "Test_LockMethods_TryEnterExit1",
+            "Test_LockMethods_TryEnterExit2",
             "Test_SingleGarbageCollection_ObjectTracking_Simple",
             "Test_MultipleGarbageCollection_ObjectTracking_Simple",
             "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject"

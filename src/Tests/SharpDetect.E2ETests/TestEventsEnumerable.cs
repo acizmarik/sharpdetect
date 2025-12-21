@@ -72,11 +72,11 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
         _plugin.TypeReferenceInjected += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TypeReferenceInjectionRecordedEvent)>(GetNextId(), RecordedEventType.TypeReferenceInjection, args));
         _plugin.LockAcquireAttempted += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireAttemptArgs)>(GetNextId(), RecordedEventType.MonitorLockAcquire, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireAttemptArgs)>(GetNextId(), RecordedEventType.LockAcquire, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.LockAcquireReturned += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireResultArgs)>(GetNextId(), RecordedEventType.MonitorLockAcquireResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockAcquireResultArgs)>(GetNextId(), RecordedEventType.LockAcquireResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.LockReleased += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockReleaseArgs)>(GetNextId(), RecordedEventType.MonitorLockRelease, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.LockReleaseArgs)>(GetNextId(), RecordedEventType.LockReleaseResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ObjectPulsedAll += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, HappensBeforeOrderingPluginBase.ObjectPulseAllArgs)>(GetNextId(), RecordedEventType.MonitorPulseAllResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ObjectPulsedOne += args

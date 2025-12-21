@@ -70,4 +70,9 @@ public enum RecordedEventType : ushort
     MonitorWaitResult = 110,
     ThreadJoinAttempt = 111,
     ThreadJoinResult = 112,
+    LockAcquire = 113,
+    LockTryAcquire = 114,
+    LockAcquireResult = 115,
+    LockRelease = 116,
+    LockReleaseResult = 117,
 }

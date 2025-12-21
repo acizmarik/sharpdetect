@@ -16,12 +16,13 @@ public class RecordedEventBindingsCompiler : IRecordedEventBindingsCompiler
         foreach (var method in plugin.GetType().GetMethods())
         {
             var customAttributes = method.GetCustomAttributesData();
-            var eventBindAttribute = customAttributes.FirstOrDefault(a => a.AttributeType == typeof(RecordedEventBindAttribute));
-            if (eventBindAttribute == null)
+            var eventBindAttributes = customAttributes
+                .Where(a => a.AttributeType == typeof(RecordedEventBindAttribute))
+                .ToList();
+            if (eventBindAttributes.Count == 0)
                 continue;
 
             // Get custom event type
-            var recordedEventType = (RecordedEventType)(ushort)eventBindAttribute.ConstructorArguments[0]!.Value!;
             var argType = method.GetParameters()[1].ParameterType;
 
             // Dynamically generate and compile invoker
@@ -34,7 +35,12 @@ public class RecordedEventBindingsCompiler : IRecordedEventBindingsCompiler
             var lambda = Expression.Lambda<Action<IPlugin, RecordedEventMetadata, IRecordedEventArgs>>
                 (invocation, parameterPlugin, parameterMetadata, parameterArgs);
             BoundMethodEnterExitHandler compiled = lambda.Compile(preferInterpretation: false).Invoke;
-            builder.Add(new(recordedEventType, argType), compiled);
+            
+            foreach (var eventBindAttribute in eventBindAttributes)
+            {
+                var recordedEventType = (RecordedEventType)(ushort)eventBindAttribute.ConstructorArguments[0].Value!;
+                builder.Add(new(recordedEventType, argType), compiled);
+            }
         }
 
         return builder.ToImmutable();

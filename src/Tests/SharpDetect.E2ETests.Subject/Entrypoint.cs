@@ -72,6 +72,20 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ThreadMethods_get_CurrentThread):
                     Test_ThreadMethods_get_CurrentThread();
                     break;
+#if NET9_0_OR_GREATER
+                case nameof(Test_LockMethods_EnterExit1):
+                    Test_LockMethods_EnterExit1();
+                    break;
+                case nameof(Test_LockMethods_EnterExit2):
+                    Test_LockMethods_EnterExit2();
+                    break;
+                case nameof(Test_LockMethods_TryEnterExit1):
+                    Test_LockMethods_TryEnterExit1();
+                    break;
+                case nameof(Test_LockMethods_TryEnterExit2):
+                    Test_LockMethods_TryEnterExit2();
+                    break;
+#endif
             }
 
             // Field events
@@ -218,9 +232,14 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDeadlock):
                     Test_NoDeadlock();
                     break;
-                case nameof(Test_Deadlock_SimpleDeadlock):
-                    Test_Deadlock_SimpleDeadlock();
+                case nameof(Test_Deadlock_SimpleDeadlock_UsingMonitor):
+                    Test_Deadlock_SimpleDeadlock_UsingMonitor();
                     break;
+#if NET9_0_OR_GREATER
+                case nameof(Test_Deadlock_SimpleDeadlock_UsingLock):
+                    Test_Deadlock_SimpleDeadlock_UsingLock();
+                    break;
+#endif
                 case nameof(Test_Deadlock_ThreadJoinDeadlock):
                     Test_Deadlock_ThreadJoinDeadlock();
                     break;
