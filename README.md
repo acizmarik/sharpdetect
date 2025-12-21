@@ -105,6 +105,11 @@ The following table summarizes the supported platforms:
 | win-x64   | :white_check_mark: |
 | win-x86   | :x:                |
 
+## Acknowledgments
+
+SharpDetect is built with the help of numerous open-source libraries and components.
+For detailed licensing information and full copyright notices, please see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 ## License
 
 This project is licensed under the [Apache-2.0 license](LICENSE).
