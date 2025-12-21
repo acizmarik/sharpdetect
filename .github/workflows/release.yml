@@ -60,7 +60,8 @@ jobs:
       run: |
         cd src
         ls -R artifacts/
-        dotnet pack SharpDetect.Cli/SharpDetect.Cli.csproj --output ./artifacts/
+        dotnet cake --rid="linux-x64" --target="CI-Pack" --configuration=Release
+        ls -R artifacts/
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
