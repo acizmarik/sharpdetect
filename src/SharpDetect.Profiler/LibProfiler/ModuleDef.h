@@ -141,6 +141,13 @@ namespace LibProfiler
 		[[nodiscard]] IMethodMalloc& GetMethodMalloc() const;
 		HRESULT GetPlaceHolderMethodRVA(OUT UINT* rva);
 
+		template<typename TToken, typename TEnclosingToken, typename TFindFunc>
+		HRESULT FindTypeWithNesting(
+			IN const std::string& name,
+			IN TEnclosingToken enclosingToken,
+			OUT TToken* token,
+			TFindFunc findFunc) const;
+
 		static std::string GetFileNameFromPath(const std::string& path);
 
 		ModuleID _moduleId;
