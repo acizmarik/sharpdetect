@@ -1,35 +1,68 @@
-var rid = Argument<string>("rid");
+//////////////////////////////////////////////////////////////////////
+////////////////////////// ARGUMENTS /////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+var rid = Argument<string>("rid", GetDefaultRuntimeIdentifier());
 var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
 var sdk = Argument("sdk", "net10.0");
 
+string GetDefaultRuntimeIdentifier()
+{
+    if (IsRunningOnWindows())
+        return "win-x64";
+    if (IsRunningOnLinux())
+        return "linux-x64";
+    
+    throw new Exception("Unknown or unsupported platform. Please specify the runtime identifier using --rid parameter.");
+}
+
+Information($"Executing target: {target}.");
+Information($"Using runtime identifier: {rid}.");
+
+//////////////////////////////////////////////////////////////////////
+////////////////////////// CONFIGURATION /////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
 var artifactsDirectory = "./artifacts";
 var nativeArtifactsDirectory = artifactsDirectory + "/Profilers/" + rid + "/";
-var profilers = new string[]
-{
-    "SharpDetect.Concurrency.Profiler",
-};
+var profilers = new string[] { "SharpDetect.Concurrency.Profiler" };
+
+//////////////////////////////////////////////////////////////////////
+////////////////////////////// TASKS /////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 Task("Clean")
     .WithCriteria(c => HasArgument("rebuild"))
     .Does(() =>
 {
-    CleanDirectory($"./SharpDetect.Cli/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.Core/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.InterProcessQueue/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.Loader/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.Metadata/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.Reporting/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.Serialization/bin/{configuration}");
-    CleanDirectory($"./Extensibility/SharpDetect.PluginHost/bin/{configuration}");
-    CleanDirectory($"./Extensibility/SharpDetect.Plugins/bin/{configuration}");
-    CleanDirectory($"./Samples/SimpleDeadlock/bin/{configuration}");
-    CleanDirectory($"./Tests/SharpDetect.E2ETests/bin/{configuration}");
-    CleanDirectory($"./Tests/SharpDetect.E2ETests.Subject/bin/{configuration}");
-    CleanDirectory($"./SharpDetect.Profiler/artifacts");
-    CleanDirectory($"./artifacts");
-    Information("Cleanup finished.");
+    var directoriesToClean = new[]
+    {
+        $"./SharpDetect.Cli/bin/{configuration}",
+        $"./SharpDetect.Core/bin/{configuration}",
+        $"./SharpDetect.InterProcessQueue/bin/{configuration}",
+        $"./SharpDetect.Loader/bin/{configuration}",
+        $"./SharpDetect.Metadata/bin/{configuration}",
+        $"./SharpDetect.Reporting/bin/{configuration}",
+        $"./SharpDetect.Serialization/bin/{configuration}",
+        $"./SharpDetect.Communication/bin/{configuration}",
+        $"./SharpDetect.Worker/bin/{configuration}",
+        $"./Extensibility/SharpDetect.PluginHost/bin/{configuration}",
+        $"./Extensibility/SharpDetect.Plugins/bin/{configuration}",
+        $"./Samples/SimpleDeadlock/bin/{configuration}",
+        $"./Tests/SharpDetect.E2ETests/bin/{configuration}",
+        $"./Tests/SharpDetect.E2ETests.Subject/bin/{configuration}",
+        $"./Tests/SharpDetect.InterProcessQueue.Tests/bin/{configuration}",
+        $"./SharpDetect.Profiler/artifacts",
+        $"./artifacts"
+    };
+
+    foreach (var dir in directoriesToClean)
+    {
+        if (DirectoryExists(dir))
+            CleanDirectory(dir);
+    }
 });
 
 Task("Build-Managed")
@@ -40,11 +73,11 @@ Task("Build-Managed")
     {
         Configuration = configuration
     });
-
+    
+    EnsureDirectoryExists("artifacts/Plugins");
     DotNetPublish("./Extensibility/SharpDetect.Plugins", new DotNetPublishSettings
     {
-        Configuration = configuration,
-        OutputDirectory = "artifacts/Plugins"
+        Configuration = configuration
     });
 });
 
@@ -61,12 +94,8 @@ Task("Build-IPQ")
 Task("Build-Profiler")
     .Does(() =>
 {
-    var artifactsDirectory = $"./SharpDetect.Profiler/artifacts/{rid}";
-    if (!System.IO.Directory.Exists(artifactsDirectory))
-    {
-        System.IO.Directory.CreateDirectory(artifactsDirectory);
-        Information($"Created directory: {artifactsDirectory}.");
-    }
+    var profilerArtifactsDirectory = $"./SharpDetect.Profiler/artifacts/{rid}";
+    EnsureDirectoryExists(profilerArtifactsDirectory);
 
     var exitCode = StartProcess("cmake", new ProcessSettings
     {
@@ -74,20 +103,24 @@ Task("Build-Profiler")
             .Append("../..")
             .Append($"-DCMAKE_BUILD_TYPE={configuration}")
             .Append("-DMSGPACK_USE_BOOST=off"),
-        WorkingDirectory = artifactsDirectory
+        WorkingDirectory = profilerArtifactsDirectory
     });
 
     if (exitCode != 0)
-        throw new Exception($"Failure during CMake configure. Exit code: {exitCode}.");
+        throw new Exception($"CMake configure failed with exit code: {exitCode}");
 
     exitCode = StartProcess("cmake", new ProcessSettings
     {
-        Arguments = new ProcessArgumentBuilder().Append($"--build . --config {configuration}"),
-        WorkingDirectory = artifactsDirectory
+        Arguments = new ProcessArgumentBuilder()
+            .Append("--build")
+            .Append(".")
+            .Append("--config")
+            .Append(configuration),
+        WorkingDirectory = profilerArtifactsDirectory
     });
 
     if (exitCode != 0)
-        throw new Exception($"Failure during build. Exit code: {exitCode}.");
+        throw new Exception($"CMake build failed with exit code: {exitCode}");
 });
 
 Task("Build-Local-Environment")
@@ -102,31 +135,25 @@ Task("Build-Local-Environment")
 Task("Copy-Native-Artifacts")
     .Does(() =>
 {
-    if (!System.IO.Directory.Exists(artifactsDirectory))
-    {
-        System.IO.Directory.CreateDirectory(artifactsDirectory);
-        Information($"Created directory: {artifactsDirectory}.");
-    }
-
-    if (!System.IO.Directory.Exists(nativeArtifactsDirectory))
-    {
-        System.IO.Directory.CreateDirectory(nativeArtifactsDirectory);
-        Information($"Created directory: {nativeArtifactsDirectory}.");
-    }
+    EnsureDirectoryExists(artifactsDirectory);
+    EnsureDirectoryExists(nativeArtifactsDirectory);
 
     var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/{sdk}/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
+    if (!System.IO.File.Exists(ipqLibrary))
+        throw new Exception($"IPQ native library not found at: {ipqLibrary}");    
     CopyFileToDirectory(ipqLibrary, nativeArtifactsDirectory);
-    Information($"Copied IPQ native library to {nativeArtifactsDirectory}.");
 
     foreach (var profilerName in profilers)
     {
         var profilerLibrary = (rid.StartsWith("win"))
             ? $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{configuration}/{profilerName}.{libraryExtension}"
             : $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{profilerName}.{libraryExtension}";
-        CopyFileToDirectory(profilerLibrary, $"{nativeArtifactsDirectory}");
+        
+        if (!System.IO.File.Exists(profilerLibrary))
+            throw new Exception($"Profiler library not found at: {profilerLibrary}");
+        
+        CopyFileToDirectory(profilerLibrary, nativeArtifactsDirectory);
     }
-
-    Information($"Copied profiler native libraries to {nativeArtifactsDirectory}.");
 });
 
 Task("Tests")
@@ -135,7 +162,7 @@ Task("Tests")
 {
     DotNetTest("./SharpDetect.sln", new DotNetTestSettings
     {
-        Configuration = configuration,
+        Configuration = configuration
     });
 });
 
@@ -146,10 +173,11 @@ Task("CI-Prepare-Managed")
     {
         Configuration = configuration
     });
+    
+    EnsureDirectoryExists("artifacts/Plugins");
     DotNetPublish("./Extensibility/SharpDetect.Plugins", new DotNetPublishSettings
     {
-        Configuration = configuration,
-        OutputDirectory = "artifacts/Plugins"
+        Configuration = configuration
     });
 });
 
@@ -164,16 +192,39 @@ Task("CI-Prepare-Native-Libs")
     {
         if (rid.StartsWith("linux"))
         {
-            StartProcess("strip", new ProcessSettings
+            Information($"Stripping symbols from: {file.GetFilename()}");
+            var exitCode = StartProcess("strip", new ProcessSettings
             {
                 Arguments = new ProcessArgumentBuilder()
                     .Append("-s")
-                    .Append(file.FullPath),
-                WorkingDirectory = nativeArtifactsDirectory
+                    .Append(file.FullPath)
             });
+            
+            if (exitCode != 0)
+                Warning($"Failed to strip {file.GetFilename()}, exit code: {exitCode}");
         }
+    }
+});
 
-        Information(file.FullPath);
+Task("CI-Pack")
+    .IsDependentOn("CI-Prepare-Managed")
+    .Does(() =>
+{
+    var outputDirectory = $"{artifactsDirectory}";
+    EnsureDirectoryExists(outputDirectory);
+    
+    DotNetPack("./SharpDetect.Cli", new DotNetPackSettings
+    {
+        Configuration = configuration,
+        OutputDirectory = outputDirectory,
+        NoBuild = false
+    });
+    
+    Information($"Package created in: {outputDirectory}");
+    var packages = GetFiles($"{outputDirectory}/*.nupkg");
+    foreach (var package in packages)
+    {
+        Information($"  - {package.GetFilename()}");
     }
 });
 
