@@ -9,13 +9,17 @@ namespace SharpDetect.Plugins.Descriptors;
 internal static class LockMethodDescriptors
 {
     private const string LockTypeName = "System.Threading.Lock";
+    private const string LockScopeTypeName = "System.Threading.Lock+Scope";
+    private const string LockThreadIdTypeName = "System.Threading.Lock+ThreadId";
     private static readonly Version Version9 = new(9, 0, 0);
     private static readonly Version Version10Max = new(10, int.MaxValue, int.MaxValue);
     private static readonly CapturedArgumentDescriptor ObjectRefArg = 
         new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference));
 
     private static readonly MethodDescriptor Enter;
+    private static readonly MethodDescriptor EnterScope;
     private static readonly MethodDescriptor Exit;
+    private static readonly MethodDescriptor ExitThreadId;
     private static readonly MethodDescriptor TryEnter;
     private static readonly MethodDescriptor TryEnterTimeout;
 
@@ -38,6 +42,23 @@ internal static class LockMethodDescriptors
                 MethodEnterInterpretation: (ushort)RecordedEventType.LockAcquire,
                 MethodExitInterpretation: (ushort)RecordedEventType.LockAcquireResult));
         
+        EnterScope = new MethodDescriptor(
+            MethodName: "EnterScope",
+            DeclaringTypeFullName: LockTypeName,
+            VersionDescriptor: MethodVersionDescriptor.Create(Version9, Version10Max),
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 0,
+                ReturnType: ArgumentTypeDescriptor.CreateValueType(LockScopeTypeName),
+                ArgumentTypeElements: []),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ ObjectRefArg ],
+                ReturnValue: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.LockAcquire,
+                MethodExitInterpretation: (ushort)RecordedEventType.LockAcquireResult));
+        
         Exit = new MethodDescriptor(
             MethodName: "Exit",
             DeclaringTypeFullName: LockTypeName,
@@ -47,6 +68,23 @@ internal static class LockMethodDescriptors
                 ParametersCount: 0,
                 ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
                 ArgumentTypeElements: []),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ ObjectRefArg ],
+                ReturnValue: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.LockRelease,
+                MethodExitInterpretation: (ushort)RecordedEventType.LockReleaseResult));
+        
+        ExitThreadId = new MethodDescriptor(
+            MethodName: "Exit",
+            DeclaringTypeFullName: LockTypeName,
+            VersionDescriptor: MethodVersionDescriptor.Create(Version9, Version10Max),
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 1,
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                ArgumentTypeElements: [ ArgumentTypeDescriptor.CreateValueType(LockThreadIdTypeName) ]),
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
@@ -94,9 +132,13 @@ internal static class LockMethodDescriptors
     {
         // Common public API
         yield return Enter;
+        yield return EnterScope;
         yield return Exit;
         yield return TryEnter;
         yield return TryEnterTimeout;
+        
+        // Internal API
+        yield return ExitThreadId;
     }
 }
 
