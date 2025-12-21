@@ -5,6 +5,7 @@
     <PackageId>SharpDetect</PackageId>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>sharpdetect</ToolCommandName>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +23,13 @@
     <None Include="../artifacts/Profilers/win-x64/*.dll" Pack="true" PackagePath="tools/$(TargetFramework)/any/Profilers/win-x64/" Visible="false" />
     <None Include="../artifacts/Plugins/**/*.*" Pack="true" PackagePath="tools/$(TargetFramework)/any/Plugins/" Visible="false" />
     <None Include="../../LICENSE" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
