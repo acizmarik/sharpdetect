@@ -94,16 +94,8 @@ dotnet cake
 
 ## Platform Support
 
-SharpDetect supports modern .NET SDKs that are still under active support.
-Right now, only x64 architectures are supported.
-The following table summarizes the supported platforms:
-
-| Runtime   | .NET 8 / 9 / 10    |
-| --------- |--------------------|
-| linux-x64 | :white_check_mark: |
-| linux-x86 | :x:                |
-| win-x64   | :white_check_mark: |
-| win-x86   | :x:                |
+SharpDetect supports modern .NET SDKs that are still under active support by .NET team (versions 8, 9 and 10).
+Supported platforms are Windows and Linux on x64 architecture.
 
 ## Acknowledgments
 
