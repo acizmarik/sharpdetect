@@ -28,7 +28,11 @@ internal sealed class RunCommandHandler : IDisposable
         var pluginType = LoadPluginInfo();
         _serviceProvider = new AnalysisServiceProviderBuilder(_arguments)
             .WithTimeProvider(TimeProvider.System)
-            .ConfigureLogging(logging => logging.AddConsole())
+            .ConfigureLogging(logging =>
+            {
+                logging.AddConsole();
+                logging.SetMinimumLevel(_arguments.Analysis.LogLevel);
+            })
             .WithPlugin(pluginType)
             .Build();
     }
