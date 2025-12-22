@@ -51,13 +51,13 @@ Create a JSON configuration file (e.g., `analysis.json`) that describes your ana
         "Profiler": {
             "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
             "Path": {
-                "WindowsX64": "Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
-                "LinuxX64": "Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so"
+                "WindowsX64": "%SHARPDETECT_ROOT%/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
+                "LinuxX64": "%SHARPDETECT_ROOT%/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so"
             }
         }
     },
     "Analysis": {
-        "Path": "Plugins/SharpDetect.Plugins.dll",
+        "Path": "%SHARPDETECT_ROOT%/Plugins/SharpDetect.Plugins.dll",
         "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
         "RenderReport": true
     }
