@@ -17,8 +17,8 @@ public sealed class RunCommand : ICommand
     public async ValueTask ExecuteAsync(IConsole console)
     {
         var previousDirectory = Directory.GetCurrentDirectory();
-        var workingDirectory = Path.GetDirectoryName(ArgumentsFile)
-            ?? throw new DirectoryNotFoundException($"Cannot find parent directory of file \"{ArgumentsFile}\".");
+        var directoryName = Path.GetDirectoryName(ArgumentsFile);
+        var workingDirectory = string.IsNullOrEmpty(directoryName) ? previousDirectory : directoryName;
         RunCommandHandler? commandHandler = null;
 
         try
