@@ -8,7 +8,7 @@ using SharpDetect.Cli.Handlers;
 
 namespace SharpDetect.Cli.Commands;
 
-[Command("run", Description = "Executes analysis based on provided arguments file")]
+[Command("run", Description = "Executes analysis based on provided configuration file")]
 public sealed class RunCommand : ICommand
 {
     [CommandParameter(0, Description = "Arguments file")]
