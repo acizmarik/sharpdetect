@@ -49,10 +49,13 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                        COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
                        COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
                        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
-            additionalData: MonitorMethodDescriptors.GetAllMethods().Concat(
-                LockMethodDescriptors.GetAllMethods()).Concat(
-                ThreadMethodDescriptors.GetAllMethods())
-                .ToImmutableArray(),
+            additionalData: new
+            {
+                MethodDescriptors = MonitorMethodDescriptors.GetAllMethods().Concat(
+                    LockMethodDescriptors.GetAllMethods()).Concat(
+                    ThreadMethodDescriptors.GetAllMethods())
+                    .ToImmutableArray()
+            },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 
         _waitForGraphs = [];
