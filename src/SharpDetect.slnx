@@ -1,0 +1,33 @@
+<Solution>
+  <Folder Name="/Build/">
+    <File Path="build.cake" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/Extensibility/">
+    <Project Path="Extensibility/SharpDetect.PluginHost/SharpDetect.PluginHost.csproj" />
+    <Project Path="Extensibility/SharpDetect.Plugins/SharpDetect.Plugins.csproj" />
+  </Folder>
+  <Folder Name="/GitHub/">
+    <File Path="../.github/workflows/main.yml" />
+    <File Path="../.github/workflows/release.yml" />
+  </Folder>
+  <Folder Name="/Samples/">
+    <Project Path="Samples/SimpleDeadlock/SimpleDeadlock.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/SharpDetect.E2ETests.Subject/SharpDetect.E2ETests.Subject.csproj" />
+    <Project Path="Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj" />
+    <Project Path="Tests/SharpDetect.InterProcessQueue.Tests/SharpDetect.InterProcessQueue.Tests.csproj" />
+    <Project Path="Tests/SharpDetect.TemporalAsserts/SharpDetect.TemporalAsserts.csproj" />
+  </Folder>
+  <Project Path="SharpDetect.Cli/SharpDetect.Cli.csproj" />
+  <Project Path="SharpDetect.Communication/SharpDetect.Communication.csproj" />
+  <Project Path="SharpDetect.Core/SharpDetect.Core.csproj" />
+  <Project Path="SharpDetect.InterProcessQueue/SharpDetect.InterProcessQueue.csproj" />
+  <Project Path="SharpDetect.Loader/SharpDetect.Loader.csproj" />
+  <Project Path="SharpDetect.Metadata/SharpDetect.Metadata.csproj" />
+  <Project Path="SharpDetect.Reporting/SharpDetect.Reporting.csproj" />
+  <Project Path="SharpDetect.Serialization/SharpDetect.Serialization.csproj" />
+  <Project Path="SharpDetect.Worker/SharpDetect.Worker.csproj" />
+</Solution>

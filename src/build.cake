@@ -69,7 +69,7 @@ Task("Build-Managed")
     .IsDependentOn("Clean")
     .Does(() =>
 {
-    DotNetBuild("./SharpDetect.sln", new DotNetBuildSettings
+    DotNetBuild("./SharpDetect.slnx", new DotNetBuildSettings
     {
         Configuration = configuration
     });
@@ -160,7 +160,7 @@ Task("Tests")
     .IsDependentOn("Build-Local-Environment")
     .Does(() =>
 {
-    DotNetTest("./SharpDetect.sln", new DotNetTestSettings
+    DotNetTest("./SharpDetect.slnx", new DotNetTestSettings
     {
         Configuration = configuration
     });
