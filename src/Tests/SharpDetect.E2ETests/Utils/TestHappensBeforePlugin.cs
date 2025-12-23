@@ -3,13 +3,18 @@
 
 using System.Collections.Immutable;
 using dnlib.DotNet;
+using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Communication;
 using SharpDetect.Core.Configuration;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Loader;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
+using SharpDetect.Core.Serialization;
 using SharpDetect.Plugins;
+using SharpDetect.Plugins.Deadlock;
 using SharpDetect.Plugins.Descriptors;
 
 namespace SharpDetect.E2ETests.Utils;
@@ -52,10 +57,22 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
     private readonly IMetadataContext _metadataContext;
 
     public TestHappensBeforePlugin(
+        IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        IArgumentsParser argumentsParser,
+        IRecordedEventsDeliveryContext eventsDeliveryContext,
+        IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
-        IServiceProvider serviceProvider)
-        : base(serviceProvider)
+        TimeProvider timeProvider,
+        ILogger<TestHappensBeforePlugin> logger)
+        : base(
+            moduleBindContext,
+            metadataContext,
+            argumentsParser,
+            eventsDeliveryContext,
+            profilerCommandSenderProvider,
+            timeProvider,
+            logger)
     {
         _metadataContext = metadataContext;
         Configuration = PluginConfiguration.Create(

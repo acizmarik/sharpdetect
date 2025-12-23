@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
@@ -19,20 +18,23 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
     protected IReadOnlyDictionary<ProcessThreadId, string> Threads => _threads;
-    protected IReadOnlyDictionary<ProcessThreadId, Callstack> Callstacks => _callstacks;
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
     private readonly Dictionary<ProcessThreadId, string> _threads;
     private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
     private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
-    private int nextFreeThreadId;
+    private int _nextFreeThreadId;
     private bool _disposed;
 
-    protected PluginBase(IServiceProvider serviceProvider)
+    protected PluginBase(
+        IModuleBindContext moduleBindContext,
+        IProfilerCommandSenderProvider profilerCommandSenderProvider,
+        TimeProvider timeProvider,
+        ILogger logger)
     {
-        ModuleBindContext = serviceProvider.GetRequiredService<IModuleBindContext>();
-        Logger = serviceProvider.GetRequiredService<ILogger<PluginBase>>();
-        Reporter = new SummaryBuilder(serviceProvider.GetRequiredService<TimeProvider>());
-        _profilerCommandSenderProvider = serviceProvider.GetRequiredService<IProfilerCommandSenderProvider>();
+        ModuleBindContext = moduleBindContext;
+        Reporter = new SummaryBuilder(timeProvider);
+        Logger = logger;
+        _profilerCommandSenderProvider = profilerCommandSenderProvider;
         _profilerCommandSenders = ImmutableDictionary<int, IProfilerCommandSender>.Empty;
         _callstacks = [];
         _threads = [];
@@ -183,7 +185,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     private void CreateNewThread(ProcessThreadId processThreadId)
     {
-        _threads[processThreadId] = $"T{nextFreeThreadId++}";
+        _threads[processThreadId] = $"T{_nextFreeThreadId++}";
         _callstacks[processThreadId] = new Callstack(processThreadId);
         Logger.LogInformation("Created thread {Name}.", _threads[processThreadId]);
     }

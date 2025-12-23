@@ -10,6 +10,8 @@ using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Serialization;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Communication;
+using SharpDetect.Core.Loader;
 
 namespace SharpDetect.Plugins;
 
@@ -47,12 +49,19 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     private readonly IArgumentsParser _argumentsParser;
     private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
 
-    protected HappensBeforeOrderingPluginBase(IServiceProvider serviceProvider)
-        : base(serviceProvider)
+    protected HappensBeforeOrderingPluginBase(
+        IModuleBindContext moduleBindContext,
+        IMetadataContext metadataContext,
+        IArgumentsParser argumentsParser,
+        IRecordedEventsDeliveryContext eventsDeliveryContext,
+        IProfilerCommandSenderProvider profilerCommandSenderProvider,
+        TimeProvider timeProvider,
+        ILogger logger)
+        : base(moduleBindContext, profilerCommandSenderProvider, timeProvider, logger)
     {
-        _metadataContext = serviceProvider.GetRequiredService<IMetadataContext>();
-        _argumentsParser = serviceProvider.GetRequiredService<IArgumentsParser>();
-        _eventsDeliveryContext = serviceProvider.GetRequiredService<IRecordedEventsDeliveryContext>();
+        _metadataContext = metadataContext;
+        _argumentsParser = argumentsParser;
+        _eventsDeliveryContext = eventsDeliveryContext;
     }
     
     [RecordedEventBind((ushort)RecordedEventType.LockAcquire)]
