@@ -48,7 +48,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
             _plugin.Configuration.SerializeToFile(configurationPath);
             _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
 
-            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync();
+            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(cancellationToken);
             _logger.LogInformation("Started process with PID: {Pid}.", targetApplicationProcess.ProcessId);
 
             ExecuteAnalysis(targetApplicationProcess.Task, cancellationToken);
