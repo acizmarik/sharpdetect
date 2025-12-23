@@ -58,14 +58,12 @@ namespace LibIPC
 		MethodReferenceInjection = 29,
 		MethodBodyRewrite = 30,
 
-		/* Objects tracking */
-		ObjectTracking = 31,
-		ObjectRemoved = 32,
-
 		/* Profiler lifecycle */
-		ProfilerLoad = 33,
-		ProfilerInitialize = 34,
-		ProfilerDestroy = 35,
+		ProfilerLoad = 31,
+		ProfilerInitialize = 32,
+		ProfilerDestroy = 33,
+		ProfilerAbortInitialize = 34,
+		//Reserved = 35,
 
 		/* Stack trace snapshots */
 		StackTraceSnapshot = 36,
@@ -104,6 +102,10 @@ namespace LibIPC
 	using ProfilerDestroyMsgArgs = msgpack::type::tuple<>;
 	using ProfilerDestroyMsgArgsInstance = msgpack::type::tuple<INT32, ProfilerDestroyMsgArgs>;
 	using ProfilerDestroyMsg = msgpack::type::tuple<MetadataMsg, ProfilerDestroyMsgArgsInstance>;
+
+	using ProfilerAbortInitializeMsgArgs = msgpack::type::tuple<std::string>;
+	using ProfilerAbortInitializeMsgArgsInstance = msgpack::type::tuple<INT32, ProfilerAbortInitializeMsgArgs>;
+	using ProfilerAbortInitializeMsg = msgpack::type::tuple<MetadataMsg, ProfilerAbortInitializeMsgArgsInstance>;
 
 	using AssemblyLoadMsgArgs = msgpack::type::tuple<UINT64, std::string>;
 	using AssemblyLoadMsgArgsInstance = msgpack::type::tuple<INT32, AssemblyLoadMsgArgs>;
@@ -212,6 +214,7 @@ namespace LibIPC
 		ProfilerInitializeMsg CreateProfilerInitiazeMsg(MetadataMsg&& metadataMsg);
 		ProfilerLoadMsg CreateProfilerLoadMsg(MetadataMsg&& metadataMsg, UINT32 runtime, UINT32 major, UINT32 minor, UINT32 build, UINT32 qfe);
 		ProfilerDestroyMsg CreateProfilerDestroyMsg(MetadataMsg&& metadataMsg);
+		ProfilerAbortInitializeMsg CreateProfilerAbortInitializeMsg(MetadataMsg&& metadataMsg, const std::string& reason);
 		AssemblyLoadMsg CreateAssemblyLoadMsg(MetadataMsg&& metadataMsg, UINT64 assemblyId, const std::string& name);
 		ModuleLoadMsg CreateModuleLoadMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT64 assemblyId, const std::string& name);
 		TypeLoadMsg CreateTypeLoadMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdTypeDef);

@@ -50,6 +50,7 @@ namespace Profiler
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> FindMethodDescriptor(FunctionID functionId);
 
 	private:
+		HRESULT AbortAttach(const std::string& reason);
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);

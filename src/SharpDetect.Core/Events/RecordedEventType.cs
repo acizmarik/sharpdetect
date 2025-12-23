@@ -43,14 +43,12 @@ public enum RecordedEventType : ushort
     MethodReferenceInjection = 29,
     MethodBodyRewrite = 30,
 
-    /* Objects tracking */
-    ObjectTracking = 31,
-    ObjectRemoved = 32,
-
     /* Profiler lifecycle */
-    ProfilerLoad = 33,
-    ProfilerInitialize = 34,
-    ProfilerDestroy = 35,
+    ProfilerLoad = 31,
+    ProfilerInitialize = 32,
+    ProfilerDestroy = 33,
+    ProfilerAbortInitialize = 34,
+    //Reserved = 35,
 
     /* Stack trace snapshots */
     StackTraceSnapshot = 36,
