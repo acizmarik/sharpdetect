@@ -33,44 +33,55 @@ dotnet tool install --global SharpDetect --prerelease # Latest preview (prerelea
 
 ## Quick Start
 
-### 1. Create an Analysis Descriptor
+### 1. Prepare Program to Analyze
 
-Create a JSON configuration file (e.g., `analysis.json`) that describes your analysis:
+Create and build a new console .NET application with the following code:
 
-```json
-{
-    "Target": {
-        "Path": "<path/to/YourExecutableDotNetAssembly.dll>",
-        "Args": "",
-        "Architecture": "X64",
-        "RedirectInputOutput": {
-            "SingleConsoleMode": true
-        }
-    },
-    "Runtime": {
-        "Profiler": {
-            "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
-            "Path": {
-                "WindowsX64": "%SHARPDETECT_ROOT%/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
-                "LinuxX64": "%SHARPDETECT_ROOT%/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so"
-            }
-        }
-    },
-    "Analysis": {
-        "Path": "%SHARPDETECT_ROOT%/Plugins/SharpDetect.Plugins.dll",
-        "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
-        "RenderReport": true
-    }
-}
+```csharp
+var a = new object();
+var b = new object();
+
+new Thread(() => { while (true) lock (a) lock (b) { } }) { IsBackground = true }.Start();
+new Thread(() => { while (true) lock (b) lock (a) { } }) { IsBackground = true }.Start();
+
+Thread.Sleep(5000);
 ```
 
-*Note: Make sure to replace `<path/to/YourExecutableDotNetAssembly.dll>` with the actual path to the .NET assembly you want to analyze.*
+### 2. Create Analysis Configuration File
 
-### 2. Run the Analysis
+Create a configuration file that describes the analysis to be performed.
+The easiest way to create this file is to use the `sharpdetect init` command:
 
 ```bash
-sharpdetect run analysis.json
+sharpdetect init \
+  --plugin "SharpDetect.Plugins.Deadlock.DeadlockPlugin" \
+  --target "<path/to/YourExecutableDotNetAssembly.dll>" \
+  --output "AnalysisConfiguration.json"
 ```
+
+*Note: Make sure to replace `<path/to/YourExecutableDotNetAssembly.dll>` with the actual path to the .NET assembly that you want to analyze.*
+
+### 3. Run Analysis
+
+When running analysis, SharpDetect will use the configuration specified in the file from previous step.
+Start analysis using the `sharpdetect run` command:
+
+```bash
+sharpdetect run AnalysisConfiguration.json
+```
+
+Shortly after the deadlock occurs, you should see a log message similar to this:
+```text
+warn: SharpDetect.Core.Plugins.PluginBase[0]
+     [PID=20611] Deadlock detected (affects 2 threads).
+```
+
+Finally when target program terminates, you should see a log message indicating that the report has been generated:
+```text
+Report stored to file: /home/user/Workspace/SharpDetect_Report_2025-12-23T09:58:28.5087901.html.
+```
+
+Reports are self-contained HTML files that can be opened in any modern web browser.
 
 ## Building from Source
 
