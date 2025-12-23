@@ -67,10 +67,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
     LOG_F(INFO, "Profiler initializing in PID = %d.", LibProfiler::PAL_GetCurrentPid());
 
     if (FAILED(CorProfilerBase::Initialize(pICorProfilerInfoUnk)))
-    {
-        LOG_F(ERROR, "Could not obtain profiling API. Terminating.");
-        return E_FAIL;
-    }
+        return AbortAttach("Failed to initialize profiling API.");
 
     COR_PRF_RUNTIME_TYPE runtimeType;
     USHORT majorVersion;
@@ -88,15 +85,10 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         nullptr, 
         nullptr)))
     {
-        LOG_F(ERROR, "Could not determine .NET runtime information. Terminating.");
-        return E_FAIL;
+        return AbortAttach("Could not determine .NET runtime information.");
     }
 
-    if (FAILED(ImportMethodDescriptors(majorVersion, minorVersion, buildVersion)))
-    {
-        LOG_F(ERROR, "Could not import method descriptors. Terminating.");
-        return E_FAIL;
-    }
+    ImportMethodDescriptors(majorVersion, minorVersion, buildVersion);
 
     _client.Send(LibIPC::Helpers::CreateProfilerLoadMsg(
         CreateMetadataMsg(), 
@@ -114,11 +106,14 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         buildVersion, 
         qfeVersion);
 
+    if (runtimeType == COR_PRF_RUNTIME_TYPE::COR_PRF_DESKTOP_CLR)
+        return AbortAttach(".NET Framework is not supported.");
+
+    if (majorVersion < 8 || majorVersion > 10)
+        return AbortAttach("Unsupported .NET SDK. Supported version are only 8, 9 and 10.");
+
     if (FAILED(InitializeProfilingFeatures()))
-    {
-        LOG_F(ERROR, "Could not initialize requested profiling features. Terminating.");
-        return E_FAIL;
-    }
+        return AbortAttach("Could not initialize requested profiling features.");
 
     LibProfiler::OpCodes::Initialize();
     LOG_F(INFO, "Initialized IL descriptors.");
@@ -1201,6 +1196,15 @@ std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::FindMethodDes
     auto guard = std::unique_lock(_methodDescriptorsMutex);
     const auto it = _methodDescriptorsLookup.find(std::make_pair(moduleId, mdMethodDef));
     return (it != _methodDescriptorsLookup.cend()) ? it->second : nullptr;
+}
+
+HRESULT Profiler::CorProfiler::AbortAttach(const std::string& reason)
+{
+    LOG_F(ERROR, "%s Terminating.", reason.c_str());
+    _client.Send(LibIPC::Helpers::CreateProfilerAbortInitializeMsg(
+        CreateMetadataMsg(),
+        reason));
+    return E_FAIL;
 }
 
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg() const

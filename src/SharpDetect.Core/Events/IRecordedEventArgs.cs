@@ -8,6 +8,7 @@ namespace SharpDetect.Core.Events;
 [Union((int)RecordedEventType.ProfilerInitialize, typeof(ProfilerInitializeRecordedEvent))]
 [Union((int)RecordedEventType.ProfilerLoad, typeof(ProfilerLoadRecordedEvent))]
 [Union((int)RecordedEventType.ProfilerDestroy, typeof(ProfilerDestroyRecordedEvent))]
+[Union((int)RecordedEventType.ProfilerAbortInitialize, typeof(ProfilerAbortInitializeEvent))]
 [Union((int)RecordedEventType.AssemblyLoad, typeof(AssemblyLoadRecordedEvent))]
 [Union((int)RecordedEventType.ModuleLoad, typeof(ModuleLoadRecordedEvent))]
 [Union((int)RecordedEventType.TypeLoad, typeof(TypeLoadRecordedEvent))]

@@ -21,6 +21,10 @@ public sealed record ProfilerInitializeRecordedEvent() : IRecordedEventArgs;
 public sealed record ProfilerDestroyRecordedEvent() : IRecordedEventArgs;
 
 [MessagePackObject]
+public sealed record ProfilerAbortInitializeEvent(
+    [property: Key(0)] string Reason) : IRecordedEventArgs;
+
+[MessagePackObject]
 public sealed record AssemblyLoadRecordedEvent(
     [property: Key(0)] AssemblyId AssemblyId,
     [property: Key(1)] string Name) : IRecordedEventArgs;

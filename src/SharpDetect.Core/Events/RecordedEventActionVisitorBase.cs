@@ -12,6 +12,7 @@ public abstract class RecordedEventActionVisitorBase
             case ProfilerLoadRecordedEvent profilerLoadArgs: Visit(metadata, profilerLoadArgs); break;
             case ProfilerInitializeRecordedEvent profilerInitializeArgs: Visit(metadata, profilerInitializeArgs); break;
             case ProfilerDestroyRecordedEvent profilerDestroyArgs: Visit(metadata, profilerDestroyArgs); break;
+            case ProfilerAbortInitializeEvent profilerAbortInitializeEvent: Visit(metadata, profilerAbortInitializeEvent); break;
             case AssemblyLoadRecordedEvent assemblyLoadArgs: Visit(metadata, assemblyLoadArgs); break;
             case ModuleLoadRecordedEvent moduleLoadArgs: Visit(metadata, moduleLoadArgs); break;
             case TypeLoadRecordedEvent typeLoadArgs: Visit(metadata, typeLoadArgs); break;
@@ -48,6 +49,9 @@ public abstract class RecordedEventActionVisitorBase
         => DefaultVisit(metadata, args);
 
     protected virtual void Visit(RecordedEventMetadata metadata, ProfilerDestroyRecordedEvent args)
+        => DefaultVisit(metadata, args);
+
+    protected virtual void Visit(RecordedEventMetadata metadata, ProfilerAbortInitializeEvent args)
         => DefaultVisit(metadata, args);
 
     protected virtual void Visit(RecordedEventMetadata metadata, AssemblyLoadRecordedEvent args)

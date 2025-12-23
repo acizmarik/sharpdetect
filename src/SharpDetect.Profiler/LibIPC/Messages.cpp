@@ -34,6 +34,12 @@ ProfilerDestroyMsg Helpers::CreateProfilerDestroyMsg(LibIPC::MetadataMsg&& metad
     return { std::move(metadataMsg), ProfilerDestroyMsgArgsInstance(discriminator, ProfilerDestroyMsgArgs()) };
 }
 
+ProfilerAbortInitializeMsg Helpers::CreateProfilerAbortInitializeMsg(LibIPC::MetadataMsg&& metadataMsg, const std::string& reason)
+{
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::ProfilerAbortInitialize);
+    return { std::move(metadataMsg), ProfilerAbortInitializeMsgArgsInstance(discriminator, ProfilerAbortInitializeMsgArgs(reason)) };
+}
+
 AssemblyLoadMsg Helpers::CreateAssemblyLoadMsg(MetadataMsg&& metadataMsg, UINT64 assemblyId, const std::string& name)
 {
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::AssemblyLoad);

@@ -48,6 +48,18 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         InitializeCommandsChannel(metadata.Pid);
     }
 
+    protected override void Visit(RecordedEventMetadata metadata, ProfilerInitializeRecordedEvent args)
+    {
+        Reporter.AddRuntimeProperty("Profiler", "Attached");
+        base.Visit(metadata, args);
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, ProfilerAbortInitializeEvent args)
+    {
+        Reporter.AddRuntimeProperty("Profiler", $"Aborted. Reason: \"{args.Reason}\"");
+        base.Visit(metadata, args);
+    }
+
     protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)
     {
         var result = ModuleBindContext.TryGetModule(metadata.Pid, args.ModuleId);
