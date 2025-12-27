@@ -4,6 +4,12 @@
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
   </Folder>
+  <Folder Name="/Docs/">
+    <File Path="..\CONTRIBUTING.md" />
+    <File Path="..\LICENSE" />
+    <File Path="..\README.md" />
+    <File Path="..\THIRD-PARTY-NOTICES.md" />
+  </Folder>
   <Folder Name="/Extensibility/">
     <Project Path="Extensibility/SharpDetect.PluginHost/SharpDetect.PluginHost.csproj" />
     <Project Path="Extensibility/SharpDetect.Plugins/SharpDetect.Plugins.csproj" />
