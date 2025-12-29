@@ -8,8 +8,6 @@
 #include "../lib/loguru/loguru.hpp"
 
 #include "Instrumentation.h"
-#include "Instruction.h"
-#include "MethodBodyHelpers.h"
 
 HRESULT LibProfiler::PatchMethodBody(
 	IN ICorProfilerInfo& corProfilerInfo, 
@@ -21,72 +19,39 @@ HRESULT LibProfiler::PatchMethodBody(
 		return E_FAIL;
 
 	// Obtain current method
-	LPCBYTE methodBody;
-	ULONG methodBodyLength;
-	auto hr = corProfilerInfo.GetILFunctionBody(
-		moduleDef.GetModuleId(), 
-		mdMethodDef, 
-		&methodBody, 
-		&methodBodyLength);
+	ILRewriter rewriter(&corProfilerInfo, nullptr, moduleDef.GetModuleId(), mdMethodDef);
+	HRESULT hr = rewriter.Import();
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not retrieve method body for %d from module %s. Error: 0x%x.", mdMethodDef, moduleDef.GetName().c_str(), hr);
+		LOG_F(ERROR, "Could not import method body for %d from module %s. Error: 0x%x.", mdMethodDef, moduleDef.GetName().c_str(), hr);
 		return E_FAIL;
 	}
 
 	// Check if any instructions need to be patched
-	INT ip = 0;
-	std::vector<Instruction> instructionsToPatch;
-	auto [headerSize, codeSize] = ReadHeaderInfo(methodBody, ip);
-	while (ip < codeSize + headerSize)
+	BOOL isRewritten = false;
+	for (auto currentInstruction = rewriter.GetILList()->m_pNext;
+		currentInstruction != rewriter.GetILList();
+		currentInstruction = currentInstruction->m_pNext)
 	{
-		auto instruction = ReadInstruction(methodBody, ip);
-		auto& opCode = instruction.GetOpCode();
-
-		if (opCode.GetCode() != Code::Call && opCode.GetCode() != Code::Callvirt)
+		if (currentInstruction->m_opcode != CEE_CALL && currentInstruction->m_opcode != CEE_CALLVIRT)
 			continue;
 
-		auto originalMethodToken = static_cast<mdToken>(instruction.GetOperand().value().Arg32);
-		if (!tokensToPatch.contains(originalMethodToken))
-			continue;
-
-		instructionsToPatch.push_back(std::move(instruction));
+		auto const originalMethodToken = static_cast<mdToken>(currentInstruction->m_Arg32);
+		if (tokensToPatch.contains(originalMethodToken))
+		{
+			auto const newTokenValue = tokensToPatch.find(originalMethodToken)->second;
+			currentInstruction->m_Arg32 = static_cast<INT32>(newTokenValue);
+			isRewritten = true;
+		}
 	}
 
-	// Patch body if needed
-	if (!instructionsToPatch.empty())
+	// Apply changes if needed
+	if (isRewritten)
 	{
-		// Allocate new method
-		void* newMethodBody = nullptr;
-		hr = moduleDef.AllocMethodBody(methodBodyLength, &newMethodBody);
+		hr = rewriter.Export();
 		if (FAILED(hr))
 		{
-			LOG_F(ERROR, "Could not allocate patched method for %d from module %s. Error: 0x%x.", mdMethodDef, moduleDef.GetName().c_str(), hr);
-			return E_FAIL;
-		}
-
-		// Copy original method
-		std::memcpy(newMethodBody, methodBody, methodBodyLength);
-
-		// Patch found instructions
-		for (auto&& instruction : instructionsToPatch)
-		{
-			auto const originalToken = static_cast<mdToken>(instruction.GetOperand().value().Arg32);
-			auto const newTokenValue = tokensToPatch.find(originalToken)->second;
-
-			// Rewrite operand
-			const auto operandOffset = static_cast<BYTE*>(newMethodBody) + instruction.GetOffset() + 1;
-			std::memcpy(operandOffset, &newTokenValue, sizeof(INT));
-		}
-
-		// Apply new method
-		hr = corProfilerInfo.SetILFunctionBody(
-			moduleDef.GetModuleId(), 
-			mdMethodDef, 
-			static_cast<LPCBYTE>(newMethodBody));
-		if (FAILED(hr))
-		{
-			LOG_F(ERROR, "Could not set method body for %d from module %s. Error: 0x%x.", mdMethodDef, moduleDef.GetName().c_str(), hr);
+			LOG_F(ERROR, "Could not export rewritten method body for %d from module %s. Error: 0x%x.", mdMethodDef, moduleDef.GetName().c_str(), hr);
 			return E_FAIL;
 		}
 
@@ -158,23 +123,23 @@ HRESULT LibProfiler::CreateManagedWrapperMethod(
 		if (index <= 3)
 		{
 			// Ldarg.i for every parameter
-			code.push_back(static_cast<BYTE>(Code::Ldarg_0) + index);
+			code.push_back(CEE_LDARG_0 + index);
 		}
 		else
 		{
 			// Ldarg.s
-			code.push_back(static_cast<BYTE>(Code::Ldarg_S));
+			code.push_back(static_cast<BYTE>(CEE_LDARG_S));
 			code.push_back(index);
 		}
 	}
 	// Call <token>
-	code.push_back(static_cast<BYTE>(Code::Call));
+	code.push_back(static_cast<BYTE>(CEE_CALL));
 	code.push_back(static_cast<BYTE>(mdWrappedMethodDef));
 	code.push_back(static_cast<BYTE>(mdWrappedMethodDef >> 8));
 	code.push_back(static_cast<BYTE>(mdWrappedMethodDef >> 16));
 	code.push_back(static_cast<BYTE>(mdWrappedMethodDef >> 24));
 	// Ret
-	code.push_back(static_cast<BYTE>(Code::Ret));
+	code.push_back(static_cast<BYTE>(CEE_RET));
 
 	if (code.size() > 63)
 	{
