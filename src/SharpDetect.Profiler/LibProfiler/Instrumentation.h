@@ -9,6 +9,7 @@
 #include "cor.h"
 #include "corprof.h"
 
+#include "ILRewriter.h"
 #include "ModuleDef.h"
 
 namespace LibProfiler
