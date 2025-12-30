@@ -10,13 +10,18 @@
 #include "Instrumentation.h"
 
 HRESULT LibProfiler::PatchMethodBody(
-	IN ICorProfilerInfo& corProfilerInfo, 
+	IN ICorProfilerInfo& corProfilerInfo,
+	IN LibIPC::Client& client,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
-	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch)
+	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
+	IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
+	IN const BOOL enableFieldsAccessInstrumentation)
 {
-	if (tokensToPatch.empty())
+	if (tokensToPatch.empty() && (!enableFieldsAccessInstrumentation || injectedMethods.empty()))
 		return E_FAIL;
+
+	static std::atomic<UINT64> instrumentationMark {0};
 
 	// Obtain current method
 	ILRewriter rewriter(&corProfilerInfo, nullptr, moduleDef.GetModuleId(), mdMethodDef);
@@ -33,15 +38,67 @@ HRESULT LibProfiler::PatchMethodBody(
 		currentInstruction != rewriter.GetILList();
 		currentInstruction = currentInstruction->m_pNext)
 	{
-		if (currentInstruction->m_opcode != CEE_CALL && currentInstruction->m_opcode != CEE_CALLVIRT)
-			continue;
-
-		auto const originalMethodToken = static_cast<mdToken>(currentInstruction->m_Arg32);
-		if (tokensToPatch.contains(originalMethodToken))
+		if (currentInstruction->m_opcode == CEE_CALL || currentInstruction->m_opcode == CEE_CALLVIRT)
 		{
-			auto const newTokenValue = tokensToPatch.find(originalMethodToken)->second;
-			currentInstruction->m_Arg32 = static_cast<INT32>(newTokenValue);
-			isRewritten = true;
+			auto const originalMethodToken = static_cast<mdToken>(currentInstruction->m_Arg32);
+			if (tokensToPatch.contains(originalMethodToken))
+			{
+				auto const newTokenValue = tokensToPatch.find(originalMethodToken)->second;
+				currentInstruction->m_Arg32 = static_cast<INT32>(newTokenValue);
+				isRewritten = true;
+			}
+		}
+
+		if (enableFieldsAccessInstrumentation)
+		{
+			// Static field access
+			if (currentInstruction->m_opcode == CEE_LDSFLD || currentInstruction->m_opcode == CEE_STSFLD)
+			{
+				auto const isStore = currentInstruction->m_opcode == CEE_STSFLD;
+				auto const moduleId = moduleDef.GetModuleId();
+				auto const fieldToken = static_cast<mdToken>(currentInstruction->m_Arg32);
+				auto const mark = instrumentationMark.fetch_add(1);
+				ThreadID threadId;
+				corProfilerInfo.GetCurrentThreadID(&threadId);
+
+				// Instrument field access
+				const auto eventType = isStore
+					? LibIPC::RecordedEventType::StaticFieldWrite
+					: LibIPC::RecordedEventType::StaticFieldRead;
+				auto const methodIt = injectedMethods.find(eventType);
+				if (methodIt == injectedMethods.end())
+				{
+					LOG_F(ERROR, "Could not find injected method for event type %d.", static_cast<int>(eventType));
+					continue;
+				}
+
+				// LDC.I4 <instrumentation-mark>
+				const auto ldcInstruction = rewriter.NewILInstr();
+				ldcInstruction->m_opcode = CEE_LDC_I8;
+				ldcInstruction->m_Arg64 = static_cast<INT32>(mark);
+				rewriter.InsertBefore(currentInstruction, ldcInstruction);
+				// CALL <injected-method-handler>
+				const auto callInstruction = rewriter.NewILInstr();
+				callInstruction->m_opcode = CEE_CALL;
+				callInstruction->m_Arg32 = static_cast<INT32>(methodIt->second);
+				rewriter.InsertAfter(ldcInstruction, callInstruction);
+				isRewritten = true;
+
+				LOG_F(INFO, "Instrumented static field %s access in method %d with stub %d from module %s.",
+					isStore ? "write" : "read",
+					mdMethodDef,
+					methodIt->second,
+					moduleDef.GetName().c_str());
+
+				// Notify analysis of field access instrumentation point
+				client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
+					LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
+					moduleId,
+					mdMethodDef,
+					currentInstruction->m_offset,
+					fieldToken,
+					mark));
+			}
 		}
 	}
 
@@ -55,6 +112,7 @@ HRESULT LibProfiler::PatchMethodBody(
 			return E_FAIL;
 		}
 
+		LOG_F(INFO, "Patched method %d in module %s.", mdMethodDef, moduleDef.GetName().c_str());
 		return S_OK;
 	}
 

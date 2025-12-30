@@ -71,7 +71,9 @@ public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
                 MethodDescriptors = MonitorMethodDescriptors.GetAllMethods().Concat(
                     LockMethodDescriptors.GetAllMethods()).Concat(
                     ThreadMethodDescriptors.GetAllMethods())
-                    .ToImmutableArray()
+                    .ToImmutableArray(),
+                TypeInjectionDescriptors = Array.Empty<TypeInjectionDescriptor>(),
+                EnableFieldsAccessInstrumentation = false
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 

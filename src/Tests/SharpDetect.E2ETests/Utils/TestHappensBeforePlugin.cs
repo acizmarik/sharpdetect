@@ -95,7 +95,9 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
                     .Concat(LockMethodDescriptors.GetAllMethods())
                     .Concat(ThreadMethodDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
-                    .ToImmutableArray()
+                    .ToImmutableArray(),
+                TypeInjectionDescriptors = Array.Empty<TypeInjectionDescriptor>(),
+                EnableFieldsAccessInstrumentation = false
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
     }
