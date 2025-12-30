@@ -189,3 +189,21 @@ StackTraceSnapshotsMsg Helpers::CreateStackTraceSnapshotsMsg(MetadataMsg&& metad
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::StackTraceSnapshots);
     return { std::move(metadataMsg), StackTraceSnapshotsMsgArgsInstance(discriminator, StackTraceSnapshotsMsgArgs(std::move(snapshots))) };
 }
+
+FieldAccessInstrumentationMsg Helpers::CreateFieldAccessInstrumentationMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, UINT32 methodOffset, UINT32 fieldToken, UINT64 instrumentationMark)
+{
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::FieldAccessInstrumentation);
+    return { std::move(metadataMsg), FieldAccessInstrumentationMsgArgsInstance(discriminator, FieldAccessInstrumentationMsgArgs(moduleId, mdMethodDef, methodOffset, fieldToken, instrumentationMark)) };
+}
+
+StaticFieldReadMsg Helpers::CreateStaticFieldReadMsg(MetadataMsg&& metadataMsg, UINT64 instrumentationMark)
+{
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::StaticFieldRead);
+    return { std::move(metadataMsg), StaticFieldReadMsgArgsInstance(discriminator, StaticFieldReadMsgArgs(instrumentationMark)) };
+}
+
+StaticFieldWriteMsg Helpers::CreateStaticFieldWriteMsg(MetadataMsg&& metadataMsg, UINT64 instrumentationMark)
+{
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::StaticFieldWrite);
+    return { std::move(metadataMsg), StaticFieldWriteMsgArgsInstance(discriminator, StaticFieldWriteMsgArgs(instrumentationMark)) };
+}

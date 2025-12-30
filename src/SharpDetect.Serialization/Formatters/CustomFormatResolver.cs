@@ -43,6 +43,7 @@ internal static class CustomFormatterHelper
         { typeof(FunctionId), new FunctionIdFormatter() },
         { typeof(AssemblyId), new AssemblyIdFormatter() },
         { typeof(TrackedObjectId), new TrackedObjectIdFormatter() },
+        { typeof(MdToken), new MdTokenFormatter() },
         { typeof(MdTypeDef), new MdTypeDefFormatter() },
         { typeof(MdTypeRef), new MdTypeRefFormatter() },
         { typeof(MdMethodDef), new MdMethodDefFormatter() },

@@ -346,7 +346,7 @@ HRESULT ILRewriter::Export()
 {
     HRESULT hr = S_OK;
     // One instruction produces 6 bytes in the worst case
-    unsigned maxSize = m_nInstrs * 6;
+    unsigned maxSize = m_nInstrs * 9;
 
     m_pOutputBuffer = new BYTE[maxSize];
     IfNullRet(m_pOutputBuffer);

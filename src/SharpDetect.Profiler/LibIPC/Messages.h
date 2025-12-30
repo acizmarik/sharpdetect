@@ -67,7 +67,14 @@ namespace LibIPC
 
 		/* Stack trace snapshots */
 		StackTraceSnapshot = 36,
-		StackTraceSnapshots = 37
+		StackTraceSnapshots = 37,
+		//Reserved = 38,
+		//Reserved = 39,
+
+		/* Instrumentation */
+		FieldAccessInstrumentation = 40,
+		StaticFieldRead = 41,
+		StaticFieldWrite = 42,
 	};
 
 	enum class ProfilerCommandType
@@ -207,6 +214,18 @@ namespace LibIPC
 	using StackTraceSnapshotsMsgArgsInstance = msgpack::type::tuple<INT32, StackTraceSnapshotsMsgArgs>;
 	using StackTraceSnapshotsMsg = msgpack::type::tuple<MetadataMsg, StackTraceSnapshotsMsgArgsInstance>;
 
+	using FieldAccessInstrumentationMsgArgs = msgpack::type::tuple<UINT64, UINT32, UINT32, UINT32, UINT64>;
+	using FieldAccessInstrumentationMsgArgsInstance = msgpack::type::tuple<INT32, FieldAccessInstrumentationMsgArgs>;
+	using FieldAccessInstrumentationMsg = msgpack::type::tuple<MetadataMsg, FieldAccessInstrumentationMsgArgsInstance>;
+
+	using StaticFieldReadMsgArgs = msgpack::type::tuple<UINT64>;
+	using StaticFieldReadMsgArgsInstance = msgpack::type::tuple<INT32, StaticFieldReadMsgArgs>;
+	using StaticFieldReadMsg = msgpack::type::tuple<MetadataMsg, StaticFieldReadMsgArgsInstance>;
+
+	using StaticFieldWriteMsgArgs = msgpack::type::tuple<UINT64>;
+	using StaticFieldWriteMsgArgsInstance = msgpack::type::tuple<INT32, StaticFieldWriteMsgArgs>;
+	using StaticFieldWriteMsg = msgpack::type::tuple<MetadataMsg, StaticFieldWriteMsgArgsInstance>;
+
 	namespace Helpers
 	{
 		MetadataMsg CreateMetadataMsg(UINT32 pid, UINT64 tid);
@@ -245,5 +264,9 @@ namespace LibIPC
 		
 		StackTraceSnapshotMsg CreateStackTraceSnapshotMsg(MetadataMsg&& metadataMsg, UINT64 threadId, std::vector<UINT64>&& moduleIds, std::vector<UINT32>&& methodTokens);
 		StackTraceSnapshotsMsg CreateStackTraceSnapshotsMsg(MetadataMsg&& metadataMsg, std::vector<StackTraceSnapshotMsgArgs>&& snapshots);
+
+		FieldAccessInstrumentationMsg CreateFieldAccessInstrumentationMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, UINT32 methodOffset, UINT32 fieldToken, UINT64 instrumentationMark);
+		StaticFieldReadMsg CreateStaticFieldReadMsg(MetadataMsg&& metadataMsg, UINT64 instrumentationMark);
+		StaticFieldWriteMsg CreateStaticFieldWriteMsg(MetadataMsg&& metadataMsg, UINT64 instrumentationMark);
 	}
 }
