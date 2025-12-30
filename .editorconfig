@@ -7,6 +7,6 @@ end_of_line = lf
 [*.cs]
 indent_style = space
 tab_width = 4
-file_header_template = Copyright 2025 Andrej Čižmárik and Contributors\nSPDX-License-Identifier: Apache-2.0
+file_header_template = Copyright 2026 Andrej Čižmárik and Contributors\nSPDX-License-Identifier: Apache-2.0
 csharp_style_prefer_primary_constructors = false
 dotnet_diagnostic.IDE0290.severity = none
