@@ -26,7 +26,7 @@ namespace Profiler
 		std::optional<std::string> commandQueueFile;
         UINT commandQueueSize;
 
-		std::vector<MethodDescriptor> additionalData;
+		std::vector<MethodDescriptor> methodDescriptors;
 	};
 
 	void to_json(nlohmann::json& json, const Configuration& descriptor);

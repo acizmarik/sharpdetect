@@ -156,7 +156,7 @@ HRESULT Profiler::CorProfiler::ImportMethodDescriptors(
     const INT32 versionMinor,
     const INT32 versionBuild)
 {
-    for (auto&& item : _configuration.additionalData)
+    for (auto&& item : _configuration.methodDescriptors)
     {
         if (!item.versionDescriptor.has_value())
         {

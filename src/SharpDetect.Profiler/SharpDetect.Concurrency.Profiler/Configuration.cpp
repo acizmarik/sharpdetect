@@ -18,7 +18,7 @@ void Profiler::to_json(nlohmann::json& json, const Configuration& descriptor)
         json["commandQueueFile"] = descriptor.commandQueueFile.value();
     json["commandQueueSize"] = descriptor.commandQueueSize;
 
-    json["additionalData"] = descriptor.additionalData;
+    json["additionalData"]["methodDescriptors"] = descriptor.methodDescriptors;
 }
 
 void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
@@ -48,5 +48,5 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
     descriptor.commandQueueSize = json.at("commandQueueSize");
 
     const auto& additionalData = json.at("additionalData");
-    descriptor.additionalData = additionalData.at("methodDescriptors").get<std::vector<MethodDescriptor>>();
+    descriptor.methodDescriptors = additionalData.at("methodDescriptors").get<std::vector<MethodDescriptor>>();
 }
