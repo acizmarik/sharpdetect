@@ -9,5 +9,6 @@ public record TargetConfigurationArgs(
     string Path,
     Architecture Architecture, 
     string? Args, 
+    string? WorkingDirectory, 
     KeyValuePair<string, string>[]? AdditionalEnvironmentVariables,
     RedirectInputOutputConfigurationArgs? RedirectInputOutput);
