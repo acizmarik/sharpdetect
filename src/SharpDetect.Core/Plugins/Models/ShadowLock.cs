@@ -14,58 +14,50 @@ public class ShadowLock(ProcessTrackedObjectId processLockObjectId)
 
     public void Acquire(ProcessThreadId processThreadId)
     {
-        EnsureCorrectProcess(processThreadId.ProcessId);
-        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
-        {
-            throw new InvalidOperationException($"Lock {LockObjectId.ObjectId.Value} can not be acquired by {processThreadId.ThreadId.Value} " +
-                $"because it is already acquired by {ownerThreadId.ThreadId.Value}");
-        }
-
+        EnsureCanAcquire(processThreadId);
         Owner = processThreadId;
         LocksCount++;
     }
     
     public void AcquireMultiple(ProcessThreadId processThreadId, int count)
     {
-        EnsureCorrectProcess(processThreadId.ProcessId);
-        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
-        {
-            throw new InvalidOperationException($"Lock {LockObjectId.ObjectId.Value} can not be acquired by {processThreadId.ThreadId.Value} " + 
-                $"because it is already acquired by {ownerThreadId.ThreadId.Value}");
-        }
-
+        EnsureCanAcquire(processThreadId);
         Owner = processThreadId;
         LocksCount += count;
     }
 
     public void Release(ProcessThreadId processThreadId)
     {
-        EnsureCorrectProcess(processThreadId.ProcessId);
-        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
-        {
-            throw new InvalidOperationException($"Lock {LockObjectId.ObjectId.Value} can not be released by {processThreadId.ThreadId.Value} " +
-                $"because it is acquired by {ownerThreadId.ThreadId.Value}");
-        }
-
+        EnsureCanRelease(processThreadId);
         if (--LocksCount == 0)
             Owner = null;
     }
 
     public int ReleaseAll(ProcessThreadId processThreadId)
     {
-        EnsureCorrectProcess(processThreadId.ProcessId);
-        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
-        {
-            throw new InvalidOperationException($"Lock {LockObjectId.ObjectId.Value} can not be released by {processThreadId.ThreadId.Value} " +
-                $"because it is acquired by {ownerThreadId.ThreadId.Value}");
-        }
-
+        EnsureCanRelease(processThreadId);
         var previousLocksCount = LocksCount;
         LocksCount = 0;
         Owner = null;
         return previousLocksCount;
     }
+    
+    private void EnsureCanAcquire(ProcessThreadId processThreadId)
+    {
+        EnsureCorrectProcess(processThreadId.ProcessId);
+        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
+            ThrowLockAlreadyAcquired(processThreadId);
+    }
 
+    private void EnsureCanRelease(ProcessThreadId processThreadId)
+    {
+        EnsureCorrectProcess(processThreadId.ProcessId);
+        if (Owner is null)
+            ThrowLockNotTakenException(processThreadId);
+        if (Owner is { } ownerThreadId && processThreadId != ownerThreadId)
+            ThrowLockReleasedByAnotherThread(processThreadId);
+    }
+    
     private void EnsureCorrectProcess(uint processId)
     {
         if (processId != ProcessId)
@@ -76,5 +68,31 @@ public class ShadowLock(ProcessTrackedObjectId processLockObjectId)
     private void ThrowInvalidProcess(uint processId)
     {
         throw new InvalidOperationException($"Lock operation attempted on process {processId} but lock belongs to process {ProcessId}");
+    }
+    
+    [DoesNotReturn]
+    private void ThrowLockNotTakenException(ProcessThreadId processThreadId)
+    {
+        var lockObjectId = LockObjectId.ObjectId.Value;
+        var threadId = processThreadId.ThreadId.Value;
+        throw new InvalidOperationException($"Lock {lockObjectId} cannot be released by thread {threadId} because it is not acquired");
+    }
+    
+    [DoesNotReturn]
+    private void ThrowLockReleasedByAnotherThread(ProcessThreadId processThreadId)
+    {
+        var lockObjectId = LockObjectId.ObjectId.Value;
+        var threadId = processThreadId.ThreadId.Value;
+        var ownerThreadId = Owner?.ThreadId.Value;
+        throw new InvalidOperationException($"Lock {lockObjectId} cannot be released by thread {threadId} because it is acquired by thread {ownerThreadId}");
+    }
+    
+    [DoesNotReturn]
+    private void ThrowLockAlreadyAcquired(ProcessThreadId processThreadId)
+    {
+        var lockObjectId = LockObjectId.ObjectId.Value;
+        var threadId = processThreadId.ThreadId.Value;
+        var ownerThreadId = Owner?.ThreadId.Value;
+        throw new InvalidOperationException($"Lock {lockObjectId} cannot be acquired by thread {threadId} because it is acquired by thread {ownerThreadId}");
     }
 }

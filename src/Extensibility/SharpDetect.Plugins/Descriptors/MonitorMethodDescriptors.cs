@@ -44,7 +44,6 @@ internal static class MonitorMethodDescriptors
     private static readonly MethodDescriptor MonitorPulseAll;
     
     // Wait methods
-    private static readonly MethodDescriptor MonitorWaitObject;
     private static readonly MethodDescriptor MonitorWaitObjectInt;
 
     static MonitorMethodDescriptors()
@@ -71,7 +70,6 @@ internal static class MonitorMethodDescriptors
         MonitorPulseAll = CreatePulseAllDescriptor();
         
         // Initialize Wait methods
-        MonitorWaitObject = CreateWaitDescriptor();
         MonitorWaitObjectInt = CreateWaitTimeoutDescriptor();
     }
 
@@ -272,20 +270,6 @@ internal static class MonitorMethodDescriptors
             RecordedEventType.MonitorPulseAllResult));
 
     // Wait method descriptors
-    private static MethodDescriptor CreateWaitDescriptor() => new(
-        "Wait",
-        MonitorTypeName,
-        VersionDescriptor: null,
-        CreateSignature(
-            CorElementType.ELEMENT_TYPE_BOOLEAN,
-            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)),
-        CreateRewritingDescriptor(
-            injectManagedWrapper: false,
-            arguments: [ObjectRefArg],
-            returnValue: BoolReturnValue,
-            RecordedEventType.MonitorWaitAttempt,
-            RecordedEventType.MonitorWaitResult));
-
     private static MethodDescriptor CreateWaitTimeoutDescriptor() => new(
         "Wait",
         MonitorTypeName,
@@ -360,7 +344,6 @@ internal static class MonitorMethodDescriptors
         // Common public API
         yield return MonitorPulseOne;
         yield return MonitorPulseAll;
-        yield return MonitorWaitObject;
         yield return MonitorWaitObjectInt;
     }
 }
