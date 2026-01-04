@@ -62,6 +62,7 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
             Path: targetAssemblyPath,
             Architecture: RuntimeInformation.ProcessArchitecture,
             Args: null,
+            WorkingDirectory: null,
             AdditionalEnvironmentVariables: null,
             RedirectInputOutput: new RedirectInputOutputConfigurationArgs(
                 SingleConsoleMode: true,

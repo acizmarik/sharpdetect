@@ -95,6 +95,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     builder.Set(key, value);
             })
             .WithValidation(CommandResultValidation.None);
+        
+        if (_arguments.Target.WorkingDirectory is { } workingDirectory)
+            command = command.WithWorkingDirectory(workingDirectory);
 
         var redirects = _arguments.Target.RedirectInputOutput;
         if (redirects != null)
@@ -178,12 +181,13 @@ public sealed class AnalysisWorker : IAnalysisWorker
         if (RuntimeInformation.ProcessArchitecture != Architecture.X64)
             throw new PlatformNotSupportedException($"Architecture: {RuntimeInformation.ProcessArchitecture}.");
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return _arguments.Runtime.Profiler.Path.WindowsX64;
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return _arguments.Runtime.Profiler.Path.LinuxX64;
-        else
-            throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
+        var path = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? _arguments.Runtime.Profiler.Path.WindowsX64
+            : RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+                ? _arguments.Runtime.Profiler.Path.LinuxX64
+                : throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
+        
+        return Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
     }
     
     private string GetFullConfigurationPath()
