@@ -115,7 +115,7 @@ internal static class MonitorMethodDescriptors
             ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT),
             ArgumentTypeDescriptor.CreateByRef(ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN))),
         CreateRewritingDescriptor(
-            injectManagedWrapper: true,
+            injectManagedWrapper: false,
             arguments: [ObjectRefArg, BoolRefArg],
             returnValue: null,
             RecordedEventType.MonitorLockAcquire,
