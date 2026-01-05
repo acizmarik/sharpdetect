@@ -141,6 +141,10 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     public void OnMonitorPulseOneResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
         var (id, lockObj) = PopLockObjectFromCallStack(metadata, args);
+        if (!_eventsDeliveryContext.SignalOneThreadWaitingForObjectPulse(lockObj))
+        {
+            Logger.LogWarning("No threads were waiting on lock {LockId} for pulse one.", lockObj.LockObjectId.ObjectId.Value);
+        }
         ObjectPulsedOne?.Invoke(new ObjectPulseOneArgs(id, args.ModuleId, args.MethodToken, lockObj));
     }
 
@@ -152,6 +156,10 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     public void OnMonitorPulseAllResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
         var (id, lockObj) = PopLockObjectFromCallStack(metadata, args);
+        if (!_eventsDeliveryContext.SignalAllThreadsWaitingForObjectPulse(lockObj))
+        {
+            Logger.LogWarning("No threads were waiting on lock {LockId} for pulse all.", lockObj.LockObjectId.ObjectId.Value);
+        }
         ObjectPulsedAll?.Invoke(new ObjectPulseAllArgs(id, args.ModuleId, args.MethodToken, lockObj));
     }
 
@@ -165,6 +173,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         
         _reentrancyTracker.PushReentrancyCount(id, reentrancyCount);
         _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        _eventsDeliveryContext.RegisterThreadWaitingForObjectPulse(id, lockObj);
         ObjectWaitAttempted?.Invoke(new ObjectWaitAttemptArgs(id, args.ModuleId, args.MethodToken, lockObj));
         _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
     }
@@ -179,7 +188,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var success = MemoryMarshal.Read<bool>(args.ReturnValue);
         var reentrancyCount = _reentrancyTracker.PeekReentrancyCount(id);
         
-        if (TryConsumeOrDeferLockAcquireMultiple(id, lockObj, reentrancyCount))
+        if (TryConsumeOrDeferWaitReturn(id, lockObj, reentrancyCount, success))
         {
             _reentrancyTracker.PopReentrancyCount(id);
             ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, args.ModuleId, args.MethodToken, lockObj, success));
@@ -268,12 +277,23 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         return false;
     }
 
-    private bool TryConsumeOrDeferLockAcquireMultiple(ProcessThreadId processThreadId, ShadowLock lockObj, int count)
+    private bool TryConsumeOrDeferWaitReturn(ProcessThreadId processThreadId, ShadowLock lockObj, int reentrancyCount, bool success)
     {
-        if (lockObj.Owner is null || lockObj.Owner.Value == processThreadId)
+        var canReacquireLock = lockObj.Owner is null || lockObj.Owner.Value == processThreadId;
+        var isWaitingForPulse = _eventsDeliveryContext.IsWaitingForObjectPulse(processThreadId, lockObj);
+        
+        if (success && !isWaitingForPulse && canReacquireLock)
         {
-            // It can be executed right away
-            lockObj.AcquireMultiple(processThreadId, count);
+            // It can be executed right away (Monitor.Wait SUCCEEDED)
+            lockObj.AcquireMultiple(processThreadId, reentrancyCount);
+            _callStackTracker.Pop(processThreadId);
+            return true;
+        }
+        if (!success && canReacquireLock)
+        {
+            // It can be executed right away (Monitor.Wait FAILED)
+            lockObj.AcquireMultiple(processThreadId, reentrancyCount);
+            _eventsDeliveryContext.UnregisterThreadWaitingForObjectPulse(processThreadId, lockObj);
             _callStackTracker.Pop(processThreadId);
             return true;
         }
