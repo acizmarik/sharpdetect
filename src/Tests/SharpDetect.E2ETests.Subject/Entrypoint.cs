@@ -25,6 +25,11 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ShadowCallstack_MonitorPulseAll):
                     Test_ShadowCallstack_MonitorPulseAll();
                     break;
+#if NET10_0_OR_GREATER
+                case nameof(Test_ShadowCallstack_MonitorExitIfLockTaken):
+                    Test_ShadowCallstack_MonitorExitIfLockTaken();
+                    break;
+#endif
             }
             
             // Method interpretation events
@@ -54,6 +59,11 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_MonitorMethods_Wait3_Reentrancy):
                     Test_MonitorMethods_Wait3_Reentrancy();
                     break;
+#if NET10_0_OR_GREATER
+                case nameof(Test_MonitorMethods_ExitIfLockTaken):
+                    Test_MonitorMethods_ExitIfLockTaken();
+                    break;
+#endif
                 case nameof(Test_ThreadMethods_Join1):
                     Test_ThreadMethods_Join1();
                     break;

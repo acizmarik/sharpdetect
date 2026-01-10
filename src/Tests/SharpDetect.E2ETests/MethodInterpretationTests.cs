@@ -35,6 +35,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_TryEnterExit3.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Monitor_ExitIfLockTaken.json", "net10.0")]
     public async Task MethodInterpretation_Monitor_EnterExit(string configuration, string sdk)
     {
         // Arrange
@@ -88,7 +89,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
-    
+
     [Theory]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_Join1.json", "net9.0")]

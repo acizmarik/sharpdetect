@@ -117,6 +117,12 @@
     <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanDetectLockDeadlock.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Monitor_ExitIfLockTaken.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_ExitIfLockTaken.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

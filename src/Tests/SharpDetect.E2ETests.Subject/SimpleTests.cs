@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Runtime.CompilerServices;
 using SharpDetect.E2ETests.Subject.Helpers;
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
 using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
@@ -92,6 +93,26 @@ namespace SharpDetect.E2ETests.Subject
             Monitor.Exit(obj);
             Monitor.Exit(obj);
         }
+        
+#if NET10_0_OR_GREATER
+        static class MonitorSdk10InternalApiAccessor
+        {
+            [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "ExitIfLockTaken")]
+            public static extern void ExitIfLockTaken(
+                [UnsafeAccessorType("System.Threading.Monitor")]
+                object _,
+                object obj,
+                ref bool lockTaken);
+        }
+        
+        public static void Test_MonitorMethods_ExitIfLockTaken()
+        {
+            var lockTaken = false;
+            var lockObj = new object();
+            Monitor.Enter(lockObj, ref lockTaken);
+            MonitorSdk10InternalApiAccessor.ExitIfLockTaken(null!, lockObj, ref lockTaken);
+        }
+#endif
 
         public static void Test_ShadowCallstack_MonitorPulse()
         {
@@ -160,6 +181,17 @@ namespace SharpDetect.E2ETests.Subject
             finish.Set();
             thread1.Join();
         }
+
+#if NET10_0_OR_GREATER
+        public static void Test_ShadowCallstack_MonitorExitIfLockTaken()
+        {
+            var lockObj = new object();
+            var lockTaken = false;
+            Monitor.Enter(lockObj, ref lockTaken);
+            MonitorSdk10InternalApiAccessor.ExitIfLockTaken(null!, lockObj, ref lockTaken);
+            MonitorSdk10InternalApiAccessor.ExitIfLockTaken(null!, lockObj, ref lockTaken);
+        }
+#endif
 
         public static void Test_ThreadMethods_Join1()
         {

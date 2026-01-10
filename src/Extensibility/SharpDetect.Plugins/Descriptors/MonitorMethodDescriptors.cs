@@ -38,6 +38,7 @@ internal static class MonitorMethodDescriptors
     // Exit methods
     private static readonly MethodDescriptor MonitorExitV8;
     private static readonly MethodDescriptor MonitorExitV10;
+    private static readonly MethodDescriptor MonitorExitIfLockTakenV10;
     
     // Signal methods
     private static readonly MethodDescriptor MonitorPulseOne;
@@ -64,6 +65,7 @@ internal static class MonitorMethodDescriptors
         // Initialize Exit methods
         MonitorExitV8 = CreateExitDescriptor_v8();
         MonitorExitV10 = CreateExitDescriptor_v10();
+        MonitorExitIfLockTakenV10 = CreateExitIfLockTaken_V10();
         
         // Initialize Signal methods
         MonitorPulseOne = CreatePulseDescriptor();
@@ -239,6 +241,21 @@ internal static class MonitorMethodDescriptors
             returnValue: null,
             RecordedEventType.MonitorLockRelease,
             RecordedEventType.MonitorLockReleaseResult));
+    
+    private static MethodDescriptor CreateExitIfLockTaken_V10() => new(
+        "ExitIfLockTaken",
+        MonitorTypeName,
+        MethodVersionDescriptor.Create(Version10, Version10Max),
+        CreateSignature(
+            CorElementType.ELEMENT_TYPE_VOID,
+            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT),
+            ArgumentTypeDescriptor.CreateByRef(ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN))),
+        CreateRewritingDescriptor(
+            injectManagedWrapper: false,
+            arguments: [ObjectRefArg, BoolRefArg],
+            returnValue: null,
+            RecordedEventType.MonitorLockRelease,
+            RecordedEventType.MonitorLockReleaseResult));
 
     // Signal method descriptors
     private static MethodDescriptor CreatePulseDescriptor() => new(
@@ -337,6 +354,7 @@ internal static class MonitorMethodDescriptors
         yield return MonitorTryReliableEnterObjectV10;
         yield return MonitorTryReliableEnterObjectTimeoutV10;
         yield return MonitorExitV10;
+        yield return MonitorExitIfLockTakenV10;
     }
 
     private static IEnumerable<MethodDescriptor> GetAllMethodsSdkAgnostic()

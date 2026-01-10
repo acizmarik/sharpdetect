@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
@@ -127,7 +126,21 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockReleaseResult)]
     public void OnLockReleaseResultExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
+
         var (id, lockObj) = PopLockObjectFromCallStack(metadata, args);
+        lockObj.Release(id);
+        LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, lockObj));
+        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
+    }
+    
+    [RecordedEventBind((ushort)RecordedEventType.LockReleaseResult)]
+    [RecordedEventBind((ushort)RecordedEventType.MonitorLockReleaseResult)]
+    public void OnLockReleaseResultExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var (id, lockObj, lockTaken) = PopLockObjectAndLockTakenFlagFromCallStack(metadata, args);
+        if (!lockTaken)
+            return;
+        
         lockObj.Release(id);
         LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, lockObj));
         _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForObject(lockObj);
@@ -262,6 +275,27 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         return _lockRegistry.Get(processLockObjectId);
     }
     
+    private (ShadowLock Lock, bool LockTaken) GetLockAndLockTakenFlagFromFrame(ProcessThreadId processThreadId, StackFrame frame)
+    {
+        var lockObjectId = frame.Arguments!.Value[0].Value.AsT1;
+        var processLockObjectId = new ProcessTrackedObjectId(processThreadId.ProcessId, lockObjectId);
+        var isLockTaken = GetIsLockTakenFromFrame(frame);
+        return (_lockRegistry.Get(processLockObjectId), isLockTaken);
+    }
+    
+    private static bool GetIsLockTakenFromFrame(StackFrame frame)
+    {
+        if (frame.Arguments!.Value.Count == 1)
+        {
+            // If there is only one argument, it means that the lock was taken
+            return true;
+        }
+        
+        // The second argument is "out bool lockTaken"
+        var lockTakenArgument = (bool)frame.Arguments!.Value[1].Value.AsT0;
+        return lockTakenArgument;
+    }
+    
     private bool TryConsumeOrDeferLockAcquire(ProcessThreadId processThreadId, ShadowLock lockObj)
     {
         if (lockObj.Owner is null || lockObj.Owner.Value == processThreadId)
@@ -381,6 +415,17 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
         var lockObj = GetLockFromFrame(id, frame);
         return (id, lockObj);
+    }
+    
+    private (ProcessThreadId Id, ShadowLock LockObj, bool LockTaken) PopLockObjectAndLockTakenFlagFromCallStack(
+        RecordedEventMetadata metadata,
+        MethodExitWithArgumentsRecordedEvent args)
+    {
+        var id = GetProcessThreadId(metadata);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        var (lockObj, lockTaken) = GetLockAndLockTakenFlagFromFrame(id, frame);
+        return (id, lockObj, lockTaken);
     }
     
     internal RuntimeStateSnapshot DumpRuntimeState()
