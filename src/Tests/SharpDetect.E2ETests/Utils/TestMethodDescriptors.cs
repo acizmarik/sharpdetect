@@ -32,6 +32,7 @@ internal static class TestMethodDescriptors
             "Test_MonitorMethods_TryEnterExit1",
             "Test_MonitorMethods_TryEnterExit2",
             "Test_MonitorMethods_TryEnterExit3",
+            "Test_MonitorMethods_ExitIfLockTaken",
             "Test_ThreadMethods_Join1",
             "Test_ThreadMethods_Join2",
             "Test_ThreadMethods_Join3",

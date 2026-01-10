@@ -29,6 +29,7 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_ExitIfLockTaken.json", "net10.0")]
     public async Task ShadowCallstack_IntegrityTest(string configuration, string sdk)
     {
         // Arrange
