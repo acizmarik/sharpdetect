@@ -7,7 +7,6 @@
 #include <fstream>
 #include <memory>
 #include <numeric>
-#include <sstream>
 #include <stack>
 #include <string>
 #include <tuple>
@@ -21,7 +20,6 @@
 #include "../LibIPC/Messages.h"
 #include "../LibProfiler/AssemblyDef.h"
 #include "../LibProfiler/ModuleDef.h"
-#include "../LibProfiler/OpCodes.h"
 #include "../LibProfiler/Instrumentation.h"
 #include "../LibProfiler/PAL.h"
 #include "../LibProfiler/StackWalker.h"
@@ -114,8 +112,6 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
 
     if (FAILED(InitializeProfilingFeatures()))
         return AbortAttach("Could not initialize requested profiling features.");
-
-    LibProfiler::OpCodes::Initialize();
     LOG_F(INFO, "Initialized IL descriptors.");
 
     _client.SetCommandHandler(this);
