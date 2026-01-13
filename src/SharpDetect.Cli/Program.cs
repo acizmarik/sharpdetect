@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using CliFx;
+using SharpDetect.Core.Configuration;
 
 namespace SharpDetect.Cli;
 
@@ -16,7 +17,8 @@ public static class Program
     public static async Task<int> Main()
     {
         var root = Path.GetDirectoryName(typeof(Program).Assembly.Location);
-        Environment.SetEnvironmentVariable(InstallationRootEnvVariable, root);
+        var normalizedRoot = PathUtils.NormalizeDirectorySeparators(root);
+        Environment.SetEnvironmentVariable(InstallationRootEnvVariable, normalizedRoot);
 
         var builder = new CliApplicationBuilder()
             .AddCommandsFromThisAssembly()

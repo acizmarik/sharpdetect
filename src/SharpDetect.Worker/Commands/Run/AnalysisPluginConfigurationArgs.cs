@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Configuration;
 
 namespace SharpDetect.Worker.Commands.Run;
 
@@ -12,4 +13,9 @@ public record AnalysisPluginConfigurationArgs(
     bool RenderReport = false,
     LogLevel LogLevel = LogLevel.Warning,
     string? TemporaryFilesFolder = null,
-    string? ReportsFolder = null);
+    string? ReportsFolder = null)
+{
+    public string Path { get; init; } = PathUtils.NormalizeDirectorySeparators(Path) ?? Path;
+    public string? TemporaryFilesFolder { get; init; } = PathUtils.NormalizeDirectorySeparators(TemporaryFilesFolder);
+    public string? ReportsFolder { get; init; } = PathUtils.NormalizeDirectorySeparators(ReportsFolder);
+}
