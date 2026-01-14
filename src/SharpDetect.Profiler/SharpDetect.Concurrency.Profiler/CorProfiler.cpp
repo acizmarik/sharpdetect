@@ -711,6 +711,7 @@ HRESULT Profiler::CorProfiler::InjectTypesForProfilingFeatures(LibProfiler::Modu
 {
     constexpr auto injectedTypeFlags = static_cast<CorTypeAttr>(
         CorTypeAttr::tdClass |
+        CorTypeAttr::tdPublic |
         CorTypeAttr::tdAbstract |
         CorTypeAttr::tdSealed |
         CorTypeAttr::tdBeforeFieldInit);
@@ -718,9 +719,17 @@ HRESULT Profiler::CorProfiler::InjectTypesForProfilingFeatures(LibProfiler::Modu
         CorMethodAttr::mdPublic |
         CorMethodAttr::mdStatic |
         CorMethodAttr::mdHideBySig);
-    constexpr auto injectedMethodImplFlags =
+    constexpr auto injectedMethodImplFlags = static_cast<CorMethodImpl>(
         CorMethodImpl::miManaged |
-        CorMethodImpl::miNoInlining;
+        CorMethodImpl::miNoInlining);
+    
+    mdTypeDef systemObjectTypeDef;
+    if (FAILED(moduleDef.FindTypeDef("System.Object", &systemObjectTypeDef)))
+    {
+        LOG_F(ERROR, "Could not find System.Object in module %s for type injection.",
+            moduleDef.GetName().c_str());
+        return E_FAIL;
+    }
 
     for (auto& [typeFullName, methods] : _configuration.typeInjectionDescriptors)
     {
@@ -728,7 +737,7 @@ HRESULT Profiler::CorProfiler::InjectTypesForProfilingFeatures(LibProfiler::Modu
         if (FAILED(moduleDef.AddTypeDef(
             typeFullName,
             injectedTypeFlags,
-            mdTypeDefNil,
+            systemObjectTypeDef,
             &injectedTypeDef)))
         {
             LOG_F(ERROR, "Could not inject type %s into module %s.",
