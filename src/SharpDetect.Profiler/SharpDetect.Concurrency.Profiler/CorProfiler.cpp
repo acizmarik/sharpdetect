@@ -928,8 +928,15 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
     if (tokensToRewriteIterator == _rewritings.cend() && injectedMethodsIterator == _injectedMethods.cend())
         return E_FAIL;
 
-    const auto& tokensToRewrite = tokensToRewriteIterator->second;
-    const auto& injectedMethods = injectedMethodsIterator->second;
+    static const std::unordered_map<mdToken, mdToken> emptyTokensMap;
+    static const std::unordered_map<LibIPC::RecordedEventType, mdToken> emptyInjectedMethodsMap;
+    const auto& tokensToRewrite = tokensToRewriteIterator != _rewritings.cend() 
+        ? tokensToRewriteIterator->second 
+        : emptyTokensMap;
+    const auto& injectedMethods = injectedMethodsIterator != _injectedMethods.cend() 
+        ? injectedMethodsIterator->second 
+        : emptyInjectedMethodsMap;
+    
     if (SUCCEEDED(LibProfiler::PatchMethodBody(
         *_corProfilerInfo,
         _client,
