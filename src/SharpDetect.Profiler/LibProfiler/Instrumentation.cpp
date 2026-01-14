@@ -72,16 +72,18 @@ HRESULT LibProfiler::PatchMethodBody(
 					continue;
 				}
 
-				// LDC.I4 <instrumentation-mark>
+				// LDC.I8 <instrumentation-mark>
 				const auto ldcInstruction = rewriter.NewILInstr();
 				ldcInstruction->m_opcode = CEE_LDC_I8;
-				ldcInstruction->m_Arg64 = static_cast<INT32>(mark);
-				rewriter.InsertBefore(currentInstruction, ldcInstruction);
+				ldcInstruction->m_Arg64 = static_cast<INT64>(mark);
+				rewriter.InsertAfter(currentInstruction, ldcInstruction);
 				// CALL <injected-method-handler>
 				const auto callInstruction = rewriter.NewILInstr();
 				callInstruction->m_opcode = CEE_CALL;
 				callInstruction->m_Arg32 = static_cast<INT32>(methodIt->second);
 				rewriter.InsertAfter(ldcInstruction, callInstruction);
+				// Skip to next non-injected instruction
+				currentInstruction = callInstruction;
 				isRewritten = true;
 
 				LOG_F(INFO, "Instrumented static field %s access in method %d with stub %d from module %s.",
