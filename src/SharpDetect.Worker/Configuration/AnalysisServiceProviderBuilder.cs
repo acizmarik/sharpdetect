@@ -29,6 +29,12 @@ public sealed class AnalysisServiceProviderBuilder(RunCommandArgs arguments)
         return this;
     }
     
+    public AnalysisServiceProviderBuilder ConfigureServices(Action<IServiceCollection> configure)
+    {
+        configure(_services);
+        return this;
+    }
+    
     public AnalysisServiceProviderBuilder WithTimeProvider(TimeProvider timeProvider)
     {
         _timeProviderSet = true;

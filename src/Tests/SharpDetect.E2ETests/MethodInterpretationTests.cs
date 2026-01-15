@@ -39,7 +39,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Monitor_EnterExit(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -70,7 +72,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Monitor_Wait(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -103,7 +107,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Thread_Join(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -130,7 +136,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Thread_StartCallback(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -154,7 +162,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Thread_CurrentThread(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -184,7 +194,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Lock_EnterExit(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();

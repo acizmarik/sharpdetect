@@ -1,9 +1,9 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Collections.Immutable;
 using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
+using OperationResult;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Configuration;
 using SharpDetect.Core.Events;
@@ -14,8 +14,6 @@ using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
 using SharpDetect.Core.Serialization;
 using SharpDetect.Plugins;
-using SharpDetect.Plugins.Deadlock;
-using SharpDetect.Plugins.Descriptors;
 
 namespace SharpDetect.E2ETests.Utils;
 
@@ -57,6 +55,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
     private readonly IMetadataContext _metadataContext;
 
     public TestHappensBeforePlugin(
+        TestPluginAdditionalData additionalData,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
         IArgumentsParser argumentsParser,
@@ -91,23 +90,18 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
                        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
             additionalData: new
             {
-                MethodDescriptors = MonitorMethodDescriptors.GetAllMethods()
-                    .Concat(LockMethodDescriptors.GetAllMethods())
-                    .Concat(ThreadMethodDescriptors.GetAllMethods())
-                    .Concat(TestMethodDescriptors.GetAllTestMethods())
-                    .ToImmutableArray(),
-                TypeInjectionDescriptors = Array.Empty<TypeInjectionDescriptor>(),
-                EnableFieldsAccessInstrumentation = false
+                additionalData.MethodDescriptors,
+                additionalData.TypeInjectionDescriptors,
+                additionalData.EnableFieldsAccessInstrumentation
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
     }
 
-    public MethodDef Resolve(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef methodToken)
+    public Result<MethodDef, MetadataResolverErrorType> Resolve(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef methodToken)
     {
         return _metadataContext
             .GetResolver(metadata.Pid)
-            .ResolveMethod(metadata, moduleId, methodToken)
-            .Value;
+            .ResolveMethod(metadata, moduleId, methodToken);
     }
 
     public string GetThreadName(ProcessThreadId processThreadId)

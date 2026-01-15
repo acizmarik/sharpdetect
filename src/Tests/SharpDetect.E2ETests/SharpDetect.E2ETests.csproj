@@ -123,6 +123,18 @@
     <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_ExitIfLockTaken.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ValueType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ValueType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

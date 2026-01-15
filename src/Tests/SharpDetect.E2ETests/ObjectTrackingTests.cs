@@ -29,7 +29,9 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
     public async Task ObjectsTracking(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
         var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
@@ -38,8 +40,8 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         var lockObjects = new HashSet<ShadowLock>();
         plugin.MethodEntered += e =>
         {
-            var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name.StartsWith("Test_"))
+            var resolveResult = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
+            if (resolveResult.IsSuccess && resolveResult.Value.Name.StartsWith("Test_"))
             {
                 insideTestMethod = true;
                 enteredTest = true;
@@ -47,8 +49,8 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         };
         plugin.MethodExited += e =>
         {
-            var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name.StartsWith("Test_"))
+            var resolveResult = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
+            if (resolveResult.IsSuccess && resolveResult.Value.Name.StartsWith("Test_"))
             {
                 insideTestMethod = false;
                 exitedTest = true;

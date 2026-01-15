@@ -21,7 +21,11 @@ public static class EventMatchers
                     return false;
 
                 var (metadata, args) = evt.Get<(RecordedEventMetadata, MethodEnterRecordedEvent)>();
-                var method = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                var resolveResult = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                if (resolveResult.IsError)
+                    return false;
+
+                var method = resolveResult.Value;
                 return method.Name.StartsWith(methodName);
             },
             description: $"MethodEnter({methodName})");
@@ -36,7 +40,11 @@ public static class EventMatchers
                     return false;
 
                 var (metadata, args) = evt.Get<(RecordedEventMetadata, MethodExitRecordedEvent)>();
-                var method = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                var resolveResult = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                if (resolveResult.IsError)
+                    return false;
+
+                var method = resolveResult.Value;
                 return method.Name.StartsWith(methodName);
             },
             description: $"MethodExit({methodName})");

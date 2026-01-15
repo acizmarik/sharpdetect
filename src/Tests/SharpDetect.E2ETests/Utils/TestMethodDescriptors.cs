@@ -52,7 +52,11 @@ internal static class TestMethodDescriptors
             "Test_LockMethods_TryEnterExit2",
             "Test_SingleGarbageCollection_ObjectTracking_Simple",
             "Test_MultipleGarbageCollection_ObjectTracking_Simple",
-            "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject"
+            "Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject",
+            "Test_Field_ReferenceType_Static_Read",
+            "Test_Field_ReferenceType_Static_Write",
+            "Test_Field_ValueType_Static_Read",
+            "Test_Field_ValueType_Static_Write",
         };
 
         foreach (var methodName in testMethodNames)
