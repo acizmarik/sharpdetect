@@ -171,12 +171,3 @@ public sealed record FieldAccessInstrumentationRecordedEvent(
     [property: Key(2)] uint MethodOffset,
     [property: Key(3)] MdToken FieldToken,
     [property: Key(4)] ulong InstrumentationId) : IRecordedEventArgs;
-
-[MessagePackObject]
-public sealed record StaticFieldReadRecordedEvent(
-    [property: Key(0)] ulong InstrumentationId) : IRecordedEventArgs;
-
-[MessagePackObject]
-public sealed record StaticFieldWriteRecordedEvent(
-    [property: Key(0)] ulong InstrumentationId) : IRecordedEventArgs;
-

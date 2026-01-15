@@ -35,8 +35,6 @@ namespace SharpDetect.Core.Events;
 [Union((int)RecordedEventType.StackTraceSnapshot, typeof(StackTraceSnapshotRecordedEvent))]
 [Union((int)RecordedEventType.StackTraceSnapshots, typeof(StackTraceSnapshotsRecordedEvent))]
 [Union((int)RecordedEventType.FieldAccessInstrumentation, typeof(FieldAccessInstrumentationRecordedEvent))]
-[Union((int)RecordedEventType.StaticFieldRead, typeof(StaticFieldReadRecordedEvent))]
-[Union((int)RecordedEventType.StaticFieldWrite, typeof(StaticFieldWriteRecordedEvent))]
 public interface IRecordedEventArgs
 {
 }

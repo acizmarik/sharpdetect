@@ -17,9 +17,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected SummaryBuilder Reporter { get; }
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
-    protected IReadOnlyDictionary<ProcessThreadId, string> Threads => _threads;
+    protected IReadOnlyDictionary<ProcessThreadId, string> Threads { get; }
+    protected IReadOnlyDictionary<InstrumentationPointId, InstrumentedFieldAccess> InstrumentedFieldAccesses { get; }
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
     private readonly Dictionary<ProcessThreadId, string> _threads;
+    private readonly Dictionary<InstrumentationPointId, InstrumentedFieldAccess> _instrumentedFieldAccesses;
     private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
     private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
     private int _nextFreeThreadId;
@@ -38,6 +40,10 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         _profilerCommandSenders = ImmutableDictionary<int, IProfilerCommandSender>.Empty;
         _callstacks = [];
         _threads = [];
+        _instrumentedFieldAccesses = [];
+
+        Threads = _threads;
+        InstrumentedFieldAccesses = _instrumentedFieldAccesses;
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ProfilerLoadRecordedEvent args)
@@ -168,6 +174,14 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         _callstacks[id].Pop();
+        base.Visit(metadata, args);
+    }
+    
+    protected override void Visit(RecordedEventMetadata metadata, FieldAccessInstrumentationRecordedEvent args)
+    {
+        var instrumentationId = new InstrumentationPointId(metadata.Pid, args.InstrumentationId);
+        var instrumentedFieldAccess = new InstrumentedFieldAccess(args.ModuleId, args.MethodToken, args.FieldToken);
+        _instrumentedFieldAccesses.Add(instrumentationId, instrumentedFieldAccess);
         base.Visit(metadata, args);
     }
 

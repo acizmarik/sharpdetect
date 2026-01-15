@@ -27,7 +27,9 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     public readonly record struct ThreadMappingArgs(ProcessThreadId ProcessThreadId, TrackedObjectId ThreadObjectId);
     public readonly record struct ThreadJoinAttemptArgs(ProcessThreadId BlockedProcessThreadId, ProcessThreadId JoiningProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken);
     public readonly record struct ThreadJoinResultArgs(ProcessThreadId BlockedProcessThreadId, ProcessThreadId JoinedProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, bool IsSuccess);
-
+    public readonly record struct StaticFieldReadArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, MdToken FieldToken);
+    public readonly record struct StaticFieldWriteArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, MdToken FieldToken);
+    
     public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
     public event Action<LockAcquireResultArgs>? LockAcquireReturned;
     public event Action<LockReleaseArgs>? LockReleased;
@@ -39,6 +41,8 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     public event Action<ThreadMappingArgs>? ThreadMappingUpdated;
     public event Action<ThreadJoinAttemptArgs>? ThreadJoinAttempted;
     public event Action<ThreadJoinResultArgs>? ThreadJoinReturned;
+    public event Action<StaticFieldReadArgs>? StaticFieldRead;
+    public event Action<StaticFieldWriteArgs>? StaticFieldWritten;
 
     private readonly ThreadCallStackTracker _callStackTracker = new();
     private readonly ThreadObjectRegistry _threadObjectRegistry = new();
@@ -259,6 +263,39 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
         var processJoinedThreadId = _threadObjectRegistry.GetThreadId(processJoinedThreadObjectId);
         
         ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, processJoinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: true));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.StaticFieldRead)]
+    public void OnStaticFieldRead(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = GetProcessThreadId(metadata);
+        var instrumentedFieldAccess = GetInstrumentedStaticFieldAccess(metadata, args);
+        StaticFieldRead?.Invoke(new StaticFieldReadArgs(
+            id, 
+            instrumentedFieldAccess.ModuleId,
+            instrumentedFieldAccess.MethodToken,
+            instrumentedFieldAccess.FieldToken));
+    }
+    
+    [RecordedEventBind((ushort)RecordedEventType.StaticFieldWrite)]
+    public void OnStaticFieldWrite(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = GetProcessThreadId(metadata);
+        var instrumentedFieldAccess = GetInstrumentedStaticFieldAccess(metadata, args);
+        StaticFieldWritten?.Invoke(new StaticFieldWriteArgs(
+            id, 
+            instrumentedFieldAccess.ModuleId,
+            instrumentedFieldAccess.MethodToken,
+            instrumentedFieldAccess.FieldToken));
+    }
+    
+    private InstrumentedFieldAccess GetInstrumentedStaticFieldAccess(
+        RecordedEventMetadata metadata,
+        MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var instrumentationId = MemoryMarshal.Read<ulong>(args.ArgumentValues);
+        var instrumentationPointId = new InstrumentationPointId(metadata.Pid, instrumentationId);
+        return InstrumentedFieldAccesses[instrumentationPointId];
     }
 
     private ShadowLock GetOrAddLockFromArguments(ProcessThreadId processThreadId, RuntimeArgumentList arguments)
