@@ -14,7 +14,7 @@ using SharpDetect.Core.Loader;
 
 namespace SharpDetect.Plugins.ExecutionOrdering;
 
-public abstract class ExecutionOrderingPluginBase : PluginBase
+public abstract class ExecutionOrderingPluginBase : PluginBase, IExecutionOrderingPlugin
 {
     public readonly record struct LockAcquireAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj);
     public readonly record struct LockAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj, bool IsSuccess);

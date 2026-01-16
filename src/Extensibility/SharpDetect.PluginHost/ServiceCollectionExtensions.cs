@@ -8,9 +8,15 @@ public static class ServiceCollectionExtensions
 {
     public static void AddSharpDetectPluginHostServices(this IServiceCollection services)
     {
-        services.AddSingleton<IPluginHost, Services.PluginHost>();
+        services.AddSingleton<PluginHostFactory>();
         services.AddSingleton<ICallstackResolver, CallstackResolver>();
         services.AddSingleton<IRecordedEventsDeliveryContext, RecordedEventsDeliveryContext>();
         services.AddSingleton<IRecordedEventBindingsCompiler, RecordedEventBindingsCompiler>();
+        services.AddSingleton<IPluginHost>(sp =>
+        {
+            var factory = sp.GetRequiredService<PluginHostFactory>();
+            var plugin = sp.GetRequiredService<IPlugin>();
+            return factory.CreateHost(plugin);
+        });
     }
 }
