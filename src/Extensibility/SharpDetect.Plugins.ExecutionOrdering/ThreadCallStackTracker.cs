@@ -4,9 +4,9 @@
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 
-namespace SharpDetect.Plugins;
+namespace SharpDetect.Plugins.ExecutionOrdering;
 
-internal sealed class ThreadCallStackTracker
+public sealed class ThreadCallStackTracker
 {
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks = [];
     

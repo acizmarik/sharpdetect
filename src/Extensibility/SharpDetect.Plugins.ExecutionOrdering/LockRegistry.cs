@@ -5,9 +5,9 @@ using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 
-namespace SharpDetect.Plugins;
+namespace SharpDetect.Plugins.ExecutionOrdering;
 
-internal sealed class LockRegistry
+public sealed class LockRegistry
 {
     private readonly Dictionary<ProcessTrackedObjectId, ShadowLock> _locks = [];
     

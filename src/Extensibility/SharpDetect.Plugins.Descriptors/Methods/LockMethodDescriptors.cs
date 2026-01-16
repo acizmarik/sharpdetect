@@ -4,9 +4,9 @@
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Descriptors;
+namespace SharpDetect.Plugins.Descriptors.Methods;
 
-internal static class LockMethodDescriptors
+public static class LockMethodDescriptors
 {
     private const string LockTypeName = "System.Threading.Lock";
     private const string LockScopeTypeName = "System.Threading.Lock+Scope";

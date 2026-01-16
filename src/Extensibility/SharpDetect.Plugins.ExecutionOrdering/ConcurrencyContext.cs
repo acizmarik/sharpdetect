@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 
-namespace SharpDetect.Plugins;
+namespace SharpDetect.Plugins.ExecutionOrdering;
 
 public sealed class ConcurrencyContext
 {

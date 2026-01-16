@@ -12,6 +12,8 @@
   </Folder>
   <Folder Name="/Extensibility/">
     <Project Path="Extensibility/SharpDetect.PluginHost/SharpDetect.PluginHost.csproj" />
+    <Project Path="Extensibility/SharpDetect.Plugins.Descriptors/SharpDetect.Plugins.Descriptors.csproj" />
+    <Project Path="Extensibility/SharpDetect.Plugins.ExecutionOrdering/SharpDetect.Plugins.ExecutionOrdering.csproj" />
     <Project Path="Extensibility/SharpDetect.Plugins/SharpDetect.Plugins.csproj" />
   </Folder>
   <Folder Name="/GitHub/">

@@ -63,9 +63,7 @@ internal sealed class RunCommandHandler : IDisposable
 
         try
         {
-#pragma warning disable S3885 // "Assembly.Load" should be used because we are loading assemblies using paths
-            var assembly = Assembly.LoadFile(Path.GetFullPath(assemblyPath));
-#pragma warning restore S3885
+            var assembly = Assembly.LoadFrom(Path.GetFullPath(assemblyPath));
             return assembly.ManifestModule.GetType(pluginType, ignoreCase: false, throwOnError: true)
                 ?? throw new TypeLoadException($"Could not find type: \"{pluginType}\" in assembly \"{assembly.FullName}\".");
         }

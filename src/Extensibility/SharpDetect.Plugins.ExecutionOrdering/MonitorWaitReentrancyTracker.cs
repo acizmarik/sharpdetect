@@ -3,9 +3,9 @@
 
 using SharpDetect.Core.Plugins;
 
-namespace SharpDetect.Plugins;
+namespace SharpDetect.Plugins.ExecutionOrdering;
 
-internal sealed class MonitorWaitReentrancyTracker
+public sealed class MonitorWaitReentrancyTracker
 {
     private readonly Dictionary<ProcessThreadId, Stack<int>> _reentrancyCounts = [];
     

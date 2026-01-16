@@ -72,7 +72,9 @@ namespace LibIPC
 		//Reserved = 39,
 
 		/* Instrumentation */
-		FieldAccessInstrumentation = 40
+		FieldAccessInstrumentation = 40,
+		StaticFieldRead = 41,
+		StaticFieldWrite = 42
 	};
 
 	enum class ProfilerCommandType

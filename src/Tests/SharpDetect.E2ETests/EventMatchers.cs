@@ -12,7 +12,7 @@ public static class EventMatchers
     public static AtomicPredicate<ulong, RecordedEventType> EventType(RecordedEventType type) =>
         new(evt => evt.Type == type, description: $"EventType({type})");
 
-    public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, TestHappensBeforePlugin plugin)
+    public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, TestExecutionOrderingPlugin plugin)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(
             evt =>
@@ -31,7 +31,7 @@ public static class EventMatchers
             description: $"MethodEnter({methodName})");
     }
 
-    public static AtomicPredicate<ulong, RecordedEventType> MethodExit(string methodName, TestHappensBeforePlugin plugin)
+    public static AtomicPredicate<ulong, RecordedEventType> MethodExit(string methodName, TestExecutionOrderingPlugin plugin)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(
             evt =>

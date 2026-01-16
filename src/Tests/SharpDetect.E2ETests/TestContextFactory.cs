@@ -40,7 +40,7 @@ internal static class TestContextFactory
         };
         
         var pluginType = Type.GetType(args.Analysis.FullTypeName)
-                         ?? typeof(Plugins.ConcurrencyContext).Assembly.GetType(args.Analysis.FullTypeName)
+                         ?? typeof(Plugins.Deadlock.DeadlockInfo).Assembly.GetType(args.Analysis.FullTypeName)
                          ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.FullTypeName}.");
             
         return new TestDisposableServiceProvider(new AnalysisServiceProviderBuilder(args)

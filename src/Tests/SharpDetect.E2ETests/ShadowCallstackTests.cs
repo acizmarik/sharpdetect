@@ -36,7 +36,7 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
         var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
         using var services = TestContextFactory.CreateServiceProvider(
             configuration, sdk, pluginAdditionalData, testOutput);
-        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var eventsDeliveryContext = services.GetRequiredService<IRecordedEventsDeliveryContext>();
         var metadataContext = services.GetRequiredService<IMetadataContext>();
@@ -49,7 +49,7 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
     }
     
     private static void AssertRuntimeStateIsClean(
-        TestHappensBeforePlugin plugin,
+        TestExecutionOrderingPlugin plugin,
         IRecordedEventsDeliveryContext eventsDeliveryContext,
         IMetadataContext metadataContext)
     {
@@ -112,7 +112,7 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
         }
     }
 
-    private static bool ShouldReportThread(ProcessThreadId processThreadId, TestHappensBeforePlugin plugin)
+    private static bool ShouldReportThread(ProcessThreadId processThreadId, TestExecutionOrderingPlugin plugin)
     {
         return plugin.GetThreadName(processThreadId).StartsWith("TEST_");
     }

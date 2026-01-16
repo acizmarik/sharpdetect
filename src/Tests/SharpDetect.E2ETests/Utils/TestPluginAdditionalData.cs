@@ -3,6 +3,8 @@
 
 using System.Collections.Immutable;
 using SharpDetect.Plugins.Descriptors;
+using SharpDetect.Plugins.Descriptors.Methods;
+using SharpDetect.Plugins.Descriptors.Types;
 
 namespace SharpDetect.E2ETests.Utils;
 

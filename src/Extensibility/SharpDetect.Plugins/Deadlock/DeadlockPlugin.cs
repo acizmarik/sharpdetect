@@ -12,10 +12,12 @@ using SharpDetect.Core.Loader;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Serialization;
 using SharpDetect.Plugins.Descriptors;
+using SharpDetect.Plugins.Descriptors.Methods;
+using SharpDetect.Plugins.ExecutionOrdering;
 
 namespace SharpDetect.Plugins.Deadlock;
 
-public partial class DeadlockPlugin : HappensBeforeOrderingPluginBase, IPlugin
+public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Deadlock";
     public RecordedEventActionVisitorBase EventsVisitor => this;

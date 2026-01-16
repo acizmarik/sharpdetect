@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
+    <ProjectReference Include="..\SharpDetect.Plugins.Descriptors\SharpDetect.Plugins.Descriptors.csproj" />
+    <ProjectReference Include="..\SharpDetect.Plugins.ExecutionOrdering\SharpDetect.Plugins.ExecutionOrdering.csproj" />
   </ItemGroup>
 
   <ItemGroup>

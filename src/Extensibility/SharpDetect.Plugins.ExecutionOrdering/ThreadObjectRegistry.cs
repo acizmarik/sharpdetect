@@ -3,9 +3,9 @@
 
 using SharpDetect.Core.Plugins;
 
-namespace SharpDetect.Plugins;
+namespace SharpDetect.Plugins.ExecutionOrdering;
 
-internal sealed class ThreadObjectRegistry
+public sealed class ThreadObjectRegistry
 {
     private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _objectIdToThreadIdLookup = [];
     

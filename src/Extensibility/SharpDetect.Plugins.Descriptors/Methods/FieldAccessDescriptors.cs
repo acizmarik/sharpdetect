@@ -4,9 +4,9 @@
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Descriptors;
+namespace SharpDetect.Plugins.Descriptors.Methods;
 
-internal static class FieldAccessDescriptors
+public static class FieldAccessDescriptors
 {
     private static readonly MethodDescriptor ReadStaticField;
     private static readonly MethodDescriptor WriteStaticField;

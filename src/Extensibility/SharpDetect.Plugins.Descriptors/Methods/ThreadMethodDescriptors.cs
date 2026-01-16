@@ -4,9 +4,9 @@
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Descriptors;
+namespace SharpDetect.Plugins.Descriptors.Methods;
 
-internal static class ThreadMethodDescriptors
+public static class ThreadMethodDescriptors
 {
     private static readonly MethodDescriptor ThreadJoinInt32;
     private static readonly MethodDescriptor ThreadStartCallback;

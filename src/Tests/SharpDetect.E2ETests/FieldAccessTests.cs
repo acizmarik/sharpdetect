@@ -62,7 +62,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         using var services = TestContextFactory.CreateServiceProvider(
             configuration, sdk, pluginAdditionalData, testOutput);
         var args = services.GetRequiredService<RunCommandArgs>();
-        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)

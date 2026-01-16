@@ -3,9 +3,9 @@
 
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Descriptors;
+namespace SharpDetect.Plugins.Descriptors.Types;
 
-internal static class SharpDetectHelperTypeDescriptors
+public static class SharpDetectHelperTypeDescriptors
 {
     private static readonly TypeInjectionDescriptor CoreTypeDescriptor = new(
         TypeFullName: "SharpDetect",

@@ -4,9 +4,9 @@
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Descriptors;
+namespace SharpDetect.Plugins.Descriptors.Methods;
 
-internal static class MonitorMethodDescriptors
+public static class MonitorMethodDescriptors
 {
     private const string MonitorTypeName = "System.Threading.Monitor";
     private static readonly Version Version8 = new(8, 0, 0);

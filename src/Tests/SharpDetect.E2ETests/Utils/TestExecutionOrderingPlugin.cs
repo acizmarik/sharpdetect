@@ -14,10 +14,11 @@ using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
 using SharpDetect.Core.Serialization;
 using SharpDetect.Plugins;
+using SharpDetect.Plugins.ExecutionOrdering;
 
 namespace SharpDetect.E2ETests.Utils;
 
-public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, IPlugin
+public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Test";
     public RecordedEventActionVisitorBase EventsVisitor => this;
@@ -54,7 +55,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
     public event Action<(RecordedEventMetadata Metadata, TypeReferenceInjectionRecordedEvent Args)>? TypeReferenceInjected;
     private readonly IMetadataContext _metadataContext;
 
-    public TestHappensBeforePlugin(
+    public TestExecutionOrderingPlugin(
         TestPluginAdditionalData additionalData,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
@@ -63,7 +64,7 @@ public sealed class TestHappensBeforePlugin : HappensBeforeOrderingPluginBase, I
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
         TimeProvider timeProvider,
-        ILogger<TestHappensBeforePlugin> logger)
+        ILogger<TestExecutionOrderingPlugin> logger)
         : base(
             moduleBindContext,
             metadataContext,

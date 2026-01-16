@@ -16,14 +16,14 @@ public static class TemporalAssertionBuilders
 
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodEnter(
         string methodName,
-        TestHappensBeforePlugin plugin)
+        TestExecutionOrderingPlugin plugin)
     {
         return new(EventMatchers.MethodEnter(methodName, plugin));
     }
 
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodExit(
         string methodName,
-        TestHappensBeforePlugin plugin)
+        TestExecutionOrderingPlugin plugin)
     {
         return new(EventMatchers.MethodExit(methodName, plugin));
     }

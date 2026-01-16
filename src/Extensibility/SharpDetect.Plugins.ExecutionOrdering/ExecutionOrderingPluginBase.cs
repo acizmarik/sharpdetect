@@ -12,9 +12,9 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Loader;
 
-namespace SharpDetect.Plugins;
+namespace SharpDetect.Plugins.ExecutionOrdering;
 
-public abstract class HappensBeforeOrderingPluginBase : PluginBase
+public abstract class ExecutionOrderingPluginBase : PluginBase
 {
     public readonly record struct LockAcquireAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj);
     public readonly record struct LockAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ShadowLock LockObj, bool IsSuccess);
@@ -52,7 +52,7 @@ public abstract class HappensBeforeOrderingPluginBase : PluginBase
     private readonly IArgumentsParser _argumentsParser;
     private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
 
-    protected HappensBeforeOrderingPluginBase(
+    protected ExecutionOrderingPluginBase(
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
         IArgumentsParser argumentsParser,

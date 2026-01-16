@@ -32,7 +32,7 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
         using var services = TestContextFactory.CreateServiceProvider(
             configuration, sdk, pluginAdditionalData, testOutput);
-        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
