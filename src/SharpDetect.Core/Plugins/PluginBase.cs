@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Loader;
+using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
 
@@ -17,6 +18,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected SummaryBuilder Reporter { get; }
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
+    protected IMetadataContext MetadataContext { get; }
     protected IReadOnlyDictionary<ProcessThreadId, string> Threads { get; }
     protected IReadOnlyDictionary<InstrumentationPointId, InstrumentedFieldAccess> InstrumentedFieldAccesses { get; }
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
@@ -29,11 +31,13 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected PluginBase(
         IModuleBindContext moduleBindContext,
+        IMetadataContext metadataContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         TimeProvider timeProvider,
         ILogger logger)
     {
         ModuleBindContext = moduleBindContext;
+        MetadataContext = metadataContext;
         Reporter = new SummaryBuilder(timeProvider);
         Logger = logger;
         _profilerCommandSenderProvider = profilerCommandSenderProvider;
@@ -70,7 +74,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)
     {
-        var result = ModuleBindContext.TryGetModule(metadata.Pid, args.ModuleId);
+        var result = ModuleBindContext.LoadModule(metadata, args.ModuleId, args.Path);
         if (result.IsError)
             return;
 
@@ -134,6 +138,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected override void Visit(RecordedEventMetadata metadata, MethodWrapperInjectionRecordedEvent args)
     {
+        MetadataContext.GetEmitter(metadata.Pid).Emit(args.ModuleId, args.WrapperMethodToken, args.WrappedMethodToken);
         Reporter.IncrementInjectedMethodsCounter();
     }
 

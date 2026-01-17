@@ -9,16 +9,22 @@ namespace SharpDetect.Plugins.ExecutionOrdering;
 
 public sealed class ConcurrencyContext
 {
-    private readonly Dictionary<ProcessThreadId, ShadowLock?> _waitingForLocks = [];
-    private readonly Dictionary<ProcessThreadId, HashSet<ShadowLock>> _takenLocks = [];
+    private readonly Dictionary<ProcessThreadId, ProcessTrackedObjectId?> _waitingForLocks = [];
+    private readonly Dictionary<ProcessThreadId, HashSet<ProcessTrackedObjectId>> _takenLocks = [];
     private readonly Dictionary<ProcessThreadId, ProcessThreadId?> _waitingForThreads = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _lockOwners = [];
 
     public bool HasThread(ProcessThreadId id) => _waitingForLocks.ContainsKey(id);
-    public bool HasLock(ProcessThreadId id, ShadowLock lockObj) => _takenLocks[id].Contains(lockObj);
+    public bool HasLock(ProcessThreadId id, ProcessTrackedObjectId lockId) => _takenLocks[id].Contains(lockId);
 
-    public bool TryGetWaitingLock(ProcessThreadId id, [NotNullWhen(true)] out ShadowLock? lockObj)
+    public bool TryGetWaitingLock(ProcessThreadId id, [NotNullWhen(true)] out ProcessTrackedObjectId? lockId)
     {
-        return _waitingForLocks.TryGetValue(id, out lockObj) && lockObj is not null;
+        return _waitingForLocks.TryGetValue(id, out lockId) && lockId is not null;
+    }
+    
+    public bool TryGetLockOwner(ProcessTrackedObjectId lockId, out ProcessThreadId owner)
+    {
+        return _lockOwners.TryGetValue(lockId, out owner);
     }
     
     public bool TryGetWaitingThread(ProcessThreadId id, [NotNullWhen(true)] out ProcessThreadId? processThreadId)
@@ -26,50 +32,56 @@ public sealed class ConcurrencyContext
         return _waitingForThreads.TryGetValue(id, out processThreadId) && processThreadId is not null;
     }
     
-    public ShadowLock GetWaitingLock(ProcessThreadId id)
+    public ProcessTrackedObjectId GetWaitingLock(ProcessThreadId id)
     {
-        if (!_waitingForLocks.TryGetValue(id, out var lockObj) || lockObj == null)
+        if (!_waitingForLocks.TryGetValue(id, out var lockId) || lockId == null)
             throw new InvalidOperationException($"Thread {id} is not waiting for any lock.");
         
-        return lockObj;
+        return lockId.Value;
     }
     
-    public IEnumerable<ShadowLock> GetTakenLocks(ProcessThreadId id)
+    public IEnumerable<ProcessTrackedObjectId> GetTakenLocks(ProcessThreadId id)
     {
         return _takenLocks[id];
     }
     
-    public void RecordLockAcquireCalled(ProcessThreadId id, ShadowLock lockObj)
+    public void RecordLockAcquireCalled(ProcessThreadId id, ProcessTrackedObjectId lockId)
     {
-        _waitingForLocks[id] = lockObj;
+        _waitingForLocks[id] = lockId;
     }
 
-    public void RecordLockAcquireReturned(ProcessThreadId id, ShadowLock lockObj, bool success)
+    public void RecordLockAcquireReturned(ProcessThreadId id, ProcessTrackedObjectId lockId, bool success)
     {
         if (success)
-            _takenLocks[id].Add(lockObj);
+        {
+            _takenLocks[id].Add(lockId);
+            _lockOwners[lockId] = id;
+        }
         _waitingForLocks[id] = null;
     }
 
-    public void RecordLockReleaseReturned(ProcessThreadId id, ShadowLock lockObj)
+    public void RecordLockReleaseReturned(ProcessThreadId id, ProcessTrackedObjectId lockId)
     {
-        _takenLocks[id].Remove(lockObj);
+        _takenLocks[id].Remove(lockId);
+        _lockOwners.Remove(lockId);
     }
     
-    public void RecordObjectWaitCalled(ProcessThreadId id, ShadowLock lockObj)
+    public void RecordObjectWaitCalled(ProcessThreadId id, ProcessTrackedObjectId lockId)
     {
-        _takenLocks[id].Remove(lockObj);
+        _takenLocks[id].Remove(lockId);
+        _lockOwners.Remove(lockId);
     }
     
-    public void RecordObjectWaitReturned(ProcessThreadId id, ShadowLock lockObj)
+    public void RecordObjectWaitReturned(ProcessThreadId id, ProcessTrackedObjectId lockId)
     {
-        _takenLocks[id].Add(lockObj);
+        _takenLocks[id].Add(lockId);
+        _lockOwners[lockId] = id;
     }
     
     public void RecordThreadCreated(ProcessThreadId id)
     {
         _waitingForLocks[id] = null;
-        _takenLocks[id] = new HashSet<ShadowLock>();
+        _takenLocks[id] = new HashSet<ProcessTrackedObjectId>();
         _waitingForThreads[id] = null;
     }
     

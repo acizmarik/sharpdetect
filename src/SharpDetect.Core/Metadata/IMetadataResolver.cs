@@ -16,4 +16,6 @@ public interface IMetadataResolver
     Result<TypeDef, MetadataResolverErrorType> ResolveType(uint pid, ModuleId moduleId, MdTypeDef typeToken);
     Result<MethodDef, MetadataResolverErrorType> ResolveMethod(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef methodToken);
     Result<MethodDef, MetadataResolverErrorType> ResolveMethod(uint pid, ModuleId moduleId, MdMethodDef methodToken);
+    Result<FieldDef, MetadataResolverErrorType> ResolveField(RecordedEventMetadata metadata, ModuleId moduleId, MdToken fieldToken);
+    Result<FieldDef, MetadataResolverErrorType> ResolveField(uint pid, ModuleId moduleId, MdToken fieldToken);
 }

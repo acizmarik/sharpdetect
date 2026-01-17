@@ -92,6 +92,7 @@ public partial class DeadlockPlugin
         return reports.Select(report => new
         {
             title = report.Title,
+            reportId = $"report-{report.Identifier}",
             description = report.Description,
             timestamp = report.DetectionTime,
             threads = report.GetReportedThreads().Select(threadInfo =>

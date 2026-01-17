@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Core.Plugins.Models;
+using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.Worker;
 using Xunit;
@@ -37,7 +37,7 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         var enteredTest = false;
         var exitedTest = false;
         var insideTestMethod = false;
-        var lockObjects = new HashSet<ShadowLock>();
+        var lockObjects = new HashSet<ProcessTrackedObjectId>();
         plugin.MethodEntered += e =>
         {
             var resolveResult = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
@@ -59,17 +59,17 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         plugin.LockAcquireAttempted += e =>
         {
             if (insideTestMethod)
-                lockObjects.Add(e.LockObj);
+                lockObjects.Add(e.LockId);
         };
         plugin.LockAcquireReturned += e =>
         {
             if (insideTestMethod)
-                lockObjects.Add(e.LockObj);
+                lockObjects.Add(e.LockId);
         };
         plugin.LockReleased += e =>
         {
             if (insideTestMethod)
-                lockObjects.Add(e.LockObj);
+                lockObjects.Add(e.LockId);
         };
 
         // Execute

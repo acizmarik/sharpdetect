@@ -4,7 +4,7 @@
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 
-namespace SharpDetect.Plugins.ExecutionOrdering;
+namespace SharpDetect.Plugins.PerThreadOrdering;
 
 public sealed class ThreadCallStackTracker
 {

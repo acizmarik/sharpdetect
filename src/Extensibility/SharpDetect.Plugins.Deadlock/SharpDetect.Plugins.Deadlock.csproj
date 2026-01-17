@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
+        <ProjectReference Include="..\SharpDetect.Plugins.Descriptors\SharpDetect.Plugins.Descriptors.csproj" />
+        <ProjectReference Include="..\SharpDetect.Plugins.ExecutionOrdering\SharpDetect.Plugins.ExecutionOrdering.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="Templates\Partials\threads.html">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>Deadlock\Templates\Partials\threads.html</TargetPath>
+        </None>
+        <None Update="Templates\Partials\violations.html">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>Deadlock\Templates\Partials\violations.html</TargetPath>
+        </None>
+    </ItemGroup>
+
+</Project>

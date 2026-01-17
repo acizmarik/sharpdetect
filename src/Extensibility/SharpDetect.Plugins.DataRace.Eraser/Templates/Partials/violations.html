@@ -1,0 +1,75 @@
+<div class="tab">
+    {{#reports}}
+    <button id="btn{{title}}" class="tablinks" data-group="11" onclick="openTab('{{title}}')">{{title}}</button>
+    {{/reports}}
+</div>
+{{#reports}}
+<div id="{{title}}" class="tabcontent" data-group="11">
+    <h2>Data Race</h2>
+    <table class="styled-table">
+        <colgroup>
+            <col span="1" style="width: 30%;">
+            <col span="1" style="width: 70%;">
+        </colgroup>
+        <thead>
+        <tr>
+            <th>Variable</th>
+            <th>Value</th>
+        </tr>
+        </thead>
+        <tr>
+            <td>Timestamp</td>
+            <td>{{timestamp}}</td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td>{{description}}</td>
+        </tr>
+    </table>
+    
+    <div class="threads">
+        <h2>Involved Threads</h2>
+        <p class="summary">The following threads were involved in the potential data race:</p>
+        <hr/>
+
+        <table class="styled-table">
+            <colgroup>
+                <col span="1" style="width: 30%;">
+                <col span="1" style="width: 70%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Thread</th>
+                    <th>Reason for Report</th>
+                </tr>
+            </thead>
+            {{#threads}}
+            <tr>
+                <td>{{name}}</td>
+                <td>{{reason}}</td>
+            </tr>
+            {{/threads}}
+        </table>
+
+        <h2>Stack Traces</h2>
+        <div class="tab">
+            {{#threads}}
+            <button id="btn{{../reportId}}-{{name}}" class="tablinks" data-group="111" onclick="openTab('{{../reportId}}-{{name}}')">{{name}}</button>
+            {{/threads}}
+        </div>
+
+        {{#threads}}
+        <div id="{{../reportId}}-{{name}}" class="tabcontent" data-group="111">
+            <div class="stacktrace">
+                {{#stacktrace}}
+                <div class="stackframe">
+                    <span class="metadata">at {{metadataName}}</span>
+                    <sub class="sourceFile">Source file: {{sourceFile}} ({{metadataToken}})</sub>
+                </div>
+                {{/stacktrace}}
+            </div>
+        </div>
+        {{/threads}}
+    </div>
+</div>
+{{/reports}}

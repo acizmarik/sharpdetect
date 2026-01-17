@@ -103,32 +103,32 @@ public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
     private void OnLockAcquireAttempted(LockAcquireAttemptArgs args)
     {
         var id = args.ProcessThreadId;
-        _concurrencyContext.RecordLockAcquireCalled(id, args.LockObj);
+        _concurrencyContext.RecordLockAcquireCalled(id, args.LockId);
         CheckForDeadlocks(id.ProcessId);
     }
 
     private void OnLockAcquireReturned(LockAcquireResultArgs args)
     {
         var id = args.ProcessThreadId;
-        _concurrencyContext.RecordLockAcquireReturned(id, args.LockObj, args.IsSuccess);
+        _concurrencyContext.RecordLockAcquireReturned(id, args.LockId, args.IsSuccess);
     }
 
     private void OnLockReleased(LockReleaseArgs args)
     {
         var id = args.ProcessThreadId;
-        _concurrencyContext.RecordLockReleaseReturned(id, args.LockObj);
+        _concurrencyContext.RecordLockReleaseReturned(id, args.LockId);
     }
 
     private void OnObjectWaitAttempted(ObjectWaitAttemptArgs args)
     {
         var id = args.ProcessThreadId;
-        _concurrencyContext.RecordObjectWaitCalled(id, args.LockObj);
+        _concurrencyContext.RecordObjectWaitCalled(id, args.LockId);
     }
 
     private void OnObjectWaitReturned(ObjectWaitResultArgs args)
     {
         var id = args.ProcessThreadId;
-        _concurrencyContext.RecordObjectWaitReturned(id, args.LockObj);
+        _concurrencyContext.RecordObjectWaitReturned(id, args.LockId);
     }
 
     private void OnThreadJoinAttempted(ThreadJoinAttemptArgs args)

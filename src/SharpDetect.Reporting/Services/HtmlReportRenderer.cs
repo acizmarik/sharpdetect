@@ -93,16 +93,14 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
                 },
                 rewritingProperties = new KeyValuePair<string, string>[]
                 {
-                    new("AnalyzedMethodsCount", summary.RewritingInfo.AnalyzedMethodsCount.ToString()),
-                    new("InjectedTypesCount", summary.RewritingInfo.InjectedTypesCount.ToString()),
-                    new("InjectedMethodsCount", summary.RewritingInfo.InjectedMethodsCount.ToString()),
-                    new("RewrittenMethodsCount", summary.RewritingInfo.RewrittenMethodsCount.ToString()),
+                    new("Analyzed Methods Count", summary.RewritingInfo.AnalyzedMethodsCount.ToString()),
+                    new("Injected Types Count", summary.RewritingInfo.InjectedTypesCount.ToString()),
+                    new("Injected Methods Count", summary.RewritingInfo.InjectedMethodsCount.ToString()),
+                    new("Rewritten Methods Count", summary.RewritingInfo.RewrittenMethodsCount.ToString()),
                 },
                 runtimeProperties = summary.GetRuntimeProperties()
-                    .OrderBy(kv => kv.Key)
                     .Select(p => new { key = p.Key, value = p.Value }),
                 collectionProperties = summary.GetCollectionProperties()
-                    .OrderBy(kv => kv.Key)
                     .Select(kv => new { key = kv.Key, value = kv.Value })
             },
             assemblies = summary.GetAllModules().Select(moduleInfo =>

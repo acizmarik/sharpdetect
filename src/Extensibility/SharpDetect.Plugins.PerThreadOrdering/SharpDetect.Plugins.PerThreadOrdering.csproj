@@ -1,8 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
         <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
-        <ProjectReference Include="..\SharpDetect.Plugins.PerThreadOrdering\SharpDetect.Plugins.PerThreadOrdering.csproj" />
     </ItemGroup>
 
     <ItemGroup>

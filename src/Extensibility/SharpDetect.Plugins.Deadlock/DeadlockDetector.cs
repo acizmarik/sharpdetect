@@ -48,19 +48,16 @@ public partial class DeadlockPlugin
         [NotNullWhen(true)] out WaitInfo? waitInfo,
         [NotNullWhen(true)] out ProcessThreadId? lockOwnerThreadId)
     {
-        if (_concurrencyContext.TryGetWaitingLock(processThreadId, out var blockedLock))
+        if (_concurrencyContext.TryGetWaitingLock(processThreadId, out var blockedLockId) &&
+            _concurrencyContext.TryGetLockOwner(blockedLockId.Value, out var lockOwner) &&
+            lockOwner != processThreadId)
         {
-            var lockOwner = blockedLock.Owner;
-            
-            if (lockOwner.HasValue && lockOwner != processThreadId)
-            {
-                waitInfo = new WaitInfo(
-                    BlockedOnType.Lock,
-                    lockOwner,
-                    blockedLock.LockObjectId);
-                lockOwnerThreadId = lockOwner;
-                return true;
-            }
+            waitInfo = new WaitInfo(
+                BlockedOnType.Lock,
+                lockOwner,
+                blockedLockId.Value);
+            lockOwnerThreadId = lockOwner;
+            return true;
         }
 
         waitInfo = null;

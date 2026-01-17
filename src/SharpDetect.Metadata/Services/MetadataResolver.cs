@@ -97,4 +97,37 @@ internal class MetadataResolver : IMetadataResolver
 
         return Ok(methodDef);
     }
+
+    public Result<FieldDef, MetadataResolverErrorType> ResolveField(RecordedEventMetadata metadata, ModuleId moduleId, MdToken fieldToken)
+        => ResolveField(metadata.Pid, moduleId, fieldToken);
+
+    public Result<FieldDef, MetadataResolverErrorType> ResolveField(uint pid, ModuleId moduleId, MdToken fieldToken)
+    {
+        // Resolve module
+        var moduleResolveResult = ResolveModule(pid, moduleId);
+        if (moduleResolveResult.IsError)
+        {
+            _logger.LogError("Could not resolve field with token={Tok} because module was not resolved", fieldToken.Value);
+            return Error(moduleResolveResult.Error);
+        }
+
+        // Resolve field
+        var tokenProvider = moduleResolveResult.Value.ResolveToken(fieldToken.Value);
+        switch (tokenProvider)
+        {
+            case FieldDef fieldDef:
+                return Ok(fieldDef);
+            case MemberRef { IsFieldRef: true } fieldRef:
+            {
+                var resolvedFieldDef = fieldRef.ResolveFieldDef();
+                if (resolvedFieldDef is not null)
+                    return Ok(resolvedFieldDef);
+                _logger.LogError("Could not resolve field definition for field reference with token={Tok} on module {Module}", fieldToken.Value, moduleResolveResult.Value.FullName);
+                return Error(MetadataResolverErrorType.FieldNotFound);
+            }
+            default:
+                _logger.LogError("Could not resolve field with token={Tok} on module {Module}", fieldToken.Value, moduleResolveResult.Value.FullName);
+                return Error(MetadataResolverErrorType.FieldNotFound);
+        }
+    }
 }

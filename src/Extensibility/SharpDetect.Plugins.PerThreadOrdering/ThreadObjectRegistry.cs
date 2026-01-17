@@ -3,7 +3,7 @@
 
 using SharpDetect.Core.Plugins;
 
-namespace SharpDetect.Plugins.ExecutionOrdering;
+namespace SharpDetect.Plugins.PerThreadOrdering;
 
 public sealed class ThreadObjectRegistry
 {
