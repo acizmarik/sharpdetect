@@ -130,9 +130,9 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         
         _detectedRaces.Add(raceInfo);
         Logger.LogWarning(
-            "Potential data race detected on field {FieldName} by thread {ThreadId}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
+            "Potential data race detected on field {FieldName} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
             GetFieldDisplayName(raceInfo.FieldId),
-            args.ProcessThreadId.ThreadId.Value,
+            Threads[args.ProcessThreadId],
             raceInfo.CurrentAccess.AccessType,
             raceInfo.PreviousState,
             raceInfo.NewState);
@@ -151,9 +151,9 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         
         _detectedRaces.Add(raceInfo);
         Logger.LogWarning(
-            "Potential data race detected on field {FieldName} by thread {ThreadId}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
+            "Potential data race detected on field {FieldName} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
             GetFieldDisplayName(raceInfo.FieldId),
-            args.ProcessThreadId.ThreadId.Value,
+            Threads[args.ProcessThreadId],
             raceInfo.CurrentAccess.AccessType,
             raceInfo.PreviousState,
             raceInfo.NewState);

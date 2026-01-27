@@ -17,11 +17,15 @@ public partial class EraserPlugin
         else
             PrepareNoViolationDiagnostics();
 
+        AddStatisticsToReport();
+        return Reporter.Build();
+    }
+
+    private void AddStatisticsToReport()
+    {
         Reporter.AddCollectionProperty("Distinct Lock Sets", _detector.GetDistinctLockSetCount().ToString());
         Reporter.AddCollectionProperty("Tracked Fields", _detector.GetTrackedFieldCount().ToString());
         Reporter.AddCollectionProperty("(Potential) Data Races", _detectedRaces.Count.ToString());
-
-        return Reporter.Build();
     }
 
     private void PrepareNoViolationDiagnostics()
@@ -32,119 +36,134 @@ public partial class EraserPlugin
 
     private void PrepareViolationDiagnostics()
     {
-        Reporter.SetTitle(_detectedRaces.Count == 1 
-            ? "One potential data race detected" 
-            : $"Several ({_detectedRaces.Count}) potential data races detected");
+        var title = _detectedRaces.Count == 1
+            ? "One potential data race detected"
+            : $"Several ({_detectedRaces.Count}) potential data races detected";
+        Reporter.SetTitle(title);
         Reporter.SetDescription("See details below for more information about each potential data race.");
 
-        // Group races by field for better reporting
-        var racesByField = _detectedRaces
-            .GroupBy(r => r.FieldId)
-            .ToList();
-
+        var racesByField = _detectedRaces.GroupBy(r => r.FieldId);
+        CreateReportsForRaces(racesByField);
+    }
+    
+    private void CreateReportsForRaces(IEnumerable<IGrouping<FieldId, DataRaceInfo>> racesByField)
+    {
         var index = 0;
         foreach (var fieldRaces in racesByField)
         {
-            var firstRace = fieldRaces.First();
-            var fieldId = fieldRaces.Key;
-            var fieldName = GetFieldDisplayName(fieldId);
-
-            var reportBuilder = new ReportBuilder(index++, ReportCategory, firstRace.Timestamp);
-            reportBuilder.SetTitle($"Data race {reportBuilder.Identifier}");
-            
-            var description = $"Potential data race detected on field '{fieldName}'. " +
-                              $"Total accesses flagged: {fieldRaces.Count()}.";
-            reportBuilder.SetDescription(description);
-
-            // Collect all accesses (both current and last) per thread
-            var threadAccesses = new Dictionary<ProcessThreadId, List<(DataRaceInfo Race, AccessInfo Access, bool IsCurrent)>>();
-            
-            foreach (var race in fieldRaces)
-            {
-                // Add current access
-                if (!threadAccesses.ContainsKey(race.CurrentAccess.ProcessThreadId))
-                    threadAccesses[race.CurrentAccess.ProcessThreadId] = [];
-                threadAccesses[race.CurrentAccess.ProcessThreadId].Add((race, race.CurrentAccess, true));
-                
-                // Add last access if present
-                if (race.LastAccess != null)
-                {
-                    if (!threadAccesses.ContainsKey(race.LastAccess.ProcessThreadId))
-                        threadAccesses[race.LastAccess.ProcessThreadId] = [];
-                    threadAccesses[race.LastAccess.ProcessThreadId].Add((race, race.LastAccess, false));
-                }
-            }
-            
-            foreach (var (processThreadId, accesses) in threadAccesses)
-            {
-                var firstAccess = accesses.First().Access;
-                var threadInfo = new ThreadInfo(
-                    processThreadId.ThreadId.Value, 
-                    firstAccess.ThreadName ?? $"Thread-{processThreadId.ThreadId.Value}");
-                reportBuilder.AddThread(threadInfo);
-                
-                var reasons = new List<string>();
-                foreach (var (race, access, isCurrent) in accesses.DistinctBy(a => (a.Access.Timestamp, a.Access.AccessType)))
-                {
-                    var accessRole = isCurrent ? "current" : "previous";
-                    var stateTransition = isCurrent 
-                        ? $"{race.PreviousState} -> {race.NewState}"
-                        : race.PreviousState.ToString();
-                    
-                    reasons.Add($"{access.AccessType} access ({accessRole}, state: {stateTransition})");
-                }
-                
-                var reason = string.Join("; ", reasons.Distinct());
-                reportBuilder.AddReportReason(threadInfo, reason);
-
-                // Create a pseudo-stack trace with method information
-                var stackFrames = ImmutableArray.CreateBuilder<StackFrame>();
-                var distinctMethods = accesses
-                    .Select(a => a.Access)
-                    .DistinctBy(a => a.MethodToken.Value);
-                
-                foreach (var access in distinctMethods)
-                {
-                    var methodName = ResolveMethodName(processThreadId.ProcessId, access.ModuleId, access.MethodToken);
-                    var moduleName = ResolveModuleName(processThreadId.ProcessId, access.ModuleId);
-                    var frame = new StackFrame(
-                        MethodName: methodName ?? $"0x{access.MethodToken.Value:X8}",
-                        SourceMapping: moduleName ?? "<unknown>",
-                        MethodToken: access.MethodToken.Value);
-                    stackFrames.Add(frame);
-                }
-                
-                if (stackFrames.Count > 0)
-                {
-                    var stackTrace = new StackTrace(threadInfo, stackFrames.ToImmutable());
-                    reportBuilder.AddStackTrace(stackTrace);
-                }
-            }
-
-            Reporter.AddReport(reportBuilder.Build());
+            var report = CreateReportForField(index++, fieldRaces);
+            Reporter.AddReport(report);
         }
+    }
+
+    private Report CreateReportForField(int index, IGrouping<FieldId, DataRaceInfo> fieldRaces)
+    {
+        var firstRace = fieldRaces.First();
+        var fieldName = GetFieldDisplayName(fieldRaces.Key);
+
+        var reportBuilder = new ReportBuilder(index, ReportCategory, firstRace.Timestamp);
+        reportBuilder.SetTitle($"Data race {reportBuilder.Identifier}");
+        reportBuilder.SetDescription(
+            $"Potential data race detected on field '{fieldName}'. " +
+            $"Total accesses flagged: {fieldRaces.Count()}.");
+
+        var accessCollector = CollectThreadAccesses(fieldRaces);
+        AddThreadsToReport(reportBuilder, accessCollector);
+
+        return reportBuilder.Build();
+    }
+
+    private static ThreadAccessCollector CollectThreadAccesses(IEnumerable<DataRaceInfo> fieldRaces)
+    {
+        var collector = new ThreadAccessCollector();
+        foreach (var race in fieldRaces)
+            collector.AddRace(race);
+        
+        return collector;
+    }
+
+    private void AddThreadsToReport(ReportBuilder reportBuilder, ThreadAccessCollector accessCollector)
+    {
+        foreach (var threadId in accessCollector.GetThreads())
+        {
+            var threadInfo = CreateThreadInfo(threadId, accessCollector);
+            reportBuilder.AddThread(threadInfo);
+
+            var reason = BuildReasonString(threadId, accessCollector);
+            reportBuilder.AddReportReason(threadInfo, reason);
+
+            var stackTrace = BuildStackTrace(threadId, threadInfo, accessCollector);
+            if (stackTrace != null)
+                reportBuilder.AddStackTrace(stackTrace);
+        }
+    }
+
+    private static ThreadInfo CreateThreadInfo(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
+    {
+        var firstAccess = accessCollector.GetFirstAccess(threadId);
+        return new ThreadInfo(
+            threadId.ThreadId.Value,
+            firstAccess.ThreadName ?? $"Thread-{threadId.ThreadId.Value}");
+    }
+
+    private static string BuildReasonString(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
+    {
+        var reasons = new List<string>();
+
+        foreach (var (race, access, isCurrent) in accessCollector.GetDistinctAccesses(threadId))
+        {
+            var accessRole = isCurrent ? "current" : "previous";
+            var stateTransition = isCurrent
+                ? $"{race.PreviousState} -> {race.NewState}"
+                : race.PreviousState.ToString();
+
+            reasons.Add($"{access.AccessType} access ({accessRole}, state: {stateTransition})");
+        }
+
+        return string.Join("; ", reasons.Distinct());
+    }
+
+    private StackTrace? BuildStackTrace(
+        ProcessThreadId threadId,
+        ThreadInfo threadInfo,
+        ThreadAccessCollector accessCollector)
+    {
+        var stackFrames = ImmutableArray.CreateBuilder<StackFrame>();
+
+        foreach (var access in accessCollector.GetDistinctMethods(threadId))
+        {
+            var frame = CreateStackFrame(threadId.ProcessId, access);
+            stackFrames.Add(frame);
+        }
+
+        return stackFrames.Count > 0
+            ? new StackTrace(threadInfo, stackFrames.ToImmutable())
+            : null;
+    }
+
+    private StackFrame CreateStackFrame(uint processId, AccessInfo access)
+    {
+        var methodName = ResolveMethodName(processId, access.ModuleId, access.MethodToken);
+        var moduleName = ResolveModuleName(processId, access.ModuleId);
+
+        return new StackFrame(
+            MethodName: methodName ?? $"0x{access.MethodToken.Value:X8}",
+            SourceMapping: moduleName ?? "<unknown>",
+            MethodToken: access.MethodToken.Value);
     }
 
     private string? ResolveMethodName(uint processId, ModuleId moduleId, MdMethodDef methodToken)
     {
         var resolver = MetadataContext.GetResolver(processId);
         var methodResult = resolver.ResolveMethod(processId, moduleId, methodToken);
-        
-        if (methodResult.IsError)
-            return null;
-
-        return methodResult.Value?.FullName;
+        return methodResult.IsError ? null : methodResult.Value?.FullName;
     }
 
     private string? ResolveModuleName(uint processId, ModuleId moduleId)
     {
         var resolver = MetadataContext.GetResolver(processId);
         var moduleResult = resolver.ResolveModule(processId, moduleId);
-        
-        if (moduleResult.IsError)
-            return null;
-
-        return moduleResult.Value?.Location;
+        return moduleResult.IsError ? null : moduleResult.Value?.Location;
     }
 
     public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports)
