@@ -823,7 +823,7 @@ HRESULT Profiler::CorProfiler::ImportInjectedTypes(
     const auto& coreAssemblyDef = *GetAssemblyDef(coreModuleDef.GetAssemblyId()).get();
     const void* coreAssemblyPublicKeyData;
     ULONG coreAssemblyPublicKeyDataSize;
-    ASSEMBLYMETADATA coreAssemblyMetadata;
+    ASSEMBLYMETADATA coreAssemblyMetadata{};
     DWORD coreAssemblyFlags;
     if (FAILED(coreAssemblyDef.GetProps(
         &coreAssemblyPublicKeyData,
