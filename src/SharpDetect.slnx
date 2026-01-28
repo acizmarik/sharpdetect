@@ -24,6 +24,7 @@
     <File Path="../.github/workflows/release.yml" />
   </Folder>
   <Folder Name="/Samples/">
+    <Project Path="Samples/SimpleDataRace/SimpleDataRace.csproj" />
     <Project Path="Samples/SimpleDeadlock/SimpleDeadlock.csproj" />
   </Folder>
   <Folder Name="/Tests/">

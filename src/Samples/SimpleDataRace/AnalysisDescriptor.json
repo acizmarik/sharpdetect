@@ -1,7 +1,7 @@
 {
     "Target": 
     {
-        "Path": "../../Samples/SimpleDeadlock/bin/Debug/net10.0/SimpleDeadlock.dll",
+        "Path": "../../Samples/SimpleDataRace/bin/Debug/net10.0/SimpleDataRace.dll",
         "Args": "",
         "Architecture": "X64",
         "RedirectInputOutput":
@@ -23,7 +23,7 @@
     "Analysis": 
     {
         "Path": "../../Extensibility/SharpDetect.Plugins/bin/Debug/net10.0/SharpDetect.Plugins.dll",
-        "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
+        "FullTypeName": "SharpDetect.Plugins.DataRace.Eraser.EraserPlugin",
         "RenderReport": true
     }
 }
