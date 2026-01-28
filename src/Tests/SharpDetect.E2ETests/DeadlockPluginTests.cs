@@ -79,9 +79,10 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     public async Task DeadlockPlugin_CanRenderReport(string configuration, string sdk)
     {
         // Arrange
+        var timeProvider = new TestTimeProvider(DateTimeOffset.MinValue);
         var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
         using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput, new TestTimeProvider(DateTimeOffset.MinValue));
+            configuration, sdk, pluginAdditionalData, testOutput, timeProvider);
         var plugin = services.GetRequiredService<IPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var reportRenderer = services.GetRequiredService<IReportSummaryRenderer>();
@@ -94,7 +95,7 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
 
         // Assert
         Assert.Null(exception);
-        exception = await Record.ExceptionAsync(() => RunCommandHandler.StoreReport(renderedContent, CancellationToken.None));
+        exception = await Record.ExceptionAsync(() => RunCommandHandler.StoreReport(renderedContent, timeProvider, CancellationToken.None));
         Assert.Null(exception);
     }
     

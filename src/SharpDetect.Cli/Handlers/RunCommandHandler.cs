@@ -44,29 +44,32 @@ internal sealed class RunCommandHandler : IDisposable
         await worker.ExecuteAsync(cancellationToken);
         
         // Render and store report
+        var timeProvider = _serviceProvider.GetRequiredService<TimeProvider>();
         var reportContent = GenerateReportSummary();
         var reportsFolder = _arguments.Analysis.ReportsFolder;
         var reportFileName = _arguments.Analysis.ReportFileName;
-        var fullPath = await StoreReport(reportFileName, reportsFolder, reportContent, cancellationToken);
+        var fullPath = await StoreReport(reportFileName, reportsFolder, reportContent, timeProvider, cancellationToken);
         await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(fullPath)}.");
     }
 
     internal static Task<string> StoreReport(
         string content,
+        TimeProvider timeProvider,
         CancellationToken ct)
     {
-        return StoreReport(reportFileName: null, reportsFolder: null, content, ct);
+        return StoreReport(reportFileName: null, reportsFolder: null, content, timeProvider, ct);
     }
     
     private static async Task<string> StoreReport(
         string? reportFileName,
         string? reportsFolder,
         string content,
+        TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
         // Use default report folder and file name if not specified
         reportsFolder ??= Directory.GetCurrentDirectory();
-        reportFileName ??= $"SharpDetect_Report_{TimeProvider.System.GetUtcNow().DateTime:yyyyMMdd_HHmmss}.html";
+        reportFileName ??= $"SharpDetect_Report_{timeProvider.GetUtcNow().DateTime:yyyyMMdd_HHmmss}.html";
         
         // Ensure reports folder exists
         Directory.CreateDirectory(reportsFolder);
