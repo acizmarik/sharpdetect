@@ -9,23 +9,23 @@
 <hr />
 
 <div class="tab">
-    <button id="btnRuntime" class="tablinks" data-group="1" onclick="openTab('Runtime')">Runtime</button>
-    <button id="btnEnvironment" class="tablinks" data-group="1" onclick="openTab('Environment')">Environment</button>
-    <button id="btnAssemblies" class="tablinks" data-group="1" onclick="openTab('Assemblies')">Assemblies</button>
+    <button id="btnRuntime" class="tablinks" data-group="main-tabs" onclick="openTab('Runtime')">Runtime</button>
+    <button id="btnEnvironment" class="tablinks" data-group="main-tabs" onclick="openTab('Environment')">Environment</button>
+    <button id="btnAssemblies" class="tablinks" data-group="main-tabs" onclick="openTab('Assemblies')">Assemblies</button>
     {{#if reports}}
-    <button id="btnViolations" class="tablinks" data-group="1" onclick="openTab('Violations')">Violations</button>
+    <button id="btnViolations" class="tablinks" data-group="main-tabs" onclick="openTab('Violations')">Violations</button>
     {{/if}}
 </div>
 
-<div id="Runtime" class="tabcontent" data-group="1">
+<div id="Runtime" class="tabcontent" data-group="main-tabs">
     {{> runtime}}
 </div>
-<div id="Environment" class="tabcontent" data-group="1">
+<div id="Environment" class="tabcontent" data-group="main-tabs">
     {{> environment}}
 </div>
-<div id="Assemblies" class="tabcontent" data-group="1">
+<div id="Assemblies" class="tabcontent" data-group="main-tabs">
     {{> assemblies}}
 </div>
-<div id="Violations" class="tabcontent" data-group="1">
+<div id="Violations" class="tabcontent" data-group="main-tabs">
     {{> violations}}
 </div>

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Core.Plugins.Models;
+using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.Worker;
 using Xunit;
@@ -29,17 +29,19 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
     public async Task ObjectsTracking(string configuration, string sdk)
     {
         // Arrange
-        using var services = TestContextFactory.CreateServiceProvider(configuration, sdk, testOutput);
-        var plugin = services.GetRequiredService<TestHappensBeforePlugin>();
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;
         var insideTestMethod = false;
-        var lockObjects = new HashSet<ShadowLock>();
+        var lockObjects = new HashSet<ProcessTrackedObjectId>();
         plugin.MethodEntered += e =>
         {
-            var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name.StartsWith("Test_"))
+            var resolveResult = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
+            if (resolveResult.IsSuccess && resolveResult.Value.Name.StartsWith("Test_"))
             {
                 insideTestMethod = true;
                 enteredTest = true;
@@ -47,8 +49,8 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         };
         plugin.MethodExited += e =>
         {
-            var method = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
-            if (method.Name.StartsWith("Test_"))
+            var resolveResult = plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.MethodToken);
+            if (resolveResult.IsSuccess && resolveResult.Value.Name.StartsWith("Test_"))
             {
                 insideTestMethod = false;
                 exitedTest = true;
@@ -57,17 +59,17 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         plugin.LockAcquireAttempted += e =>
         {
             if (insideTestMethod)
-                lockObjects.Add(e.LockObj);
+                lockObjects.Add(e.LockId);
         };
         plugin.LockAcquireReturned += e =>
         {
             if (insideTestMethod)
-                lockObjects.Add(e.LockObj);
+                lockObjects.Add(e.LockId);
         };
         plugin.LockReleased += e =>
         {
             if (insideTestMethod)
-                lockObjects.Add(e.LockObj);
+                lockObjects.Add(e.LockId);
         };
 
         // Execute

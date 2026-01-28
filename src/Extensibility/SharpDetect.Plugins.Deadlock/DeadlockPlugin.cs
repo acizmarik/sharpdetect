@@ -1,0 +1,172 @@
+// Copyright 2026 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.Core.Configuration;
+using SharpDetect.Core.Events;
+using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Plugins;
+using System.Collections.Immutable;
+using Microsoft.Extensions.Logging;
+using SharpDetect.Core.Communication;
+using SharpDetect.Core.Loader;
+using SharpDetect.Core.Metadata;
+using SharpDetect.Core.Serialization;
+using SharpDetect.Plugins.Descriptors;
+using SharpDetect.Plugins.Descriptors.Methods;
+using SharpDetect.Plugins.ExecutionOrdering;
+
+namespace SharpDetect.Plugins.Deadlock;
+
+public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
+{
+    public string ReportCategory => "Deadlock";
+    public RecordedEventActionVisitorBase EventsVisitor => this;
+    public override PluginConfiguration Configuration { get; }
+    public DirectoryInfo ReportTemplates { get; }
+    
+    private readonly ICallstackResolver _callStackResolver;
+    private readonly TimeProvider _timeProvider;
+    private readonly ConcurrencyContext _concurrencyContext;
+    private readonly Dictionary<uint, WaitForGraph> _waitForGraphs;
+    private readonly Dictionary<(uint Pid, ulong RequestId), DeadlockInfo> _deadlocks;
+    private readonly Dictionary<(uint Pid, ulong RequestId), StackTraceSnapshotsRecordedEvent> _deadlockStackTraces;
+
+    public DeadlockPlugin(
+        IModuleBindContext moduleBindContext,
+        IMetadataContext metadataContext,
+        IArgumentsParser argumentsParser,
+        IRecordedEventsDeliveryContext eventsDeliveryContext,
+        IProfilerCommandSenderProvider profilerCommandSenderProvider,
+        ICallstackResolver callstackResolver,
+        PathsConfiguration pathsConfiguration,
+        TimeProvider timeProvider,
+        ILogger<DeadlockPlugin> logger)
+        : base(
+            moduleBindContext,
+            metadataContext,
+            argumentsParser,
+            eventsDeliveryContext,
+            profilerCommandSenderProvider,
+            timeProvider,
+            logger)
+    {
+        _callStackResolver = callstackResolver;
+        _timeProvider = timeProvider;
+
+        Configuration = PluginConfiguration.Create(
+            eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_STACK_SNAPSHOT |
+                       COR_PRF_MONITOR.COR_PRF_ENABLE_FRAME_INFO |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_INLINING |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_OPTIMIZATIONS |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_TRANSPARENCY_CHECKS_UNDER_FULL_TRUST |
+                       COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
+            additionalData: new
+            {
+                MethodDescriptors = MonitorMethodDescriptors.GetAllMethods().Concat(
+                    LockMethodDescriptors.GetAllMethods()).Concat(
+                    ThreadMethodDescriptors.GetAllMethods())
+                    .ToImmutableArray(),
+                TypeInjectionDescriptors = Array.Empty<TypeInjectionDescriptor>(),
+                EnableFieldsAccessInstrumentation = false
+            },
+            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
+
+        _waitForGraphs = [];
+        _deadlocks = [];
+        _deadlockStackTraces = [];
+        _concurrencyContext = new ConcurrencyContext();
+
+        LockAcquireAttempted += OnLockAcquireAttempted;
+        LockAcquireReturned += OnLockAcquireReturned;
+        LockReleased += OnLockReleased;
+        ObjectWaitAttempted += OnObjectWaitAttempted;
+        ObjectWaitReturned += OnObjectWaitReturned;
+        ThreadJoinAttempted += OnThreadJoinAttempted;
+        ThreadJoinReturned += OnThreadJoinReturned;
+
+        ReportTemplates = new DirectoryInfo(
+            Path.Combine(
+                Path.GetDirectoryName(GetType().Assembly.Location)!,
+                "Deadlock",
+                "Templates",
+                "Partials"));
+    }
+
+    private void OnLockAcquireAttempted(LockAcquireAttemptArgs args)
+    {
+        var id = args.ProcessThreadId;
+        _concurrencyContext.RecordLockAcquireCalled(id, args.LockId);
+        CheckForDeadlocks(id.ProcessId);
+    }
+
+    private void OnLockAcquireReturned(LockAcquireResultArgs args)
+    {
+        var id = args.ProcessThreadId;
+        _concurrencyContext.RecordLockAcquireReturned(id, args.LockId, args.IsSuccess);
+    }
+
+    private void OnLockReleased(LockReleaseArgs args)
+    {
+        var id = args.ProcessThreadId;
+        _concurrencyContext.RecordLockReleaseReturned(id, args.LockId);
+    }
+
+    private void OnObjectWaitAttempted(ObjectWaitAttemptArgs args)
+    {
+        var id = args.ProcessThreadId;
+        _concurrencyContext.RecordObjectWaitCalled(id, args.LockId);
+    }
+
+    private void OnObjectWaitReturned(ObjectWaitResultArgs args)
+    {
+        var id = args.ProcessThreadId;
+        _concurrencyContext.RecordObjectWaitReturned(id, args.LockId);
+    }
+
+    private void OnThreadJoinAttempted(ThreadJoinAttemptArgs args)
+    {
+        var id = args.BlockedProcessThreadId;
+        _concurrencyContext.RecordThreadJoinCalled(id, args.JoiningProcessThreadId);
+        CheckForDeadlocks(id.ProcessId);
+    }
+
+    private void OnThreadJoinReturned(ThreadJoinResultArgs args)
+    {
+        var id = args.BlockedProcessThreadId;
+        _concurrencyContext.RecordThreadJoinReturned(id);
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
+        if (!_concurrencyContext.HasThread(id))
+            _concurrencyContext.RecordThreadCreated(id);
+
+        base.Visit(metadata, args);
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
+        if (!_concurrencyContext.HasThread(id))
+            _concurrencyContext.RecordThreadCreated(id);
+
+        base.Visit(metadata, args);
+    }
+
+    protected override void Visit(RecordedEventMetadata metadata, StackTraceSnapshotsRecordedEvent args)
+    {
+        var key = (metadata.Pid, metadata.CommandId!.Value);
+        _deadlockStackTraces.Add(key, args);
+        
+        base.Visit(metadata, args);
+    }
+}

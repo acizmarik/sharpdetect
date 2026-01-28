@@ -4,8 +4,6 @@
 var lockObj1 = new object();
 var lockObj2 = new object();
 
-Console.WriteLine("Hello World!");
-
 var thread1 = new Thread(() =>
 {
     for (; ; )

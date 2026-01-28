@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Meziantou.Extensions.Logging.Xunit;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.Worker.Commands;
@@ -13,7 +14,11 @@ namespace SharpDetect.E2ETests;
 
 internal static class TestContextFactory
 {
-    public static TestDisposableServiceProvider CreateServiceProvider(string filename, string sdk, ITestOutputHelper output)
+    public static TestDisposableServiceProvider CreateServiceProvider(
+        string filename,
+        string sdk,
+        TestPluginAdditionalData additionalData,
+        ITestOutputHelper output)
     {
         #if DEBUG
         var buildConfiguration = "Debug";
@@ -35,12 +40,16 @@ internal static class TestContextFactory
         };
         
         var pluginType = Type.GetType(args.Analysis.FullTypeName)
-                         ?? typeof(Plugins.ConcurrencyContext).Assembly.GetType(args.Analysis.FullTypeName)
+                         ?? typeof(Plugins.Deadlock.DeadlockInfo).Assembly.GetType(args.Analysis.FullTypeName)
                          ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.FullTypeName}.");
             
         return new TestDisposableServiceProvider(new AnalysisServiceProviderBuilder(args)
             .WithTimeProvider(TimeProvider.System)
             .WithPlugin(pluginType)
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton(additionalData);
+            })
             .ConfigureLogging(logging =>
             {
                 logging.AddProvider(new XUnitLoggerProvider(output));

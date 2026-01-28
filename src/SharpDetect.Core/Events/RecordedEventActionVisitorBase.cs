@@ -38,6 +38,7 @@ public abstract class RecordedEventActionVisitorBase
             case MethodBodyRewriteRecordedEvent methodBodyRewriteArgs: Visit(metadata, methodBodyRewriteArgs); break;
             case StackTraceSnapshotRecordedEvent stackTraceSnapshotArgs: Visit(metadata, stackTraceSnapshotArgs); break;
             case StackTraceSnapshotsRecordedEvent stackTraceSnapshotsArgs: Visit(metadata, stackTraceSnapshotsArgs); break;
+            case FieldAccessInstrumentationRecordedEvent fieldAccessInstrumentationArgs: Visit(metadata, fieldAccessInstrumentationArgs); break;
             default: throw new NotSupportedException($"{nameof(RecordedEventActionVisitorBase)} does not support {args.GetType()}.");
         }
     }
@@ -127,6 +128,9 @@ public abstract class RecordedEventActionVisitorBase
         => DefaultVisit(metadata, args);
     
     protected virtual void Visit(RecordedEventMetadata metadata, StackTraceSnapshotsRecordedEvent args)
+        => DefaultVisit(metadata, args);
+    
+    protected virtual void Visit(RecordedEventMetadata metadata, FieldAccessInstrumentationRecordedEvent args)
         => DefaultVisit(metadata, args);
 
     protected virtual void DefaultVisit(RecordedEventMetadata metadata, IRecordedEventArgs args)

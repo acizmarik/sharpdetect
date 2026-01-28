@@ -7,5 +7,6 @@ public enum MetadataResolverErrorType
 {
     ModuleNotFound = 1,
     TypeNotFound = 2,
-    MethodNotFound = 3
+    MethodNotFound = 3,
+    FieldNotFound = 4,
 }

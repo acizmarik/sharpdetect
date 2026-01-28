@@ -9,8 +9,8 @@ namespace SharpDetect.Core.Plugins
     public class SummaryBuilder
     {
         private readonly TimeProvider _timeProvider;
-        private readonly Dictionary<string, string> _runtimeProperties;
-        private readonly Dictionary<string, string> _collectionProperties;
+        private readonly List<(string, string)> _runtimeProperties;
+        private readonly List<(string, string)> _collectionProperties;
         private readonly List<ModuleInfo> _modules;
         private readonly List<Report> _reports;
         private RuntimeInfo? _runtimeInfo;
@@ -66,13 +66,13 @@ namespace SharpDetect.Core.Plugins
 
         public SummaryBuilder AddRuntimeProperty(string name, string value)
         {
-            _runtimeProperties.Add(name, value);
+            _runtimeProperties.Add((name, value));
             return this;
         }
 
         public SummaryBuilder AddCollectionProperty(string name, string value)
         {
-            _collectionProperties.Add(name, value);
+            _collectionProperties.Add((name, value));
             return this;
         }
 
@@ -130,8 +130,8 @@ namespace SharpDetect.Core.Plugins
                 AnalysisEndTime: endTime,
                 AnalysisDuration: endTime - _startTime);
 
-            _collectionProperties.Add("GarbageCollectionsCount", _garbageCollectionsCount.ToString());
-            _collectionProperties.Add("MethodEnterExitCount", _methodEnterExitCount.ToString());
+            _collectionProperties.Add(("Garbage Collections Count", _garbageCollectionsCount.ToString()));
+            _collectionProperties.Add(("Method Enter/Exit Count", _methodEnterExitCount.ToString()));
             return new Summary(
                 title: _title,
                 description: _description,

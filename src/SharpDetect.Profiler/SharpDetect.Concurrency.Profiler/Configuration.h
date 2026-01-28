@@ -11,6 +11,7 @@
 #include "cor.h"
 
 #include "MethodDescriptor.h"
+#include "TypeInjectionDescriptor.h"
 
 namespace Profiler
 {
@@ -26,7 +27,9 @@ namespace Profiler
 		std::optional<std::string> commandQueueFile;
         UINT commandQueueSize;
 
-		std::vector<MethodDescriptor> additionalData;
+		std::vector<MethodDescriptor> methodDescriptors;
+		std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;
+		BOOL enableFieldsAccessInstrumentation;
 	};
 
 	void to_json(nlohmann::json& json, const Configuration& descriptor);

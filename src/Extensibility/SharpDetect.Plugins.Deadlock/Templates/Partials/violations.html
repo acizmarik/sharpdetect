@@ -1,0 +1,27 @@
+<div class="tab">
+    {{#reports}}
+    <button id="btn{{title}}" class="tablinks" data-group="violation-reports" onclick="openTab('{{title}}')">{{title}}</button>
+    {{/reports}}
+</div>
+{{#reports}}
+<div id="{{title}}" class="tabcontent" data-group="violation-reports">
+    <h2>Deadlock</h2>
+    <table class="styled-table">
+        <colgroup>
+            <col span="1" style="width: 30%;">
+            <col span="1" style="width: 70%;">
+        </colgroup>
+        <thead>
+        <tr>
+            <th>Variable</th>
+            <th>Value</th>
+        </tr>
+        </thead>
+        <tr>
+            <td>Timestamp</td>
+            <td>{{timestamp}}</td>
+        </tr>
+    </table>
+    {{> threads}}
+</div>
+{{/reports}}

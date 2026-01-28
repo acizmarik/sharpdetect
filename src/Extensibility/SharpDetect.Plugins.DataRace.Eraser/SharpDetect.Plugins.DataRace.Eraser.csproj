@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
+        <ProjectReference Include="..\SharpDetect.Plugins.Descriptors\SharpDetect.Plugins.Descriptors.csproj" />
+        <ProjectReference Include="..\SharpDetect.Plugins.PerThreadOrdering\SharpDetect.Plugins.PerThreadOrdering.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="Templates\Partials\violations.html">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>Eraser\Templates\Partials\violations.html</TargetPath>
+        </None>
+    </ItemGroup>
+
+</Project>

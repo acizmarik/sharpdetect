@@ -156,7 +156,7 @@ HRESULT Profiler::CorProfiler::ImportMethodDescriptors(
     const INT32 versionMinor,
     const INT32 versionBuild)
 {
-    for (auto&& item : _configuration.additionalData)
+    for (auto&& item : _configuration.methodDescriptors)
     {
         if (!item.versionDescriptor.has_value())
         {
@@ -377,7 +377,16 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
 
     LOG_F(INFO, "Loaded assembly: %s with handle (%" UINT_PTR_FORMAT ")", assemblyDef.GetName().c_str(), assemblyDef.GetAssemblyId());
     LOG_F(INFO, "Loaded module: %s with handle (%" UINT_PTR_FORMAT ")", moduleDef.GetFullPath().c_str(), moduleDef.GetModuleId());
-    
+
+    if (_coreModule == moduleId)
+    {
+        InjectTypesForProfilingFeatures(moduleDef);
+    }
+    else
+    {
+        ImportInjectedTypes(assemblyDef, moduleDef);
+    }
+
     WrapAnalyzedExternMethods(moduleDef);
     ImportMethodWrappers(assemblyDef, moduleDef);
     ImportCustomRecordedEventTypes(moduleDef);
@@ -506,8 +515,8 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
 
             rewritingsBuilder.emplace(methodDef, wrapperMethodDef);
             {
-                auto guard = std::unique_lock(_wrappersMutex);
-                _wrappers.emplace(std::make_pair(moduleDef.GetModuleId(), wrapperMethodDef), true);
+                auto guard = std::unique_lock(_methodStubsMutex);
+                _methodStubs.emplace(std::make_pair(moduleDef.GetModuleId(), wrapperMethodDef), true);
             }
 
             _client.Send(LibIPC::Helpers::CreateMethodWrapperInjectionMsg(CreateMetadataMsg(), moduleDef.GetModuleId(), typeDef, methodDef, wrapperMethodDef, wrapperMethodName));
@@ -698,6 +707,194 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(const LibProfiler:
     return S_OK;
 }
 
+HRESULT Profiler::CorProfiler::InjectTypesForProfilingFeatures(LibProfiler::ModuleDef &moduleDef)
+{
+    constexpr auto injectedTypeFlags = static_cast<CorTypeAttr>(
+        CorTypeAttr::tdClass |
+        CorTypeAttr::tdPublic |
+        CorTypeAttr::tdAbstract |
+        CorTypeAttr::tdSealed |
+        CorTypeAttr::tdBeforeFieldInit);
+    constexpr auto injectedMethodFlags = static_cast<CorMethodAttr>(
+        CorMethodAttr::mdPublic |
+        CorMethodAttr::mdStatic |
+        CorMethodAttr::mdHideBySig);
+    constexpr auto injectedMethodImplFlags = static_cast<CorMethodImpl>(
+        CorMethodImpl::miManaged |
+        CorMethodImpl::miNoInlining);
+    
+    mdTypeDef systemObjectTypeDef;
+    if (FAILED(moduleDef.FindTypeDef("System.Object", &systemObjectTypeDef)))
+    {
+        LOG_F(ERROR, "Could not find System.Object in module %s for type injection.",
+            moduleDef.GetName().c_str());
+        return E_FAIL;
+    }
+
+    for (auto& [typeFullName, methods] : _configuration.typeInjectionDescriptors)
+    {
+        mdTypeDef injectedTypeDef;
+        if (FAILED(moduleDef.AddTypeDef(
+            typeFullName,
+            injectedTypeFlags,
+            systemObjectTypeDef,
+            &injectedTypeDef)))
+        {
+            LOG_F(ERROR, "Could not inject type %s into module %s.",
+                typeFullName.c_str(),
+                moduleDef.GetName().c_str());
+            continue;
+        }
+
+        LOG_F(INFO, "Injected type %s (%d) into module %s.",
+            typeFullName.c_str(),
+            injectedTypeDef,
+            moduleDef.GetName().c_str());
+
+        std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods;
+        for (auto& [methodName, eventType, methodSignatureDescriptor] : methods)
+        {
+            mdMethodDef injectedMethodDef;
+            auto const methodSignature = SerializeMethodSignatureDescriptor(
+                methodSignatureDescriptor,
+                moduleDef);
+
+            if (FAILED(moduleDef.AddMethodDef(
+                methodName,
+                injectedMethodFlags,
+                injectedTypeDef,
+                methodSignature.data(),
+                methodSignature.size(),
+                injectedMethodImplFlags,
+                &injectedMethodDef)))
+            {
+                LOG_F(ERROR, "Could not inject method %s into type %s in module %s.",
+                    methodName.c_str(),
+                    typeFullName.c_str(),
+                    moduleDef.GetName().c_str());
+                continue;
+            }
+
+            void* rawNewMethodBody;
+            if (FAILED(moduleDef.AllocMethodBody(2, &rawNewMethodBody)))
+            {
+                LOG_F(ERROR, "Could not allocate memory for injected method %s in module %s.",
+                    methodName.c_str(),
+                    moduleDef.GetName().c_str());
+                return E_FAIL;
+            }
+            const auto newMethodBody = static_cast<BYTE*>(rawNewMethodBody);
+            *newMethodBody = static_cast<BYTE>(0b00000110);
+            *(newMethodBody + 1) = CEE_RET;
+            if (FAILED(_corProfilerInfo->SetILFunctionBody(moduleDef.GetModuleId(), injectedMethodDef, newMethodBody)))
+            {
+                LOG_F(ERROR, "Could not set method body for injected method %s in module %s.",
+                    methodName.c_str(),
+                    moduleDef.GetName().c_str());
+                return E_FAIL;
+            }
+
+            LOG_F(INFO, "Injected method %s (%d) into type %s in module %s.",
+                methodName.c_str(),
+                injectedMethodDef,
+                typeFullName.c_str(),
+                moduleDef.GetName().c_str());
+
+            injectedMethods.emplace(eventType, injectedMethodDef);
+            auto guard = std::unique_lock(_methodStubsMutex);
+            _methodStubs.emplace(std::make_pair(moduleDef.GetModuleId(), injectedMethodDef), true);
+        }
+
+        auto guard = std::unique_lock(_injectedMethodsMutex);
+        _injectedMethods.emplace(moduleDef.GetModuleId(), injectedMethods);
+    }
+
+    return S_OK;
+}
+
+HRESULT Profiler::CorProfiler::ImportInjectedTypes(
+    const LibProfiler::AssemblyDef &assemblyDef,
+    const LibProfiler::ModuleDef &moduleDef)
+{
+    if (_configuration.typeInjectionDescriptors.empty())
+        return S_OK;
+
+    const auto& coreModuleDef = *GetModuleDef(_coreModule).get();
+    const auto& coreAssemblyDef = *GetAssemblyDef(coreModuleDef.GetAssemblyId()).get();
+    const void* coreAssemblyPublicKeyData;
+    ULONG coreAssemblyPublicKeyDataSize;
+    ASSEMBLYMETADATA coreAssemblyMetadata{};
+    DWORD coreAssemblyFlags;
+    if (FAILED(coreAssemblyDef.GetProps(
+        &coreAssemblyPublicKeyData,
+        &coreAssemblyPublicKeyDataSize,
+        &coreAssemblyMetadata,
+        &coreAssemblyFlags)))
+    {
+        LOG_F(ERROR, "Could not obtain core assembly properties for type injection.");
+        return E_FAIL;
+    }
+
+    mdAssemblyRef coreAssemblyRef;
+    BOOL wasCoreAssemblyRefInjected;
+    if (FAILED(assemblyDef.AddOrGetAssemblyRef(
+        coreAssemblyDef.GetName(),
+        coreAssemblyPublicKeyData,
+        coreAssemblyPublicKeyDataSize,
+        coreAssemblyMetadata,
+        coreAssemblyFlags,
+        &coreAssemblyRef,
+        &wasCoreAssemblyRefInjected)))
+    {
+        LOG_F(ERROR, "Could not add reference to core assembly for type injection.");
+        return E_FAIL;
+    }
+
+    for (auto& [typeFullName, methods] : _configuration.typeInjectionDescriptors)
+    {
+        mdTypeRef typeRef;
+        if (FAILED(moduleDef.AddTypeRef(
+            coreAssemblyRef,
+            typeFullName,
+            &typeRef)))
+        {
+            LOG_F(ERROR, "Could not import injected type %s into module %s.",
+                typeFullName.c_str(),
+                moduleDef.GetName().c_str());
+        }
+
+        std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods;
+        for (auto& [methodName, eventType, methodSignatureDescriptor] : methods)
+        {
+            mdMemberRef methodRef;
+            auto const methodSignature = SerializeMethodSignatureDescriptor(
+                methodSignatureDescriptor,
+                moduleDef);
+
+            if (FAILED(moduleDef.AddMethodRef(
+                methodName,
+                typeRef,
+                methodSignature.data(),
+                methodSignature.size(),
+                &methodRef)))
+            {
+                LOG_F(ERROR, "Could not import injected method %s into type %s in module %s.",
+                    methodName.c_str(),
+                    typeFullName.c_str(),
+                    moduleDef.GetName().c_str());
+                continue;
+            }
+
+            injectedMethods.emplace(eventType, methodRef);
+        }
+
+        auto guard = std::unique_lock(_injectedMethodsMutex);
+        _injectedMethods.emplace(moduleDef.GetModuleId(), injectedMethods);
+    }
+
+    return S_OK;
+}
+
 BOOL Profiler::CorProfiler::FindCustomEventMapping(
     const CustomEventsLookup& lookup,
     ModuleID moduleId,
@@ -718,23 +915,36 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
 {
     {
         // If we are compiling injected method, skip it
-        auto guard = std::unique_lock<std::mutex>(_wrappersMutex);
-        if (_wrappers.contains(std::make_pair(moduleDef.GetModuleId(), mdMethodDef)))
+        auto guard = std::unique_lock<std::mutex>(_methodStubsMutex);
+        if (_methodStubs.contains(std::make_pair(moduleDef.GetModuleId(), mdMethodDef)))
             return E_FAIL;
     }
 
     // If there are no rewritings registered for current module, skip it
-    auto guard = std::unique_lock<std::mutex>(_rewritingsMutex);
+    auto guardRewritings = std::unique_lock<std::mutex>(_rewritingsMutex);
+    auto guardInjections = std::unique_lock<std::mutex>(_injectedMethodsMutex);
     const auto tokensToRewriteIterator = _rewritings.find(moduleDef.GetModuleId());
-    if (tokensToRewriteIterator == _rewritings.cend())
+    const auto injectedMethodsIterator = _injectedMethods.find(moduleDef.GetModuleId());
+    if (tokensToRewriteIterator == _rewritings.cend() && injectedMethodsIterator == _injectedMethods.cend())
         return E_FAIL;
 
-    const auto& tokensToRewrite = tokensToRewriteIterator->second;
+    static const std::unordered_map<mdToken, mdToken> emptyTokensMap;
+    static const std::unordered_map<LibIPC::RecordedEventType, mdToken> emptyInjectedMethodsMap;
+    const auto& tokensToRewrite = tokensToRewriteIterator != _rewritings.cend() 
+        ? tokensToRewriteIterator->second 
+        : emptyTokensMap;
+    const auto& injectedMethods = injectedMethodsIterator != _injectedMethods.cend() 
+        ? injectedMethodsIterator->second 
+        : emptyInjectedMethodsMap;
+    
     if (SUCCEEDED(LibProfiler::PatchMethodBody(
         *_corProfilerInfo,
+        _client,
         moduleDef,
         mdMethodDef,
-        tokensToRewrite)))
+        tokensToRewrite,
+        injectedMethods,
+        _configuration.enableFieldsAccessInstrumentation)))
     {
         _client.Send(LibIPC::Helpers::CreateMethodBodyRewriteMsg(
             CreateMetadataMsg(),

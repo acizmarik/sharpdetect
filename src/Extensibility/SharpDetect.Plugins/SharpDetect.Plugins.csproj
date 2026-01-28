@@ -1,20 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
+    <ProjectReference Include="..\SharpDetect.Plugins.DataRace.Eraser\SharpDetect.Plugins.DataRace.Eraser.csproj" />
+    <ProjectReference Include="..\SharpDetect.Plugins.Deadlock\SharpDetect.Plugins.Deadlock.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="SharpDetect.E2ETests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Deadlock\Templates\Partials\threads.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Deadlock\Templates\Partials\violations.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

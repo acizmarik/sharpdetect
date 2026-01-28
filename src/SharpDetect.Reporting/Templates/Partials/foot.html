@@ -1,4 +1,4 @@
-﻿<script>
+<script>
     function openTab(tabContentId) {
         const content = document.getElementById(tabContentId);
         const button = document.getElementById(`btn${tabContentId}`);
@@ -20,7 +20,18 @@
     }
 
     /* Initialize */
-    openTab(document.querySelector("div.tabcontent[data-group='1']").id);
-    openTab(document.querySelector("div.tabcontent[data-group='11']").id);
-    openTab(document.querySelector("div.tabcontent[data-group='111']").id);
+    openTab(document.querySelector("div.tabcontent[data-group='main-tabs']").id);
+    openTab(document.querySelector("div.tabcontent[data-group='violation-reports']").id);
+
+    /* Initialize first stacktrace tab for each report */
+    const reportGroups = new Set();
+    for (let tabContent of document.querySelectorAll("div.tabcontent[data-group^='report-']")) {
+        reportGroups.add(tabContent.getAttribute("data-group"));
+    }
+    for (let groupId of reportGroups) {
+        const firstTab = document.querySelector(`div.tabcontent[data-group='${groupId}']`);
+        if (firstTab) {
+            openTab(firstTab.id);
+        }
+    }
 </script>

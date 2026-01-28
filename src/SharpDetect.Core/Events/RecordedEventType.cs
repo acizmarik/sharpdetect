@@ -53,6 +53,13 @@ public enum RecordedEventType : ushort
     /* Stack trace snapshots */
     StackTraceSnapshot = 36,
     StackTraceSnapshots = 37,
+    //Reserved = 38,
+    //Reserved = 39,
+
+    /* Instrumentation */
+    FieldAccessInstrumentation = 40,
+    StaticFieldRead = 41,
+    StaticFieldWrite = 42,
 
     /* Synchronization */
     MonitorLockAcquire = 100,

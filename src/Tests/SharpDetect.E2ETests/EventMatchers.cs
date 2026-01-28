@@ -12,7 +12,7 @@ public static class EventMatchers
     public static AtomicPredicate<ulong, RecordedEventType> EventType(RecordedEventType type) =>
         new(evt => evt.Type == type, description: $"EventType({type})");
 
-    public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, TestHappensBeforePlugin plugin)
+    public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, TestExecutionOrderingPlugin plugin)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(
             evt =>
@@ -21,13 +21,17 @@ public static class EventMatchers
                     return false;
 
                 var (metadata, args) = evt.Get<(RecordedEventMetadata, MethodEnterRecordedEvent)>();
-                var method = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                var resolveResult = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                if (resolveResult.IsError)
+                    return false;
+
+                var method = resolveResult.Value;
                 return method.Name.StartsWith(methodName);
             },
             description: $"MethodEnter({methodName})");
     }
 
-    public static AtomicPredicate<ulong, RecordedEventType> MethodExit(string methodName, TestHappensBeforePlugin plugin)
+    public static AtomicPredicate<ulong, RecordedEventType> MethodExit(string methodName, TestExecutionOrderingPlugin plugin)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(
             evt =>
@@ -36,7 +40,11 @@ public static class EventMatchers
                     return false;
 
                 var (metadata, args) = evt.Get<(RecordedEventMetadata, MethodExitRecordedEvent)>();
-                var method = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                var resolveResult = plugin.Resolve(metadata, args.ModuleId, args.MethodToken);
+                if (resolveResult.IsError)
+                    return false;
+
+                var method = resolveResult.Value;
                 return method.Name.StartsWith(methodName);
             },
             description: $"MethodExit({methodName})");

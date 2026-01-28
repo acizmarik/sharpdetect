@@ -164,3 +164,10 @@ public sealed record StackTraceSnapshotRecordedEvent(
 public sealed record StackTraceSnapshotsRecordedEvent(
     [property: Key(0)] StackTraceSnapshotRecordedEvent[] Snapshots) : IRecordedEventArgs;
 
+[MessagePackObject]
+public sealed record FieldAccessInstrumentationRecordedEvent(
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken,
+    [property: Key(2)] uint MethodOffset,
+    [property: Key(3)] MdToken FieldToken,
+    [property: Key(4)] ulong InstrumentationId) : IRecordedEventArgs;

@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Extensibility\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
+    <ProjectReference Include="..\..\Extensibility\SharpDetect.Plugins.DataRace.Eraser\SharpDetect.Plugins.DataRace.Eraser.csproj" />
     <ProjectReference Include="..\..\SharpDetect.Worker\SharpDetect.Worker.csproj" />
     <ProjectReference Include="..\SharpDetect.E2ETests.Subject\SharpDetect.E2ETests.Subject.csproj" />
     <ProjectReference Include="..\SharpDetect.TemporalAsserts\SharpDetect.TemporalAsserts.csproj" />
@@ -121,6 +122,36 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="ShadowCallstackTestConfigurations\ShadowCallstack_Monitor_ExitIfLockTaken.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ValueType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ValueType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\StaticField_ReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_NoDataRace_ReferenceType_Static.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_NoDataRace_ValueType_Static.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ReferenceType_Static_SimpleRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ValueType_Static_SimpleRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ReferenceType_Static_BadLocking.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ValueType_Static_BadLocking.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

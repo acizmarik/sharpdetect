@@ -189,3 +189,9 @@ StackTraceSnapshotsMsg Helpers::CreateStackTraceSnapshotsMsg(MetadataMsg&& metad
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::StackTraceSnapshots);
     return { std::move(metadataMsg), StackTraceSnapshotsMsgArgsInstance(discriminator, StackTraceSnapshotsMsgArgs(std::move(snapshots))) };
 }
+
+FieldAccessInstrumentationMsg Helpers::CreateFieldAccessInstrumentationMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, UINT32 methodOffset, UINT32 fieldToken, UINT64 instrumentationMark)
+{
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::FieldAccessInstrumentation);
+    return { std::move(metadataMsg), FieldAccessInstrumentationMsgArgsInstance(discriminator, FieldAccessInstrumentationMsgArgs(moduleId, mdMethodDef, methodOffset, fieldToken, instrumentationMark)) };
+}

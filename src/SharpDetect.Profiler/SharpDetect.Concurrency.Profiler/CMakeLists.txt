@@ -6,7 +6,9 @@ set(SOURCES
     "MethodDescriptor.cpp"
     "MethodVersionDescriptor.cpp"
     "MethodRewritingDescriptor.cpp"
-    "MethodSignatureDescriptor.cpp")
+    "MethodSignatureDescriptor.cpp"
+    "MethodInjectionDescriptor.cpp"
+    "TypeInjectionDescriptor.cpp")
 
 add_library (SharpDetect.Concurrency.Profiler SHARED ${SOURCES} "Profiler.def")
 target_link_libraries (SharpDetect.Concurrency.Profiler PRIVATE LibProfiler LibIPC)

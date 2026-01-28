@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Loader;
+using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
 
@@ -17,9 +18,12 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected SummaryBuilder Reporter { get; }
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
-    protected IReadOnlyDictionary<ProcessThreadId, string> Threads => _threads;
+    protected IMetadataContext MetadataContext { get; }
+    protected IReadOnlyDictionary<ProcessThreadId, string> Threads { get; }
+    protected IReadOnlyDictionary<InstrumentationPointId, InstrumentedFieldAccess> InstrumentedFieldAccesses { get; }
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
     private readonly Dictionary<ProcessThreadId, string> _threads;
+    private readonly Dictionary<InstrumentationPointId, InstrumentedFieldAccess> _instrumentedFieldAccesses;
     private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
     private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
     private int _nextFreeThreadId;
@@ -27,17 +31,23 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected PluginBase(
         IModuleBindContext moduleBindContext,
+        IMetadataContext metadataContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         TimeProvider timeProvider,
         ILogger logger)
     {
         ModuleBindContext = moduleBindContext;
+        MetadataContext = metadataContext;
         Reporter = new SummaryBuilder(timeProvider);
         Logger = logger;
         _profilerCommandSenderProvider = profilerCommandSenderProvider;
         _profilerCommandSenders = ImmutableDictionary<int, IProfilerCommandSender>.Empty;
         _callstacks = [];
         _threads = [];
+        _instrumentedFieldAccesses = [];
+
+        Threads = _threads;
+        InstrumentedFieldAccesses = _instrumentedFieldAccesses;
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ProfilerLoadRecordedEvent args)
@@ -64,7 +74,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)
     {
-        var result = ModuleBindContext.TryGetModule(metadata.Pid, args.ModuleId);
+        var result = ModuleBindContext.LoadModule(metadata, args.ModuleId, args.Path);
         if (result.IsError)
             return;
 
@@ -128,6 +138,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected override void Visit(RecordedEventMetadata metadata, MethodWrapperInjectionRecordedEvent args)
     {
+        MetadataContext.GetEmitter(metadata.Pid).Emit(args.ModuleId, args.WrapperMethodToken, args.WrappedMethodToken);
         Reporter.IncrementInjectedMethodsCounter();
     }
 
@@ -168,6 +179,14 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         _callstacks[id].Pop();
+        base.Visit(metadata, args);
+    }
+    
+    protected override void Visit(RecordedEventMetadata metadata, FieldAccessInstrumentationRecordedEvent args)
+    {
+        var instrumentationId = new InstrumentationPointId(metadata.Pid, args.InstrumentationId);
+        var instrumentedFieldAccess = new InstrumentedFieldAccess(args.ModuleId, args.MethodToken, args.FieldToken);
+        _instrumentedFieldAccesses.Add(instrumentationId, instrumentedFieldAccess);
         base.Visit(metadata, args);
     }
 

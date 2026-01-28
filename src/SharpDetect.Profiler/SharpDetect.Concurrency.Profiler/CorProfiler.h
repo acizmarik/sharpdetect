@@ -22,6 +22,7 @@
 #include "Configuration.h"
 #include "HashingUtils.h"
 #include "MethodDescriptor.h"
+#include "TypeInjectionDescriptor.h"
 
 namespace Profiler
 {
@@ -67,6 +68,9 @@ namespace Profiler
 		HRESULT ImportMethodWrapper(const LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
 		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef);
 
+		HRESULT InjectTypesForProfilingFeatures(LibProfiler::ModuleDef& moduleDef);
+		HRESULT ImportInjectedTypes(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
+
 		HRESULT InitializeProfilingFeatures() const;
 		HRESULT ImportMethodDescriptors(INT32 versionMajor, INT32 versionMinor, INT32 versionBuild);
 
@@ -107,10 +111,13 @@ namespace Profiler
 		std::unordered_map<ModuleID, std::unordered_map<mdToken, mdToken>> _rewritings;
 		std::mutex _rewritingsMutex;
 
+		std::unordered_map<ModuleID, std::unordered_map<LibIPC::RecordedEventType, mdToken>> _injectedMethods;
+		std::mutex _injectedMethodsMutex;
+
 		using MethodId = std::pair<ModuleID, mdMethodDef>;
 		using MethodIdHasher = pair_hash<ModuleID, mdMethodDef>;
-		std::unordered_map<MethodId, BOOL, MethodIdHasher> _wrappers;
-		std::mutex _wrappersMutex;
+		std::unordered_map<MethodId, BOOL, MethodIdHasher> _methodStubs;
+		std::mutex _methodStubsMutex;
 
 		LibProfiler::ObjectsTracker _objectsTracker;
 		std::vector< std::shared_ptr<MethodDescriptor>> _methodDescriptors;

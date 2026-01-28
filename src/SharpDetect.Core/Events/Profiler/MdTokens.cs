@@ -6,7 +6,7 @@ using MessagePack;
 namespace SharpDetect.Core.Events.Profiler;
 
 [MessagePackObject]
-public readonly record struct MdTokens([property: Key(0)] int Value)
+public readonly record struct MdToken([property: Key(0)] int Value)
 {
     public const uint RID_MASK = 0xFF000000;
 

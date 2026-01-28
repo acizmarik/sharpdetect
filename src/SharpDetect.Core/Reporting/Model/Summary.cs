@@ -15,8 +15,8 @@ public class Summary
     public readonly TimingInfo TimingInfo;
     public readonly EnvironmentInfo EnvironmentInfo;
     private readonly ImmutableArray<Report> _reports;
-    private readonly Dictionary<string, string> _collectionProperties;
-    private readonly Dictionary<string, string> _runtimeProperties;
+    private readonly ImmutableArray<(string, string)> _collectionProperties;
+    private readonly ImmutableArray<(string, string)> _runtimeProperties;
     private readonly ImmutableArray<ModuleInfo> _modules;
 
     public Summary(
@@ -26,8 +26,8 @@ public class Summary
         RewritingInfo rewritingInfo,
         TimingInfo timingInfo,
         EnvironmentInfo environmentInfo,
-        Dictionary<string, string> runtimeProps,
-        Dictionary<string, string> collectionProps,
+        IEnumerable<(string, string)> runtimeProps,
+        IEnumerable<(string, string)> collectionProps,
         IEnumerable<ModuleInfo> modules,
         IEnumerable<Report> reports)
     {
@@ -37,17 +37,17 @@ public class Summary
         RewritingInfo = rewritingInfo;
         TimingInfo = timingInfo;
         EnvironmentInfo = environmentInfo;
-        _runtimeProperties = runtimeProps;
-        _collectionProperties = collectionProps;
-        _modules = modules.ToImmutableArray();
-        _reports = reports.ToImmutableArray();
+        _runtimeProperties = [..runtimeProps];
+        _collectionProperties = [..collectionProps];
+        _modules = [..modules];
+        _reports = [..reports];
 
     }
 
-    public IReadOnlyDictionary<string, string> GetRuntimeProperties()
+    public ImmutableArray<(string Key, string Value)> GetRuntimeProperties()
         => _runtimeProperties;
 
-    public IReadOnlyDictionary<string, string> GetCollectionProperties()
+    public ImmutableArray<(string Key, string Value)> GetCollectionProperties()
         => _collectionProperties;
 
     public IEnumerable<ModuleInfo> GetAllModules()
