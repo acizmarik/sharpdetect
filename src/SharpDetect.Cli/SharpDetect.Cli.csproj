@@ -31,9 +31,5 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
-    
-  <ItemGroup>
-    <InternalsVisibleTo Include="SharpDetect.E2ETests" />
-  </ItemGroup>
 
 </Project>

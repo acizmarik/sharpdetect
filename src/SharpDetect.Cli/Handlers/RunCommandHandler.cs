@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
+using SharpDetect.Core.Reporting.Model;
 using SharpDetect.Worker;
 using SharpDetect.Worker.Commands;
 using SharpDetect.Worker.Commands.Run;
@@ -43,40 +44,23 @@ internal sealed class RunCommandHandler : IDisposable
         var worker = _serviceProvider.GetRequiredService<IAnalysisWorker>();
         await worker.ExecuteAsync(cancellationToken);
         
-        // Render and store report
-        var timeProvider = _serviceProvider.GetRequiredService<TimeProvider>();
-        var reportContent = GenerateReportSummary();
-        var reportsFolder = _arguments.Analysis.ReportsFolder;
-        var reportFileName = _arguments.Analysis.ReportFileName;
-        var fullPath = await StoreReport(reportFileName, reportsFolder, reportContent, timeProvider, cancellationToken);
-        await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(fullPath)}.");
+        // Create report summary
+        var plugin = _serviceProvider.GetRequiredService<IPlugin>();
+        var reportSummary = plugin.CreateDiagnostics();
+        
+        // Persist report summary
+        var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, cancellationToken);
+        await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(reportFullPath)}.");
     }
 
-    internal static Task<string> StoreReport(
-        string content,
-        TimeProvider timeProvider,
-        CancellationToken ct)
+    private Task<string> RenderAndWriteReport(IPlugin plugin, Summary reportSummary, CancellationToken cancellationToken)
     {
-        return StoreReport(reportFileName: null, reportsFolder: null, content, timeProvider, ct);
-    }
-    
-    private static async Task<string> StoreReport(
-        string? reportFileName,
-        string? reportsFolder,
-        string content,
-        TimeProvider timeProvider,
-        CancellationToken cancellationToken)
-    {
-        // Use default report folder and file name if not specified
-        reportsFolder ??= Directory.GetCurrentDirectory();
-        reportFileName ??= $"SharpDetect_Report_{timeProvider.GetUtcNow().DateTime:yyyyMMdd_HHmmss}.html";
-        
-        // Ensure reports folder exists
-        Directory.CreateDirectory(reportsFolder);
-        
-        var fullPath = Path.Combine(reportsFolder, reportFileName);
-        await File.WriteAllTextAsync(fullPath, content, cancellationToken);
-        return fullPath;
+        var reportDirectory = _arguments.Analysis.ReportsFolder;
+        var reportFileName = _arguments.Analysis.ReportFileName;
+        var writer = _serviceProvider.GetRequiredService<IReportSummaryWriter>();
+        var renderer = _serviceProvider.GetRequiredService<IReportSummaryRenderer>();
+        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates);
+        return writer.Write(reportFileName, reportDirectory, context, renderer, cancellationToken);
     }
 
     private Type LoadPluginInfo()
@@ -96,13 +80,6 @@ internal sealed class RunCommandHandler : IDisposable
         }
     }
     
-    private string GenerateReportSummary()
-    {
-        var plugin = _serviceProvider.GetRequiredService<IPlugin>();
-        var reportRenderer = _serviceProvider.GetRequiredService<IReportSummaryRenderer>();
-        return reportRenderer.Render(plugin.CreateDiagnostics(), plugin, plugin.ReportTemplates);
-    }
-
     public void Dispose()
     {
         if (_disposed)

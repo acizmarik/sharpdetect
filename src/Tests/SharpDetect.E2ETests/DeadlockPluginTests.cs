@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
-using SharpDetect.Cli.Handlers;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
 using SharpDetect.E2ETests.Utils;
@@ -80,22 +79,21 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     {
         // Arrange
         var timeProvider = new TestTimeProvider(DateTimeOffset.MinValue);
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = TestContextFactory.CreateServiceProvider(
             configuration, sdk, pluginAdditionalData, testOutput, timeProvider);
         var plugin = services.GetRequiredService<IPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var reportRenderer = services.GetRequiredService<IReportSummaryRenderer>();
+        var reportWriter = services.GetRequiredService<IReportSummaryWriter>();
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         var summary = plugin.CreateDiagnostics();
-        var renderedContent = string.Empty;
-        var exception = Record.Exception(() => renderedContent = reportRenderer.Render(summary, plugin, plugin.ReportTemplates));
+        var context = new SummaryRenderingContext(summary, plugin, plugin.ReportTemplates);
+        var exception = await Record.ExceptionAsync(() => reportWriter.Write(context, reportRenderer, CancellationToken.None));
 
         // Assert
-        Assert.Null(exception);
-        exception = await Record.ExceptionAsync(() => RunCommandHandler.StoreReport(renderedContent, timeProvider, CancellationToken.None));
         Assert.Null(exception);
     }
     
