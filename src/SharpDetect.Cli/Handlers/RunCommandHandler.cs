@@ -44,16 +44,36 @@ internal sealed class RunCommandHandler : IDisposable
         await worker.ExecuteAsync(cancellationToken);
         
         // Render and store report
-        var report = GenerateReportSummary();
-        var reportsFolder = _arguments.Analysis.ReportsFolder ?? Directory.GetCurrentDirectory();
-        var fileName = $"SharpDetect_Report_{TimeProvider.System.GetUtcNow().DateTime:O}.html";
-        var fullPath = Path.Combine(reportsFolder, fileName);
+        var reportContent = GenerateReportSummary();
+        var reportsFolder = _arguments.Analysis.ReportsFolder;
+        var reportFileName = _arguments.Analysis.ReportFileName;
+        var fullPath = await StoreReport(reportFileName, reportsFolder, reportContent, cancellationToken);
+        await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(fullPath)}.");
+    }
+
+    internal static Task<string> StoreReport(
+        string content,
+        CancellationToken ct)
+    {
+        return StoreReport(reportFileName: null, reportsFolder: null, content, ct);
+    }
+    
+    private static async Task<string> StoreReport(
+        string? reportFileName,
+        string? reportsFolder,
+        string content,
+        CancellationToken cancellationToken)
+    {
+        // Use default report folder and file name if not specified
+        reportsFolder ??= Directory.GetCurrentDirectory();
+        reportFileName ??= $"SharpDetect_Report_{TimeProvider.System.GetUtcNow().DateTime:yyyyMMdd_HHmmss}.html";
         
         // Ensure reports folder exists
         Directory.CreateDirectory(reportsFolder);
         
-        await StoreReportSummary(report, fullPath, cancellationToken);
-        await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(fullPath)}.");
+        var fullPath = Path.Combine(reportsFolder, reportFileName);
+        await File.WriteAllTextAsync(fullPath, content, cancellationToken);
+        return fullPath;
     }
 
     private Type LoadPluginInfo()
@@ -80,11 +100,6 @@ internal sealed class RunCommandHandler : IDisposable
         var plugin = _serviceProvider.GetRequiredService<IPlugin>();
         var reportRenderer = _serviceProvider.GetRequiredService<IReportSummaryRenderer>();
         return reportRenderer.Render(plugin.CreateDiagnostics(), plugin, plugin.ReportTemplates);
-    }
-    
-    private static Task StoreReportSummary(string reportSummary, string filename, CancellationToken cancellationToken)
-    {
-        return File.WriteAllTextAsync(filename, reportSummary, cancellationToken);
     }
 
     public void Dispose()
