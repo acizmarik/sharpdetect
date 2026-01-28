@@ -26,12 +26,12 @@
     <h2>Stack Traces</h2>
     <div class="tab">
         {{#threads}}
-        <button id="btn{{../reportId}}-{{name}}" class="tablinks" data-group="111" onclick="openTab('{{../reportId}}-{{name}}')">{{name}}</button>
+        <button id="btn{{../reportId}}-{{name}}" class="tablinks" data-group="{{../reportId}}" onclick="openTab('{{../reportId}}-{{name}}')">{{name}}</button>
         {{/threads}}
     </div>
 
     {{#threads}}
-    <div id="{{../reportId}}-{{name}}" class="tabcontent" data-group="111">
+    <div id="{{../reportId}}-{{name}}" class="tabcontent" data-group="{{../reportId}}">
         <div class="stacktrace">
             {{#stacktrace}}
             <div class="stackframe">
