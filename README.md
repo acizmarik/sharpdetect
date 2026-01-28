@@ -71,7 +71,7 @@ warn: SharpDetect.Core.Plugins.PluginBase[0]
 
 When the target program terminates, you should see a confirmation that the report has been generated:
 ```text
-Report stored to file: /home/user/Workspace/SharpDetect_Report_2025-12-23T09:58:28.5087901.html.
+Report stored to file: /home/user/Workspace/SharpDetect_Report_20251223_095828.html.
 ```
 
 Reports are self-contained HTML files that can be opened in any modern web browser.
