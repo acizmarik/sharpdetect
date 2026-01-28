@@ -14,5 +14,7 @@ public static class ServiceCollectionExtensions
         var rootFolder = Path.GetDirectoryName(typeof(ServiceCollectionExtensions).Assembly.Location)!;
         var partialsFolder = Path.Combine(rootFolder, "Templates/Partials");
 
-        services.AddSingleton<IReportSummaryRenderer>(p => new HtmlReportRenderer(new DirectoryInfo(partialsFolder))); }
+        services.AddSingleton<IReportSummaryRenderer>(p => new HtmlReportRenderer(new DirectoryInfo(partialsFolder)));
+        services.AddSingleton<IReportSummaryWriter, ReportWriter>();
+    }
 }

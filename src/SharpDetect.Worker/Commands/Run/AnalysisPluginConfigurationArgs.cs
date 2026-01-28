@@ -12,4 +12,5 @@ public record AnalysisPluginConfigurationArgs(
     bool RenderReport = false,
     LogLevel LogLevel = LogLevel.Warning,
     string? TemporaryFilesFolder = null,
-    string? ReportsFolder = null);
+    string? ReportsFolder = null,
+    string? ReportFileName = null);

@@ -23,10 +23,10 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
         _template = File.ReadAllText(baseTemplateFile.FullName);
     }
 
-    public string Render(Summary summary, IPlugin plugin, DirectoryInfo additionalPartials)
+    public string Render(SummaryRenderingContext context)
     {
-        var environment = CreateEnvironment(additionalPartials);
-        var dataContent = BuildDataContext(plugin, summary);
+        var environment = CreateEnvironment(context.AdditionalPartials);
+        var dataContent = BuildDataContext(context.Plugin, context.Summary);
         var compiledTemplate = environment.Compile(_template);
         return compiledTemplate(dataContent);
     }

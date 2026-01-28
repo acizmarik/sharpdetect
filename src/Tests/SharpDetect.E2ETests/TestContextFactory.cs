@@ -20,6 +20,16 @@ internal static class TestContextFactory
         TestPluginAdditionalData additionalData,
         ITestOutputHelper output)
     {
+        return CreateServiceProvider(filename, sdk, additionalData, output, TimeProvider.System);
+    }
+    
+    public static TestDisposableServiceProvider CreateServiceProvider(
+        string filename,
+        string sdk,
+        TestPluginAdditionalData additionalData,
+        ITestOutputHelper output,
+        TimeProvider timeProvider)
+    {
         #if DEBUG
         var buildConfiguration = "Debug";
         #elif RELEASE
@@ -44,7 +54,7 @@ internal static class TestContextFactory
                          ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.FullTypeName}.");
             
         return new TestDisposableServiceProvider(new AnalysisServiceProviderBuilder(args)
-            .WithTimeProvider(TimeProvider.System)
+            .WithTimeProvider(timeProvider)
             .WithPlugin(pluginType)
             .ConfigureServices(services =>
             {

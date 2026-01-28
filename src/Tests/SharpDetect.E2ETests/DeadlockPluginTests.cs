@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Core.Plugins;
+using SharpDetect.Core.Reporting;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.Worker;
 using Xunit;
@@ -70,6 +71,30 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     public Task DeadlockPlugin_CanDetectMixedDeadlock(string configuration, string sdk)
     {
         return CanDetectDeadlock(configuration, sdk);
+    }
+    
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanRenderReport)}.json", "net10.0")]
+    public async Task DeadlockPlugin_CanRenderReport(string configuration, string sdk)
+    {
+        // Arrange
+        var timeProvider = new TestTimeProvider(DateTimeOffset.MinValue);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput, timeProvider);
+        var plugin = services.GetRequiredService<IPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var reportRenderer = services.GetRequiredService<IReportSummaryRenderer>();
+        var reportWriter = services.GetRequiredService<IReportSummaryWriter>();
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var summary = plugin.CreateDiagnostics();
+        var context = new SummaryRenderingContext(summary, plugin, plugin.ReportTemplates);
+        var exception = await Record.ExceptionAsync(() => reportWriter.Write(context, reportRenderer, CancellationToken.None));
+
+        // Assert
+        Assert.Null(exception);
     }
     
     private async Task CanDetectDeadlock(string configuration, string sdk)

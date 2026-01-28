@@ -154,6 +154,12 @@
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ValueType_Static_BadLocking.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanRenderReport.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanRenderReport.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

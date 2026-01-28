@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
+using SharpDetect.Core.Reporting;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.Worker;
 using Xunit;
@@ -66,6 +67,30 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task EraserPlugin_CanDetectDataRace_ValueType_Static_BadLocking(string configuration, string sdk)
     {
         return AssertDetectsDataRace(configuration, sdk);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanRenderReport)}.json", "net10.0")]
+    public async Task EraserPlugin_CanRenderReport(string configuration, string sdk)
+    {
+        // Arrange
+        var timeProvider = new TestTimeProvider(DateTimeOffset.MinValue);
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput, timeProvider);
+        var plugin = services.GetRequiredService<TestEraserPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var reportRenderer = services.GetRequiredService<IReportSummaryRenderer>();
+        var reportWriter = services.GetRequiredService<IReportSummaryWriter>();
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var summary = plugin.CreateDiagnostics();
+        var context = new SummaryRenderingContext(summary, plugin, plugin.ReportTemplates);
+        var exception = await Record.ExceptionAsync(() => reportWriter.Write(context, reportRenderer, CancellationToken.None));
+
+        // Assert
+        Assert.Null(exception);
     }
     
     private async Task AssertDetectsDataRace(string configuration, string sdk)
