@@ -63,9 +63,10 @@ internal sealed class EraserStateMachine(LockSetTable lockSetTable)
             ? ShadowVariable.CreateSharedModified(newLockSet)
             : ShadowVariable.CreateShared(newLockSet);
 
+        var isRaceDetected = newState == ShadowVariableState.SharedModified && newLockSet.IsEmpty;
         return new TransitionResult(
             NewShadow: newShadow,
-            IsRaceDetected: newLockSet.IsEmpty,
+            isRaceDetected,
             PreviousState: ShadowVariableState.Exclusive,
             NewState: newState,
             ResultingLockSet: newLockSet);
@@ -84,9 +85,10 @@ internal sealed class EraserStateMachine(LockSetTable lockSetTable)
             ? ShadowVariable.CreateSharedModified(newLockSet)
             : ShadowVariable.CreateShared(newLockSet);
 
+        var isRaceDetected = newState == ShadowVariableState.SharedModified && newLockSet.IsEmpty;
         return new TransitionResult(
             NewShadow: newShadow,
-            IsRaceDetected: newLockSet.IsEmpty,
+            isRaceDetected,
             PreviousState: previousState,
             NewState: newState,
             ResultingLockSet: newLockSet);
