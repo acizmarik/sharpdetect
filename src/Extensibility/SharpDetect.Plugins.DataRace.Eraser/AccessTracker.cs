@@ -8,15 +8,23 @@ namespace SharpDetect.Plugins.DataRace.Eraser;
 internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThreadId, string?> threadNameResolver)
 {
     private readonly Dictionary<FieldId, AccessInfo> _lastAccessInfo = [];
+    private readonly Dictionary<FieldId, AccessInfo> _lastWriteAccessInfo = [];
     
     public AccessInfo? GetLastAccess(FieldId fieldId)
     {
         return _lastAccessInfo.GetValueOrDefault(fieldId);
     }
+    
+    public AccessInfo? GetLastWriteAccess(FieldId fieldId)
+    {
+        return _lastWriteAccessInfo.GetValueOrDefault(fieldId);
+    }
 
     public void RecordAccess(FieldId fieldId, AccessInfo accessInfo)
     {
         _lastAccessInfo[fieldId] = accessInfo;
+        if (accessInfo.AccessType == AccessType.Write)
+            _lastWriteAccessInfo[fieldId] = accessInfo;
     }
     
     public AccessInfo CreateAccessInfo(

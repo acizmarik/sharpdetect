@@ -107,17 +107,21 @@ internal sealed class EraserDetector
         var transitionResult = _stateMachine.ComputeTransition(threadId, shadow, threadLockSet, isWrite);
         _shadowMemory.Update(fieldId, transitionResult.NewShadow);
         var accessType = isWrite ? AccessType.Write : AccessType.Read;
-        var lastAccess = _accessTracker.GetLastAccess(fieldId);
         var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, accessType);
+        var lastRelevantAccess = isWrite 
+            ? _accessTracker.GetLastAccess(fieldId) 
+            : _accessTracker.GetLastWriteAccess(fieldId);
         _accessTracker.RecordAccess(fieldId, currentAccess);
-        if (!transitionResult.IsRaceDetected)
+        if (!transitionResult.IsRaceDetected || 
+            lastRelevantAccess == null || 
+            lastRelevantAccess.ProcessThreadId == threadId)
             return null;
-
+        
         return new DataRaceInfo(
             ProcessId: threadId.ProcessId,
             FieldId: fieldId,
             CurrentAccess: currentAccess,
-            LastAccess: lastAccess,
+            LastAccess: lastRelevantAccess,
             PreviousState: transitionResult.PreviousState,
             NewState: transitionResult.NewState,
             CandidateLockSet: transitionResult.ResultingLockSet,
