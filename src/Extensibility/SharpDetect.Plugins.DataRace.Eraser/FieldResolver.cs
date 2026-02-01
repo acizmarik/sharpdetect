@@ -13,6 +13,7 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
 {
     private readonly record struct ResolvedFieldInfo(FieldDef FieldDef, FieldFlags Flags);
     private readonly Dictionary<FieldDefOrRef, ResolvedFieldInfo> _resolvedFields = [];
+    private TypeDef? _delegateTypeDef;
 
     public bool TryResolve(
         uint processId,
@@ -54,12 +55,12 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
     
     public static bool ShouldExcludeFromAnalysis(FieldFlags flags)
     {
-        // Readonly and thread-static fields cannot be involved in data races
         return flags.HasFlag(FieldFlags.IsReadOnly) || 
-               flags.HasFlag(FieldFlags.IsThreadStatic);
+               flags.HasFlag(FieldFlags.IsThreadStatic) ||
+               flags.HasFlag(FieldFlags.IsStaticDelegateType);
     }
 
-    private static FieldFlags ComputeFieldFlags(FieldDef fieldDef)
+    private FieldFlags ComputeFieldFlags(FieldDef fieldDef)
     {
         var flags = FieldFlags.None;
         
@@ -68,6 +69,9 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
         
         if (IsFieldThreadStatic(fieldDef))
             flags |= FieldFlags.IsThreadStatic;
+        
+        if (IsStaticDelegateField(fieldDef))
+            flags |= FieldFlags.IsStaticDelegateType;
         
         return flags;
     }
@@ -81,5 +85,30 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
     {
         return fieldDef.CustomAttributes.Any(a => 
             a.AttributeType.FullName.Equals("System.ThreadStaticAttribute", StringComparison.Ordinal));
+    }
+
+    private bool IsStaticDelegateField(FieldDef fieldDef)
+    {
+        return fieldDef.IsStatic && IsDelegateField(fieldDef);
+    }
+
+    private bool IsDelegateField(FieldDef fieldDef)
+    {
+        var fieldType = fieldDef.FieldType;
+        var typeDef = fieldType.ToTypeDefOrRef()?.ResolveTypeDef();
+        
+        _delegateTypeDef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(@namespace: "System", name: "Delegate")
+            .ResolveTypeDef();
+        
+        while (typeDef != null)
+        {
+            if (typeDef == _delegateTypeDef)
+                return true;
+            
+            typeDef = typeDef.BaseType?.ResolveTypeDef();
+        }
+
+        return false;
     }
 }
