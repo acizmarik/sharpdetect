@@ -756,125 +756,145 @@ namespace SharpDetect.E2ETests.Subject
             mutex.WaitOne(_waitTimeout);
         }
 
-        public static void Test_DataRace_ReferenceType_Static_SimpleRace()
+        public static void Test_DataRace_ReferenceType_Static_ReadWriteRace()
         {
-            var task1 = Task.Run(() => DataRace.Test_DataRace_ReferenceType_Static = new object());
-            var task2 = Task.Run(() => DataRace.Test_DataRace_ReferenceType_Static = new object());
+            DataRace.Test_DataRace_ReferenceType_Static = new object();
+            var task1 = Task.Run(() => { _ = DataRace.Test_DataRace_ReferenceType_Static; });
+            var task2 = Task.Run(() => { DataRace.Test_DataRace_ReferenceType_Static = new object(); });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_DataRace_ReferenceType_Instance_SimpleRace()
+        public static void Test_DataRace_ValueType_Static_ReadWriteRace()
+        {
+            DataRace.Test_DataRace_ValueType_Static = 0;
+            var task1 = Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; });
+            var task2 = Task.Run(() => { DataRace.Test_DataRace_ValueType_Static = 123; });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_DataRace_ReferenceType_Instance_ReadWriteRace()
         {
             var instance = new DataRace();
-            var task1 = Task.Run(() => instance.Test_DataRace_ReferenceType_Instance = new object());
-            var task2 = Task.Run(() => instance.Test_DataRace_ReferenceType_Instance = new object());
+            instance.Test_DataRace_ReferenceType_Instance = new object();
+            var task1 = Task.Run(() => { _ = instance.Test_DataRace_ReferenceType_Instance; });
+            var task2 = Task.Run(() => { instance.Test_DataRace_ReferenceType_Instance = new object(); });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_DataRace_ValueType_Static_SimpleRace()
-        {
-            var task1 = Task.Run(() => DataRace.Test_DataRace_ValueType_Static = 123);
-            var task2 = Task.Run(() => DataRace.Test_DataRace_ValueType_Static = 321);
-            Task.WaitAll(task1, task2);
-        }
-
-        public static void Test_DataRace_ValueType_Instance_SimpleRace()
+        public static void Test_DataRace_ValueType_Instance_ReadWriteRace()
         {
             var instance = new DataRace();
-            var task1 = Task.Run(() => instance.Test_DataRace_ValueType_Instance = 123);
-            var task2 = Task.Run(() => instance.Test_DataRace_ValueType_Instance = 321);
+            instance.Test_DataRace_ValueType_Instance = 0;
+            var task1 = Task.Run(() => { _ = instance.Test_DataRace_ValueType_Instance; });
+            var task2 = Task.Run(() => { instance.Test_DataRace_ValueType_Instance = 123; });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_DataRace_ReferenceType_Static_BadLocking()
+        public static void Test_DataRace_ReferenceType_Static_WriteReadRace()
         {
-            var lockObj = new object();
-            var otherLock = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { DataRace.Test_DataRace_ReferenceType_Static = new object(); } });
-            var task2 = Task.Run(() => { lock (otherLock) { DataRace.Test_DataRace_ReferenceType_Static = new object(); } });
+            DataRace.Test_DataRace_ReferenceType_Static = new object();
+            var task1 = Task.Run(() => { DataRace.Test_DataRace_ReferenceType_Static = new object(); });
+            var task2 = Task.Run(() => { _ = DataRace.Test_DataRace_ReferenceType_Static; });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_DataRace_ValueType_Static_BadLocking()
+        public static void Test_DataRace_ValueType_Static_WriteReadRace()
         {
-            var lockObj = new object();
-            var otherLock = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { DataRace.Test_DataRace_ValueType_Static = 123; } });
-            var task2 = Task.Run(() => { lock (otherLock) { DataRace.Test_DataRace_ValueType_Static = 321; } });
+            DataRace.Test_DataRace_ValueType_Static = 0;
+            var task1 = Task.Run(() => { DataRace.Test_DataRace_ValueType_Static = 123; });
+            var task2 = Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_NoDataRace_ReferenceType_Static_CorrectLocks()
-        {
-            var lockObj = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { DataRace.Test_DataRace_ReferenceType_Static = new object(); } });
-            var task2 = Task.Run(() => { lock (lockObj) { DataRace.Test_DataRace_ReferenceType_Static = new object(); } });
-            Task.WaitAll(task1, task2);
-        }
-
-        public static void Test_NoDataRace_ReferenceType_Instance_CorrectLocks()
+        public static void Test_DataRace_ReferenceType_Instance_WriteReadRace()
         {
             var instance = new DataRace();
-            var lockObj = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { instance.Test_DataRace_ReferenceType_Instance = new object(); } });
-            var task2 = Task.Run(() => { lock (lockObj) { instance.Test_DataRace_ReferenceType_Instance = new object(); } });
+            instance.Test_DataRace_ReferenceType_Instance = new object();
+            var task1 = Task.Run(() => { instance.Test_DataRace_ReferenceType_Instance = new object(); });
+            var task2 = Task.Run(() => { _ = instance.Test_DataRace_ReferenceType_Instance; });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_NoDataRace_ValueType_Static_CorrectLocks()
-        {
-            var lockObj = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { DataRace.Test_DataRace_ValueType_Static = 123; } });
-            var task2 = Task.Run(() => { lock (lockObj) { DataRace.Test_DataRace_ValueType_Static = 321; } });
-            Task.WaitAll(task1, task2);
-        }
-
-        public static void Test_NoDataRace_ValueType_Instance_CorrectLocks()
+        public static void Test_DataRace_ValueType_Instance_WriteReadRace()
         {
             var instance = new DataRace();
-            var lockObj = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { instance.Test_DataRace_ValueType_Instance = 123; } });
-            var task2 = Task.Run(() => { lock (lockObj) { instance.Test_DataRace_ValueType_Instance = 321; } });
+            instance.Test_DataRace_ValueType_Instance = 0;
+            var task1 = Task.Run(() => { instance.Test_DataRace_ValueType_Instance = 123; });
+            var task2 = Task.Run(() => { _ = instance.Test_DataRace_ValueType_Instance; });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_DataRace_ReferenceType_Instance_BadLocking()
+        public static void Test_NoDataRace_ReferenceType_Static_ReadReadNoRace()
+        {
+            DataRace.Test_DataRace_ReferenceType_Static = new object();
+            var task1 = Task.Run(() => { _ = DataRace.Test_DataRace_ReferenceType_Static; });
+            var task2 = Task.Run(() => { _ = DataRace.Test_DataRace_ReferenceType_Static; });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_NoDataRace_ValueType_Static_ReadReadNoRace()
+        {
+            DataRace.Test_DataRace_ValueType_Static = 123; // Initialize first
+            var task1 = Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; });
+            var task2 = Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_NoDataRace_ReferenceType_Instance_ReadReadNoRace()
         {
             var instance = new DataRace();
-            var lockObj = new object();
-            var otherLock = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { instance.Test_DataRace_ReferenceType_Instance = new object(); } });
-            var task2 = Task.Run(() => { lock (otherLock) { instance.Test_DataRace_ReferenceType_Instance = new object(); } });
+            instance.Test_DataRace_ReferenceType_Instance = new object();
+            var task1 = Task.Run(() => { _ = instance.Test_DataRace_ReferenceType_Instance; });
+            var task2 = Task.Run(() => { _ = instance.Test_DataRace_ReferenceType_Instance; });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_DataRace_ValueType_Instance_BadLocking()
+        public static void Test_NoDataRace_ValueType_Instance_ReadReadNoRace()
         {
             var instance = new DataRace();
-            var lockObj = new object();
-            var otherLock = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { instance.Test_DataRace_ValueType_Instance = 123; } });
-            var task2 = Task.Run(() => { lock (otherLock) { instance.Test_DataRace_ValueType_Instance = 321; } });
+            instance.Test_DataRace_ValueType_Instance = 123;
+            var task1 = Task.Run(() => { _ = instance.Test_DataRace_ValueType_Instance; });
+            var task2 = Task.Run(() => { _ = instance.Test_DataRace_ValueType_Instance; });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_NoDataRace_ReferenceType_Instance_DifferentInstances()
+        public static void Test_NoDataRace_ThreadStatic_ReferenceType()
         {
-            var instance1 = new DataRace();
-            var instance2 = new DataRace();
-            var lockObj = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { instance1.Test_DataRace_ValueType_Instance = 123; } });
-            var task2 = Task.Run(() => { lock (lockObj) { instance2.Test_DataRace_ValueType_Instance = 321; } });
+            var task1 = Task.Run(() => { DataRace.Test_ThreadStatic_ReferenceType = new object(); });
+            var task2 = Task.Run(() => { DataRace.Test_ThreadStatic_ReferenceType = new object(); });
             Task.WaitAll(task1, task2);
         }
 
-        public static void Test_NoDataRace_ValueType_Instance_DifferentInstances()
+        public static void Test_NoDataRace_ThreadStatic_ValueType()
         {
-            var instance1 = new DataRace();
-            var instance2 = new DataRace();
-            var lockObj = new object();
-            var task1 = Task.Run(() => { lock (lockObj) { instance1.Test_DataRace_ReferenceType_Instance = new object(); } });
-            var task2 = Task.Run(() => { lock (lockObj) { instance2.Test_DataRace_ReferenceType_Instance = new object(); } });
+            var task1 = Task.Run(() => { DataRace.Test_ThreadStatic_ValueType = 123; });
+            var task2 = Task.Run(() => { DataRace.Test_ThreadStatic_ValueType = 321; });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_NoDataRace_ThreadStatic_ReadWrite()
+        {
+            DataRace.Test_ThreadStatic_ValueType = 0;
+            var task1 = Task.Run(() => { _ = DataRace.Test_ThreadStatic_ValueType; });
+            var task2 = Task.Run(() => { DataRace.Test_ThreadStatic_ValueType = 123; });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_StaticDelegate_WithSuppression()
+        {
+            // When SuppressAnalysisOfStaticDelegates is true (default), this should NOT be detected as a race
+            // Note: this is disabled by default because it is used by Roslyn to compile various constructs
+            var task1 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task1"); });
+            var task2 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task2"); });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_StaticDelegate_WithoutSuppression()
+        {
+            // When SuppressAnalysisOfStaticDelegates is false, this SHOULD be detected as a race
+            // Note: this is disabled by default because it is used by Roslyn to compile various constructs
+            var task1 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task1"); });
+            var task2 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task2"); });
             Task.WaitAll(task1, task2);
         }
 
