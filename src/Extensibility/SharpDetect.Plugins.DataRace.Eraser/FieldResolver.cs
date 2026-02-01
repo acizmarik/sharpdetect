@@ -53,11 +53,13 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
         return true;
     }
     
-    public static bool ShouldExcludeFromAnalysis(FieldFlags flags)
+    public static bool ShouldExcludeFromAnalysis(
+        FieldFlags flags,
+        EraserPluginConfiguration configuration)
     {
-        return flags.HasFlag(FieldFlags.IsReadOnly) || 
+        return flags.HasFlag(FieldFlags.IsReadOnly) ||
                flags.HasFlag(FieldFlags.IsThreadStatic) ||
-               flags.HasFlag(FieldFlags.IsStaticDelegateType);
+               (flags.HasFlag(FieldFlags.IsStaticDelegateType) && configuration.SuppressAnalysisOfStaticDelegates);
     }
 
     private FieldFlags ComputeFieldFlags(FieldDef fieldDef)
