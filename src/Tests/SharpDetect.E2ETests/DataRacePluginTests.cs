@@ -16,55 +16,100 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     private const string ConfigurationFolder = "DataRacePluginTestConfigurations";
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static)}.json", "net10.0")]
-    public Task EraserPlugin_NoDataRace_ReferenceType_Static(string configuration, string sdk)
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_ReadWriteRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_ReadWriteRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_ReadWriteRace)}.json", "net10.0")]
+    public Task EraserPlugin_CanDetectDataRace_ReferenceType_Static_ReadWriteRace(string configuration, string sdk)
+    {
+        return AssertDetectsDataRace(configuration, sdk);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_ReadWriteRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_ReadWriteRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_ReadWriteRace)}.json", "net10.0")]
+    public Task EraserPlugin_CanDetectDataRace_ValueType_Static_ReadWriteRace(string configuration, string sdk)
+    {
+        return AssertDetectsDataRace(configuration, sdk);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_WriteReadRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_WriteReadRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_WriteReadRace)}.json", "net10.0")]
+    public Task EraserPlugin_CanDetectDataRace_ReferenceType_Static_WriteReadRace(string configuration, string sdk)
+    {
+        return AssertDetectsDataRace(configuration, sdk);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_WriteReadRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_WriteReadRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_WriteReadRace)}.json", "net10.0")]
+    public Task EraserPlugin_CanDetectDataRace_ValueType_Static_WriteReadRace(string configuration, string sdk)
+    {
+        return AssertDetectsDataRace(configuration, sdk);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace)}.json", "net10.0")]
+    public Task EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace(string configuration, string sdk)
     {
         return AssertDoesNotDetectDataRace(configuration, sdk);
     }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ValueType_Static)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ValueType_Static)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ValueType_Static)}.json", "net10.0")]
-    public Task EraserPlugin_NoDataRace_ValueType_Static(string configuration, string sdk)
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ValueType_Static_ReadReadNoRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ValueType_Static_ReadReadNoRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ValueType_Static_ReadReadNoRace)}.json", "net10.0")]
+    public Task EraserPlugin_NoDataRace_ValueType_Static_ReadReadNoRace(string configuration, string sdk)
     {
         return AssertDoesNotDetectDataRace(configuration, sdk);
     }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_SimpleRace)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_SimpleRace)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_SimpleRace)}.json", "net10.0")]
-    public Task EraserPlugin_CanDetectDataRace_ReferenceType_Static_SimpleRace(string configuration, string sdk)
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ReferenceType)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ReferenceType)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ReferenceType)}.json", "net10.0")]
+    public Task EraserPlugin_NoDataRace_ThreadStatic_ReferenceType(string configuration, string sdk)
     {
-        return AssertDetectsDataRace(configuration, sdk);
+        return AssertDoesNotDetectDataRace(configuration, sdk);
     }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_SimpleRace)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_SimpleRace)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_SimpleRace)}.json", "net10.0")]
-    public Task EraserPlugin_CanDetectDataRace_ValueType_Static_SimpleRace(string configuration, string sdk)
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ValueType)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ValueType)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ValueType)}.json", "net10.0")]
+    public Task EraserPlugin_NoDataRace_ThreadStatic_ValueType(string configuration, string sdk)
     {
-        return AssertDetectsDataRace(configuration, sdk);
+        return AssertDoesNotDetectDataRace(configuration, sdk);
     }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_BadLocking)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_BadLocking)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Static_BadLocking)}.json", "net10.0")]
-    public Task EraserPlugin_CanDetectDataRace_ReferenceType_Static_BadLocking(string configuration, string sdk)
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ReadWrite)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ReadWrite)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ThreadStatic_ReadWrite)}.json", "net10.0")]
+    public Task EraserPlugin_NoDataRace_ThreadStatic_ReadWrite(string configuration, string sdk)
     {
-        return AssertDetectsDataRace(configuration, sdk);
+        return AssertDoesNotDetectDataRace(configuration, sdk);
     }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_BadLocking)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_BadLocking)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Static_BadLocking)}.json", "net10.0")]
-    public Task EraserPlugin_CanDetectDataRace_ValueType_Static_BadLocking(string configuration, string sdk)
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_StaticDelegate_WithSuppression)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_StaticDelegate_WithSuppression)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_StaticDelegate_WithSuppression)}.json", "net10.0")]
+    public Task EraserPlugin_NoDataRace_StaticDelegate_WithSuppression(string configuration, string sdk)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_StaticDelegate_WithoutSuppression)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_StaticDelegate_WithoutSuppression)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_StaticDelegate_WithoutSuppression)}.json", "net10.0")]
+    public Task EraserPlugin_CanDetectDataRace_StaticDelegate_WithoutSuppression(string configuration, string sdk)
     {
         return AssertDetectsDataRace(configuration, sdk);
     }

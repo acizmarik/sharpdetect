@@ -256,47 +256,56 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Deadlock_MixedMonitorAndThreadJoinDeadlock):
                     Test_Deadlock_MixedMonitorAndThreadJoinDeadlock();
                     break;
-                case nameof(Test_DataRace_ReferenceType_Static_SimpleRace):
-                    Test_DataRace_ReferenceType_Static_SimpleRace();
+                case nameof(Test_DataRace_ReferenceType_Static_ReadWriteRace):
+                    Test_DataRace_ReferenceType_Static_ReadWriteRace();
                     break;
-                case nameof(Test_DataRace_ValueType_Static_SimpleRace):
-                    Test_DataRace_ValueType_Static_SimpleRace();
+                case nameof(Test_DataRace_ValueType_Static_ReadWriteRace):
+                    Test_DataRace_ValueType_Static_ReadWriteRace();
                     break;
-                case nameof(Test_DataRace_ReferenceType_Static_BadLocking):
-                    Test_DataRace_ReferenceType_Static_BadLocking();
+                case nameof(Test_DataRace_ReferenceType_Instance_ReadWriteRace):
+                    Test_DataRace_ReferenceType_Instance_ReadWriteRace();
                     break;
-                case nameof(Test_DataRace_ValueType_Static_BadLocking):
-                    Test_DataRace_ValueType_Static_BadLocking();
+                case nameof(Test_DataRace_ValueType_Instance_ReadWriteRace):
+                    Test_DataRace_ValueType_Instance_ReadWriteRace();
                     break;
-                case nameof(Test_NoDataRace_ReferenceType_Static_CorrectLocks):
-                    Test_NoDataRace_ReferenceType_Static_CorrectLocks();
+                case nameof(Test_DataRace_ReferenceType_Static_WriteReadRace):
+                    Test_DataRace_ReferenceType_Static_WriteReadRace();
                     break;
-                case nameof(Test_NoDataRace_ValueType_Static_CorrectLocks):
-                    Test_NoDataRace_ValueType_Static_CorrectLocks();
+                case nameof(Test_DataRace_ValueType_Static_WriteReadRace):
+                    Test_DataRace_ValueType_Static_WriteReadRace();
                     break;
-                case nameof(Test_DataRace_ReferenceType_Instance_SimpleRace):
-                    Test_DataRace_ReferenceType_Instance_SimpleRace();
+                case nameof(Test_DataRace_ReferenceType_Instance_WriteReadRace):
+                    Test_DataRace_ReferenceType_Instance_WriteReadRace();
                     break;
-                case nameof(Test_DataRace_ValueType_Instance_SimpleRace):
-                    Test_DataRace_ValueType_Instance_SimpleRace();
+                case nameof(Test_DataRace_ValueType_Instance_WriteReadRace):
+                    Test_DataRace_ValueType_Instance_WriteReadRace();
                     break;
-                case nameof(Test_NoDataRace_ReferenceType_Instance_CorrectLocks):
-                    Test_NoDataRace_ReferenceType_Instance_CorrectLocks();
+                case nameof(Test_NoDataRace_ReferenceType_Static_ReadReadNoRace):
+                    Test_NoDataRace_ReferenceType_Static_ReadReadNoRace();
                     break;
-                case nameof(Test_NoDataRace_ValueType_Instance_CorrectLocks):
-                    Test_NoDataRace_ValueType_Instance_CorrectLocks();
+                case nameof(Test_NoDataRace_ValueType_Static_ReadReadNoRace):
+                    Test_NoDataRace_ValueType_Static_ReadReadNoRace();
                     break;
-                case nameof(Test_DataRace_ReferenceType_Instance_BadLocking):
-                    Test_DataRace_ReferenceType_Instance_BadLocking();
+                case nameof(Test_NoDataRace_ReferenceType_Instance_ReadReadNoRace):
+                    Test_NoDataRace_ReferenceType_Instance_ReadReadNoRace();
                     break;
-                case nameof(Test_DataRace_ValueType_Instance_BadLocking):
-                    Test_DataRace_ValueType_Instance_BadLocking();
+                case nameof(Test_NoDataRace_ValueType_Instance_ReadReadNoRace):
+                    Test_NoDataRace_ValueType_Instance_ReadReadNoRace();
                     break;
-                case nameof(Test_NoDataRace_ReferenceType_Instance_DifferentInstances):
-                    Test_NoDataRace_ReferenceType_Instance_DifferentInstances();
+                case nameof(Test_NoDataRace_ThreadStatic_ReferenceType):
+                    Test_NoDataRace_ThreadStatic_ReferenceType();
                     break;
-                case nameof(Test_NoDataRace_ValueType_Instance_DifferentInstances):
-                    Test_NoDataRace_ValueType_Instance_DifferentInstances();
+                case nameof(Test_NoDataRace_ThreadStatic_ValueType):
+                    Test_NoDataRace_ThreadStatic_ValueType();
+                    break;
+                case nameof(Test_NoDataRace_ThreadStatic_ReadWrite):
+                    Test_NoDataRace_ThreadStatic_ReadWrite();
+                    break;
+                case nameof(Test_StaticDelegate_WithSuppression):
+                    Test_StaticDelegate_WithSuppression();
+                    break;
+                case nameof(Test_StaticDelegate_WithoutSuppression):
+                    Test_StaticDelegate_WithoutSuppression();
                     break;
             }
 

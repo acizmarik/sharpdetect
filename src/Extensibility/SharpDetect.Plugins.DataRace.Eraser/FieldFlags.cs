@@ -8,5 +8,6 @@ public enum FieldFlags
 {
     None = 0,
     IsReadOnly = 1 << 1,
-    IsThreadStatic = 1 << 2
+    IsThreadStatic = 1 << 2,
+    IsStaticDelegateType = 1 << 3
 }

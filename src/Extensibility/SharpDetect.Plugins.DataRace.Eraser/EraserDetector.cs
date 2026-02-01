@@ -10,6 +10,7 @@ namespace SharpDetect.Plugins.DataRace.Eraser;
 
 internal sealed class EraserDetector
 {
+    private readonly EraserPluginConfiguration _configuration;
     private readonly ShadowMemory _shadowMemory = new();
     private readonly LockSetTable _lockSetTable = new();
     private readonly ThreadLockSetTracker _threadLockSetTracker;
@@ -19,11 +20,13 @@ internal sealed class EraserDetector
     private readonly TimeProvider _timeProvider;
 
     public EraserDetector(
+        EraserPluginConfiguration configuration,
         IMetadataContext metadataContext,
         TimeProvider timeProvider,
         ILogger logger,
         Func<ProcessThreadId, string?> threadNameResolver)
     {
+        _configuration = configuration;
         _timeProvider = timeProvider;
 
         _threadLockSetTracker = new ThreadLockSetTracker(_lockSetTable);
@@ -95,7 +98,7 @@ internal sealed class EraserDetector
             return null;
 
         // Skip fields that cannot have data races
-        if (FieldResolver.ShouldExcludeFromAnalysis(fieldFlags))
+        if (FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration))
             return null;
 
         // Get or create shadow variable for this field
@@ -107,17 +110,21 @@ internal sealed class EraserDetector
         var transitionResult = _stateMachine.ComputeTransition(threadId, shadow, threadLockSet, isWrite);
         _shadowMemory.Update(fieldId, transitionResult.NewShadow);
         var accessType = isWrite ? AccessType.Write : AccessType.Read;
-        var lastAccess = _accessTracker.GetLastAccess(fieldId);
         var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, accessType);
+        var lastRelevantAccess = isWrite 
+            ? _accessTracker.GetLastAccess(fieldId) 
+            : _accessTracker.GetLastWriteAccess(fieldId);
         _accessTracker.RecordAccess(fieldId, currentAccess);
-        if (!transitionResult.IsRaceDetected)
+        if (!transitionResult.IsRaceDetected || 
+            lastRelevantAccess == null || 
+            lastRelevantAccess.ProcessThreadId == threadId)
             return null;
-
+        
         return new DataRaceInfo(
             ProcessId: threadId.ProcessId,
             FieldId: fieldId,
             CurrentAccess: currentAccess,
-            LastAccess: lastAccess,
+            LastAccess: lastRelevantAccess,
             PreviousState: transitionResult.PreviousState,
             NewState: transitionResult.NewState,
             CandidateLockSet: transitionResult.ResultingLockSet,

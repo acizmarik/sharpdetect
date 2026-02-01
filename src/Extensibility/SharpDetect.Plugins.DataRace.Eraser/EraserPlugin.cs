@@ -29,6 +29,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
     private readonly HashSet<ProcessThreadId> _trackedThreads = [];
 
     public EraserPlugin(
+        PluginOptionsConfiguration pluginOptionsConfiguration,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
         IArgumentsParser argumentsParser,
@@ -44,7 +45,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             timeProvider,
             logger)
     {
-        _detector = new EraserDetector(metadataContext, timeProvider, logger, GetThreadName);
+        var configuration = pluginOptionsConfiguration.ParseConfigurationOrDefault<EraserPluginConfiguration>(Logger);
+        _detector = new EraserDetector(configuration, metadataContext, timeProvider, logger, GetThreadName);
         
         Configuration = PluginConfiguration.Create(
             eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |

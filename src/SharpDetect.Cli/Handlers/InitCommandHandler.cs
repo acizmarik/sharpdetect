@@ -84,7 +84,7 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
         var analysis = new AnalysisPluginConfigurationArgs(
             Path: defaultPluginPath,
             FullTypeName: pluginType,
-            Configuration: "",
+            Configuration: null,
             RenderReport: true,
             LogLevel: LogLevel.Warning,
             TemporaryFilesFolder: null,

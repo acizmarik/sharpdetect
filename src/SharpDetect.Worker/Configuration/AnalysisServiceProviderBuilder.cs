@@ -58,6 +58,10 @@ public sealed class AnalysisServiceProviderBuilder(RunCommandArgs arguments)
             TemporaryFilesFolder = arguments.Analysis.TemporaryFilesFolder,
             ReportsFolder = arguments.Analysis.ReportsFolder
         });
+        _services.AddSingleton(new PluginOptionsConfiguration
+        {
+            RawJsonConfiguration = arguments.Analysis.Configuration
+        });
         _services.AddLogging(builder => _configureLogger?.Invoke(builder));
         _services.AddSharpDetectLoaderServices();
         _services.AddSharpDetectMetadataServices();

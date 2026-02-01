@@ -7,6 +7,12 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
     {
         public static object? Test_DataRace_ReferenceType_Static;
         public static int Test_DataRace_ValueType_Static;
+        [ThreadStatic]
+        public static object? Test_ThreadStatic_ReferenceType;
+        [ThreadStatic]
+        public static int Test_ThreadStatic_ValueType;
+        public static Action? Test_StaticDelegate;
+        
         public object? Test_DataRace_ReferenceType_Instance;
         public int Test_DataRace_ValueType_Instance;
     }

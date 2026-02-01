@@ -8,7 +8,7 @@ namespace SharpDetect.Worker.Commands.Run;
 public record AnalysisPluginConfigurationArgs(
     string Path, 
     string FullTypeName,
-    string Configuration,
+    object? Configuration,
     bool RenderReport = false,
     LogLevel LogLevel = LogLevel.Warning,
     string? TemporaryFilesFolder = null,

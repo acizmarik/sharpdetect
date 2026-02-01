@@ -15,6 +15,7 @@ namespace SharpDetect.E2ETests.Utils;
 public sealed class TestEraserPlugin : EraserPlugin
 {
     public TestEraserPlugin(
+        PluginOptionsConfiguration pluginOptionsConfiguration,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
         IArgumentsParser argumentsParser,
@@ -23,6 +24,7 @@ public sealed class TestEraserPlugin : EraserPlugin
         TimeProvider timeProvider,
         ILogger<EraserPlugin> logger)
         : base(
+            pluginOptionsConfiguration,
             moduleBindContext,
             metadataContext,
             argumentsParser,
