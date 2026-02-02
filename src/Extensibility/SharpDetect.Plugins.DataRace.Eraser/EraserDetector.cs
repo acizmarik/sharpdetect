@@ -72,18 +72,20 @@ internal sealed class EraserDetector
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
-        MdToken fieldToken)
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
     {
-        return RecordFieldAccess(threadId, moduleId, methodToken, fieldToken, isWrite: false);
+        return RecordFieldAccess(threadId, moduleId, methodToken, fieldToken, objectId, isWrite: false);
     }
 
     public DataRaceInfo? RecordWrite(
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
-        MdToken fieldToken)
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
     {
-        return RecordFieldAccess(threadId, moduleId, methodToken, fieldToken, isWrite: true);
+        return RecordFieldAccess(threadId, moduleId, methodToken, fieldToken, objectId, isWrite: true);
     }
 
     private DataRaceInfo? RecordFieldAccess(
@@ -91,6 +93,7 @@ internal sealed class EraserDetector
         ModuleId moduleId,
         MdMethodDef methodToken,
         MdToken fieldToken,
+        ProcessTrackedObjectId? objectId,
         bool isWrite)
     {
         // Resolve the field
@@ -103,12 +106,12 @@ internal sealed class EraserDetector
 
         // Get or create shadow variable for this field
         var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
-        var shadow = _shadowMemory.GetOrCreateVirgin(fieldId);
+        var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadLockSet = _threadLockSetTracker.GetLockSet(threadId);
 
         // Update shadow variable, state transition
         var transitionResult = _stateMachine.ComputeTransition(threadId, shadow, threadLockSet, isWrite);
-        _shadowMemory.Update(fieldId, transitionResult.NewShadow);
+        _shadowMemory.Update(fieldId, objectId, transitionResult.NewShadow);
         var accessType = isWrite ? AccessType.Write : AccessType.Read;
         var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, accessType);
         var lastRelevantAccess = isWrite 
@@ -121,12 +124,13 @@ internal sealed class EraserDetector
             return null;
         
         return new DataRaceInfo(
-            ProcessId: threadId.ProcessId,
-            FieldId: fieldId,
-            CurrentAccess: currentAccess,
-            LastAccess: lastRelevantAccess,
-            PreviousState: transitionResult.PreviousState,
-            NewState: transitionResult.NewState,
+            threadId.ProcessId,
+            fieldId,
+            objectId,
+            currentAccess,
+            lastRelevantAccess,
+            transitionResult.PreviousState,
+            transitionResult.NewState,
             CandidateLockSet: transitionResult.ResultingLockSet,
             Timestamp: _timeProvider.GetUtcNow().DateTime);
     }

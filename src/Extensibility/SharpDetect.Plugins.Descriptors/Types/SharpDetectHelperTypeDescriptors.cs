@@ -23,6 +23,18 @@ public static class SharpDetectHelperTypeDescriptors
                         ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
                     ])),
             new MethodInjectionDescriptor(
+                Name: "ReadInstanceField",
+                EventType: Core.Events.RecordedEventType.InstanceFieldRead,
+                Signature: new MethodSignatureDescriptor(
+                    CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                    ParametersCount: 2,
+                    ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                    ArgumentTypeElements:
+                    [
+                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
+                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
+                    ])),
+            new MethodInjectionDescriptor(
                 Name: "WriteStaticField",
                 EventType: Core.Events.RecordedEventType.StaticFieldWrite,
                 Signature: new MethodSignatureDescriptor(
@@ -32,7 +44,19 @@ public static class SharpDetectHelperTypeDescriptors
                     ArgumentTypeElements:
                     [
                         ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
-                    ]))
+                    ])),
+            new MethodInjectionDescriptor(
+                Name: "WriteInstanceField",
+                EventType: Core.Events.RecordedEventType.InstanceFieldWrite,
+                Signature: new MethodSignatureDescriptor(
+                    CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                    ParametersCount: 2,
+                    ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                    ArgumentTypeElements:
+                    [
+                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
+                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
+                    ])),
         ]);
     
     public static IEnumerable<TypeInjectionDescriptor> GetAllTypes()

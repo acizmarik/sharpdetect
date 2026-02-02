@@ -1,26 +1,54 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Plugins;
+
 namespace SharpDetect.Plugins.DataRace.Eraser;
 
 internal sealed class ShadowMemory
 {
-    private readonly Dictionary<FieldId, ShadowVariable> _shadowWords = [];
+    private readonly Dictionary<FieldId, ShadowVariable> _staticShadowWords = [];
+    private readonly Dictionary<(FieldId, ProcessTrackedObjectId), ShadowVariable> _instanceShadowWords = [];
     
-    public ShadowVariable GetOrCreateVirgin(FieldId fieldId)
+    public ShadowVariable GetOrCreateVirgin(FieldId fieldId, ProcessTrackedObjectId? objectId)
     {
-        if (_shadowWords.TryGetValue(fieldId, out var shadow))
+        return objectId != null
+            ? GetOrCreateInstance(fieldId, objectId.Value)
+            : GetOrCreateStatic(fieldId);
+    }
+
+    private ShadowVariable GetOrCreateStatic(FieldId fieldId)
+    {
+        if (_staticShadowWords.TryGetValue(fieldId, out var shadow))
             return shadow;
 
-        var virginShadow = ShadowVariable.CreateVirgin();
-        _shadowWords[fieldId] = virginShadow;
-        return virginShadow;
-    }
-
-    public void Update(FieldId fieldId, ShadowVariable shadow)
-    {
-        _shadowWords[fieldId] = shadow;
+        shadow = ShadowVariable.CreateVirgin();
+        _staticShadowWords[fieldId] = shadow;
+        return shadow;
     }
     
-    public int Count => _shadowWords.Count;
+    private ShadowVariable GetOrCreateInstance(FieldId fieldId, ProcessTrackedObjectId objectId)
+    {
+        var key = (fieldId, objectId);
+        if (_instanceShadowWords.TryGetValue(key, out var shadow))
+            return shadow;
+
+        shadow = ShadowVariable.CreateVirgin();
+        _instanceShadowWords[key] = shadow;
+        return shadow;
+    }
+    
+    public void Update(FieldId fieldId, ProcessTrackedObjectId? objectId, ShadowVariable shadow)
+    {
+        if (objectId != null)
+        {
+            _instanceShadowWords[(fieldId, objectId.Value)] = shadow;
+        }
+        else
+        {
+            _staticShadowWords[fieldId] = shadow;
+        }
+    }
+    
+    public int Count => _staticShadowWords.Count + _instanceShadowWords.Count;
 }

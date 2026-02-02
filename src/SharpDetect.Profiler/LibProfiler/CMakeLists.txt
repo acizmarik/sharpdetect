@@ -15,6 +15,7 @@ set(SOURCES
     "ObjectsTracker.cpp"
     "ILRewriter.cpp"
     "Instrumentation.cpp"
+    "MetadataAnalysis.cpp"
     "StackWalker.cpp"
     "WString.cpp"
     "PAL.cpp")

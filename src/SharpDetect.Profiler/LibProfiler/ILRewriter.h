@@ -178,6 +178,10 @@ public:
     ~ILRewriter();
     HRESULT Initialize();
 
+    [[nodiscard]] mdToken GetLocalVarSigToken() const { return m_tkLocalVarSig; }
+    void SetLocalVarSigToken(const mdToken tkLocalVarSig) { m_tkLocalVarSig = tkLocalVarSig; }
+    [[nodiscard]] mdToken GetMethodSigToken() const { return m_tkMethod; }
+
     /////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // I M P O R T

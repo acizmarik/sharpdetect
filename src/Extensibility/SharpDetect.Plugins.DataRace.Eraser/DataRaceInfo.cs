@@ -9,6 +9,7 @@ namespace SharpDetect.Plugins.DataRace.Eraser;
 internal sealed record DataRaceInfo(
     uint ProcessId,
     FieldId FieldId,
+    ProcessTrackedObjectId? ObjectId,
     AccessInfo CurrentAccess,
     AccessInfo? LastAccess,
     ShadowVariableState PreviousState,

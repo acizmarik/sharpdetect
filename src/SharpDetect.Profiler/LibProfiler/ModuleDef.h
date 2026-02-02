@@ -125,6 +125,28 @@ namespace LibProfiler
 			OUT mdToken* resolutionScope,
 			OUT std::string& name) const;
 
+		HRESULT GetFieldProps(
+			IN mdFieldDef fieldDef,
+			OUT mdTypeDef* typeDef,
+			OUT PCCOR_SIGNATURE* fieldSignature,
+			OUT ULONG* fieldSignatureLength) const;
+
+		HRESULT GetFieldRefProps(
+			IN mdToken fieldMemberRef,
+			OUT mdToken* parent,
+			OUT PCCOR_SIGNATURE* fieldSignature,
+			OUT ULONG* fieldSignatureLength) const;
+
+		HRESULT GetSignatureFromToken(
+			IN mdSignature signatureToken,
+			OUT PCCOR_SIGNATURE* signature,
+			OUT ULONG* signatureLength) const;
+
+		HRESULT GetTokenFromSignature(
+			IN PCCOR_SIGNATURE signature,
+			IN ULONG signatureLength,
+			OUT mdSignature* signatureToken) const;
+
 		HRESULT FindImplementedInterface(
 			IN mdTypeDef typeDef,
 			IN const std::string& interfaceName,
