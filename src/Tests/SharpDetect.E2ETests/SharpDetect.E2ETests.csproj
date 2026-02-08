@@ -139,19 +139,37 @@
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ReferenceType_Static_ReadWriteRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ReferenceType_Instance_ReadWriteRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ValueType_Static_ReadWriteRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ValueType_Instance_ReadWriteRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ReferenceType_Static_WriteReadRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ReferenceType_Instance_WriteReadRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ValueType_Static_WriteReadRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_CanDetectDataRace_ValueType_Instance_WriteReadRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_NoDataRace_ReferenceType_Instance_ReadReadNoRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_NoDataRace_ValueType_Static_ReadReadNoRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\EraserPlugin_NoDataRace_ValueType_Instance_ReadReadNoRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\EraserPlugin_NoDataRace_ThreadStatic_ReferenceType.json">

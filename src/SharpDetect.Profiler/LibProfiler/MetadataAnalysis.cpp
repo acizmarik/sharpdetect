@@ -54,7 +54,40 @@ HRESULT LibProfiler::IsValueType(
 	}
 	else if (TypeFromToken(baseTypeToken) == mdtTypeSpec)
 	{
-		*isValueType = false;
+		PCCOR_SIGNATURE signature;
+		ULONG signatureLength;
+		hr = moduleDef.GetSignatureFromToken(baseTypeToken, &signature, &signatureLength);
+		if (FAILED(hr))
+		{
+			LOG_F(ERROR, "Could not get signature for mdTypeSpec=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.",
+				baseTypeToken,
+				moduleDef.GetModuleId(),
+				hr);
+			return E_FAIL;
+		}
+
+		PCCOR_SIGNATURE pSig = signature;
+		const CorElementType elementType = CorSigUncompressElementType(pSig);
+		if (elementType == ELEMENT_TYPE_GENERICINST)
+		{
+			const CorElementType typeKind = CorSigUncompressElementType(pSig);
+			*isValueType = typeKind == ELEMENT_TYPE_VALUETYPE;
+		}
+		else if (elementType == ELEMENT_TYPE_VALUETYPE)
+		{
+			*isValueType = TRUE;
+		}
+		else
+		{
+			*isValueType = FALSE;
+		}
+	}
+	else
+	{
+		LOG_F(ERROR, "Unexpected token type for base type token=%d from module=%" UINT_PTR_FORMAT ".",
+			baseTypeToken,
+			moduleDef.GetModuleId());
+		return E_FAIL;
 	}
 
 	return S_OK;

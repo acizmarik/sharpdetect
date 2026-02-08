@@ -115,9 +115,9 @@ internal sealed class EraserDetector
         var accessType = isWrite ? AccessType.Write : AccessType.Read;
         var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, accessType);
         var lastRelevantAccess = isWrite 
-            ? _accessTracker.GetLastAccess(fieldId) 
-            : _accessTracker.GetLastWriteAccess(fieldId);
-        _accessTracker.RecordAccess(fieldId, currentAccess);
+            ? _accessTracker.GetLastAccess(fieldId, objectId) 
+            : _accessTracker.GetLastWriteAccess(fieldId, objectId);
+        _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
         if (!transitionResult.IsRaceDetected || 
             lastRelevantAccess == null || 
             lastRelevantAccess.ProcessThreadId == threadId)

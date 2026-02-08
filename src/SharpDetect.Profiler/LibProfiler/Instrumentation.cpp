@@ -81,7 +81,7 @@ HRESULT LibProfiler::PatchMethodBody(
 				}
 			}
 			// Instance field access
-			if (currentInstruction->m_opcode == CEE_LDFLD)
+			if (currentInstruction->m_opcode == CEE_LDFLD || currentInstruction->m_opcode == CEE_STFLD)
 			{
 				// Import local variable signature if not done yet
 				if (!importedLocals)
