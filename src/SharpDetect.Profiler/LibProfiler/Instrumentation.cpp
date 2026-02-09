@@ -11,6 +11,19 @@
 #include "Instrumentation.h"
 #include "MetadataAnalysis.h"
 
+static bool ShouldSkipInstrumentation(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN const std::vector<std::string>& excludedFieldAccessModulePrefixes)
+{
+	for (auto&& excludedNamespacePrefix : excludedFieldAccessModulePrefixes)
+	{
+		if (moduleDef.GetName().starts_with(excludedNamespacePrefix))
+			return true;
+	}
+
+	return false;
+}
+
 HRESULT LibProfiler::PatchMethodBody(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
@@ -18,7 +31,8 @@ HRESULT LibProfiler::PatchMethodBody(
 	IN const mdMethodDef mdMethodDef,
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 	IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
-	IN const BOOL enableFieldsAccessInstrumentation)
+	IN const BOOL enableFieldsAccessInstrumentation,
+	IN const std::vector<std::string>& excludedFieldAccessModulePrefixes)
 {
 	if (tokensToPatch.empty() && (!enableFieldsAccessInstrumentation || injectedMethods.empty()))
 		return E_FAIL;
@@ -59,6 +73,9 @@ HRESULT LibProfiler::PatchMethodBody(
 
 		if (enableFieldsAccessInstrumentation)
 		{
+			if (ShouldSkipInstrumentation(moduleDef, excludedFieldAccessModulePrefixes))
+				continue;
+
 			// Static field access
 			if (currentInstruction->m_opcode == CEE_LDSFLD || currentInstruction->m_opcode == CEE_STSFLD)
 			{

@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "cor.h"
 #include "ILRewriter.h"
 

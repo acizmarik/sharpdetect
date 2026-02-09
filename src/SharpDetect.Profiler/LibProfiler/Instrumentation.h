@@ -6,6 +6,7 @@
 #include <atomic>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "cor.h"
 #include "corprof.h"
@@ -25,7 +26,8 @@ namespace LibProfiler
 		IN mdMethodDef mdMethodDef,
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 		IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
-		IN BOOL enableFieldsAccessInstrumentation);
+		IN BOOL enableFieldsAccessInstrumentation,
+		IN const std::vector<std::string>& excludedFieldAccessModulePrefixes);
 
 	HRESULT CreateManagedWrapperMethod(
 		IN ICorProfilerInfo& corProfilerInfo,

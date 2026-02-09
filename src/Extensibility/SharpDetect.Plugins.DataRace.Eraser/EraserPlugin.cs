@@ -71,7 +71,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                     FieldAccessDescriptors.GetAllMethods()))
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
-                EnableFieldsAccessInstrumentation = true
+                EnableFieldsAccessInstrumentation = true,
+                configuration.ExcludedFieldAccessModulePrefixes
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 
