@@ -17,6 +17,7 @@ set(SOURCES
     "Instrumentation.cpp"
     "MetadataAnalysis.cpp"
     "StackWalker.cpp"
+    "SignatureUtils.cpp"
     "WString.cpp"
     "PAL.cpp")
 

@@ -1,7 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+#include <unordered_map>
 #include "ILRewriter.h"
+#include "SignatureUtils.h"
 
 ILRewriter::ILRewriter(ICorProfilerInfo * pICorProfilerInfo, ICorProfilerFunctionControl * pICorProfilerFunctionControl, ModuleID moduleID, mdToken tkMethod)
     : m_pICorProfilerInfo(pICorProfilerInfo), m_pICorProfilerFunctionControl(pICorProfilerFunctionControl),
@@ -11,6 +13,7 @@ ILRewriter::ILRewriter(ICorProfilerInfo * pICorProfilerInfo, ICorProfilerFunctio
 {
     m_IL.m_pNext = &m_IL;
     m_IL.m_pPrev = &m_IL;
+    m_IL.m_objOperandIsObjRef = false;
 
     m_nInstrs = 0;
 }
@@ -79,6 +82,8 @@ HRESULT ILRewriter::Import()
     IfFailRet(ImportIL(decoder.Code));
 
     IfFailRet(ImportEH(decoder.EH, decoder.EHCount()));
+
+    IfFailRet(ComputeStackTypes());
 
     return S_OK;
 }
@@ -257,10 +262,537 @@ HRESULT ILRewriter::ImportEH(const COR_ILMETHOD_SECT_EH* pILEH, unsigned nEH)
     return S_OK;
 }
 
+// --------------------------------------------------------------------------
+// Single-pass evaluation-stack simulation.
+// We only need to answer: "is the top-of-stack an object reference?"
+// For verifiable IL all merge points have identical stack states,
+// so a single linear pass suffices.
+// --------------------------------------------------------------------------
+
+namespace
+{
+    // Per-slot type: is it an object reference or something else?
+    // SlotOther  = definitely NOT an object reference, or unknown (conservative)
+    // SlotObjRef = definitely an object reference
+    enum StackSlotKind : unsigned char { SlotOther = 0, SlotObjRef = 1 };
+    using LibProfiler::SkipSigType;
+
+    // Check if the leading element type of a signature blob represents an object reference.
+    // Only inspects the signature bytes — no metadata resolution needed.
+    bool IsSigTypeObjRef(const BYTE* sig, unsigned len)
+    {
+        if (len == 0) return false;
+        BYTE elem = sig[0];
+        switch (elem)
+        {
+        case ELEMENT_TYPE_CLASS:
+        case ELEMENT_TYPE_OBJECT:
+        case ELEMENT_TYPE_STRING:
+        case ELEMENT_TYPE_SZARRAY:
+        case ELEMENT_TYPE_ARRAY:
+            return true;
+        case ELEMENT_TYPE_GENERICINST:
+            if (len >= 2)
+                return sig[1] == ELEMENT_TYPE_CLASS;
+            return false;
+        default:
+            return false;
+        }
+    }
+
+
+    // Check if the base type token has name "System.ValueType" or "System.Enum".
+    // Works for mdTypeDef (same module) and mdTypeRef (just reads the name, no resolution).
+    bool IsBaseTokenValueType(IMetaDataImport* pImport, mdToken baseToken)
+    {
+        if (IsNilToken(baseToken))
+            return false;
+
+        WCHAR name[64];
+        ULONG nameLen = 0;
+        auto tt = TypeFromToken(baseToken);
+        if (tt == mdtTypeDef)
+            pImport->GetTypeDefProps(baseToken, name, 64, &nameLen, nullptr, nullptr);
+        else if (tt == mdtTypeRef)
+            pImport->GetTypeRefProps(baseToken, nullptr, name, 64, &nameLen);
+        else
+            return false;
+
+        // Compare against known value-type base names.
+        // On Linux WCHAR is char16_t, so use a char-array literal for portability.
+        if (nameLen == 0) return false;
+        const WCHAR sysValueType[] = { 'S','y','s','t','e','m','.','V','a','l','u','e','T','y','p','e',0 };
+        const WCHAR sysEnum[]      = { 'S','y','s','t','e','m','.','E','n','u','m',0 };
+
+        auto wstrEq = [](const WCHAR* a, const WCHAR* b) {
+            while (*a && *a == *b) { a++; b++; }
+            return *a == *b;
+        };
+        return wstrEq(name, sysValueType) || wstrEq(name, sysEnum);
+    }
+
+    // Determine the StackSlotKind for 'this' (arg 0) of the method being analyzed.
+    // m_tkMethod is always mdtMethodDef. We get its declaring mdTypeDef, then check
+    // whether the base type is System.ValueType or System.Enum (by reading the name).
+    // No mdTypeRef resolution is needed — we just read the name string.
+    StackSlotKind GetThisArgKind(IMetaDataImport* pImport, mdToken tkMethod)
+    {
+        mdTypeDef declaringType = mdTypeDefNil;
+        pImport->GetMethodProps(tkMethod, &declaringType, nullptr, 0, nullptr,
+                                nullptr, nullptr, nullptr, nullptr, nullptr);
+        if (IsNilToken(declaringType))
+            return SlotOther; // cannot determine — conservative
+
+        mdToken baseToken = mdTokenNil;
+        pImport->GetTypeDefProps(declaringType, nullptr, 0, nullptr, nullptr, &baseToken);
+
+        if (IsBaseTokenValueType(pImport, baseToken))
+            return SlotOther; // value type: 'this' is a managed pointer
+
+        return SlotObjRef; // reference type: 'this' is an object reference
+    }
+
+    // Build a lookup of argument index → StackSlotKind from the method signature.
+    // For instance methods, argTypes[0] = kind of 'this'.
+    // Only reads signature blobs and type names — no mdTypeRef resolution.
+    void BuildArgTypes(IMetaDataImport* pImport, mdToken tkMethod,
+                       std::vector<StackSlotKind>& argTypes)
+    {
+        argTypes.clear();
+        PCCOR_SIGNATURE sig = nullptr;
+        ULONG sigLen = 0;
+        pImport->GetMethodProps(tkMethod, nullptr, nullptr, 0, nullptr,
+                                nullptr, &sig, &sigLen, nullptr, nullptr);
+        if (sig == nullptr || sigLen == 0) return;
+
+        const BYTE* ptr = sig;
+        BYTE callingConv = *ptr++;
+        bool hasThis = (callingConv & IMAGE_CEE_CS_CALLCONV_HASTHIS) != 0;
+
+        if (callingConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
+        {
+            ULONG g;
+            ptr += CorSigUncompressData(ptr, &g);
+        }
+
+        ULONG paramCount;
+        ptr += CorSigUncompressData(ptr, &paramCount);
+
+        if (hasThis)
+            argTypes.push_back(GetThisArgKind(pImport, tkMethod));
+
+        // Skip return type
+        unsigned rem = static_cast<unsigned>(sigLen - (ptr - sig));
+        ptr += SkipSigType(ptr, rem);
+
+        // Parse each parameter type
+        for (ULONG i = 0; i < paramCount; i++)
+        {
+            rem = static_cast<unsigned>(sigLen - (ptr - sig));
+            if (rem == 0) break;
+            argTypes.push_back(IsSigTypeObjRef(ptr, rem) ? SlotObjRef : SlotOther);
+            ptr += SkipSigType(ptr, rem);
+        }
+    }
+
+    // Build a lookup of local index → StackSlotKind from the local variable signature.
+    // Only reads signature blobs — no metadata resolution.
+    void BuildLocalTypes(IMetaDataImport* pImport, mdToken tkLocalVarSig,
+                         std::vector<StackSlotKind>& localTypes)
+    {
+        localTypes.clear();
+        if (IsNilToken(tkLocalVarSig) || tkLocalVarSig == 0) return;
+
+        PCCOR_SIGNATURE sig = nullptr;
+        ULONG sigLen = 0;
+        pImport->GetSigFromToken(tkLocalVarSig, &sig, &sigLen);
+        if (sig == nullptr || sigLen < 2) return;
+
+        const BYTE* ptr = sig;
+        if (*ptr++ != IMAGE_CEE_CS_CALLCONV_LOCAL_SIG) return;
+
+        ULONG localCount;
+        ptr += CorSigUncompressData(ptr, &localCount);
+
+        for (ULONG i = 0; i < localCount; i++)
+        {
+            unsigned rem = static_cast<unsigned>(sigLen - (ptr - sig));
+            if (rem == 0) break;
+            const BYTE* typeStart = ptr;
+            // Skip ELEMENT_TYPE_PINNED if present
+            if (*ptr == ELEMENT_TYPE_PINNED) { ptr++; rem--; typeStart = ptr; }
+            localTypes.push_back(IsSigTypeObjRef(typeStart, rem) ? SlotObjRef : SlotOther);
+            ptr += SkipSigType(typeStart, rem);
+        }
+    }
+
+    // Determine the kind for a field load (ldfld pushes the field value).
+    // Reads the field signature blob — no type resolution.
+    StackSlotKind GetFieldLoadKind(IMetaDataImport* pImport, mdToken fieldToken)
+    {
+        PCCOR_SIGNATURE sig = nullptr;
+        ULONG sigLen = 0;
+        auto tt = TypeFromToken(fieldToken);
+        if (tt == mdtFieldDef)
+            pImport->GetFieldProps(fieldToken, nullptr, nullptr, 0, nullptr,
+                                   nullptr, &sig, &sigLen, nullptr, nullptr, nullptr);
+        else if (tt == mdtMemberRef)
+            pImport->GetMemberRefProps(fieldToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
+
+        if (sig == nullptr || sigLen < 2) return SlotOther;
+        const BYTE* ptr = sig;
+        if (*ptr == IMAGE_CEE_CS_CALLCONV_FIELD) ptr++;
+        unsigned rem = static_cast<unsigned>(sigLen - (ptr - sig));
+        return IsSigTypeObjRef(ptr, rem) ? SlotObjRef : SlotOther;
+    }
+
+    // Get the argument index for ldarg-family opcodes. Returns -1 if not ldarg.
+    int GetArgIndex(unsigned opcode, INT32 arg)
+    {
+        switch (opcode)
+        {
+        case CEE_LDARG_0: return 0;
+        case CEE_LDARG_1: return 1;
+        case CEE_LDARG_2: return 2;
+        case CEE_LDARG_3: return 3;
+        case CEE_LDARG_S: return static_cast<int>(static_cast<unsigned char>(arg));
+        case CEE_LDARG:   return static_cast<int>(static_cast<unsigned short>(arg));
+        default: return -1;
+        }
+    }
+
+    // Get the local index for ldloc-family opcodes. Returns -1 if not ldloc.
+    int GetLocIndex(unsigned opcode, INT32 arg)
+    {
+        switch (opcode)
+        {
+        case CEE_LDLOC_0: return 0;
+        case CEE_LDLOC_1: return 1;
+        case CEE_LDLOC_2: return 2;
+        case CEE_LDLOC_3: return 3;
+        case CEE_LDLOC_S: return static_cast<int>(static_cast<unsigned char>(arg));
+        case CEE_LDLOC:   return static_cast<int>(static_cast<unsigned short>(arg));
+        default: return -1;
+        }
+    }
+
+    // Return the number of parameters a method pops (excluding the return value push).
+    // Works for mdMethodDef, mdMemberRef.  Returns -1 on failure.
+    int GetMethodParamCount(IMetaDataImport* pImport, mdToken methodToken, bool* hasThis, bool* returnsVoid)
+    {
+        PCCOR_SIGNATURE sig = nullptr;
+        ULONG sigLen = 0;
+
+        auto tokenType = TypeFromToken(methodToken);
+        if (tokenType == mdtMethodDef)
+        {
+            pImport->GetMethodProps(methodToken, nullptr, nullptr, 0, nullptr,
+                                    nullptr, &sig, &sigLen, nullptr, nullptr);
+        }
+        else if (tokenType == mdtMemberRef)
+        {
+            pImport->GetMemberRefProps(methodToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
+        }
+
+        if (sig == nullptr || sigLen == 0)
+            return -1;
+
+        // Byte 0: calling convention
+        BYTE callingConv = sig[0];
+        *hasThis = (callingConv & IMAGE_CEE_CS_CALLCONV_HASTHIS) != 0;
+        const BYTE* ptr = sig + 1;
+
+        // Skip generic param count if GENERIC
+        if (callingConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
+        {
+            ULONG genParamCount;
+            ptr += CorSigUncompressData(ptr, &genParamCount);
+        }
+
+        // Parameter count
+        ULONG paramCount;
+        ptr += CorSigUncompressData(ptr, &paramCount);
+
+        // Check return type – is it void?
+        *returnsVoid = (*ptr == ELEMENT_TYPE_VOID);
+
+        return static_cast<int>(paramCount);
+    }
+
+    // Determine whether a method's return type is an object reference.
+    // Conservatively returns false when we cannot tell.
+    bool MethodReturnsObjRef(IMetaDataImport* pImport, mdToken methodToken)
+    {
+        PCCOR_SIGNATURE sig = nullptr;
+        ULONG sigLen = 0;
+
+        auto tokenType = TypeFromToken(methodToken);
+        if (tokenType == mdtMethodDef)
+            pImport->GetMethodProps(methodToken, nullptr, nullptr, 0, nullptr,
+                                    nullptr, &sig, &sigLen, nullptr, nullptr);
+        else if (tokenType == mdtMemberRef)
+            pImport->GetMemberRefProps(methodToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
+
+        if (sig == nullptr || sigLen < 2)
+            return false;
+
+        const BYTE* ptr = sig;
+        BYTE callingConv = *ptr++;
+
+        // Skip generic param count
+        if (callingConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
+        {
+            ULONG g;
+            ptr += CorSigUncompressData(ptr, &g);
+        }
+
+        // Skip param count
+        ULONG paramCount;
+        ptr += CorSigUncompressData(ptr, &paramCount);
+
+        unsigned remaining = static_cast<unsigned>(sigLen - (ptr - sig));
+        return IsSigTypeObjRef(ptr, remaining);
+    }
+}
+
+HRESULT ILRewriter::ComputeStackTypes()
+{
+    // We need IMetaDataImport to resolve VarPop/VarPush for call instructions.
+    // m_pMetaDataImport may not be set yet (Initialize() might not have been called).
+    // In that case, acquire a temporary one.
+    IMetaDataImport* pImport = m_pMetaDataImport;
+    bool ownedImport = false;
+    if (pImport == nullptr)
+    {
+        HRESULT hr = m_pICorProfilerInfo->GetModuleMetaData(
+            m_moduleId, ofRead, IID_IMetaDataImport, (IUnknown**)&pImport);
+        if (FAILED(hr) || pImport == nullptr)
+        {
+            // Cannot get metadata – skip stack analysis, all annotations remain false
+            return S_OK;
+        }
+        ownedImport = true;
+    }
+
+    // Stack is a vector of SlotOther/SlotObjRef.
+    std::vector<StackSlotKind> stack;
+    stack.reserve(m_maxStack);
+
+    // Pre-parse method argument types and local variable types from signature blobs.
+    std::vector<StackSlotKind> argTypes;
+    BuildArgTypes(pImport, m_tkMethod, argTypes);
+
+    std::vector<StackSlotKind> localTypes;
+    BuildLocalTypes(pImport, m_tkLocalVarSig, localTypes);
+
+    // Seed catch/filter handler entry points with one ObjRef element.
+    // We'll handle this by checking if an instruction is a handler begin.
+    // Build a set of handler-begin instructions for fast lookup.
+    std::unordered_map<ILInstr*, StackSlotKind> handlerEntryKind;
+    for (auto& eh : m_ehClauses)
+    {
+        // Catch handlers push the exception object
+        if ((eh.m_Flags & COR_ILEXCEPTION_CLAUSE_FILTER) == 0 &&
+            (eh.m_Flags & COR_ILEXCEPTION_CLAUSE_FINALLY) == 0 &&
+            (eh.m_Flags & COR_ILEXCEPTION_CLAUSE_FAULT) == 0)
+        {
+            handlerEntryKind[eh.m_pHandlerBegin] = SlotObjRef;
+        }
+        // Filter handlers also start with the exception object
+        if (eh.m_Flags & COR_ILEXCEPTION_CLAUSE_FILTER)
+        {
+            handlerEntryKind[eh.m_pFilter] = SlotObjRef;
+            handlerEntryKind[eh.m_pHandlerBegin] = SlotObjRef;
+        }
+    }
+
+    for (ILInstr* pInstr = m_IL.m_pNext; pInstr != &m_IL; pInstr = pInstr->m_pNext)
+    {
+        unsigned opcode = pInstr->m_opcode;
+
+        // Skip internal pseudo-instructions
+        if (opcode == CEE_SWITCH_ARG)
+            continue;
+
+        // Safety: skip opcodes outside the known range
+        if (opcode >= CEE_COUNT)
+            continue;
+
+        // Check if this is a handler entry point – reset stack
+        auto handlerIt = handlerEntryKind.find(pInstr);
+        if (handlerIt != handlerEntryKind.end())
+        {
+            stack.clear();
+            stack.push_back(handlerIt->second);
+        }
+
+        // Instructions that empty the stack (leave/leave.s, endfinally, throw, rethrow, endfilter)
+        if (opcode == CEE_LEAVE || opcode == CEE_LEAVE_S ||
+            opcode == CEE_ENDFINALLY || opcode == CEE_THROW ||
+            opcode == CEE_RETHROW)
+        {
+            stack.clear();
+            continue;
+        }
+
+        // Annotate LDFLD/STFLD: is the object operand an object reference?
+        pInstr->m_objOperandIsObjRef = false;
+        if (opcode == CEE_LDFLD || opcode == CEE_LDFLDA)
+        {
+            // Stack: [..., obj] — object operand is top
+            pInstr->m_objOperandIsObjRef = !stack.empty() && stack.back() == SlotObjRef;
+        }
+        else if (opcode == CEE_STFLD)
+        {
+            // Stack: [..., obj, value] — object operand is second from top
+            if (stack.size() >= 2)
+                pInstr->m_objOperandIsObjRef = stack[stack.size() - 2] == SlotObjRef;
+        }
+
+        // --- Pop ---
+        int popCount = k_rgnStackPops[opcode];
+        if (popCount == -1) // VarPop
+        {
+            // call, callvirt, calli, ret, newobj
+            if (opcode == CEE_RET)
+            {
+                stack.clear();
+                continue;
+            }
+            else if (opcode == CEE_CALL || opcode == CEE_CALLVIRT || opcode == CEE_NEWOBJ)
+            {
+                mdToken methodToken = static_cast<mdToken>(pInstr->m_Arg32);
+                bool hasThis = false;
+                bool returnsVoid = true;
+                int paramCount = GetMethodParamCount(pImport, methodToken, &hasThis, &returnsVoid);
+                if (paramCount >= 0)
+                {
+                    int totalPop = paramCount;
+                    // For call/callvirt, add 1 for 'this' if instance method
+                    // For newobj, 'this' is not on the stack (it is created by the instruction)
+                    if (opcode != CEE_NEWOBJ && hasThis)
+                        totalPop += 1;
+                    for (int i = 0; i < totalPop && !stack.empty(); i++)
+                        stack.pop_back();
+                }
+                else
+                {
+                    // Cannot resolve – conservatively clear
+                    stack.clear();
+                }
+
+                // Push return value
+                if (opcode == CEE_NEWOBJ)
+                {
+                    stack.push_back(SlotObjRef);
+                }
+                else if (!returnsVoid)
+                {
+                    // Check if return type is an object reference
+                    bool isRef = MethodReturnsObjRef(pImport, methodToken);
+                    stack.push_back(isRef ? SlotObjRef : SlotOther);
+                }
+                continue;
+            }
+            else if (opcode == CEE_CALLI)
+            {
+                // Cannot easily resolve calli signature; conservatively clear
+                stack.clear();
+                // VarPush: signature-dependent
+                // Push one unknown slot to be safe
+                stack.push_back(SlotOther);
+                continue;
+            }
+            else
+            {
+                // Unknown VarPop – clear
+                stack.clear();
+                continue;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < popCount && !stack.empty(); i++)
+                stack.pop_back();
+        }
+
+        // --- Push ---
+        int pushCount = k_rgnStackPushes[opcode];
+
+        // Handle DUP specially: it duplicates the top, preserving type
+        if (opcode == CEE_DUP)
+        {
+            if (!stack.empty())
+            {
+                StackSlotKind top = stack.back();
+                stack.push_back(top);
+            }
+            else
+            {
+                stack.push_back(SlotOther);
+            }
+            continue;
+        }
+
+        if (pushCount > 0)
+        {
+            StackSlotKind kind;
+            int isRef = k_rgnPushIsRef[opcode];
+            if (isRef == 1)
+            {
+                // PushRef: definitely an object reference
+                kind = SlotObjRef;
+            }
+            else
+            {
+                // Push1 or PushI/PushI4/etc. — default to SlotOther,
+                // then try to resolve for ldarg/ldloc/ldfld via signature blobs.
+                kind = SlotOther;
+
+                // ldarg family: look up pre-parsed argument type
+                int argIdx = GetArgIndex(opcode, pInstr->m_Arg32);
+                if (argIdx >= 0 && argIdx < static_cast<int>(argTypes.size()))
+                {
+                    kind = argTypes[argIdx];
+                }
+                else
+                {
+                    // ldloc family: look up pre-parsed local type
+                    int locIdx = GetLocIndex(opcode, pInstr->m_Arg32);
+                    if (locIdx >= 0 && locIdx < static_cast<int>(localTypes.size()))
+                    {
+                        kind = localTypes[locIdx];
+                    }
+                    // ldfld: check field signature blob for the pushed type
+                    else if (opcode == CEE_LDFLD)
+                    {
+                        kind = GetFieldLoadKind(pImport, static_cast<mdToken>(pInstr->m_Arg32));
+                    }
+                }
+            }
+
+            for (int i = 0; i < pushCount; i++)
+                stack.push_back(kind);
+        }
+
+        // Unconditional branches: for verifiable IL, we trust the merge.
+        // After unconditional branch, stack state is undefined until next target.
+        if (opcode == CEE_BR || opcode == CEE_BR_S)
+        {
+            stack.clear();
+        }
+    }
+
+    if (ownedImport)
+        pImport->Release();
+
+    return S_OK;
+}
+
 ILInstr* ILRewriter::NewILInstr()
 {
     m_nInstrs++;
-    return new ILInstr();
+    return new ILInstr { };
 }
 
 ILInstr* ILRewriter::GetInstrFromOffset(unsigned offset)
@@ -525,6 +1057,8 @@ again:
 
         IMAGE_COR_ILMETHOD_FAT *pHeader = (IMAGE_COR_ILMETHOD_FAT *)pCurrent;
         pHeader->Flags = m_flags | (m_nEH ? CorILMethod_MoreSects : 0) | CorILMethod_FatFormat;
+        if (m_tkLocalVarSig != 0)
+            pHeader->Flags |= CorILMethod_InitLocals;
         pHeader->Size = sizeof(IMAGE_COR_ILMETHOD_FAT) / sizeof(DWORD);
         pHeader->MaxStack = m_maxStack;
         pHeader->CodeSize = offset;

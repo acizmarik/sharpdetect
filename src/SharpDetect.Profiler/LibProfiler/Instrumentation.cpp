@@ -10,6 +10,7 @@
 
 #include "Instrumentation.h"
 #include "MetadataAnalysis.h"
+#include "SignatureUtils.h"
 
 static bool ShouldSkipInstrumentation(
 	IN const LibProfiler::ModuleDef& moduleDef,
@@ -251,23 +252,44 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	ThreadID threadId;
 	corProfilerInfo.GetCurrentThreadID(&threadId);
 
-	// Analyze field
-	PCCOR_SIGNATURE fieldSignature;
-	ULONG fieldSignatureLength;
-	BOOL isDeclaringTypeValueType;
-	BOOL isVolatile;
-	HRESULT hr = AnalyzeFieldAccess(moduleDef, fieldToken, *currentInstruction, &fieldSignature, &fieldSignatureLength, &isDeclaringTypeValueType, &isVolatile);
-	if (FAILED(hr))
+	if (!currentInstruction->m_objOperandIsObjRef)
 	{
-		LOG_F(ERROR, "Could not analyze field for token %d in module %s. Error: 0x%x.", fieldToken, moduleDef.GetName().c_str(), hr);
+		// The object operand is a managed pointer or value type address.
+		// Value types can be either passed by:
+		// 1) reference - in this case we have no way to capture managed pointers
+		// 2) value - in this case all threads operate on a copy. Data races are not possible.
 		return E_FAIL;
 	}
 
-	if (isDeclaringTypeValueType)
+	// Obtain field signature (needed for the added local's type)
+	PCCOR_SIGNATURE fieldSignature;
+	ULONG fieldSignatureLength;
+	mdToken declaringTypeToken;
+	HRESULT hr;
+	if (TypeFromToken(fieldToken) == mdtFieldDef)
 	{
-		// Note: value types can be either passed by:
-		// 1) reference - in this case we have no way to capture managed pointers
-		// 2) value - in this case all threads operate on a copy. Data races are not possible.
+		hr = moduleDef.GetFieldProps(fieldToken, &declaringTypeToken, &fieldSignature, &fieldSignatureLength);
+	}
+	else if (TypeFromToken(fieldToken) == mdtMemberRef)
+	{
+		hr = moduleDef.GetFieldRefProps(fieldToken, &declaringTypeToken, &fieldSignature, &fieldSignatureLength);
+	}
+	else
+	{
+		LOG_F(ERROR, "Unsupported token type for field token %d in module %s.", fieldToken, moduleDef.GetName().c_str());
+		return E_FAIL;
+	}
+	if (FAILED(hr))
+	{
+		LOG_F(ERROR, "Could not obtain field signature for token %d in module %s. Error: 0x%x.", fieldToken, moduleDef.GetName().c_str(), hr);
+		return E_FAIL;
+	}
+
+	BOOL isVolatile;
+	hr = IsVolatile(*currentInstruction, &isVolatile);
+	if (FAILED(hr))
+	{
+		LOG_F(ERROR, "Could not analyze if field access is volatile for field token %d in module %s. Error: 0x%x.", fieldToken, moduleDef.GetName().c_str(), hr);
 		return E_FAIL;
 	}
 
@@ -282,39 +304,65 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		return E_FAIL;
 	}
 
+	// For STFLD we need a temporary local whose type comes from the field signature.
+	if (isStore)
+	{
+		const BYTE* fSig = fieldSignature + 1;
+		ULONG fSigLen = fieldSignatureLength - 1;
+		// FIXME: for now we skip signatures with ELEMENT_TYPE_VAR or ELEMENT_TYPE_MVAR
+		//        (these are parameters like !0 or !!0 that might be invalid in this context)
+		if (SigTypeContainsGenericParam(fSig, fSigLen))
+		{
+			LOG_F(INFO, "Skipping instance field write instrumentation for field token %d in method %d from module %s: field signature contains generic type parameters.",
+				fieldToken, mdMethodDef, moduleDef.GetName().c_str());
+			return E_FAIL;
+		}
+	}
+
 	if (isVolatile)
 		currentInstruction = currentInstruction->m_pPrev;
 
-	// STLOC <local-index> (this stores written value)
-	if (isStore)
-	{
-		addedLocals.emplace_back(fieldSignature + 1, fieldSignatureLength - 1);
-		const auto stlocInstruction = rewriter.NewILInstr();
-		stlocInstruction->m_opcode = CEE_STLOC;
-		stlocInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
-		rewriter.InsertBefore(currentInstruction, stlocInstruction);
-	}
-	// STLOC <local-index> (this stores field instance)
+	// Add a local to capture the object instance for the handler call
 	PCCOR_SIGNATURE instanceSignature = g_ObjectTypeSignature;
 	addedLocals.emplace_back(instanceSignature, 1);
-	const auto stlocInstruction = rewriter.NewILInstr();
-	stlocInstruction->m_opcode = CEE_STLOC;
-	stlocInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
-	rewriter.InsertBefore(currentInstruction, stlocInstruction);
-	// LDLOC <local-index> (this loads field instance)
-	const auto ldlocInstanceInstruction = rewriter.NewILInstr();
-	ldlocInstanceInstruction->m_opcode = CEE_LDLOC;
-	ldlocInstanceInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
-	rewriter.InsertBefore(currentInstruction, ldlocInstanceInstruction);
-	// LDLOC <local-index> (this loads written value)
+	const auto instanceLocalIndex = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
+
 	if (isStore)
 	{
+		// STLOC <value-local> (store written value)
+		addedLocals.emplace_back(fieldSignature + 1, fieldSignatureLength - 1);
+		const auto stlocValueInstruction = rewriter.NewILInstr();
+		stlocValueInstruction->m_opcode = CEE_STLOC;
+		stlocValueInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
+		rewriter.InsertBefore(currentInstruction, stlocValueInstruction);
+		// DUP (duplicate object reference)
+		const auto dupInstruction = rewriter.NewILInstr();
+		dupInstruction->m_opcode = CEE_DUP;
+		rewriter.InsertBefore(currentInstruction, dupInstruction);
+		// STLOC <instance-local> (save object reference copy)
+		const auto stlocInstanceInstruction = rewriter.NewILInstr();
+		stlocInstanceInstruction->m_opcode = CEE_STLOC;
+		stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
+		rewriter.InsertBefore(currentInstruction, stlocInstanceInstruction);
+		// LDLOC <value-local> (restore written value)
 		const auto ldlocValueInstruction = rewriter.NewILInstr();
 		ldlocValueInstruction->m_opcode = CEE_LDLOC;
-		ldlocValueInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 2));
+		ldlocValueInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
 		rewriter.InsertBefore(currentInstruction, ldlocValueInstruction);
 	}
-	// <FIELD-ACCESS> (LDFLD/STRFLD)
+	else
+	{
+		// DUP (duplicate object reference)
+		const auto dupInstruction = rewriter.NewILInstr();
+		dupInstruction->m_opcode = CEE_DUP;
+		rewriter.InsertBefore(currentInstruction, dupInstruction);
+		// STLOC <instance-local> (save object reference copy)
+		const auto stlocInstanceInstruction = rewriter.NewILInstr();
+		stlocInstanceInstruction->m_opcode = CEE_STLOC;
+		stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
+		rewriter.InsertBefore(currentInstruction, stlocInstanceInstruction);
+	}
+	// <FIELD-ACCESS> (LDFLD/STFLD) — original instruction with correct type on stack
 	if (isVolatile)
 		currentInstruction = currentInstruction->m_pNext;
 	// LDC.I8 <instrumentation-mark>
@@ -322,9 +370,10 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	ldcInstruction->m_opcode = CEE_LDC_I8;
 	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
 	rewriter.InsertAfter(currentInstruction, ldcInstruction);
+	// LDLOC <instance-local> (restore object reference)
 	const auto ldLocInstanceInstruction2 = rewriter.NewILInstr();
 	ldLocInstanceInstruction2->m_opcode = CEE_LDLOC;
-	ldLocInstanceInstruction2->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
+	ldLocInstanceInstruction2->m_Arg16 = instanceLocalIndex;
 	rewriter.InsertAfter(ldcInstruction, ldLocInstanceInstruction2);
 	// CALL <injected-method-handler>
 	const auto callInstruction = rewriter.NewILInstr();

@@ -4,11 +4,11 @@
 #pragma once
 
 #include "cor.h"
-#include "ILRewriter.h"
 
 namespace LibProfiler
 {
-	HRESULT IsVolatile(
-		IN const ILInstr& instruction,
-		OUT BOOL* isVolatile);
+    unsigned SkipSigType(const BYTE* signature, unsigned length);
+
+    bool SigTypeContainsGenericParam(const BYTE* signature, unsigned length);
 }
+

@@ -17,6 +17,11 @@ struct ILInstr
     unsigned        m_opcode;
     unsigned        m_offset;
 
+    // Set during stack-type analysis: true when the object operand on the stack
+    // (for LDFLD: top-of-stack; for STFLD: second-from-top) is an object reference.
+    // Only meaningful for LDFLD/STFLD instructions.
+    bool            m_objOperandIsObjRef;
+
     union
     {
         ILInstr *   m_pTarget;
@@ -139,6 +144,85 @@ static int k_rgnStackPushes[] = {
     0   // CEE_SWITCH_ARG
 };
 
+// Stack pop counts per opcode.  VarPop is encoded as -1 (needs special handling).
+static int k_rgnStackPops[] = {
+
+#if defined(WIN32) || defined(WIN64)
+#define OPDEF(c,s,pop,push,args,type,l,s1,s2,ctrl) \
+    { pop },
+#else
+#define OPDEF(c,s,pop,push,args,type,l,s1,s2,ctrl) \
+    pop,
+#endif
+
+#define Pop0     0
+#define Pop1     1
+#define PopI     1
+#define PopI4    1
+#define PopI8    1
+#define PopR4    1
+#define PopR8    1
+#define PopRef   1
+#define VarPop  -1
+
+#include "opcode.def"
+
+#undef Pop0
+#undef Pop1
+#undef PopI
+#undef PopI4
+#undef PopI8
+#undef PopR4
+#undef PopR8
+#undef PopRef
+#undef VarPop
+#undef OPDEF
+    0,  // CEE_COUNT
+    0   // CEE_SWITCH_ARG
+};
+
+// Whether the opcode pushes an object reference.
+//   0 = definitely NOT an object reference (PushI, PushI4, PushI8, PushR4, PushR8, Push1)
+//   1 = definitely an object reference (PushRef)
+//  -1 = VarPush (needs method-signature inspection)
+// Note: Push1 is mapped to 0 here. ComputeStackTypes() resolves Push1 opcodes
+// (ldarg/ldloc/ldfld) explicitly from signature blobs without resolving mdTypeRef tokens.
+static int k_rgnPushIsRef[] = {
+
+#if defined(WIN32) || defined(WIN64)
+#define OPDEF(c,s,pop,push,args,type,l,s1,s2,ctrl) \
+    { push },
+#else
+#define OPDEF(c,s,pop,push,args,type,l,s1,s2,ctrl) \
+    push,
+#endif
+
+#define Push0    0
+#define Push1    0
+#define PushI    0
+#define PushI4   0
+#define PushR4   0
+#define PushI8   0
+#define PushR8   0
+#define PushRef  1
+#define VarPush -1
+
+#include "opcode.def"
+
+#undef Push0
+#undef Push1
+#undef PushI
+#undef PushI4
+#undef PushR4
+#undef PushI8
+#undef PushR8
+#undef PushRef
+#undef VarPush
+#undef OPDEF
+    0,  // CEE_COUNT
+    0   // CEE_SWITCH_ARG
+};
+
 
 class ILRewriter
 {
@@ -190,6 +274,7 @@ public:
     HRESULT Import();
     HRESULT ImportIL(LPCBYTE pIL);
     HRESULT ImportEH(const COR_ILMETHOD_SECT_EH* pILEH, unsigned nEH);
+    HRESULT ComputeStackTypes();
     ILInstr* NewILInstr();
     ILInstr* GetInstrFromOffset(unsigned offset);
     void InsertBefore(ILInstr * pWhere, ILInstr * pWhat);
