@@ -21,6 +21,14 @@
     "Path": "SharpDetect.E2ETests.dll",
     "FullTypeName": "SharpDetect.E2ETests.Utils.TestEraserPlugin",
     "RenderReport": true,
-    "LogLevel": "Information"
+    "LogLevel": "Information",
+    "Configuration":
+    {
+      "ExcludedFieldAccessModulePrefixes":
+      [
+        "System.",
+        "Microsoft."
+      ]
+    }
   }
 }

@@ -88,6 +88,24 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Instance_WriteWriteRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Instance_WriteWriteRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ReferenceType_Instance_WriteWriteRace)}.json", "net10.0")]
+    public Task EraserPlugin_CanDetectDataRace_ReferenceType_Instance_WriteWriteRace(string configuration, string sdk)
+    {
+        return AssertDetectsDataRace(configuration, sdk);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Instance_WriteWriteRace)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Instance_WriteWriteRace)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_CanDetectDataRace_ValueType_Instance_WriteWriteRace)}.json", "net10.0")]
+    public Task EraserPlugin_CanDetectDataRace_ValueType_Instance_WriteWriteRace(string configuration, string sdk)
+    {
+        return AssertDetectsDataRace(configuration, sdk);
+    }
+
+    [Theory]
     [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace)}.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace)}.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/{nameof(EraserPlugin_NoDataRace_ReferenceType_Static_ReadReadNoRace)}.json", "net10.0")]

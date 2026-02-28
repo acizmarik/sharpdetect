@@ -1,7 +1,7 @@
 {
   "Target": {
     "Path": "../../../../SharpDetect.E2ETests.Subject/bin/%BUILD_CONFIGURATION%/%SDK%/SharpDetect.E2ETests.Subject.dll",
-    "Args": "Test_NoDataRace_ThreadStatic_ReferenceType",
+    "Args": "Test_Field_Generic_FromBoth_ReferenceType_OnReferenceType_Instance_Read",
     "Architecture": "X64",
     "RedirectInputOutput": {
       "SingleConsoleMode": true
@@ -19,16 +19,9 @@
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
-    "FullTypeName": "SharpDetect.E2ETests.Utils.TestEraserPlugin",
+    "FullTypeName": "SharpDetect.E2ETests.Utils.TestExecutionOrderingPlugin",
     "RenderReport": false,
-    "LogLevel": "Information",
-    "Configuration":
-    {
-      "ExcludedFieldAccessModulePrefixes":
-      [
-        "System.",
-        "Microsoft."
-      ]
-    }
+    "LogLevel": "Information"
   }
 }
+
