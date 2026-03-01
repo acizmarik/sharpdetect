@@ -27,10 +27,11 @@ namespace Profiler
 		std::optional<std::string> commandQueueFile;
         UINT commandQueueSize;
 
-		std::vector<MethodDescriptor> methodDescriptors;
-		std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;
-		BOOL enableFieldsAccessInstrumentation;
-	};
+        std::vector<MethodDescriptor> methodDescriptors;
+        std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;
+        BOOL enableFieldsAccessInstrumentation;
+        std::vector<std::string> excludedFieldAccessModulePrefixes;
+    };
 
 	void to_json(nlohmann::json& json, const Configuration& descriptor);
 	void from_json(const nlohmann::json& json, Configuration& descriptor);

@@ -19,3 +19,5 @@ public readonly record struct ThreadJoinAttemptArgs(ProcessThreadId BlockedProce
 public readonly record struct ThreadJoinResultArgs(ProcessThreadId BlockedProcessThreadId, ProcessThreadId JoinedProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, bool IsSuccess);
 public readonly record struct StaticFieldReadArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, MdToken FieldToken);
 public readonly record struct StaticFieldWriteArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, MdToken FieldToken);
+public readonly record struct InstanceFieldReadArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, MdToken FieldToken, ProcessTrackedObjectId ObjectId);
+public readonly record struct InstanceFieldWriteArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, MdToken FieldToken, ProcessTrackedObjectId ObjectId);

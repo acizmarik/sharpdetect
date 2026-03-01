@@ -98,6 +98,10 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, StaticFieldReadArgs)>(GetNextId(), RecordedEventType.StaticFieldRead, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.StaticFieldWritten += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, StaticFieldWriteArgs)>(GetNextId(), RecordedEventType.StaticFieldWrite, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.InstanceFieldRead += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, InstanceFieldReadArgs)>(GetNextId(), RecordedEventType.InstanceFieldRead, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.InstanceFieldWritten += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, InstanceFieldWriteArgs)>(GetNextId(), RecordedEventType.InstanceFieldWrite, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
     }
     
     public IEnumerator<IEvent<ulong, RecordedEventType>> GetEnumerator()

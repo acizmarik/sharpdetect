@@ -21,6 +21,7 @@ void Profiler::to_json(nlohmann::json& json, const Configuration& descriptor)
     json["additionalData"]["methodDescriptors"] = descriptor.methodDescriptors;
     json["additionalData"]["typeInjectionDescriptors"] = descriptor.typeInjectionDescriptors;
     json["additionalData"]["enableFieldsAccessInstrumentation"] = descriptor.enableFieldsAccessInstrumentation;
+    json["additionalData"]["excludedFieldAccessModulePrefixes"] = descriptor.excludedFieldAccessModulePrefixes;
 }
 
 void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
@@ -53,4 +54,6 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
     descriptor.methodDescriptors = additionalData.at("methodDescriptors").get<std::vector<MethodDescriptor>>();
     descriptor.typeInjectionDescriptors = additionalData.at("typeInjectionDescriptors").get<std::vector<TypeInjectionDescriptor>>();
     descriptor.enableFieldsAccessInstrumentation = additionalData.at("enableFieldsAccessInstrumentation");
+    if (additionalData.contains("excludedFieldAccessModulePrefixes"))
+        descriptor.excludedFieldAccessModulePrefixes = additionalData.at("excludedFieldAccessModulePrefixes").get<std::vector<std::string>>();
 }

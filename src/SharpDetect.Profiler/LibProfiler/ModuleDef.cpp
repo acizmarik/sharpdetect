@@ -332,6 +332,75 @@ HRESULT LibProfiler::ModuleDef::GetTypeRefProps(
 	return S_OK;
 }
 
+HRESULT LibProfiler::ModuleDef::GetFieldProps(
+	IN const mdFieldDef fieldDef,
+	OUT mdTypeDef* typeDef,
+	OUT PCCOR_SIGNATURE* fieldSignature,
+	OUT ULONG* fieldSignatureLength) const
+{
+	auto& metadataImport = GetMetadataImport();
+	HRESULT hr = metadataImport.GetFieldProps(
+		fieldDef,
+		typeDef,
+		nullptr,
+		0,
+		nullptr,
+		nullptr,
+		fieldSignature,
+		fieldSignatureLength,
+		nullptr,
+		nullptr,
+		nullptr);
+	if (FAILED(hr))
+	{
+		LOG_F(ERROR, "Could not get field props for mdFieldDef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", fieldDef, _moduleId, hr);
+		return E_FAIL;
+	}
+
+	return S_OK;
+}
+
+HRESULT LibProfiler::ModuleDef::GetFieldRefProps(
+	IN const mdToken fieldMemberRef,
+	OUT mdToken* parent,
+	OUT PCCOR_SIGNATURE* fieldSignature,
+	OUT ULONG* fieldSignatureLength) const
+{
+	auto& metadataImport = GetMetadataImport();
+	HRESULT hr = metadataImport.GetMemberRefProps(fieldMemberRef, parent, nullptr, 0, nullptr, fieldSignature, fieldSignatureLength);
+	if (FAILED(hr))
+	{
+		LOG_F(ERROR, "Could not get member ref props for mdMemberRef=%d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", fieldMemberRef, _moduleId, hr);
+		return E_FAIL;
+	}
+
+	if (**fieldSignature != CorCallingConvention::IMAGE_CEE_CS_CALLCONV_FIELD)
+	{
+		LOG_F(ERROR, "Token %d is a member reference for module=%" UINT_PTR_FORMAT " but does not have field signature. Error: 0x%x.", fieldMemberRef, _moduleId, hr);
+		return E_FAIL;
+	}
+
+	return S_OK;
+}
+
+HRESULT LibProfiler::ModuleDef::GetSignatureFromToken(
+	const mdSignature signatureToken,
+	PCCOR_SIGNATURE* signature,
+	ULONG* signatureLength) const
+{
+	auto& metadataImport = GetMetadataImport();
+	return metadataImport.GetSigFromToken(signatureToken, signature, signatureLength);
+}
+
+HRESULT LibProfiler::ModuleDef::GetTokenFromSignature(
+	const PCCOR_SIGNATURE signature,
+	const ULONG signatureLength,
+	mdSignature *signatureToken) const
+{
+	auto& metadataEmit = GetMetadataEmit();
+	return metadataEmit.GetTokenFromSig(signature, signatureLength, signatureToken);
+}
+
 HRESULT LibProfiler::ModuleDef::FindImplementedInterface(
 	IN const mdTypeDef typeDef,
 	IN const std::string& interfaceName, 

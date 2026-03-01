@@ -944,7 +944,8 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
         mdMethodDef,
         tokensToRewrite,
         injectedMethods,
-        _configuration.enableFieldsAccessInstrumentation)))
+        _configuration.enableFieldsAccessInstrumentation,
+        _configuration.excludedFieldAccessModulePrefixes)))
     {
         _client.Send(LibIPC::Helpers::CreateMethodBodyRewriteMsg(
             CreateMetadataMsg(),

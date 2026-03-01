@@ -60,6 +60,8 @@ public enum RecordedEventType : ushort
     FieldAccessInstrumentation = 40,
     StaticFieldRead = 41,
     StaticFieldWrite = 42,
+    InstanceFieldRead = 43,
+    InstanceFieldWrite = 44,
 
     /* Synchronization */
     MonitorLockAcquire = 100,

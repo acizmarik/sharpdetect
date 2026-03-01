@@ -114,6 +114,66 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_ReferenceType_Instance_Write):
                     Test_Field_ReferenceType_Instance_Write();
                     break;
+                case nameof(Test_Field_ValueType_OnValueType_Instance_Read):
+                    Test_Field_ValueType_OnValueType_Instance_Read();
+                    break;
+                case nameof(Test_Field_ValueType_OnValueType_Instance_Write):
+                    Test_Field_ValueType_OnValueType_Instance_Write();
+                    break;
+                case nameof(Test_Field_ReferenceType_OnValueType_Instance_Read):
+                    Test_Field_ReferenceType_OnValueType_Instance_Read();
+                    break;
+                case nameof(Test_Field_ReferenceType_OnValueType_Instance_Write):
+                    Test_Field_ReferenceType_OnValueType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ValueType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromType_ValueType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ValueType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromType_ValueType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ReferenceType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromType_ReferenceType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ReferenceType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromType_ReferenceType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromMethod_ValueType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromMethod_ValueType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromMethod_ValueType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromMethod_ValueType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromMethod_ReferenceType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromMethod_ReferenceType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromMethod_ReferenceType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromMethod_ReferenceType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromBoth_ValueType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromBoth_ValueType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromBoth_ValueType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromBoth_ValueType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromBoth_ReferenceType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromBoth_ReferenceType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromBoth_ReferenceType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromBoth_ReferenceType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ValueType_OnValueType_Instance_Read):
+                    Test_Field_Generic_FromType_ValueType_OnValueType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ValueType_OnValueType_Instance_Write):
+                    Test_Field_Generic_FromType_ValueType_OnValueType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Read):
+                    Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Write):
+                    Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Write();
+                    break;
                 case nameof(Test_Field_ValueType_Static_Read):
                     Test_Field_ValueType_Static_Read();
                     break;
@@ -279,6 +339,12 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_DataRace_ValueType_Instance_WriteReadRace):
                     Test_DataRace_ValueType_Instance_WriteReadRace();
+                    break;
+                case nameof(Test_DataRace_ReferenceType_Instance_WriteWriteRace):
+                    Test_DataRace_ReferenceType_Instance_WriteWriteRace();
+                    break;
+                case nameof(Test_DataRace_ValueType_Instance_WriteWriteRace):
+                    Test_DataRace_ValueType_Instance_WriteWriteRace();
                     break;
                 case nameof(Test_NoDataRace_ReferenceType_Static_ReadReadNoRace):
                     Test_NoDataRace_ReferenceType_Static_ReadReadNoRace();

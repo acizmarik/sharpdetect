@@ -328,6 +328,126 @@ namespace SharpDetect.E2ETests.Subject
             instance.Test_Field_ReferenceType_Instance = new object();
         }
 
+        public static void Test_Field_ValueType_OnValueType_Instance_Read()
+        {
+            var instance = new InstanceFieldOnValueType { ValueField = 42 };
+            _ = instance.ValueField;
+        }
+
+        public static void Test_Field_ValueType_OnValueType_Instance_Write()
+        {
+            var instance = new InstanceFieldOnValueType();
+            instance.ValueField = 42;
+        }
+
+        public static void Test_Field_ReferenceType_OnValueType_Instance_Read()
+        {
+            var instance = new InstanceFieldOnValueType { ReferenceField = new object() };
+            _ = instance.ReferenceField;
+        }
+
+        public static void Test_Field_ReferenceType_OnValueType_Instance_Write()
+        {
+            var instance = new InstanceFieldOnValueType();
+            instance.ReferenceField = new object();
+        }
+
+        public static void Test_Field_Generic_FromType_ValueType_OnReferenceType_Instance_Read()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<int> { ValueField = 42 };
+            _ = instance.ValueField;
+        }
+
+        public static void Test_Field_Generic_FromType_ValueType_OnReferenceType_Instance_Write()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<int>();
+            instance.ValueField = 42;
+        }
+
+        public static void Test_Field_Generic_FromType_ReferenceType_OnReferenceType_Instance_Read()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<object> { ReferenceField = new object() };
+            _ = instance.ReferenceField;
+        }
+
+        public static void Test_Field_Generic_FromType_ReferenceType_OnReferenceType_Instance_Write()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<object>();
+            instance.ReferenceField = new object();
+        }
+
+        public static void Test_Field_Generic_FromMethod_ValueType_OnReferenceType_Instance_Read()
+        {
+            var instance = new NonGenericWithGenericMethods { ValueField = 42 };
+            instance.GenericMethodReadValue<int>();
+        }
+
+        public static void Test_Field_Generic_FromMethod_ValueType_OnReferenceType_Instance_Write()
+        {
+            var instance = new NonGenericWithGenericMethods();
+            instance.GenericMethodWriteValue<int>(42);
+        }
+
+        public static void Test_Field_Generic_FromMethod_ReferenceType_OnReferenceType_Instance_Read()
+        {
+            var instance = new NonGenericWithGenericMethods { ReferenceField = new object() };
+            instance.GenericMethodReadReference<object>();
+        }
+
+        public static void Test_Field_Generic_FromMethod_ReferenceType_OnReferenceType_Instance_Write()
+        {
+            var instance = new NonGenericWithGenericMethods();
+            instance.GenericMethodWriteReference<object>(new object());
+        }
+
+        public static void Test_Field_Generic_FromBoth_ValueType_OnReferenceType_Instance_Read()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<int> { ValueField = 42 };
+            _ = instance.GenericMethodRead<int>();
+        }
+
+        public static void Test_Field_Generic_FromBoth_ValueType_OnReferenceType_Instance_Write()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<int>();
+            instance.GenericMethodWrite<int>(42);
+        }
+
+        public static void Test_Field_Generic_FromBoth_ReferenceType_OnReferenceType_Instance_Read()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<object> { ReferenceField = new object() };
+            _ = instance.GenericMethodRead<object>();
+        }
+
+        public static void Test_Field_Generic_FromBoth_ReferenceType_OnReferenceType_Instance_Write()
+        {
+            var instance = new GenericInstanceFieldOnReferenceType<object>();
+            instance.GenericMethodWrite<object>(new object());
+        }
+
+        public static void Test_Field_Generic_FromType_ValueType_OnValueType_Instance_Read()
+        {
+            var instance = new GenericInstanceFieldOnValueType<int> { ValueField = 42 };
+            _ = instance.ValueField;
+        }
+
+        public static void Test_Field_Generic_FromType_ValueType_OnValueType_Instance_Write()
+        {
+            var instance = new GenericInstanceFieldOnValueType<int>();
+            instance.ValueField = 42;
+        }
+
+        public static void Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Read()
+        {
+            var instance = new GenericInstanceFieldOnValueType<object> { ReferenceField = new object() };
+            _ = instance.ReferenceField;
+        }
+
+        public static void Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Write()
+        {
+            var instance = new GenericInstanceFieldOnValueType<object>();
+            instance.ReferenceField = new object();
+        }
+
         public static void Test_Property_ReferenceType_Instance_Write()
         {
             var instance = new InstanceFieldReferenceType();
@@ -837,6 +957,24 @@ namespace SharpDetect.E2ETests.Subject
             DataRace.Test_DataRace_ValueType_Static = 123; // Initialize first
             var task1 = Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; });
             var task2 = Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_DataRace_ReferenceType_Instance_WriteWriteRace()
+        {
+            var instance = new DataRace();
+            instance.Test_DataRace_ReferenceType_Instance = new object();
+            var task1 = Task.Run(() => { instance.Test_DataRace_ReferenceType_Instance = new object(); });
+            var task2 = Task.Run(() => { instance.Test_DataRace_ReferenceType_Instance = new object(); });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_DataRace_ValueType_Instance_WriteWriteRace()
+        {
+            var instance = new DataRace();
+            instance.Test_DataRace_ValueType_Instance = 0;
+            var task1 = Task.Run(() => { instance.Test_DataRace_ValueType_Instance = 123; });
+            var task2 = Task.Run(() => { instance.Test_DataRace_ValueType_Instance = 456; });
             Task.WaitAll(task1, task2);
         }
 

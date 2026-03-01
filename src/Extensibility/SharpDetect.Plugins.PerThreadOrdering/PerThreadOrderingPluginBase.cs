@@ -34,6 +34,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public event Action<ThreadJoinResultArgs>? ThreadJoinReturned;
     public event Action<StaticFieldReadArgs>? StaticFieldRead;
     public event Action<StaticFieldWriteArgs>? StaticFieldWritten;
+    public event Action<InstanceFieldReadArgs>? InstanceFieldRead;
+    public event Action<InstanceFieldWriteArgs>? InstanceFieldWritten;
 
     protected PerThreadOrderingPluginBase(
         IModuleBindContext moduleBindContext,
@@ -61,6 +63,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected void RaiseThreadJoinReturned(ThreadJoinResultArgs args) => ThreadJoinReturned?.Invoke(args);
     protected void RaiseStaticFieldRead(StaticFieldReadArgs args) => StaticFieldRead?.Invoke(args);
     protected void RaiseStaticFieldWritten(StaticFieldWriteArgs args) => StaticFieldWritten?.Invoke(args);
+    protected void RaiseInstanceFieldRead(InstanceFieldReadArgs args) => InstanceFieldRead?.Invoke(args);
+    protected void RaiseInstanceFieldWritten(InstanceFieldWriteArgs args) => InstanceFieldWritten?.Invoke(args);
 
     [RecordedEventBind((ushort)RecordedEventType.LockAcquire)]
     [RecordedEventBind((ushort)RecordedEventType.LockTryAcquire)]
@@ -195,7 +199,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnStaticFieldRead(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var fieldAccess = GetInstrumentedStaticFieldAccess(metadata, args);
+        var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
         StaticFieldRead?.Invoke(new StaticFieldReadArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken));
     }
 
@@ -203,8 +207,24 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnStaticFieldWrite(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var fieldAccess = GetInstrumentedStaticFieldAccess(metadata, args);
+        var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
         StaticFieldWritten?.Invoke(new StaticFieldWriteArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken));
+    }
+    
+    [RecordedEventBind((ushort)RecordedEventType.InstanceFieldRead)]
+    public void OnInstanceFieldRead(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var (fieldAccess, instance) = GetInstrumentedInstanceFieldAccessFromArguments(metadata, args);
+        InstanceFieldRead?.Invoke(new InstanceFieldReadArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken, instance));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.InstanceFieldWrite)]
+    public void OnInstanceFieldWrite(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var (fieldAccess, instance) = GetInstrumentedInstanceFieldAccessFromArguments(metadata, args);
+        InstanceFieldWritten?.Invoke(new InstanceFieldWriteArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken, instance));
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
@@ -420,12 +440,23 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         return result.Value;
     }
 
-    private InstrumentedFieldAccess GetInstrumentedStaticFieldAccess(
+    private InstrumentedFieldAccess GetInstrumentedStaticFieldAccessFromArguments(
         RecordedEventMetadata metadata,
         MethodEnterWithArgumentsRecordedEvent args)
     {
         var instrumentationId = MemoryMarshal.Read<ulong>(args.ArgumentValues);
         return InstrumentedFieldAccesses[new InstrumentationPointId(metadata.Pid, instrumentationId)];
+    }
+    
+    private (InstrumentedFieldAccess Access, ProcessTrackedObjectId Instance) GetInstrumentedInstanceFieldAccessFromArguments(
+        RecordedEventMetadata metadata,
+        MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var instrumentationId = MemoryMarshal.Read<ulong>(args.ArgumentValues);
+        var access = InstrumentedFieldAccesses[new InstrumentationPointId(metadata.Pid, instrumentationId)];
+        var instanceId = MemoryMarshal.Read<nuint>(args.ArgumentValues.AsSpan()[sizeof(ulong)..]);
+        var instance = new ProcessTrackedObjectId(metadata.Pid, new TrackedObjectId(instanceId));
+        return (access, instance);
     }
 
     private static void EnsureCallStackIntegrity(StackFrame frame, ModuleId moduleId, MdMethodDef methodToken)

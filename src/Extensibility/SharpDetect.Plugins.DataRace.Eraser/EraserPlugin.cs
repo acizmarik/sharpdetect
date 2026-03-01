@@ -71,7 +71,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                     FieldAccessDescriptors.GetAllMethods()))
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
-                EnableFieldsAccessInstrumentation = true
+                EnableFieldsAccessInstrumentation = true,
+                configuration.ExcludedFieldAccessModulePrefixes
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 
@@ -82,6 +83,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         ObjectWaitReturned += OnObjectWaitReturned;
         StaticFieldRead += OnStaticFieldRead;
         StaticFieldWritten += OnStaticFieldWritten;
+        InstanceFieldRead += OnInstanceFieldRead;
+        InstanceFieldWritten += OnInstanceFieldWritten;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -125,7 +128,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             args.ProcessThreadId,
             args.ModuleId,
             args.MethodToken,
-            args.FieldToken);
+            args.FieldToken,
+            objectId: null);
 
         if (raceInfo == null)
             return;
@@ -139,6 +143,29 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             raceInfo.PreviousState,
             raceInfo.NewState);
     }
+    
+    private void OnInstanceFieldRead(InstanceFieldReadArgs args)
+    {
+        var raceInfo = _detector.RecordRead(
+            args.ProcessThreadId,
+            args.ModuleId,
+            args.MethodToken,
+            args.FieldToken,
+            args.ObjectId);
+
+        if (raceInfo == null)
+            return;
+        
+        _detectedRaces.Add(raceInfo);
+        Logger.LogWarning(
+            "Potential data race detected on field {FieldName} with object {ObjectId} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
+            GetFieldDisplayName(raceInfo.FieldId),
+            args.ObjectId.ObjectId.Value,
+            Threads[args.ProcessThreadId],
+            raceInfo.CurrentAccess.AccessType,
+            raceInfo.PreviousState,
+            raceInfo.NewState);
+    }
 
     private void OnStaticFieldWritten(StaticFieldWriteArgs args)
     {
@@ -146,7 +173,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             args.ProcessThreadId,
             args.ModuleId,
             args.MethodToken,
-            args.FieldToken);
+            args.FieldToken,
+            objectId: null);
 
         if (raceInfo == null)
             return;
@@ -155,6 +183,29 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         Logger.LogWarning(
             "Potential data race detected on field {FieldName} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
             GetFieldDisplayName(raceInfo.FieldId),
+            Threads[args.ProcessThreadId],
+            raceInfo.CurrentAccess.AccessType,
+            raceInfo.PreviousState,
+            raceInfo.NewState);
+    }
+    
+    private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
+    {
+        var raceInfo = _detector.RecordWrite(
+            args.ProcessThreadId,
+            args.ModuleId,
+            args.MethodToken,
+            args.FieldToken,
+            args.ObjectId);
+
+        if (raceInfo == null)
+            return;
+        
+        _detectedRaces.Add(raceInfo);
+        Logger.LogWarning(
+            "Potential data race detected on field {FieldName} with object {Object} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
+            GetFieldDisplayName(raceInfo.FieldId),
+            args.ObjectId.ObjectId.Value,
             Threads[args.ProcessThreadId],
             raceInfo.CurrentAccess.AccessType,
             raceInfo.PreviousState,

@@ -23,7 +23,15 @@
     "RenderReport": false,
     "LogLevel": "Information",
     "Configuration": {
-      "SuppressAnalysisOfStaticDelegates": true
+      "SuppressAnalysisOfStaticDelegates": true,
+      "Configuration":
+      {
+        "ExcludedFieldAccessModulePrefixes":
+        [
+          "System.",
+          "Microsoft."
+        ]
+      }
     }
   }
 }
