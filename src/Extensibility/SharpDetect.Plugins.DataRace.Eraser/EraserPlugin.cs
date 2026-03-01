@@ -238,6 +238,12 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
         base.Visit(metadata, args);
     }
+
+    protected override void Visit(RecordedEventMetadata metadata, GarbageCollectedTrackedObjectsRecordedEvent args)
+    {
+        _detector.RecordGarbageCollectedObjects(metadata.Pid, args.RemovedTrackedObjectIds);
+        base.Visit(metadata, args);
+    }
     
     private static string GetFieldDisplayName(FieldId fieldId)
     {
