@@ -119,7 +119,7 @@ When analysis completes, it generates a comprehensive HTML report with details a
 - **Synchronization Primitives**: Same as Deadlock Detection Plugin
 - **Memory Access Operations**:
     - Static field read `LDSFLD` and write `STSFLD`
-    - Instance field read `LDFLD` and write `STFLD` (🚧 work in progress 🚧)
+    - Instance field read `LDFLD` and write `STFLD`
     - Array element reads `LDELEM*` and writes `STELEM*` (🚧 work in progress 🚧)
 
 #### Known Limitations
