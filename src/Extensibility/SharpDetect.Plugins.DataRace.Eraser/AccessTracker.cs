@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 
 namespace SharpDetect.Plugins.DataRace.Eraser;
@@ -11,6 +12,7 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
     private readonly Dictionary<FieldId, AccessInfo> _staticLastWriteAccessInfo = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId), AccessInfo> _instanceLastAccessInfo = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId), AccessInfo> _instanceLastWriteAccessInfo = [];
+    private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _objectFieldIndex = [];
     
     public AccessInfo? GetLastAccess(FieldId fieldId, ProcessTrackedObjectId? objectId)
     {
@@ -34,6 +36,7 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
             _instanceLastAccessInfo[key] = accessInfo;
             if (accessInfo.AccessType == AccessType.Write)
                 _instanceLastWriteAccessInfo[key] = accessInfo;
+            TrackObjectField(objectId.Value, fieldId);
         }
         else
         {
@@ -56,5 +59,32 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
             methodToken,
             accessType,
             timeProvider.GetUtcNow().DateTime);
+    }
+    
+    public void RemoveTrackedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
+    {
+        foreach (var objectId in removedObjectIds)
+        {
+            var processObjectId = new ProcessTrackedObjectId(processId, objectId);
+            if (!_objectFieldIndex.Remove(processObjectId, out var fieldIds))
+                continue;
+            
+            foreach (var fieldId in fieldIds)
+            {
+                _instanceLastAccessInfo.Remove((fieldId, processObjectId));
+                _instanceLastWriteAccessInfo.Remove((fieldId, processObjectId));
+            }
+        }
+    }
+    
+    private void TrackObjectField(ProcessTrackedObjectId objectId, FieldId fieldId)
+    {
+        if (!_objectFieldIndex.TryGetValue(objectId, out var fieldIds))
+        {
+            fieldIds = [];
+            _objectFieldIndex[objectId] = fieldIds;
+        }
+
+        fieldIds.Add(fieldId);
     }
 }

@@ -48,6 +48,12 @@ internal sealed class EraserDetector
         _threadLockSetTracker.UnregisterThread(threadId);
     }
 
+    public void RecordGarbageCollectedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
+    {
+        _shadowMemory.RemoveTrackedObjects(processId, removedObjectIds);
+        _accessTracker.RemoveTrackedObjects(processId, removedObjectIds);
+    }
+
     public void RecordLockAcquired(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
     {
         _threadLockSetTracker.AcquireLock(threadId, lockId);
