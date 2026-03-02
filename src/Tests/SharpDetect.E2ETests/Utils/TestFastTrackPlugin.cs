@@ -8,13 +8,13 @@ using SharpDetect.Core.Loader;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Reporting.Model;
 using SharpDetect.Core.Serialization;
-using SharpDetect.Plugins.DataRace.Eraser;
+using SharpDetect.Plugins.DataRace.FastTrack;
 
 namespace SharpDetect.E2ETests.Utils;
 
-public sealed class TestEraserPlugin : EraserPlugin, ITestPlugin
+public sealed class TestFastTrackPlugin : FastTrackPlugin, ITestPlugin
 {
-    public TestEraserPlugin(
+    public TestFastTrackPlugin(
         PluginOptionsConfiguration pluginOptionsConfiguration,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
@@ -22,7 +22,7 @@ public sealed class TestEraserPlugin : EraserPlugin, ITestPlugin
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
         TimeProvider timeProvider,
-        ILogger<EraserPlugin> logger)
+        ILogger<FastTrackPlugin> logger)
         : base(
             pluginOptionsConfiguration,
             moduleBindContext,

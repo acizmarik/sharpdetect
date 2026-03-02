@@ -3,9 +3,9 @@
 
 using SharpDetect.Core.Plugins;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.Common;
 
-internal sealed class ThreadAccessCollector
+public sealed class ThreadAccessCollector
 {
     private readonly record struct ThreadAccessEntry(
         DataRaceInfo Race,
@@ -13,7 +13,7 @@ internal sealed class ThreadAccessCollector
         bool IsCurrent);
 
     private readonly Dictionary<ProcessThreadId, List<ThreadAccessEntry>> _accessesByThread = [];
-    
+
     public void AddRace(DataRaceInfo race)
     {
         AddAccess(race.CurrentAccess.ProcessThreadId, race, race.CurrentAccess, isCurrent: true);
@@ -22,19 +22,19 @@ internal sealed class ThreadAccessCollector
     }
 
     public IEnumerable<ProcessThreadId> GetThreads() => _accessesByThread.Keys;
-    
+
     public AccessInfo GetFirstAccess(ProcessThreadId threadId)
     {
         return _accessesByThread[threadId].First().Access;
     }
-    
+
     public IEnumerable<(DataRaceInfo Race, AccessInfo Access, bool IsCurrent)> GetDistinctAccesses(ProcessThreadId threadId)
     {
         return _accessesByThread[threadId]
             .DistinctBy(a => (a.Access.Timestamp, a.Access.AccessType))
             .Select(e => (e.Race, e.Access, e.IsCurrent));
     }
-    
+
     public IEnumerable<AccessInfo> GetDistinctMethods(ProcessThreadId threadId)
     {
         return _accessesByThread[threadId]
@@ -49,7 +49,8 @@ internal sealed class ThreadAccessCollector
             list = [];
             _accessesByThread[threadId] = list;
         }
-        
+
         list.Add(new ThreadAccessEntry(race, access, isCurrent));
     }
 }
+

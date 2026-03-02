@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
+    </ItemGroup>
+
+</Project>
+
+

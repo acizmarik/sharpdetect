@@ -81,7 +81,7 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         var timeProvider = new TestTimeProvider(DateTimeOffset.MinValue);
         var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput, timeProvider);
+            configuration, sdk, overridePluginTypeFullName: null, pluginAdditionalData, testOutput, timeProvider);
         var plugin = services.GetRequiredService<IPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var reportRenderer = services.GetRequiredService<IReportSummaryRenderer>();

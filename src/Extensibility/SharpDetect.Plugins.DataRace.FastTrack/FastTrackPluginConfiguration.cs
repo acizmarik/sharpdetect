@@ -4,11 +4,13 @@
 using SharpDetect.Core.Configuration;
 using SharpDetect.Plugins.DataRace.Common;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.FastTrack;
 
-public sealed class EraserPluginConfiguration : PluginOptionsConfiguration, IPluginOptionsConfig<EraserPluginConfiguration>, IDataRacePluginConfiguration
+public sealed class FastTrackPluginConfiguration : PluginOptionsConfiguration, IPluginOptionsConfig<FastTrackPluginConfiguration>, IDataRacePluginConfiguration
 {
     public bool SuppressAnalysisOfStaticDelegates { get; init; } = true;
     public string[] ExcludedFieldAccessModulePrefixes { get; init; } = [];
-    public static EraserPluginConfiguration Default => new();
+    public static FastTrackPluginConfiguration Default => new();
 }
+
+

@@ -20,12 +20,23 @@ internal static class TestContextFactory
         TestPluginAdditionalData additionalData,
         ITestOutputHelper output)
     {
-        return CreateServiceProvider(filename, sdk, additionalData, output, TimeProvider.System);
+        return CreateServiceProvider(filename, sdk, overridePluginTypeFullName: null, additionalData, output, TimeProvider.System);
     }
     
     public static TestDisposableServiceProvider CreateServiceProvider(
         string filename,
         string sdk,
+        string? overridePluginTypeFullName,
+        TestPluginAdditionalData additionalData,
+        ITestOutputHelper output)
+    {
+        return CreateServiceProvider(filename, sdk, overridePluginTypeFullName, additionalData, output, TimeProvider.System);
+    }
+    
+    public static TestDisposableServiceProvider CreateServiceProvider(
+        string filename,
+        string sdk,
+        string? overridePluginTypeFullName,
         TestPluginAdditionalData additionalData,
         ITestOutputHelper output,
         TimeProvider timeProvider)
@@ -46,6 +57,10 @@ internal static class TestContextFactory
                 Path = args.Target.Path
                     .Replace("%SDK%", sdk)
                     .Replace("%BUILD_CONFIGURATION%", buildConfiguration)
+            },
+            Analysis = args.Analysis with
+            {
+                FullTypeName = overridePluginTypeFullName ?? args.Analysis.FullTypeName
             }
         };
         

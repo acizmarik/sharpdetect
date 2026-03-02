@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SharpDetect.Plugins.DataRace.Eraser\SharpDetect.Plugins.DataRace.Eraser.csproj" />
+    <ProjectReference Include="..\SharpDetect.Plugins.DataRace.FastTrack\SharpDetect.Plugins.DataRace.FastTrack.csproj" />
     <ProjectReference Include="..\SharpDetect.Plugins.Deadlock\SharpDetect.Plugins.Deadlock.csproj" />
   </ItemGroup>
 

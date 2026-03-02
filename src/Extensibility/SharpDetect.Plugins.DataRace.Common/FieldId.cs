@@ -4,7 +4,8 @@
 using System.Diagnostics;
 using dnlib.DotNet;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.Common;
 
 [DebuggerDisplay("Process:{ProcessId}/Field:{FieldDef.FullName}")]
-internal readonly record struct FieldId(uint ProcessId, FieldDef FieldDef);
+public readonly record struct FieldId(uint ProcessId, FieldDef FieldDef);
+
