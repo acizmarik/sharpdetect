@@ -90,10 +90,10 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ThreadJoinAttemptArgs)>(GetNextId(), RecordedEventType.ThreadJoinAttempt, (new RecordedEventMetadata(args.BlockedProcessThreadId.ProcessId, args.BlockedProcessThreadId.ThreadId), args)));
         _plugin.ThreadJoinReturned += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ThreadJoinResultArgs)>(GetNextId(), RecordedEventType.ThreadJoinResult, (new RecordedEventMetadata(args.BlockedProcessThreadId.ProcessId, args.BlockedProcessThreadId.ThreadId), args)));
+        _plugin.ThreadStarting += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ThreadStartingArgs)>(GetNextId(), RecordedEventType.ThreadStartCore, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.ThreadStarted += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ThreadStartArgs)>(GetNextId(), RecordedEventType.ThreadStart, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
-        _plugin.ThreadMappingUpdated += args
-            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ThreadMappingArgs)>(GetNextId(), RecordedEventType.ThreadMapping, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ThreadStartArgs)>(GetNextId(), RecordedEventType.ThreadStartCallback, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.StaticFieldRead += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, StaticFieldReadArgs)>(GetNextId(), RecordedEventType.StaticFieldRead, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.StaticFieldWritten += args

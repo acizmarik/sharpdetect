@@ -131,15 +131,9 @@ public abstract class ExecutionOrderingPluginBase : PerThreadOrderingPluginBase,
             base.ProcessWaitReturn(id, moduleId, methodToken, lockId, success);
     }
 
-    protected override void ProcessThreadStart(ProcessThreadId id, ProcessTrackedObjectId processThreadObjectId)
+    protected override void ProcessThreadStartCallback(ProcessThreadId id, ProcessTrackedObjectId processThreadObjectId)
     {
-        base.ProcessThreadStart(id, processThreadObjectId);
-        _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(processThreadObjectId);
-    }
-
-    protected override void ProcessThreadMapping(ProcessThreadId id, ProcessTrackedObjectId processThreadObjectId)
-    {
-        base.ProcessThreadMapping(id, processThreadObjectId);
+        base.ProcessThreadStartCallback(id, processThreadObjectId);
         _eventsDeliveryContext.UnblockEventsDeliveryForThreadWaitingForThreadStart(processThreadObjectId);
     }
 

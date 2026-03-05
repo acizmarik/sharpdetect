@@ -16,8 +16,8 @@ public enum RecordedEventType : ushort
     TailcallWithArguments = 6,
 
     /* Threading */
-    ThreadStart = 11,
-    ThreadMapping = 12,
+    ThreadStartCore = 11,
+    ThreadStartCallback = 12,
     ThreadCreate = 13,
     ThreadRename = 14,
     ThreadDestroy = 15,

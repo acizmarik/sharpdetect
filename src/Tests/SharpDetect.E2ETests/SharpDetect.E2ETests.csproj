@@ -100,9 +100,6 @@
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_StartCallback2.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_get_CurrentThread.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Lock_EnterExit1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

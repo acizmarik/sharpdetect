@@ -144,35 +144,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.ThreadStartCore))
+            .Then(EventuallyEventType(RecordedEventType.ThreadStartCallback))
             .Then(EventuallyEventType(RecordedEventType.ThreadCreate))
-            .Then(EventuallyEventType(RecordedEventType.ThreadStart))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
-        
-        // Execute
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
-        
-        // Assert
-        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-    }
-    
-    [Theory]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Thread_get_CurrentThread.json", "net10.0")]
-    public async Task MethodInterpretation_Thread_CurrentThread(string configuration, string sdk)
-    {
-        // Arrange
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
-        using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput);
-        var args = services.GetRequiredService<RunCommandArgs>();
-        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
-        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyEventType(RecordedEventType.ThreadCreate))
-            .Then(EventuallyEventType(RecordedEventType.ThreadStart))
-            .Then(EventuallyEventType(RecordedEventType.ThreadMapping))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
         
         // Execute

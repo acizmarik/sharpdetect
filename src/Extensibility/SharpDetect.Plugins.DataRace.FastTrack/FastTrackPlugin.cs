@@ -28,6 +28,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     private readonly FastTrackDetector _detector;
     private readonly List<DataRaceInfo> _detectedRaces = [];
     private readonly HashSet<ProcessThreadId> _trackedThreads = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _startingThreads = [];
 
     public FastTrackPlugin(
         PluginOptionsConfiguration pluginOptionsConfiguration,
@@ -86,6 +87,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         InstanceFieldRead += OnInstanceFieldRead;
         InstanceFieldWritten += OnInstanceFieldWritten;
         ThreadJoinReturned += OnThreadJoinReturned;
+        ThreadStarting += OnThreadStarting;
+        ThreadStarted += OnThreadStarted;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -220,23 +223,21 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
             raceInfo.PreviousState,
             raceInfo.NewState);
     }
-
-    protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
+    
+    private void OnThreadStarting(ThreadStartingArgs obj)
     {
-        var parentId = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var childId = new ProcessThreadId(metadata.Pid, args.ThreadId);
-
-        if (_trackedThreads.Add(childId))
-        {
-            _detector.RecordThreadCreated(childId);
-        }
-
-        if (_trackedThreads.Contains(parentId) && parentId != childId)
-        {
-            _detector.RecordThreadFork(parentId, childId);
-        }
-
-        base.Visit(metadata, args);
+        _startingThreads[obj.ThreadObjectId] = obj.ProcessThreadId;
+    }
+    
+    private void OnThreadStarted(ThreadStartArgs obj)
+    {
+        var childThreadId = obj.ProcessThreadId;
+        var parentThreadId = _startingThreads[obj.ThreadObjectId];
+        _startingThreads.Remove(obj.ThreadObjectId);
+        Logger.LogInformation("Thread {Parent} is parent of thread {Child}.", Threads[parentThreadId], Threads[childThreadId]);
+        
+        _detector.RecordThreadCreated(childThreadId);
+        _detector.RecordThreadFork(parentThreadId, childThreadId);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

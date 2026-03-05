@@ -9,8 +9,8 @@ namespace SharpDetect.Plugins.Descriptors.Methods;
 public static class ThreadMethodDescriptors
 {
     private static readonly MethodDescriptor ThreadJoinInt32;
+    private static readonly MethodDescriptor ThreadStartCore;
     private static readonly MethodDescriptor ThreadStartCallback;
-    private static readonly MethodDescriptor ThreadGetCurrentThread;
 
     static ThreadMethodDescriptors()
     {
@@ -49,34 +49,34 @@ public static class ThreadMethodDescriptors
                 InjectManagedWrapper: false,
                 Arguments: [ new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)) ],
                 ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.ThreadStart,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ThreadStartCallback,
                 MethodExitInterpretation: null));
         
-        ThreadGetCurrentThread = new MethodDescriptor(
-            MethodName: "get_CurrentThread",
+        ThreadStartCore = new MethodDescriptor(
+            MethodName: "StartCore",
             DeclaringTypeFullName: typeFullName,
             VersionDescriptor: null,
             SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
                 ParametersCount: 0,
-                ReturnType: ArgumentTypeDescriptor.CreateClass(typeFullName),
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
                 ArgumentTypeElements: []),
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [],
-                ReturnValue: new CapturedValueDescriptor((byte)nint.Size, CapturedValue.CaptureAsReference),
-                MethodEnterInterpretation: null,
-                MethodExitInterpretation: (ushort)RecordedEventType.ThreadMapping));
+                Arguments: [ new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)) ],
+                ReturnValue: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ThreadStartCore,
+                MethodExitInterpretation: null));
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods()
     {
         // Common public API
         yield return ThreadJoinInt32;
-        yield return ThreadGetCurrentThread;
         
         // Internal runtime API
+        yield return ThreadStartCore;
         yield return ThreadStartCallback;
     }
 }
