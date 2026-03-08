@@ -3,6 +3,7 @@
 
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.Common;
 
-internal readonly record struct FieldDefOrRef(ModuleId ModuleId, MdToken Token);
+public readonly record struct FieldDefOrRef(ModuleId ModuleId, MdToken Token);
+

@@ -4,6 +4,7 @@
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
+using SharpDetect.Plugins.DataRace.Common;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace SharpDetect.Plugins.DataRace.Eraser;
@@ -135,9 +136,8 @@ internal sealed class EraserDetector
             objectId,
             currentAccess,
             lastRelevantAccess,
-            transitionResult.PreviousState,
-            transitionResult.NewState,
-            CandidateLockSet: transitionResult.ResultingLockSet,
+            transitionResult.PreviousState.ToString(),
+            transitionResult.NewState.ToString(),
             Timestamp: _timeProvider.GetUtcNow().DateTime);
     }
 }

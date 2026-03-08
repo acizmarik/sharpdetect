@@ -19,7 +19,7 @@
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
-    "FullTypeName": "SharpDetect.E2ETests.Utils.TestEraserPlugin",
+    "FullTypeName": "%PLUGIN_TYPE%",
     "RenderReport": false,
     "LogLevel": "Information",
     "Configuration":

@@ -16,20 +16,21 @@ using SharpDetect.Plugins.Descriptors.Methods;
 using SharpDetect.Plugins.Descriptors.Types;
 using SharpDetect.Plugins.PerThreadOrdering;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.FastTrack;
 
-public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
+public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "DataRace";
     public RecordedEventActionVisitorBase EventsVisitor => this;
     public override PluginConfiguration Configuration { get; }
     public DirectoryInfo ReportTemplates { get; }
 
-    private readonly EraserDetector _detector;
+    private readonly FastTrackDetector _detector;
     private readonly List<DataRaceInfo> _detectedRaces = [];
     private readonly HashSet<ProcessThreadId> _trackedThreads = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _startingThreads = [];
 
-    public EraserPlugin(
+    public FastTrackPlugin(
         PluginOptionsConfiguration pluginOptionsConfiguration,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
@@ -37,7 +38,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
         TimeProvider timeProvider,
-        ILogger<EraserPlugin> logger)
+        ILogger<FastTrackPlugin> logger)
         : base(
             moduleBindContext,
             metadataContext,
@@ -46,9 +47,9 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             timeProvider,
             logger)
     {
-        var configuration = pluginOptionsConfiguration.ParseConfigurationOrDefault<EraserPluginConfiguration>(Logger);
-        _detector = new EraserDetector(configuration, metadataContext, timeProvider, logger, GetThreadName);
-        
+        var configuration = pluginOptionsConfiguration.ParseConfigurationOrDefault<FastTrackPluginConfiguration>(Logger);
+        _detector = new FastTrackDetector(configuration, metadataContext, timeProvider, logger, GetThreadName);
+
         Configuration = PluginConfiguration.Create(
             eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
@@ -77,7 +78,6 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 
-        // Subscribe to execution ordering events
         LockAcquireReturned += OnLockAcquireReturned;
         LockReleased += OnLockReleased;
         ObjectWaitAttempted += OnObjectWaitAttempted;
@@ -86,11 +86,14 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         StaticFieldWritten += OnStaticFieldWritten;
         InstanceFieldRead += OnInstanceFieldRead;
         InstanceFieldWritten += OnInstanceFieldWritten;
+        ThreadJoinReturned += OnThreadJoinReturned;
+        ThreadStarting += OnThreadStarting;
+        ThreadStarted += OnThreadStarted;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
                 Path.GetDirectoryName(GetType().Assembly.Location)!,
-                "Eraser",
+                "FastTrack",
                 "Templates",
                 "Partials"));
     }
@@ -112,15 +115,23 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         _detector.RecordLockReleased(args.ProcessThreadId, args.LockId);
     }
-    
+
     private void OnObjectWaitAttempted(ObjectWaitAttemptArgs args)
     {
         _detector.RecordObjectWaitCalled(args.ProcessThreadId, args.LockId);
     }
-    
+
     private void OnObjectWaitReturned(ObjectWaitResultArgs args)
     {
         _detector.RecordObjectWaitReturned(args.ProcessThreadId, args.LockId);
+    }
+
+    private void OnThreadJoinReturned(ThreadJoinResultArgs args)
+    {
+        if (args.IsSuccess)
+        {
+            _detector.RecordThreadJoin(args.BlockedProcessThreadId, args.JoinedProcessThreadId);
+        }
     }
 
     private void OnStaticFieldRead(StaticFieldReadArgs args)
@@ -135,7 +146,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             RecordDataRace(args.ProcessThreadId, raceInfo);
         }
     }
-    
+
     private void OnInstanceFieldRead(InstanceFieldReadArgs args)
     {
         if (_detector.RecordRead(
@@ -161,7 +172,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             RecordDataRace(args.ProcessThreadId, raceInfo);
         }
     }
-    
+
     private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
     {
         if (_detector.RecordWrite(
@@ -174,14 +185,21 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             RecordDataRace(args.ProcessThreadId, raceInfo);
         }
     }
-
-    protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
+    
+    private void OnThreadStarting(ThreadStartingArgs obj)
     {
-        var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
-        if (_trackedThreads.Add(id))
-            _detector.RecordThreadCreated(id);
-
-        base.Visit(metadata, args);
+        _startingThreads[obj.ThreadObjectId] = obj.ProcessThreadId;
+    }
+    
+    private void OnThreadStarted(ThreadStartArgs obj)
+    {
+        var childThreadId = obj.ProcessThreadId;
+        var parentThreadId = _startingThreads[obj.ThreadObjectId];
+        _startingThreads.Remove(obj.ThreadObjectId);
+        Logger.LogInformation("Thread {Parent} is parent of thread {Child}.", Threads[parentThreadId], Threads[childThreadId]);
+        
+        _detector.RecordThreadCreated(childThreadId);
+        _detector.RecordThreadFork(parentThreadId, childThreadId);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)
@@ -207,7 +225,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         _detector.RecordGarbageCollectedObjects(metadata.Pid, args.RemovedTrackedObjectIds);
         base.Visit(metadata, args);
     }
-    
+
     private void RecordDataRace(ProcessThreadId reporterThreadId, DataRaceInfo raceInfo)
     {
         _detectedRaces.Add(raceInfo);
@@ -225,9 +243,11 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             raceInfo.PreviousState,
             raceInfo.NewState);
     }
-    
+
     private static string GetFieldDisplayName(FieldId fieldId)
     {
         return $"{fieldId.FieldDef.DeclaringType.FullName}.{fieldId.FieldDef.Name}";
     }
 }
+
+

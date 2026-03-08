@@ -7,9 +7,9 @@ using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.Common;
 
-internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger logger)
+public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logger)
 {
     private readonly record struct ResolvedFieldInfo(FieldDef FieldDef, FieldFlags Flags);
     private readonly Dictionary<FieldDefOrRef, ResolvedFieldInfo> _resolvedFields = [];
@@ -23,7 +23,7 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
         out FieldFlags fieldFlags)
     {
         var fieldDefOrRef = new FieldDefOrRef(moduleId, fieldToken);
-        
+
         if (_resolvedFields.TryGetValue(fieldDefOrRef, out var cached))
         {
             fieldDef = cached.FieldDef;
@@ -33,14 +33,14 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
 
         var resolver = metadataContext.GetResolver(processId);
         var resolveResult = resolver.ResolveField(processId, moduleId, fieldToken);
-        
+
         if (resolveResult.IsError)
         {
             logger.LogWarning(
                 "Skipping analysis of field with token={FieldToken} in module {ModuleId} because it could not be resolved",
-                fieldToken.Value, 
+                fieldToken.Value,
                 moduleId);
-            
+
             fieldDef = null;
             fieldFlags = FieldFlags.None;
             return false;
@@ -48,14 +48,14 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
 
         fieldDef = resolveResult.Value;
         fieldFlags = ComputeFieldFlags(fieldDef);
-        
+
         _resolvedFields.Add(fieldDefOrRef, new ResolvedFieldInfo(fieldDef, fieldFlags));
         return true;
     }
-    
+
     public static bool ShouldExcludeFromAnalysis(
         FieldFlags flags,
-        EraserPluginConfiguration configuration)
+        IDataRacePluginConfiguration configuration)
     {
         return flags.HasFlag(FieldFlags.IsReadOnly) ||
                flags.HasFlag(FieldFlags.IsThreadStatic) ||
@@ -65,16 +65,16 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
     private FieldFlags ComputeFieldFlags(FieldDef fieldDef)
     {
         var flags = FieldFlags.None;
-        
+
         if (IsFieldReadonly(fieldDef))
             flags |= FieldFlags.IsReadOnly;
-        
+
         if (IsFieldThreadStatic(fieldDef))
             flags |= FieldFlags.IsThreadStatic;
-        
+
         if (IsStaticDelegateField(fieldDef))
             flags |= FieldFlags.IsStaticDelegateType;
-        
+
         return flags;
     }
 
@@ -85,7 +85,7 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
 
     private static bool IsFieldThreadStatic(FieldDef fieldDef)
     {
-        return fieldDef.CustomAttributes.Any(a => 
+        return fieldDef.CustomAttributes.Any(a =>
             a.AttributeType.FullName.Equals("System.ThreadStaticAttribute", StringComparison.Ordinal));
     }
 
@@ -98,19 +98,20 @@ internal sealed class FieldResolver(IMetadataContext metadataContext, ILogger lo
     {
         var fieldType = fieldDef.FieldType;
         var typeDef = fieldType.ToTypeDefOrRef()?.ResolveTypeDef();
-        
+
         _delegateTypeDef ??= fieldDef.Module.CorLibTypes
             .GetTypeRef(@namespace: "System", name: "Delegate")
             .ResolveTypeDef();
-        
+
         while (typeDef != null)
         {
             if (typeDef == _delegateTypeDef)
                 return true;
-            
+
             typeDef = typeDef.BaseType?.ResolveTypeDef();
         }
 
         return false;
     }
 }
+

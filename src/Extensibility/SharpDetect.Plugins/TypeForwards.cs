@@ -5,3 +5,4 @@ using System.Runtime.CompilerServices;
 
 [assembly: TypeForwardedTo(typeof(SharpDetect.Plugins.Deadlock.DeadlockPlugin))]
 [assembly: TypeForwardedTo(typeof(SharpDetect.Plugins.DataRace.Eraser.EraserPlugin))]
+[assembly: TypeForwardedTo(typeof(SharpDetect.Plugins.DataRace.FastTrack.FastTrackPlugin))]

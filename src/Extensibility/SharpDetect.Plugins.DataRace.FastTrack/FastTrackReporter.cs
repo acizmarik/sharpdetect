@@ -7,9 +7,9 @@ using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
 using SharpDetect.Plugins.DataRace.Common;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.FastTrack;
 
-public partial class EraserPlugin
+public partial class FastTrackPlugin
 {
     public Summary CreateDiagnostics()
     {
@@ -24,29 +24,29 @@ public partial class EraserPlugin
 
     private void AddStatisticsToReport()
     {
-        Reporter.AddCollectionProperty("Distinct Lock Sets", _detector.GetDistinctLockSetCount().ToString());
+        Reporter.AddCollectionProperty("Tracked Threads", _detector.GetTrackedThreadCount().ToString());
         Reporter.AddCollectionProperty("Tracked Fields", _detector.GetTrackedFieldCount().ToString());
-        Reporter.AddCollectionProperty("(Potential) Data Races", _detectedRaces.Count.ToString());
+        Reporter.AddCollectionProperty("Data Races", _detectedRaces.Count.ToString());
     }
 
     private void PrepareNoViolationDiagnostics()
     {
         Reporter.SetTitle("No data races detected");
-        Reporter.SetDescription("All analyzed static field accesses appear to be properly synchronized.");
+        Reporter.SetDescription("All analyzed field accesses appear to be properly synchronized (happens-before).");
     }
 
     private void PrepareViolationDiagnostics()
     {
         var title = _detectedRaces.Count == 1
-            ? "One potential data race detected"
-            : $"Several ({_detectedRaces.Count}) potential data races detected";
+            ? "One data race detected"
+            : $"Several ({_detectedRaces.Count}) data races detected";
         Reporter.SetTitle(title);
-        Reporter.SetDescription("See details below for more information about each potential data race.");
+        Reporter.SetDescription("See details below for more information about each data race.");
 
         var racesByField = _detectedRaces.GroupBy(r => r.FieldId);
         CreateReportsForRaces(racesByField);
     }
-    
+
     private void CreateReportsForRaces(IEnumerable<IGrouping<FieldId, DataRaceInfo>> racesByField)
     {
         var index = 0;
@@ -65,7 +65,7 @@ public partial class EraserPlugin
         var reportBuilder = new ReportBuilder(index, ReportCategory, firstRace.Timestamp);
         reportBuilder.SetTitle($"Data race {reportBuilder.Identifier}");
         reportBuilder.SetDescription(
-            $"Potential data race detected on field '{fieldName}'. " +
+            $"Data race detected on field '{fieldName}'. " +
             $"Total accesses flagged: {fieldRaces.Count()}.");
 
         var accessCollector = CollectThreadAccesses(fieldRaces);
@@ -79,7 +79,7 @@ public partial class EraserPlugin
         var collector = new ThreadAccessCollector();
         foreach (var race in fieldRaces)
             collector.AddRace(race);
-        
+
         return collector;
     }
 
@@ -102,9 +102,10 @@ public partial class EraserPlugin
     private static ThreadInfo CreateThreadInfo(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
     {
         var firstAccess = accessCollector.GetFirstAccess(threadId);
+        var displayName = firstAccess.ThreadName ?? $"Thread-{threadId.ThreadId.Value}";
         return new ThreadInfo(
             threadId.ThreadId.Value,
-            firstAccess.ThreadName ?? $"Thread-{threadId.ThreadId.Value}");
+            displayName);
     }
 
     private static string BuildReasonString(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
@@ -116,7 +117,7 @@ public partial class EraserPlugin
             if (role == RaceRole.Triggering)
             {
                 var lastThreadName = race.LastAccess?.ThreadName ?? "unknown";
-                reasons.Add($"{access.AccessType} access with empty lock set, not ordered after last access by {lastThreadName} ({race.PreviousState} → {race.NewState})");
+                reasons.Add($"{access.AccessType} access not ordered after last access by {lastThreadName} ({race.PreviousState} → {race.NewState})");
             }
             else
             {
@@ -198,3 +199,5 @@ public partial class EraserPlugin
         });
     }
 }
+
+

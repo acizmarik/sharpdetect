@@ -28,8 +28,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public event Action<ObjectPulseAllArgs>? ObjectPulsedAll;
     public event Action<ObjectWaitAttemptArgs>? ObjectWaitAttempted;
     public event Action<ObjectWaitResultArgs>? ObjectWaitReturned;
+    public event Action<ThreadStartingArgs>? ThreadStarting;
     public event Action<ThreadStartArgs>? ThreadStarted;
-    public event Action<ThreadMappingArgs>? ThreadMappingUpdated;
     public event Action<ThreadJoinAttemptArgs>? ThreadJoinAttempted;
     public event Action<ThreadJoinResultArgs>? ThreadJoinReturned;
     public event Action<StaticFieldReadArgs>? StaticFieldRead;
@@ -57,8 +57,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected void RaisePulsedAll(ObjectPulseAllArgs args) => ObjectPulsedAll?.Invoke(args);
     protected void RaiseObjectWaitAttempted(ObjectWaitAttemptArgs args) => ObjectWaitAttempted?.Invoke(args);
     protected void RaiseObjectWaitReturned(ObjectWaitResultArgs args) => ObjectWaitReturned?.Invoke(args);
+    protected void RaiseThreadStarting(ThreadStartingArgs args) => ThreadStarting?.Invoke(args);
     protected void RaiseThreadStarted(ThreadStartArgs args) => ThreadStarted?.Invoke(args);
-    protected void RaiseThreadMappingUpdated(ThreadMappingArgs args) => ThreadMappingUpdated?.Invoke(args);
     protected void RaiseThreadJoinAttempted(ThreadJoinAttemptArgs args) => ThreadJoinAttempted?.Invoke(args);
     protected void RaiseThreadJoinReturned(ThreadJoinResultArgs args) => ThreadJoinReturned?.Invoke(args);
     protected void RaiseStaticFieldRead(StaticFieldReadArgs args) => StaticFieldRead?.Invoke(args);
@@ -154,24 +154,26 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         ProcessWaitReturn(id, args.ModuleId, args.MethodToken, lockId, success);
     }
 
-    [RecordedEventBind((ushort)RecordedEventType.ThreadStart)]
-    public void OnThreadStart(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    
+    [RecordedEventBind((ushort)RecordedEventType.ThreadStartCore)]
+    public void OnThreadStartCore(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
+        // Note: this method is invoked by parent thread
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var threadObjectId = new ProcessTrackedObjectId(id.ProcessId, new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ArgumentValues)));
+        ProcessThreadStartCore(id, threadObjectId);
+    }
+    
+    [RecordedEventBind((ushort)RecordedEventType.ThreadStartCallback)]
+    public void OnThreadStartCallback(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        // Note: this method is invoked by the newly started thread
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
         var threadObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
         _threadObjectRegistry.RegisterMapping(threadObjectId, id);
-        ProcessThreadStart(id, threadObjectId);
+        ProcessThreadStartCallback(id, threadObjectId);
         Logger.LogInformation("Thread started {Name}.", Threads[id]);
-    }
-
-    [RecordedEventBind((ushort)RecordedEventType.ThreadMapping)]
-    public void OnThreadMapping(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
-    {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var threadObjectId = new ProcessTrackedObjectId(id.ProcessId, new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ReturnValue)));
-        _threadObjectRegistry.RegisterMapping(threadObjectId, id);
-        ProcessThreadMapping(id, threadObjectId);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.ThreadJoinAttempt)]
@@ -332,14 +334,14 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
     }
 
-    protected virtual void ProcessThreadStart(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
+    protected virtual void ProcessThreadStartCore(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
     {
-        ThreadStarted?.Invoke(new ThreadStartArgs(id, threadObjectId.ObjectId));
+        ThreadStarting?.Invoke(new ThreadStartingArgs(id, threadObjectId));
     }
-
-    protected virtual void ProcessThreadMapping(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
+    
+    protected virtual void ProcessThreadStartCallback(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
     {
-        ThreadMappingUpdated?.Invoke(new ThreadMappingArgs(id, threadObjectId.ObjectId));
+        ThreadStarted?.Invoke(new ThreadStartArgs(id, threadObjectId));
     }
 
     protected virtual void ProcessThreadJoinAttempt(

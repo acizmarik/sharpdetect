@@ -4,23 +4,23 @@
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 
-namespace SharpDetect.Plugins.DataRace.Eraser;
+namespace SharpDetect.Plugins.DataRace.Common;
 
-internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThreadId, string?> threadNameResolver)
+public sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThreadId, string?> threadNameResolver)
 {
     private readonly Dictionary<FieldId, AccessInfo> _staticLastAccessInfo = [];
     private readonly Dictionary<FieldId, AccessInfo> _staticLastWriteAccessInfo = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId), AccessInfo> _instanceLastAccessInfo = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId), AccessInfo> _instanceLastWriteAccessInfo = [];
     private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _objectFieldIndex = [];
-    
+
     public AccessInfo? GetLastAccess(FieldId fieldId, ProcessTrackedObjectId? objectId)
     {
         return objectId != null
             ? _instanceLastAccessInfo.GetValueOrDefault((fieldId, objectId.Value))
             : _staticLastAccessInfo.GetValueOrDefault(fieldId);
     }
-    
+
     public AccessInfo? GetLastWriteAccess(FieldId fieldId, ProcessTrackedObjectId? objectId)
     {
         return objectId != null
@@ -45,11 +45,11 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
                 _staticLastWriteAccessInfo[fieldId] = accessInfo;
         }
     }
-    
+
     public AccessInfo CreateAccessInfo(
         ProcessThreadId threadId,
-        Core.Events.Profiler.ModuleId moduleId,
-        Core.Events.Profiler.MdMethodDef methodToken,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
         AccessType accessType)
     {
         return new AccessInfo(
@@ -60,7 +60,7 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
             accessType,
             timeProvider.GetUtcNow().DateTime);
     }
-    
+
     public void RemoveTrackedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
     {
         foreach (var objectId in removedObjectIds)
@@ -68,7 +68,7 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
             var processObjectId = new ProcessTrackedObjectId(processId, objectId);
             if (!_objectFieldIndex.Remove(processObjectId, out var fieldIds))
                 continue;
-            
+
             foreach (var fieldId in fieldIds)
             {
                 _instanceLastAccessInfo.Remove((fieldId, processObjectId));
@@ -76,7 +76,7 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
             }
         }
     }
-    
+
     private void TrackObjectField(ProcessTrackedObjectId objectId, FieldId fieldId)
     {
         if (!_objectFieldIndex.TryGetValue(objectId, out var fieldIds))
@@ -88,3 +88,4 @@ internal sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThrea
         fieldIds.Add(fieldId);
     }
 }
+
