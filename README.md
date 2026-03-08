@@ -111,7 +111,7 @@ sharpdetect init \
 ### ⚡ Data Race Detection Plugin: Eraser
 
 The `EraserPlugin` analyzes .NET programs for data races.
-It implements the Eraser algorithm described by Savage et al. in *Eraser: A Dynamic Data Race Detector for Multithreaded Programs* (1997).
+It implements the Eraser algorithm described in *Eraser: A Dynamic Data Race Detector for Multithreaded Programs* (1997).
 When analysis completes, it generates a comprehensive HTML report with details about detected races.
 
 #### Supported Operations
@@ -125,6 +125,7 @@ When analysis completes, it generates a comprehensive HTML report with details a
 #### Known Limitations
 
 - By the nature of the Eraser algorithm, false positives are possible
+- Some fields on generic types are currently not analyzed (🚧 work in progress 🚧)
 - Plugin introduces performance overhead during analysis
 
 #### Usage
@@ -134,6 +135,38 @@ sharpdetect init \
   --plugin "SharpDetect.Plugins.DataRace.Eraser.EraserPlugin" \
   --target "<path/to/YourExecutableDotNetAssembly.dll>" \
   --output "EraserAnalysisConfiguration.json"
+```
+
+### ⚡ Data Race Detection Plugin: FastTrack
+
+The `FastTrackPlugin` analyzes .NET programs for data races.
+It implements the FastTrack algorithm described in *FastTrack: efficient and precise dynamic race detection* (2009).
+When analysis completes, it generates a comprehensive HTML report with details about detected races.
+
+#### Supported Operations
+
+- **Synchronization Primitives**: Same as Deadlock Detection Plugin
+- **Memory Access Operations**:
+    - Static field read `LDSFLD` and write `STSFLD`
+    - Instance field read `LDFLD` and write `STFLD`
+    - Array element reads `LDELEM*` and writes `STELEM*` (🚧 work in progress 🚧)
+- **Thread Operations**:
+    - Thread fork - parent thread creates a new thread
+    - Thread join - one thread waits for another to finish
+
+#### Known Limitations
+
+- False positives are possible, but less likely than with the Eraser algorithm
+- Some fields on generic types are currently not analyzed (🚧 work in progress 🚧)
+- Plugin introduces performance overhead during analysis
+
+#### Usage
+
+```bash
+sharpdetect init \
+  --plugin "SharpDetect.Plugins.DataRace.FastTrack.FastTrackPlugin" \
+  --target "<path/to/YourExecutableDotNetAssembly.dll>" \
+  --output "FastTrackAnalysisConfiguration.json"
 ```
 
 ## Building from Source
