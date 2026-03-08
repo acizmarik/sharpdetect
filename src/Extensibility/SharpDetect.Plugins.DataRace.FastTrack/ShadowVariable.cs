@@ -63,5 +63,18 @@ internal sealed class ShadowVariable
             readStr = $"R:{ReadEpoch}";
         return $"[{writeStr}, {readStr}]";
     }
+
+    public string GetStateDescription(Func<ProcessThreadId, string?> threadNameResolver)
+    {
+        var writeStr = WriteEpoch.IsNone ? "W:⊥" : $"W:{WriteEpoch.ToDisplayString(threadNameResolver)}";
+        string readStr;
+        if (HasReadVectorClock)
+            readStr = "R:VC";
+        else if (ReadEpoch.IsNone)
+            readStr = "R:⊥";
+        else
+            readStr = $"R:{ReadEpoch.ToDisplayString(threadNameResolver)}";
+        return $"[{writeStr}, {readStr}]";
+    }
 }
 

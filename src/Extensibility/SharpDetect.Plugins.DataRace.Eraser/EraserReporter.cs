@@ -111,14 +111,18 @@ public partial class EraserPlugin
     {
         var reasons = new List<string>();
 
-        foreach (var (race, access, isCurrent) in accessCollector.GetDistinctAccesses(threadId))
+        foreach (var (race, access, role) in accessCollector.GetDistinctAccesses(threadId))
         {
-            var accessRole = isCurrent ? "current" : "previous";
-            var stateTransition = isCurrent
-                ? $"{race.PreviousState} -> {race.NewState}"
-                : race.PreviousState;
-
-            reasons.Add($"{access.AccessType} access ({accessRole}, state: {stateTransition})");
+            if (role == RaceRole.Triggering)
+            {
+                var lastThreadName = race.LastAccess?.ThreadName ?? "unknown";
+                reasons.Add($"{access.AccessType} access with empty lock set, not ordered after last access by {lastThreadName} ({race.PreviousState} → {race.NewState})");
+            }
+            else
+            {
+                var otherThreadName = race.CurrentAccess.ThreadName ?? "unknown";
+                reasons.Add($"{access.AccessType} access conflicted with later {race.CurrentAccess.AccessType} by {otherThreadName} ({race.PreviousState} → {race.NewState})");
+            }
         }
 
         return string.Join("; ", reasons.Distinct());

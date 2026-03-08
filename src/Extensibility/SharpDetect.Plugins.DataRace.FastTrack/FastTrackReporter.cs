@@ -102,23 +102,28 @@ public partial class FastTrackPlugin
     private static ThreadInfo CreateThreadInfo(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
     {
         var firstAccess = accessCollector.GetFirstAccess(threadId);
+        var displayName = firstAccess.ThreadName ?? $"Thread-{threadId.ThreadId.Value}";
         return new ThreadInfo(
             threadId.ThreadId.Value,
-            firstAccess.ThreadName ?? $"Thread-{threadId.ThreadId.Value}");
+            displayName);
     }
 
     private static string BuildReasonString(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
     {
         var reasons = new List<string>();
 
-        foreach (var (race, access, isCurrent) in accessCollector.GetDistinctAccesses(threadId))
+        foreach (var (race, access, role) in accessCollector.GetDistinctAccesses(threadId))
         {
-            var accessRole = isCurrent ? "current" : "previous";
-            var stateTransition = isCurrent
-                ? $"{race.PreviousState} -> {race.NewState}"
-                : race.PreviousState;
-
-            reasons.Add($"{access.AccessType} access ({accessRole}, state: {stateTransition})");
+            if (role == RaceRole.Triggering)
+            {
+                var lastThreadName = race.LastAccess?.ThreadName ?? "unknown";
+                reasons.Add($"{access.AccessType} access not ordered after last access by {lastThreadName} ({race.PreviousState} → {race.NewState})");
+            }
+            else
+            {
+                var otherThreadName = race.CurrentAccess.ThreadName ?? "unknown";
+                reasons.Add($"{access.AccessType} access conflicted with later {race.CurrentAccess.AccessType} by {otherThreadName} ({race.PreviousState} → {race.NewState})");
+            }
         }
 
         return string.Join("; ", reasons.Distinct());

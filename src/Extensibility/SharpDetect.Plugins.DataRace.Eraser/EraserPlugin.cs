@@ -125,92 +125,54 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnStaticFieldRead(StaticFieldReadArgs args)
     {
-        var raceInfo = _detector.RecordRead(
-            args.ProcessThreadId,
-            args.ModuleId,
-            args.MethodToken,
-            args.FieldToken,
-            objectId: null);
-
-        if (raceInfo == null)
-            return;
-        
-        _detectedRaces.Add(raceInfo);
-        Logger.LogWarning(
-            "Potential data race detected on field {FieldName} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
-            GetFieldDisplayName(raceInfo.FieldId),
-            Threads[args.ProcessThreadId],
-            raceInfo.CurrentAccess.AccessType,
-            raceInfo.PreviousState,
-            raceInfo.NewState);
+        if (_detector.RecordRead(
+                args.ProcessThreadId,
+                args.ModuleId,
+                args.MethodToken,
+                args.FieldToken,
+                objectId: null) is { } raceInfo)
+        {
+            RecordDataRace(args.ProcessThreadId, raceInfo);
+        }
     }
     
     private void OnInstanceFieldRead(InstanceFieldReadArgs args)
     {
-        var raceInfo = _detector.RecordRead(
-            args.ProcessThreadId,
-            args.ModuleId,
-            args.MethodToken,
-            args.FieldToken,
-            args.ObjectId);
-
-        if (raceInfo == null)
-            return;
-        
-        _detectedRaces.Add(raceInfo);
-        Logger.LogWarning(
-            "Potential data race detected on field {FieldName} with object {ObjectId} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
-            GetFieldDisplayName(raceInfo.FieldId),
-            args.ObjectId.ObjectId.Value,
-            Threads[args.ProcessThreadId],
-            raceInfo.CurrentAccess.AccessType,
-            raceInfo.PreviousState,
-            raceInfo.NewState);
+        if (_detector.RecordRead(
+                args.ProcessThreadId,
+                args.ModuleId,
+                args.MethodToken,
+                args.FieldToken,
+                args.ObjectId) is { } raceInfo)
+        {
+            RecordDataRace(args.ProcessThreadId, raceInfo);
+        }
     }
 
     private void OnStaticFieldWritten(StaticFieldWriteArgs args)
     {
-        var raceInfo = _detector.RecordWrite(
-            args.ProcessThreadId,
-            args.ModuleId,
-            args.MethodToken,
-            args.FieldToken,
-            objectId: null);
-
-        if (raceInfo == null)
-            return;
-        
-        _detectedRaces.Add(raceInfo);
-        Logger.LogWarning(
-            "Potential data race detected on field {FieldName} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
-            GetFieldDisplayName(raceInfo.FieldId),
-            Threads[args.ProcessThreadId],
-            raceInfo.CurrentAccess.AccessType,
-            raceInfo.PreviousState,
-            raceInfo.NewState);
+        if (_detector.RecordWrite(
+                args.ProcessThreadId,
+                args.ModuleId,
+                args.MethodToken,
+                args.FieldToken,
+                objectId: null) is { } raceInfo)
+        {
+            RecordDataRace(args.ProcessThreadId, raceInfo);
+        }
     }
     
     private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
     {
-        var raceInfo = _detector.RecordWrite(
-            args.ProcessThreadId,
-            args.ModuleId,
-            args.MethodToken,
-            args.FieldToken,
-            args.ObjectId);
-
-        if (raceInfo == null)
-            return;
-        
-        _detectedRaces.Add(raceInfo);
-        Logger.LogWarning(
-            "Potential data race detected on field {FieldName} with object {Object} by thread {Thread}: {AccessType} access with empty lock set ({PreviousState} -> {NewState})",
-            GetFieldDisplayName(raceInfo.FieldId),
-            args.ObjectId.ObjectId.Value,
-            Threads[args.ProcessThreadId],
-            raceInfo.CurrentAccess.AccessType,
-            raceInfo.PreviousState,
-            raceInfo.NewState);
+        if (_detector.RecordWrite(
+                args.ProcessThreadId,
+                args.ModuleId,
+                args.MethodToken,
+                args.FieldToken,
+                args.ObjectId) is { } raceInfo)
+        {
+            RecordDataRace(args.ProcessThreadId, raceInfo);
+        }
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
@@ -244,6 +206,24 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         _detector.RecordGarbageCollectedObjects(metadata.Pid, args.RemovedTrackedObjectIds);
         base.Visit(metadata, args);
+    }
+    
+    private void RecordDataRace(ProcessThreadId reporterThreadId, DataRaceInfo raceInfo)
+    {
+        _detectedRaces.Add(raceInfo);
+        var fieldIdentification = raceInfo.ObjectId != null
+            ? $"an instance field {GetFieldDisplayName(raceInfo.FieldId)} on object {raceInfo.ObjectId}"
+            : $"a static field {GetFieldDisplayName(raceInfo.FieldId)}";
+            
+        Logger.LogWarning(
+            "Data race detected on {field} by thread {Thread}. " +
+            "{AccessType} access not ordered after last access by {LastThread} ({PreviousState} → {NewState})",
+            fieldIdentification,
+            Threads[reporterThreadId],
+            raceInfo.CurrentAccess.AccessType,
+            raceInfo.LastAccess?.ThreadName ?? "<unknown-thread>",
+            raceInfo.PreviousState,
+            raceInfo.NewState);
     }
     
     private static string GetFieldDisplayName(FieldId fieldId)

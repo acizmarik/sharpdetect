@@ -5,20 +5,26 @@ using SharpDetect.Core.Plugins;
 
 namespace SharpDetect.Plugins.DataRace.Common;
 
+public enum RaceRole
+{
+    Triggering,
+    Conflicting
+}
+
 public sealed class ThreadAccessCollector
 {
     private readonly record struct ThreadAccessEntry(
         DataRaceInfo Race,
         AccessInfo Access,
-        bool IsCurrent);
+        RaceRole Role);
 
     private readonly Dictionary<ProcessThreadId, List<ThreadAccessEntry>> _accessesByThread = [];
 
     public void AddRace(DataRaceInfo race)
     {
-        AddAccess(race.CurrentAccess.ProcessThreadId, race, race.CurrentAccess, isCurrent: true);
+        AddAccess(race.CurrentAccess.ProcessThreadId, race, race.CurrentAccess, RaceRole.Triggering);
         if (race.LastAccess != null)
-            AddAccess(race.LastAccess.ProcessThreadId, race, race.LastAccess, isCurrent: false);
+            AddAccess(race.LastAccess.ProcessThreadId, race, race.LastAccess, RaceRole.Conflicting);
     }
 
     public IEnumerable<ProcessThreadId> GetThreads() => _accessesByThread.Keys;
@@ -28,11 +34,11 @@ public sealed class ThreadAccessCollector
         return _accessesByThread[threadId].First().Access;
     }
 
-    public IEnumerable<(DataRaceInfo Race, AccessInfo Access, bool IsCurrent)> GetDistinctAccesses(ProcessThreadId threadId)
+    public IEnumerable<(DataRaceInfo Race, AccessInfo Access, RaceRole Role)> GetDistinctAccesses(ProcessThreadId threadId)
     {
         return _accessesByThread[threadId]
             .DistinctBy(a => (a.Access.Timestamp, a.Access.AccessType))
-            .Select(e => (e.Race, e.Access, e.IsCurrent));
+            .Select(e => (e.Race, e.Access, e.Role));
     }
 
     public IEnumerable<AccessInfo> GetDistinctMethods(ProcessThreadId threadId)
@@ -42,7 +48,7 @@ public sealed class ThreadAccessCollector
             .DistinctBy(a => a.MethodToken.Value);
     }
 
-    private void AddAccess(ProcessThreadId threadId, DataRaceInfo race, AccessInfo access, bool isCurrent)
+    private void AddAccess(ProcessThreadId threadId, DataRaceInfo race, AccessInfo access, RaceRole role)
     {
         if (!_accessesByThread.TryGetValue(threadId, out var list))
         {
@@ -50,7 +56,7 @@ public sealed class ThreadAccessCollector
             _accessesByThread[threadId] = list;
         }
 
-        list.Add(new ThreadAccessEntry(race, access, isCurrent));
+        list.Add(new ThreadAccessEntry(race, access, role));
     }
 }
 

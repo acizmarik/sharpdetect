@@ -15,6 +15,13 @@ internal readonly record struct Epoch(ProcessThreadId ThreadId, int Clock)
         return vc.GetClock(ThreadId) >= Clock;
     }
 
-    public override string ToString() => IsNone ? "⊥" : $"{ThreadId.ThreadId.Value}@{Clock}";
+    public string ToDisplayString(Func<ProcessThreadId, string?> threadNameResolver)
+    {
+        if (IsNone)
+            return "⊥";
+
+        var name = threadNameResolver(ThreadId) ?? $"Thread-{ThreadId.ThreadId.Value}";
+        return $"{name}@{Clock}";
+    }
 }
 
