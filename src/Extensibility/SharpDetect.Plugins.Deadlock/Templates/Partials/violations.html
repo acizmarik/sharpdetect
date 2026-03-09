@@ -1,10 +1,10 @@
 <div class="tab">
     {{#reports}}
-    <button id="btn{{title}}" class="tablinks" data-group="violation-reports" onclick="openTab('{{title}}')">{{title}}</button>
+    <button id="btn{{slugify title}}" class="tablinks" data-group="violation-reports" onclick="openTab('{{slugify title}}')">{{title}}</button>
     {{/reports}}
 </div>
 {{#reports}}
-<div id="{{title}}" class="tabcontent" data-group="violation-reports">
+<div id="{{slugify title}}" class="tabcontent" data-group="violation-reports">
     <h2>Deadlock</h2>
     <table class="styled-table">
         <colgroup>
