@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using HandlebarsDotNet;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
@@ -11,7 +12,7 @@ using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Reporting.Services;
 
-internal sealed class HtmlReportRenderer : IReportSummaryRenderer
+internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
 {
     private readonly DirectoryInfo _primaryDirectory;
     private readonly string _template;
@@ -45,6 +46,11 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
             .ToDictionary(kv => kv.Item1, kv => kv.Item2);
 
         var environment = Handlebars.CreateSharedEnvironment();
+        environment.RegisterHelper("slugify", (output, _, arguments) =>
+        {
+            var value = arguments[0]?.ToString() ?? string.Empty;
+            output.WriteSafeString(Slugify(value));
+        });
         foreach (var (templateName, templateContent) in htmlTemplates)
             environment.RegisterTemplate(templateName, templateContent);
 
@@ -146,4 +152,12 @@ internal sealed class HtmlReportRenderer : IReportSummaryRenderer
         
         return $"{size:F2} {sizes[order]}";
     }
+    
+    internal static string Slugify(string value)
+    {
+        return UnsafeCharacters().Replace(value, "_");
+    }
+
+    [GeneratedRegex(@"[^a-zA-Z0-9\-_]")]
+    private static partial Regex UnsafeCharacters();
 }

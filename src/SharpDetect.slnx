@@ -33,6 +33,7 @@
     <Project Path="Tests/SharpDetect.E2ETests.Subject/SharpDetect.E2ETests.Subject.csproj" />
     <Project Path="Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj" />
     <Project Path="Tests/SharpDetect.InterProcessQueue.Tests/SharpDetect.InterProcessQueue.Tests.csproj" />
+    <Project Path="Tests/SharpDetect.Reporting.Tests/SharpDetect.Reporting.Tests.csproj" />
     <Project Path="Tests/SharpDetect.TemporalAsserts/SharpDetect.TemporalAsserts.csproj" />
   </Folder>
   <Project Path="SharpDetect.Cli/SharpDetect.Cli.csproj" />

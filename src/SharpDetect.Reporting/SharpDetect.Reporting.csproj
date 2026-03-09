@@ -38,4 +38,7 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SharpDetect.Reporting.Tests" />
+  </ItemGroup>
 </Project>
