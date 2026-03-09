@@ -2,13 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 
 namespace SharpDetect.Worker.Commands.Run;
 
 public record TargetConfigurationArgs(
+    [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
     string Path,
     Architecture Architecture, 
     string? Args, 
+    [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
     string? WorkingDirectory, 
     KeyValuePair<string, string>[]? AdditionalEnvironmentVariables,
     RedirectInputOutputConfigurationArgs? RedirectInputOutput);
