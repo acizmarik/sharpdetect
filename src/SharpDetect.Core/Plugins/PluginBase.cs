@@ -185,7 +185,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void Visit(RecordedEventMetadata metadata, FieldAccessInstrumentationRecordedEvent args)
     {
         var instrumentationId = new InstrumentationPointId(metadata.Pid, args.InstrumentationId);
-        var instrumentedFieldAccess = new InstrumentedFieldAccess(args.ModuleId, args.MethodToken, args.FieldToken);
+        var instrumentedFieldAccess = new InstrumentedFieldAccess(
+            args.ModuleId,
+            args.MethodToken,
+            args.MethodOffset,
+            args.FieldToken);
         _instrumentedFieldAccesses.Add(instrumentationId, instrumentedFieldAccess);
         base.Visit(metadata, args);
     }

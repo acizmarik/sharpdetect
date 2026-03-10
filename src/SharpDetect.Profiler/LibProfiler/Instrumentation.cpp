@@ -187,6 +187,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	auto const isStore = currentInstruction->m_opcode == CEE_STSFLD;
 	auto const moduleId = moduleDef.GetModuleId();
 	auto const fieldToken = static_cast<mdToken>(currentInstruction->m_Arg32);
+	auto const originalOffset = currentInstruction->m_offset;
 	ThreadID threadId;
 	corProfilerInfo.GetCurrentThreadID(&threadId);
 
@@ -225,7 +226,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
 		moduleId,
 		mdMethodDef,
-		currentInstruction->m_offset,
+		originalOffset,
 		fieldToken,
 		instrumentationMark));
 
@@ -249,6 +250,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	auto const isStore = currentInstruction->m_opcode == CEE_STFLD;
 	auto const moduleId = moduleDef.GetModuleId();
 	auto const fieldToken = static_cast<mdToken>(currentInstruction->m_Arg32);
+	auto const originalOffset = currentInstruction->m_offset;
 	ThreadID threadId;
 	corProfilerInfo.GetCurrentThreadID(&threadId);
 
@@ -394,7 +396,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
 		moduleId,
 		mdMethodDef,
-		currentInstruction->m_offset,
+		originalOffset,
 		fieldToken,
 		instrumentationMark));
 

@@ -140,6 +140,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 objectId: null) is { } raceInfo)
         {
@@ -153,6 +154,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 args.ObjectId) is { } raceInfo)
         {
@@ -166,6 +168,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 objectId: null) is { } raceInfo)
         {
@@ -179,6 +182,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 args.ObjectId) is { } raceInfo)
         {

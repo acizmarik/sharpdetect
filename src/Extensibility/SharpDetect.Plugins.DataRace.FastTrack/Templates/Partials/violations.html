@@ -63,7 +63,7 @@
             <div class="stacktrace">
                 {{#stacktrace}}
                 <div class="stackframe">
-                    <span class="metadata">at {{metadataName}}</span>
+                    <span class="metadata">at {{metadataName}} ({{methodOffset}})</span>
                     <sub class="sourceFile">Source file: {{sourceFile}} ({{metadataToken}})</sub>
                 </div>
                 {{/stacktrace}}

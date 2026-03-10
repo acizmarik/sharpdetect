@@ -35,7 +35,8 @@ internal class CallstackResolver : ICallstackResolver
             resolvedFrames.Add(new StackFrame(
                 MethodName: methodName,
                 SourceMapping: modulePath,
-                MethodToken: methodToken.Value));
+                MethodToken: methodToken.Value,
+                MethodOffset: null));
         }
 
         return new StackTrace(threadInfo, resolvedFrames.ToImmutableArray());

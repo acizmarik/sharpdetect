@@ -17,6 +17,7 @@ public sealed record AccessInfo(
     string? ThreadName,
     ModuleId ModuleId,
     MdMethodDef MethodToken,
+    uint MethodOffset,
     AccessType AccessType,
     DateTime Timestamp);
 

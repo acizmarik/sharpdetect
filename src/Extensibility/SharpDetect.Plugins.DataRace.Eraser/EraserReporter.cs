@@ -154,7 +154,8 @@ public partial class EraserPlugin
         return new StackFrame(
             MethodName: methodName ?? $"0x{access.MethodToken.Value:X8}",
             SourceMapping: moduleName ?? "<unknown>",
-            MethodToken: access.MethodToken.Value);
+            MethodToken: access.MethodToken.Value,
+            MethodOffset: access.MethodOffset);
     }
 
     private string? ResolveMethodName(uint processId, ModuleId moduleId, MdMethodDef methodToken)
@@ -191,6 +192,7 @@ public partial class EraserPlugin
                     {
                         metadataName = frame.MethodName,
                         metadataToken = frame.MethodToken,
+                        methodOffset = $"IL_{frame.MethodOffset:X4}",
                         sourceFile = frame.SourceMapping,
                     }).ToArray() ?? []
                 };

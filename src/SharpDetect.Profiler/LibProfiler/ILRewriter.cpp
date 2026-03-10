@@ -142,6 +142,7 @@ HRESULT ILRewriter::ImportIL(LPCBYTE pIL)
         IfNullRet(pInstr);
 
         pInstr->m_opcode = opcode;
+        pInstr->m_offset = startOffset;
 
         InsertBefore(&m_IL, pInstr);
 

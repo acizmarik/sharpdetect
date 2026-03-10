@@ -3,4 +3,4 @@
 
 namespace SharpDetect.Core.Reporting.Model;
 
-public record StackFrame(string MethodName, string SourceMapping, int MethodToken);
+public record StackFrame(string MethodName, string SourceMapping, int MethodToken, uint? MethodOffset);
