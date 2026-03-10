@@ -217,13 +217,11 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
             
         Logger.LogWarning(
             "Data race detected on {field} by thread {Thread}. " +
-            "{AccessType} access not ordered after last access by {LastThread} ({PreviousState} → {NewState})",
+            "{AccessType} access not ordered after last access by {LastThread}",
             fieldIdentification,
             Threads[reporterThreadId],
             raceInfo.CurrentAccess.AccessType,
-            raceInfo.LastAccess?.ThreadName ?? "<unknown-thread>",
-            raceInfo.PreviousState,
-            raceInfo.NewState);
+            raceInfo.LastAccess?.ThreadName ?? "<unknown-thread>");
     }
     
     private static string GetFieldDisplayName(FieldId fieldId)

@@ -16,7 +16,6 @@ internal sealed class FastTrackDetector
     private readonly AccessTracker _accessTracker;
     private readonly FieldResolver _fieldResolver;
     private readonly TimeProvider _timeProvider;
-    private readonly Func<ProcessThreadId, string?> _threadNameResolver;
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
 
@@ -29,7 +28,6 @@ internal sealed class FastTrackDetector
     {
         _configuration = configuration;
         _timeProvider = timeProvider;
-        _threadNameResolver = threadNameResolver;
         _accessTracker = new AccessTracker(timeProvider, threadNameResolver);
         _fieldResolver = new FieldResolver(metadataContext, logger);
     }
@@ -120,7 +118,6 @@ internal sealed class FastTrackDetector
         var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
-        var previousState = shadow.GetStateDescription(_threadNameResolver);
         
         if (!shadow.WriteEpoch.IsNone && 
             !shadow.WriteEpoch.HappensBefore(threadVc) && 
@@ -132,7 +129,6 @@ internal sealed class FastTrackDetector
             var lastAccess = _accessTracker.GetLastWriteAccess(fieldId, objectId);
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
             UpdateReadState(threadId, shadow, threadVc);
-            var newState = shadow.GetStateDescription(_threadNameResolver);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
             {
@@ -142,8 +138,6 @@ internal sealed class FastTrackDetector
                     objectId,
                     currentAccess,
                     lastAccess,
-                    previousState,
-                    newState,
                     _timeProvider.GetUtcNow().DateTime);
             }
         }
@@ -170,7 +164,6 @@ internal sealed class FastTrackDetector
         var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
-        var previousState = shadow.GetStateDescription(_threadNameResolver);
         var currentEpoch = threadVc.GetEpoch(threadId);
 
         if (!shadow.WriteEpoch.IsNone && 
@@ -182,7 +175,6 @@ internal sealed class FastTrackDetector
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
             shadow.SetWrite(currentEpoch);
             shadow.SetRead(Epoch.None);
-            var newState = shadow.GetStateDescription(_threadNameResolver);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
             {
@@ -192,8 +184,6 @@ internal sealed class FastTrackDetector
                     objectId,
                     currentAccess,
                     lastAccess,
-                    previousState,
-                    newState,
                     _timeProvider.GetUtcNow().DateTime);
             }
         }
@@ -206,7 +196,6 @@ internal sealed class FastTrackDetector
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
             shadow.SetWrite(currentEpoch);
             shadow.SetRead(Epoch.None);
-            var newState = shadow.GetStateDescription(_threadNameResolver);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
             {
@@ -216,8 +205,6 @@ internal sealed class FastTrackDetector
                     objectId,
                     currentAccess,
                     lastAccess,
-                    previousState,
-                    newState,
                     _timeProvider.GetUtcNow().DateTime);
             }
         }

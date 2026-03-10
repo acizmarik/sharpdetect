@@ -116,12 +116,12 @@ public partial class EraserPlugin
             if (role == RaceRole.Triggering)
             {
                 var lastThreadName = race.LastAccess?.ThreadName ?? "unknown";
-                reasons.Add($"{access.AccessType} access with empty lock set, not ordered after last access by {lastThreadName} ({race.PreviousState} → {race.NewState})");
+                reasons.Add($"{access.AccessType} access with empty lock set, not ordered after last access by {lastThreadName}");
             }
             else
             {
                 var otherThreadName = race.CurrentAccess.ThreadName ?? "unknown";
-                reasons.Add($"{access.AccessType} access conflicted with later {race.CurrentAccess.AccessType} by {otherThreadName} ({race.PreviousState} → {race.NewState})");
+                reasons.Add($"{access.AccessType} access conflicted with later {race.CurrentAccess.AccessType} by {otherThreadName}");
             }
         }
 

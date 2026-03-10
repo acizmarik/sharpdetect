@@ -136,8 +136,6 @@ internal sealed class EraserDetector
             objectId,
             currentAccess,
             lastRelevantAccess,
-            transitionResult.PreviousState.ToString(),
-            transitionResult.NewState.ToString(),
             Timestamp: _timeProvider.GetUtcNow().DateTime);
     }
 }
