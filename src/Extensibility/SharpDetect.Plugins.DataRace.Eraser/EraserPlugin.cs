@@ -211,21 +211,11 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
     private void RecordDataRace(ProcessThreadId reporterThreadId, DataRaceInfo raceInfo)
     {
         _detectedRaces.Add(raceInfo);
-        var fieldIdentification = raceInfo.ObjectId != null
-            ? $"an instance field {GetFieldDisplayName(raceInfo.FieldId)} on object {raceInfo.ObjectId}"
-            : $"a static field {GetFieldDisplayName(raceInfo.FieldId)}";
-            
-        Logger.LogWarning(
-            "Data race detected on {field} by thread {Thread}. " +
-            "{AccessType} access not ordered after last access by {LastThread}",
-            fieldIdentification,
-            Threads[reporterThreadId],
-            raceInfo.CurrentAccess.AccessType,
-            raceInfo.LastAccess?.ThreadName ?? "<unknown-thread>");
+        DataRaceLogger.LogDataRace(Logger, Threads, reporterThreadId, raceInfo);
     }
     
     private static string GetFieldDisplayName(FieldId fieldId)
     {
-        return $"{fieldId.FieldDef.DeclaringType.FullName}.{fieldId.FieldDef.Name}";
+        return DataRaceLogger.GetFieldDisplayName(fieldId);
     }
 }

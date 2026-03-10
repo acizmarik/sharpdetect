@@ -32,7 +32,7 @@ public partial class FastTrackPlugin
     private void PrepareNoViolationDiagnostics()
     {
         Reporter.SetTitle("No data races detected");
-        Reporter.SetDescription("All analyzed field accesses appear to be properly synchronized (happens-before).");
+        Reporter.SetDescription("All field accesses appear properly synchronized (happens-before).");
     }
 
     private void PrepareViolationDiagnostics()
@@ -41,7 +41,7 @@ public partial class FastTrackPlugin
             ? "One data race detected"
             : $"Several ({_detectedRaces.Count}) data races detected";
         Reporter.SetTitle(title);
-        Reporter.SetDescription("See details below for more information about each data race.");
+        Reporter.SetDescription("See details below.");
 
         var racesByField = _detectedRaces.GroupBy(r => r.FieldId);
         CreateReportsForRaces(racesByField);
@@ -61,12 +61,11 @@ public partial class FastTrackPlugin
     {
         var firstRace = fieldRaces.First();
         var fieldName = GetFieldDisplayName(fieldRaces.Key);
+        var category = DataRaceLogger.GetRaceCategory(firstRace);
 
         var reportBuilder = new ReportBuilder(index, ReportCategory, firstRace.Timestamp);
         reportBuilder.SetTitle($"Data race {reportBuilder.Identifier}");
-        reportBuilder.SetDescription(
-            $"Data race detected on field '{fieldName}'. " +
-            $"Total accesses flagged: {fieldRaces.Count()}.");
+        reportBuilder.SetDescription($"Data race ({category}) on '{fieldName}' ({fieldRaces.Count()} flagged accesses).");
 
         var accessCollector = CollectThreadAccesses(fieldRaces);
         AddThreadsToReport(reportBuilder, accessCollector);
@@ -116,13 +115,14 @@ public partial class FastTrackPlugin
         {
             if (role == RaceRole.Triggering)
             {
-                var lastThreadName = race.LastAccess?.ThreadName ?? "unknown";
-                reasons.Add($"{access.AccessType} access not ordered after last access by {lastThreadName}");
+                var lastThreadName = race.LastAccess.ThreadName ?? "unknown";
+                var lastAccess = race.LastAccess.AccessType.ToString();
+                reasons.Add($"{access.AccessType} unordered after previous {lastAccess} by {lastThreadName}");
             }
             else
             {
                 var otherThreadName = race.CurrentAccess.ThreadName ?? "unknown";
-                reasons.Add($"{access.AccessType} access conflicted with later {race.CurrentAccess.AccessType} by {otherThreadName}");
+                reasons.Add($"{access.AccessType} conflicts with later {race.CurrentAccess.AccessType} by {otherThreadName}");
             }
         }
 

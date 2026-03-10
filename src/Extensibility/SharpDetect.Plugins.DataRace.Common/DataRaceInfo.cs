@@ -25,6 +25,6 @@ public sealed record DataRaceInfo(
     FieldId FieldId,
     ProcessTrackedObjectId? ObjectId,
     AccessInfo CurrentAccess,
-    AccessInfo? LastAccess,
+    AccessInfo LastAccess,
     DateTime Timestamp);
 

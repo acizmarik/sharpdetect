@@ -32,7 +32,7 @@ public partial class EraserPlugin
     private void PrepareNoViolationDiagnostics()
     {
         Reporter.SetTitle("No data races detected");
-        Reporter.SetDescription("All analyzed static field accesses appear to be properly synchronized.");
+        Reporter.SetDescription("All field accesses appear properly synchronized.");
     }
 
     private void PrepareViolationDiagnostics()
@@ -41,7 +41,7 @@ public partial class EraserPlugin
             ? "One potential data race detected"
             : $"Several ({_detectedRaces.Count}) potential data races detected";
         Reporter.SetTitle(title);
-        Reporter.SetDescription("See details below for more information about each potential data race.");
+        Reporter.SetDescription("See details below.");
 
         var racesByField = _detectedRaces.GroupBy(r => r.FieldId);
         CreateReportsForRaces(racesByField);
@@ -61,12 +61,11 @@ public partial class EraserPlugin
     {
         var firstRace = fieldRaces.First();
         var fieldName = GetFieldDisplayName(fieldRaces.Key);
+        var category = DataRaceLogger.GetRaceCategory(firstRace);
 
         var reportBuilder = new ReportBuilder(index, ReportCategory, firstRace.Timestamp);
         reportBuilder.SetTitle($"Data race {reportBuilder.Identifier}");
-        reportBuilder.SetDescription(
-            $"Potential data race detected on field '{fieldName}'. " +
-            $"Total accesses flagged: {fieldRaces.Count()}.");
+        reportBuilder.SetDescription($"Data race ({category}) on '{fieldName}' ({fieldRaces.Count()} flagged accesses).");
 
         var accessCollector = CollectThreadAccesses(fieldRaces);
         AddThreadsToReport(reportBuilder, accessCollector);
@@ -115,13 +114,14 @@ public partial class EraserPlugin
         {
             if (role == RaceRole.Triggering)
             {
-                var lastThreadName = race.LastAccess?.ThreadName ?? "unknown";
-                reasons.Add($"{access.AccessType} access with empty lock set, not ordered after last access by {lastThreadName}");
+                var lastThreadName = race.LastAccess.ThreadName ?? "unknown";
+                var lastAccess = race.LastAccess.AccessType;
+                reasons.Add($"{access.AccessType} with empty lock set, unordered after {lastAccess} by {lastThreadName}");
             }
             else
             {
                 var otherThreadName = race.CurrentAccess.ThreadName ?? "unknown";
-                reasons.Add($"{access.AccessType} access conflicted with later {race.CurrentAccess.AccessType} by {otherThreadName}");
+                reasons.Add($"{access.AccessType} conflicts with {race.CurrentAccess.AccessType} by {otherThreadName}");
             }
         }
 
