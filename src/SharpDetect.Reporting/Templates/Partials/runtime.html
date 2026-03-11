@@ -1,103 +1,43 @@
 ﻿{{#runtimeInfo}}
 
-<h2>Timing Information</h2>
-
+<h3 class="sub-heading">Timing</h3>
 {{#timingInfo}}
-<table class="styled-table">
-    <colgroup>
-        <col span="1" style="width: 30%;">
-        <col span="1" style="width: 70%;">
-    </colgroup>
-    <thead>
-    <tr>
-        <th>Variable</th>
-        <th>Value</th>
-    </tr>
-    </thead>
-    <tr>
-        <td>Start time</td>
-        <td>{{startTime}}</td>
-    </tr>
-    <tr>
-        <td>End time</td>
-        <td>{{endTime}}</td>
-    </tr>
-    <tr>
-        <td>Duration</td>
-        <td>{{duration}}</td>
-    </tr>
-</table>
+<div class="info-grid">
+    <div class="info-label">Start Time</div>
+    <div class="info-value text-mono">{{startTime}}</div>
+    <div class="info-label">End Time</div>
+    <div class="info-value text-mono">{{endTime}}</div>
+    <div class="info-label">Duration</div>
+    <div class="info-value">{{duration}}</div>
+</div>
 {{/timingInfo}}
 
-<h2>Runtime Information</h2>
-
-<table class="styled-table">
-    <colgroup>
-        <col span="1" style="width: 30%;">
-        <col span="1" style="width: 70%;">
-    </colgroup>
-    <thead>
-        <tr>
-            <th>Variable</th>
-            <th>Value</th>
-        </tr>
-    </thead>
-    <tr>
-        <td>Runtime</td>
-        <td>{{type}}</td>
-    </tr>
-    <tr>
-        <td>Version</td>
-        <td>{{version}}</td>
-    </tr>
+<h3 class="sub-heading">Runtime</h3>
+<div class="info-grid">
+    <div class="info-label">Runtime</div>
+    <div class="info-value">{{type}}</div>
+    <div class="info-label">Version</div>
+    <div class="info-value text-mono">{{version}}</div>
     {{#runtimeProperties}}
-    <tr>
-        <td>{{key}}</td>
-        <td>{{value}}</td>
-    </tr>
+    <div class="info-label">{{key}}</div>
+    <div class="info-value">{{value}}</div>
     {{/runtimeProperties}}
-</table>
+</div>
 
-<h2>Collection Information</h2>
-
-<table class="styled-table">
-    <colgroup>
-        <col span="1" style="width: 30%;">
-        <col span="1" style="width: 70%;">
-    </colgroup>
-    <thead>
-        <tr>
-            <th>Variable</th>
-            <th>Value</th>
-        </tr>
-    </thead>
+<h3 class="sub-heading">Collection</h3>
+<div class="info-grid">
     {{#collectionProperties}}
-    <tr>
-        <td>{{key}}</td>
-        <td>{{value}}</td>
-    </tr>
+    <div class="info-label">{{key}}</div>
+    <div class="info-value">{{value}}</div>
     {{/collectionProperties}}
-</table>
+</div>
 
-
-<h2>Rewriting Information</h2>
-
-<table class="styled-table">
-    <colgroup>
-        <col span="1" style="width: 30%;">
-        <col span="1" style="width: 70%;">
-    </colgroup>
-    <thead>
-        <tr>
-            <th>Variable</th>
-            <th>Value</th>
-        </tr>
-    </thead>
+<h3 class="sub-heading">Rewriting</h3>
+<div class="info-grid">
     {{#rewritingProperties}}
-    <tr>
-        <td>{{key}}</td>
-        <td>{{value}}</td>
-    </tr>
+    <div class="info-label">{{key}}</div>
+    <div class="info-value">{{value}}</div>
     {{/rewritingProperties}}
-</table>
+</div>
+
 {{/runtimeInfo}}

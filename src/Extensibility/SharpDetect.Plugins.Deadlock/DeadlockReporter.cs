@@ -103,14 +103,14 @@ public partial class DeadlockPlugin
                 {
                     name = threadInfo.Name,
                     reason = reason!,
-                    stacktrace = st!.Frames.Select(frame =>
+                    stacktrace = st!.Frames.Select(frame => new
                     {
-                        return new
-                        {
-                            metadataName = frame.MethodName,
-                            metadataToken = frame.MethodToken,
-                            sourceFile = frame.SourceMapping,
-                        };
+                        metadataName = frame.MethodName,
+                        metadataToken = frame.MethodToken,
+                        methodOffset = frame.MethodOffset.HasValue ? $"IL_{frame.MethodOffset:X4}" : null,
+                        sourceFile = frame.SourceMapping,
+                        sourceFileName = frame.SourceFileName,
+                        sourceLine = frame.SourceLine,
                     }).ToArray()
                 };
             }).ToArray()

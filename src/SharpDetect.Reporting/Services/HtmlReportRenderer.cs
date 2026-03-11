@@ -71,10 +71,12 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
             COR_PRF_RUNTIME_TYPE.COR_PRF_CORE_CLR => "CoreCLR",
             _ => "unknown runtime"
         };
+        var allReports = plugin.CreateReportDataContext(summary.GetAllReports()).ToArray();
         return new
         {
             title = summary.Title,
             description = summary.Description,
+            reportCount = allReports.Length,
             environmentInfo = new
             {
                 sharpDetectVersion,
@@ -109,18 +111,15 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
                 collectionProperties = summary.GetCollectionProperties()
                     .Select(kv => new { key = kv.Key, value = kv.Value })
             },
-            assemblies = summary.GetAllModules().Select(moduleInfo =>
+            assemblies = summary.GetAllModules().Select(moduleInfo => new
             {
-                return new
-                {
-                    name = moduleInfo.Name,
-                    version = moduleInfo.Version,
-                    path = moduleInfo.Path,
-                    publicKey = moduleInfo.PublicKey,
-                    culture = moduleInfo.Culture
-                };
+                name = moduleInfo.Name,
+                version = moduleInfo.Version,
+                path = moduleInfo.Path,
+                publicKey = moduleInfo.PublicKey,
+                culture = moduleInfo.Culture
             }),
-            reports = plugin.CreateReportDataContext(summary.GetAllReports()).ToArray()
+            reports = allReports
         };
     }
 

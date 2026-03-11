@@ -1,76 +1,54 @@
-<div class="tab">
-    {{#reports}}
-    <button id="btn{{slugify title}}" class="tablinks" data-group="violation-reports" onclick="openTab('{{slugify title}}')">{{title}}</button>
-    {{/reports}}
+{{#if reports}}
+<div class="violations-toolbar">
+    <input type="text" id="violationsFilter" placeholder="Search violations by field, thread, description..." oninput="filterViolations()">
+    <button class="btn" onclick="toggleAllViolations(true)">Expand All</button>
+    <button class="btn" onclick="toggleAllViolations(false)">Collapse All</button>
 </div>
+
+<div id="violationsContainer">
 {{#reports}}
-<div id="{{slugify title}}" class="tabcontent" data-group="violation-reports">
-    <h2>Data Race</h2>
-    <table class="styled-table">
-        <colgroup>
-            <col span="1" style="width: 30%;">
-            <col span="1" style="width: 70%;">
-        </colgroup>
-        <thead>
-        <tr>
-            <th>Variable</th>
-            <th>Value</th>
-        </tr>
-        </thead>
-        <tr>
-            <td>Timestamp</td>
-            <td>{{timestamp}}</td>
-        </tr>
-        <tr>
-            <td>Description</td>
-            <td>{{description}}</td>
-        </tr>
-    </table>
-    
-    <div class="threads">
-        <h2>Involved Threads</h2>
-        <p class="summary">The following threads were involved in the data race:</p>
-        <hr/>
-
-        <table class="styled-table">
-            <colgroup>
-                <col span="1" style="width: 30%;">
-                <col span="1" style="width: 70%;">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th>Thread</th>
-                    <th>Reason for Report</th>
-                </tr>
-            </thead>
+<details class="violation-card" data-searchable>
+    <summary>
+        <span class="card-title">{{title}}</span>
+        <span class="card-desc">{{description}}</span>
+        <span class="card-timestamp">{{timestamp}}</span>
+    </summary>
+    <div class="violation-card-body">
+        <div class="thread-grid">
             {{#threads}}
-            <tr>
-                <td>{{name}}</td>
-                <td>{{reason}}</td>
-            </tr>
-            {{/threads}}
-        </table>
-
-        <h2>Stack Traces</h2>
-        <div class="tab">
-            {{#threads}}
-            <button id="btn{{../reportId}}-{{slugify name}}" class="tablinks" data-group="{{../reportId}}" onclick="openTab('{{../reportId}}-{{slugify name}}')">{{name}}</button>
-            {{/threads}}
-        </div>
-
-        {{#threads}}
-        <div id="{{../reportId}}-{{slugify name}}" class="tabcontent" data-group="{{../reportId}}">
-            <div class="stacktrace">
-                {{#stacktrace}}
-                <div class="stackframe">
-                    <span class="metadata">at {{metadataName}} ({{methodOffset}})</span>
-                    <sub class="sourceFile">Source file: {{sourceFile}} ({{metadataToken}})</sub>
+            <div class="thread-panel">
+                <div class="thread-panel-header">
+                    <span class="thread-name">{{name}}</span>
                 </div>
-                {{/stacktrace}}
+                <div class="thread-panel-reason">{{reason}}</div>
+                {{#if stacktrace}}
+                <div class="stacktrace-block">
+                    {{#stacktrace}}
+                    <div class="stacktrace-line">
+                        <span class="frame-method">{{metadataName}}</span>
+                        <div class="frame-details">
+                            {{#if sourceFileName}}
+                            <span class="frame-detail"><span class="frame-detail-label">File</span> {{sourceFileName}}:{{sourceLine}}</span>
+                            {{else}}
+                            <span class="frame-detail"><span class="frame-detail-label">Offset</span> {{methodOffset}}</span>
+                            {{/if}}
+                            <span class="frame-detail"><span class="frame-detail-label">Assembly</span> {{sourceFile}} ({{metadataToken}})</span>
+                        </div>
+                    </div>
+                    {{/stacktrace}}
+                </div>
+                {{/if}}
             </div>
+            {{/threads}}
         </div>
-        {{/threads}}
     </div>
-</div>
+</details>
 {{/reports}}
+</div>
 
+{{else}}
+<div class="no-violations-message">
+    <div class="message-title">No data races detected</div>
+    <div class="message-desc">All field accesses appear properly synchronized.</div>
+</div>
+{{/if}}

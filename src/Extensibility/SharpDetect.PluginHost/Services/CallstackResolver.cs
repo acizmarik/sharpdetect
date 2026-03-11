@@ -36,7 +36,9 @@ internal class CallstackResolver : ICallstackResolver
                 MethodName: methodName,
                 SourceMapping: modulePath,
                 MethodToken: methodToken.Value,
-                MethodOffset: null));
+                MethodOffset: null,
+                SourceFileName: null,
+                SourceLine: null));
         }
 
         return new StackTrace(threadInfo, resolvedFrames.ToImmutableArray());

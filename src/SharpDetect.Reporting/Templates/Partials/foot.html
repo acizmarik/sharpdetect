@@ -1,37 +1,28 @@
 <script>
-    function openTab(tabContentId) {
-        const content = document.getElementById(tabContentId);
-        const button = document.getElementById(`btn${tabContentId}`);
-        const groupId = button.getAttribute("data-group");
-
-        closeAllTabs(groupId);
-        content.style.display = "block";
-        button.classList.add("active");
+    function filterTable(inputId, tableId) {
+        const filter = document.getElementById(inputId).value.toLowerCase();
+        const rows = document.querySelectorAll('#' + tableId + ' tbody tr');
+        rows.forEach(function(row) {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
     }
 
-    function closeAllTabs(groupId) {
-        for (let tabContent of document.querySelectorAll(`div.tabcontent[data-group='${groupId}']`)) {
-            tabContent.style.display = "none";
-        }
-
-        for (let tabLink of document.querySelectorAll(`button.tablinks[data-group='${groupId}']`)) {
-            tabLink.classList.remove("active");
-        }
+    function filterViolations() {
+        const filter = document.getElementById('violationsFilter');
+        if (!filter) return;
+        const query = filter.value.toLowerCase();
+        const cards = document.querySelectorAll('#violationsContainer .violation-card');
+        cards.forEach(function(card) {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(query) ? '' : 'none';
+        });
     }
 
-    /* Initialize */
-    openTab(document.querySelector("div.tabcontent[data-group='main-tabs']").id);
-    openTab(document.querySelector("div.tabcontent[data-group='violation-reports']").id);
-
-    /* Initialize first stacktrace tab for each report */
-    const reportGroups = new Set();
-    for (let tabContent of document.querySelectorAll("div.tabcontent[data-group^='report-']")) {
-        reportGroups.add(tabContent.getAttribute("data-group"));
-    }
-    for (let groupId of reportGroups) {
-        const firstTab = document.querySelector(`div.tabcontent[data-group='${groupId}']`);
-        if (firstTab) {
-            openTab(firstTab.id);
-        }
+    function toggleAllViolations(expand) {
+        const cards = document.querySelectorAll('#violationsContainer .violation-card');
+        cards.forEach(function(card) {
+            card.open = expand;
+        });
     }
 </script>

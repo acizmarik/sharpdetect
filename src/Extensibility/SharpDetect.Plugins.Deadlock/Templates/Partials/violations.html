@@ -1,27 +1,28 @@
-<div class="tab">
-    {{#reports}}
-    <button id="btn{{slugify title}}" class="tablinks" data-group="violation-reports" onclick="openTab('{{slugify title}}')">{{title}}</button>
-    {{/reports}}
+{{#if reports}}
+<div class="violations-toolbar">
+    <input type="text" id="violationsFilter" placeholder="Search deadlocks by thread, description..." oninput="filterViolations()">
+    <button class="btn" onclick="toggleAllViolations(true)">Expand All</button>
+    <button class="btn" onclick="toggleAllViolations(false)">Collapse All</button>
 </div>
+
+<div id="violationsContainer">
 {{#reports}}
-<div id="{{slugify title}}" class="tabcontent" data-group="violation-reports">
-    <h2>Deadlock</h2>
-    <table class="styled-table">
-        <colgroup>
-            <col span="1" style="width: 30%;">
-            <col span="1" style="width: 70%;">
-        </colgroup>
-        <thead>
-        <tr>
-            <th>Variable</th>
-            <th>Value</th>
-        </tr>
-        </thead>
-        <tr>
-            <td>Timestamp</td>
-            <td>{{timestamp}}</td>
-        </tr>
-    </table>
-    {{> threads}}
-</div>
+<details class="violation-card" data-searchable>
+    <summary>
+        <span class="card-title">{{title}}</span>
+        <span class="card-desc">{{description}}</span>
+        <span class="card-timestamp">{{timestamp}}</span>
+    </summary>
+    <div class="violation-card-body">
+        {{> threads}}
+    </div>
+</details>
 {{/reports}}
+</div>
+
+{{else}}
+<div class="no-violations-message">
+    <div class="message-title">No deadlocks detected</div>
+    <div class="message-desc">No circular wait dependencies were found.</div>
+</div>
+{{/if}}
