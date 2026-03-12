@@ -59,6 +59,7 @@ public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, I
         TestPluginAdditionalData additionalData,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IRecordedEventsDeliveryContext eventsDeliveryContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
@@ -68,6 +69,7 @@ public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, I
         : base(
             moduleBindContext,
             metadataContext,
+            symbolResolver,
             argumentsParser,
             eventsDeliveryContext,
             profilerCommandSenderProvider,

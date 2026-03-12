@@ -40,11 +40,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected PerThreadOrderingPluginBase(
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         TimeProvider timeProvider,
         ILogger logger)
-        : base(moduleBindContext, metadataContext, profilerCommandSenderProvider, timeProvider, logger)
+        : base(moduleBindContext, metadataContext, symbolResolver, profilerCommandSenderProvider, timeProvider, logger)
     {
         _metadataContext = metadataContext;
         _argumentsParser = argumentsParser;

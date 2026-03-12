@@ -10,6 +10,15 @@
                 {{#stacktrace}}
                 <div class="stacktrace-line">
                     <span class="frame-method">at {{metadataName}}</span>
+                      {{#stacktrace}}
+                <div class="stacktrace-line">
+                    <span class="frame-method">at {{metadataName}}</span>
+                    {{#if sourceCode}}
+                    <div class="frame-source">
+                        <span class="frame-source-line">{{sourceLine}}</span>
+                        <code class="frame-source-code">{{sourceCode}}</code>
+                    </div>
+                    {{/if}}
                     <div class="frame-details">
                         <span class="frame-detail"><span class="frame-detail-label">Assembly</span> {{sourceFile}}</span>
                         <span class="frame-detail"><span class="frame-detail-label">Token</span> 0x{{metadataToken}}</span>

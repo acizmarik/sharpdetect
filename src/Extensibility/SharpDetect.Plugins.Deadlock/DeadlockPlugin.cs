@@ -34,6 +34,7 @@ public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
     public DeadlockPlugin(
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IRecordedEventsDeliveryContext eventsDeliveryContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
@@ -44,6 +45,7 @@ public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
         : base(
             moduleBindContext,
             metadataContext,
+            symbolResolver,
             argumentsParser,
             eventsDeliveryContext,
             profilerCommandSenderProvider,

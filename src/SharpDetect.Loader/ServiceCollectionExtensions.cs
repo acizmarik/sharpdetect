@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Core.Loader;
+using SharpDetect.Core.Metadata;
 using SharpDetect.Loader.Services;
 
 namespace SharpDetect.Loader;
@@ -13,5 +14,6 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IAssemblyLoadContext, AssemblyLoadContext>();
         services.AddScoped<IModuleBindContext, ModuleBindContext>();
+        services.AddScoped<ISymbolResolver, SymbolResolver>();
     }
 }

@@ -33,6 +33,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         PluginOptionsConfiguration pluginOptionsConfiguration,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
@@ -41,6 +42,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         : base(
             moduleBindContext,
             metadataContext,
+            symbolResolver,
             argumentsParser,
             profilerCommandSenderProvider,
             timeProvider,

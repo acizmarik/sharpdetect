@@ -10,7 +10,7 @@ namespace SharpDetect.Plugins.DataRace.Eraser;
 public partial class EraserPlugin
 {
     private DataRaceReportingHelper ReportingHelper =>
-        field ??= new EraserReportingHelper(Reporter, MetadataContext, ReportCategory, _detectedRaces, _detector);
+        field ??= new EraserReportingHelper(Reporter, MetadataContext, SymbolResolver, ReportCategory, _detectedRaces, _detector);
 
     public Summary CreateDiagnostics() => ReportingHelper.CreateDiagnostics();
 
@@ -24,10 +24,11 @@ public partial class EraserPlugin
         public EraserReportingHelper(
             SummaryBuilder reporter,
             Core.Metadata.IMetadataContext metadataContext,
+            Core.Metadata.ISymbolResolver symbolResolver,
             string reportCategory,
             List<DataRaceInfo> detectedRaces,
             EraserDetector detector)
-            : base(reporter, metadataContext, reportCategory, detectedRaces)
+            : base(reporter, metadataContext, symbolResolver, reportCategory, detectedRaces)
         {
             _detector = detector;
         }

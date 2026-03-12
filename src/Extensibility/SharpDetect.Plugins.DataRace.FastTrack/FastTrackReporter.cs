@@ -10,7 +10,7 @@ namespace SharpDetect.Plugins.DataRace.FastTrack;
 public partial class FastTrackPlugin
 {
     private DataRaceReportingHelper ReportingHelper =>
-        field ??= new FastTrackReportingHelper(Reporter, MetadataContext, ReportCategory, _detectedRaces, _detector);
+        field ??= new FastTrackReportingHelper(Reporter, MetadataContext, SymbolResolver, ReportCategory, _detectedRaces, _detector);
 
     public Summary CreateDiagnostics() => ReportingHelper.CreateDiagnostics();
 
@@ -24,10 +24,11 @@ public partial class FastTrackPlugin
         public FastTrackReportingHelper(
             SummaryBuilder reporter,
             Core.Metadata.IMetadataContext metadataContext,
+            Core.Metadata.ISymbolResolver symbolResolver,
             string reportCategory,
             List<DataRaceInfo> detectedRaces,
             FastTrackDetector detector)
-            : base(reporter, metadataContext, reportCategory, detectedRaces)
+            : base(reporter, metadataContext, symbolResolver, reportCategory, detectedRaces)
         {
             _detector = detector;
         }

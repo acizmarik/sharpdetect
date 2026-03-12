@@ -23,12 +23,13 @@ public abstract class ExecutionOrderingPluginBase : PerThreadOrderingPluginBase,
     protected ExecutionOrderingPluginBase(
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IRecordedEventsDeliveryContext eventsDeliveryContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         TimeProvider timeProvider,
         ILogger logger)
-        : base(moduleBindContext, metadataContext, argumentsParser, profilerCommandSenderProvider, timeProvider, logger)
+        : base(moduleBindContext, metadataContext, symbolResolver, argumentsParser, profilerCommandSenderProvider, timeProvider, logger)
     {
         _eventsDeliveryContext = eventsDeliveryContext;
     }

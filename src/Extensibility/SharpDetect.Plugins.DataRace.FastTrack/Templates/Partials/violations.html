@@ -26,6 +26,12 @@
                     {{#stacktrace}}
                     <div class="stacktrace-line">
                         <span class="frame-method">{{metadataName}}</span>
+                        {{#if sourceCode}}
+                        <div class="frame-source">
+                            <span class="frame-source-line">{{sourceLine}}</span>
+                            <code class="frame-source-code">{{sourceCode}}</code>
+                        </div>
+                        {{/if}}
                         <div class="frame-details">
                             {{#if sourceFileName}}
                             <span class="frame-detail"><span class="frame-detail-label">File</span> {{sourceFileName}}:{{sourceLine}}</span>

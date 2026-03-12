@@ -111,6 +111,7 @@ public partial class DeadlockPlugin
                         sourceFile = frame.SourceMapping,
                         sourceFileName = frame.SourceFileName,
                         sourceLine = frame.SourceLine,
+                        sourceCode = frame.SourceCode,
                     }).ToArray()
                 };
             }).ToArray()

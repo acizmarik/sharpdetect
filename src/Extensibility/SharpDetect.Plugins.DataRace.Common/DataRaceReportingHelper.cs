@@ -13,6 +13,7 @@ public abstract class DataRaceReportingHelper
     private readonly string _reportCategory;
     private readonly SummaryBuilder _reporter;
     private readonly IMetadataContext _metadataContext;
+    private readonly ISymbolResolver _symbolResolver;
     private readonly List<DataRaceInfo> _detectedRaces;
 
     protected int DetectedRaceCount => _detectedRaces.Count;
@@ -20,11 +21,13 @@ public abstract class DataRaceReportingHelper
     protected DataRaceReportingHelper(
         SummaryBuilder reporter,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         string reportCategory,
         List<DataRaceInfo> detectedRaces)
     {
         _reporter = reporter;
         _metadataContext = metadataContext;
+        _symbolResolver = symbolResolver;
         _reportCategory = reportCategory;
         _detectedRaces = detectedRaces;
     }
@@ -68,6 +71,7 @@ public abstract class DataRaceReportingHelper
                         sourceFile = frame.SourceMapping,
                         sourceFileName = frame.SourceFileName,
                         sourceLine = frame.SourceLine,
+                        sourceCode = frame.SourceCode,
                     }).ToArray() ?? []
                 };
             }).ToArray()
@@ -190,16 +194,38 @@ public abstract class DataRaceReportingHelper
         var methodName = methodResolveResult.IsSuccess
             ? methodResolveResult.Value.FullName
             : $"<unresolved-method>({access.MethodToken.Value})";
-        var sequencePoint = methodResolveResult.Value.Body.Instructions
-            .FirstOrDefault(e => e.Offset == access.MethodOffset)?.SequencePoint;
+        var symbolInfo = _symbolResolver.ResolveSequencePoint(
+            processId, access.ModuleId, access.MethodToken.Value, access.MethodOffset);
+        var sourceCode = TryReadSourceLine(symbolInfo?.DocumentUrl, symbolInfo?.StartLine);
 
         return new StackFrame(
             MethodName: methodName,
             SourceMapping: moduleName,
             MethodToken: access.MethodToken.Value,
             MethodOffset: access.MethodOffset,
-            SourceFileName: sequencePoint?.Document.Url,
-            SourceLine: sequencePoint?.StartLine);
+            SourceFileName: symbolInfo?.DocumentUrl,
+            SourceLine: symbolInfo?.StartLine,
+            SourceCode: sourceCode);
+    }
+
+    private static string? TryReadSourceLine(string? documentUrl, int? line)
+    {
+        if (documentUrl is null || line is null || line.Value < 1)
+            return null;
+
+        try
+        {
+            if (!File.Exists(documentUrl))
+                return null;
+
+            return File.ReadLines(documentUrl)
+                .Skip(line.Value - 1)
+                .FirstOrDefault();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
 

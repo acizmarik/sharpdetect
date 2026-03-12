@@ -9,4 +9,5 @@ public record StackFrame(
     int MethodToken,
     uint? MethodOffset,
     string? SourceFileName,
-    int? SourceLine);
+    int? SourceLine,
+    string? SourceCode = null);

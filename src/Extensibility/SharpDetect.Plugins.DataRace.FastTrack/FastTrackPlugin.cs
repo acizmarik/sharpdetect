@@ -34,6 +34,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         PluginOptionsConfiguration pluginOptionsConfiguration,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
@@ -42,6 +43,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         : base(
             moduleBindContext,
             metadataContext,
+            symbolResolver,
             argumentsParser,
             profilerCommandSenderProvider,
             timeProvider,
