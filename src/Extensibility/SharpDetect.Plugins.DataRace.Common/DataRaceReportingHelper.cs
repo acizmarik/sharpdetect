@@ -68,6 +68,7 @@ public abstract class DataRaceReportingHelper
                         metadataName = frame.MethodName,
                         metadataToken = frame.MethodToken,
                         methodOffset = $"IL_{frame.MethodOffset:X4}",
+                        instruction = frame.Instruction,
                         sourceFile = frame.SourceMapping,
                         sourceFileName = frame.SourceFileName,
                         sourceLine = frame.SourceLine,
@@ -200,6 +201,10 @@ public abstract class DataRaceReportingHelper
         var methodName = methodResolveResult.IsSuccess
             ? methodResolveResult.Value.FullName
             : $"<unresolved-method>({access.MethodToken.Value})";
+        var instruction = methodResolveResult.IsSuccess
+            ? methodResolveResult.Value.Body.Instructions.SingleOrDefault(instr => instr.Offset == access.MethodOffset)?.ToString()
+            : null;
+        instruction ??= $"<unresolved-instruction>(IL_{access.MethodOffset:X4})";
         var symbolInfo = _symbolResolver.ResolveSequencePoint(
             processId, access.ModuleId, access.MethodToken.Value, access.MethodOffset);
         var sourceCode = TryReadSourceLine(symbolInfo?.DocumentUrl, symbolInfo?.StartLine);
@@ -209,6 +214,7 @@ public abstract class DataRaceReportingHelper
             SourceMapping: moduleName,
             MethodToken: access.MethodToken.Value,
             MethodOffset: access.MethodOffset,
+            Instruction: instruction,
             SourceFileName: symbolInfo?.DocumentUrl,
             SourceLine: symbolInfo?.StartLine,
             SourceCode: sourceCode);

@@ -8,6 +8,7 @@ public record StackFrame(
     string SourceMapping,
     int MethodToken,
     uint? MethodOffset,
+    string? Instruction,
     string? SourceFileName,
     int? SourceLine,
-    string? SourceCode = null);
+    string? SourceCode);
