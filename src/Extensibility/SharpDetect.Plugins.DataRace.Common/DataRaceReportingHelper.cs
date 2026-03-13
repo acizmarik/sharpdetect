@@ -89,40 +89,46 @@ public abstract class DataRaceReportingHelper
         _reporter.SetTitle(GetViolationTitle(_detectedRaces.Count));
         _reporter.SetDescription("See details below.");
 
-        var racesByField = _detectedRaces.GroupBy(r => r.FieldId);
-        CreateReportsForRaces(racesByField);
+        var racesByFieldAndObject = _detectedRaces
+            .GroupBy(r => (r.FieldId, r.ObjectId));
+        CreateReportsForRaces(racesByFieldAndObject);
     }
 
-    private void CreateReportsForRaces(IEnumerable<IGrouping<FieldId, DataRaceInfo>> racesByField)
+    private void CreateReportsForRaces(IEnumerable<IGrouping<(FieldId FieldId, ProcessTrackedObjectId? ObjectId), DataRaceInfo>> racesByFieldAndObject)
     {
         var index = 0;
-        foreach (var fieldRaces in racesByField)
+        foreach (var group in racesByFieldAndObject)
         {
-            var report = CreateReportForField(index++, fieldRaces);
+            var report = CreateReportForFieldAndObject(index++, group);
             _reporter.AddReport(report);
         }
     }
 
-    private Report CreateReportForField(int index, IGrouping<FieldId, DataRaceInfo> fieldRaces)
+    private Report CreateReportForFieldAndObject(int index, IGrouping<(FieldId FieldId, ProcessTrackedObjectId? ObjectId), DataRaceInfo> group)
     {
-        var firstRace = fieldRaces.First();
-        var fieldName = DataRaceLogger.GetFieldDisplayName(fieldRaces.Key);
+        var firstRace = group.First();
+        var fieldName = DataRaceLogger.GetFieldDisplayName(group.Key.FieldId);
         var category = DataRaceLogger.GetRaceCategory(firstRace);
 
         var reportBuilder = new ReportBuilder(index, _reportCategory, firstRace.Timestamp);
         reportBuilder.SetTitle($"Data race {reportBuilder.Identifier}");
-        reportBuilder.SetDescription($"Data race ({category}) on '{fieldName}' ({fieldRaces.Count()} flagged accesses).");
 
-        var accessCollector = CollectThreadAccesses(fieldRaces);
+        var accessCollector = CollectThreadAccesses(group);
+
+        // Count distinct access locations (after field-level deduplication)
+        var distinctAccessCount = accessCollector.GetThreads()
+            .Sum(t => accessCollector.GetDistinctAccesses(t).Count());
+        reportBuilder.SetDescription($"Data race ({category}) on '{fieldName}' ({distinctAccessCount} distinct access locations).");
+
         AddThreadsToReport(reportBuilder, accessCollector);
 
         return reportBuilder.Build();
     }
 
-    private static ThreadAccessCollector CollectThreadAccesses(IEnumerable<DataRaceInfo> fieldRaces)
+    private static ThreadAccessCollector CollectThreadAccesses(IEnumerable<DataRaceInfo> races)
     {
         var collector = new ThreadAccessCollector();
-        foreach (var race in fieldRaces)
+        foreach (var race in races)
             collector.AddRace(race);
 
         return collector;
@@ -146,7 +152,7 @@ public abstract class DataRaceReportingHelper
 
     private static ThreadInfo CreateThreadInfo(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
     {
-        var firstAccess = accessCollector.GetFirstAccess(threadId);
+        var firstAccess = accessCollector.GetDistinctAccesses(threadId).First().Access;
         var displayName = firstAccess.ThreadName ?? $"Thread-{threadId.ThreadId.Value}";
         return new ThreadInfo(
             threadId.ThreadId.Value,
@@ -172,7 +178,7 @@ public abstract class DataRaceReportingHelper
     {
         var stackFrames = ImmutableArray.CreateBuilder<StackFrame>();
 
-        foreach (var access in accessCollector.GetDistinctMethods(threadId))
+        foreach (var (_, access, _) in accessCollector.GetDistinctAccesses(threadId))
         {
             var frame = CreateStackFrame(threadId.ProcessId, access);
             stackFrames.Add(frame);
