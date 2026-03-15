@@ -95,7 +95,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
                 Path.GetDirectoryName(GetType().Assembly.Location)!,
-                "FastTrack",
+                "DataRace",
                 "Templates",
                 "Partials"));
     }

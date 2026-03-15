@@ -92,7 +92,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
                 Path.GetDirectoryName(GetType().Assembly.Location)!,
-                "Eraser",
+                "DataRace",
                 "Templates",
                 "Partials"));
     }

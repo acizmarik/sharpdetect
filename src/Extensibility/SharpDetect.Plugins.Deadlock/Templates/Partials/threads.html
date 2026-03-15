@@ -1,36 +1,19 @@
 ﻿<div class="thread-grid">
-        {{#threads}}
-        <div class="thread-panel">
-            <div class="thread-panel-header">
-                <span class="thread-name">{{name}}</span>
-            </div>
-            <div class="thread-panel-reason">{{reason}}</div>
-            {{#if stacktrace}}
-            <div class="stacktrace-block">
-                {{#stacktrace}}
-                <div class="stacktrace-line">
-                    <span class="frame-method">at {{metadataName}}</span>
-                      {{#stacktrace}}
-                <div class="stacktrace-line">
-                    <span class="frame-method">at {{metadataName}}</span>
-                    {{#if sourceCode}}
-                    <div class="frame-source">
-                        <span class="frame-source-line">{{sourceLine}}</span>
-                        <code class="frame-source-code">{{sourceCode}}</code>
-                    </div>
-                    {{/if}}
-                    <div class="frame-details">
-                        <span class="frame-detail"><span class="frame-detail-label">Assembly</span> {{sourceFile}}</span>
-                        <span class="frame-detail"><span class="frame-detail-label">Token</span> 0x{{metadataToken}}</span>
-                        {{#methodOffset}}<span class="frame-detail"><span class="frame-detail-label">Offset</span> {{methodOffset}}</span>{{/methodOffset}}
-                        {{#sourceFileName}}<span class="frame-detail"><span class="frame-detail-label">File</span> {{sourceFileName}}</span>{{/sourceFileName}}
-                        {{#sourceLine}}<span class="frame-detail"><span class="frame-detail-label">Line</span> {{sourceLine}}</span>{{/sourceLine}}
-                    </div>
-                </div>
-                {{/stacktrace}}
-            </div>
-            {{/if}}
+    {{#threads}}
+    <div class="thread-panel">
+        <div class="thread-panel-header">
+            <span class="thread-name">{{name}}</span>
         </div>
-        {{/threads}}
+        <div class="thread-panel-reason">{{reason}}</div>
+        {{#if stacktrace}}
+        <div class="stacktrace-block">
+            {{#stacktrace}}
+            <div class="stacktrace-line">
+                <span class="frame-method">at {{metadataName}}</span>
+            </div>
+            {{/stacktrace}}
+        </div>
+        {{/if}}
     </div>
-
+    {{/threads}}
+</div>
