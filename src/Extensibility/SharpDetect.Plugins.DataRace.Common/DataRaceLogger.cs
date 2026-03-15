@@ -22,10 +22,9 @@ public static class DataRaceLogger
         var lastThread = raceInfo.LastAccess.ThreadName;
 
         logger.LogWarning(
-            "[PID={ProcessId}] Data race on {Field}; type: {RaceCategory}; previous thread: {LastThread}; current thread: {Thread}",
+            "[PID={ProcessId}] Data race on {Field}; previous thread: {LastThread}; current thread: {Thread}",
             raceInfo.ProcessId,
             field,
-            GetRaceCategory(raceInfo),
             lastThread,
             currentThread);
     }
@@ -35,17 +34,9 @@ public static class DataRaceLogger
         return $"{fieldId.FieldDef.DeclaringType.FullName}.{fieldId.FieldDef.Name}";
     }
     
-    public static string GetRaceCategory(DataRaceInfo raceInfo)
+    public static string GetFieldTitle(FieldId fieldId)
     {
-        var lastAccessType = raceInfo.LastAccess.AccessType;
-        var currentAccessType = raceInfo.CurrentAccess.AccessType;
-        return (lastAccessType, currentAccessType) switch
-        {
-            (AccessType.Read, AccessType.Write) => "read-write",
-            (AccessType.Write, AccessType.Read) => "write-read",
-            (AccessType.Write, AccessType.Write) => "write-write",
-            _ => "unclassified"
-        };
+        return $"{fieldId.FieldDef.DeclaringType.Name}.{fieldId.FieldDef.Name}";
     }
 }
 

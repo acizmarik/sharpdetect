@@ -14,6 +14,9 @@
         <span class="card-timestamp">{{timestamp}}</span>
     </summary>
     <div class="violation-card-body">
+        {{#if target}}
+        <span class="metadata-fullname">{{target}}</span>
+        {{/if}}
         <div class="thread-grid">
             {{#threads}}
             <div class="thread-panel">

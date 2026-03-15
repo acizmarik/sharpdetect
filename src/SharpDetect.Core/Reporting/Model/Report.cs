@@ -8,8 +8,9 @@ namespace SharpDetect.Core.Reporting.Model;
 public class Report
 {
     public readonly int Identifier;
-    public readonly string Title;
     public readonly string Category;
+    public readonly string Title;
+    public readonly string? Target;
     public readonly string Description;
     public readonly DateTime DetectionTime;
     private readonly ImmutableArray<ThreadInfo> _reportedThreads;
@@ -20,6 +21,7 @@ public class Report
         int identifier,
         string category,
         string title,
+        string? target,
         string description,
         IEnumerable<ThreadInfo> reportedThreads,
         IEnumerable<KeyValuePair<ThreadInfo, StackTrace>> stackTraces,
@@ -29,6 +31,7 @@ public class Report
         Identifier = identifier;
         Category = category;
         Title = title;
+        Target = target;
         Description = description;
         DetectionTime = detectionTime;
         _reportedThreads = reportedThreads.ToImmutableArray();

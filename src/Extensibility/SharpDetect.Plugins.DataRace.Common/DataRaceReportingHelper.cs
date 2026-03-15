@@ -55,6 +55,7 @@ public abstract class DataRaceReportingHelper
             reportId = $"report-{report.Identifier}",
             description = report.Description,
             timestamp = report.DetectionTime,
+            target = report.Target,
             threads = report.GetReportedThreads().Select(threadInfo =>
             {
                 report.TryGetReportReason(threadInfo, out var reason);
@@ -108,18 +109,19 @@ public abstract class DataRaceReportingHelper
     private Report CreateReportForFieldAndObject(int index, IGrouping<(FieldId FieldId, ProcessTrackedObjectId? ObjectId), DataRaceInfo> group)
     {
         var firstRace = group.First();
+        var fieldTitle = DataRaceLogger.GetFieldTitle(group.Key.FieldId);
         var fieldName = DataRaceLogger.GetFieldDisplayName(group.Key.FieldId);
-        var category = DataRaceLogger.GetRaceCategory(firstRace);
 
         var reportBuilder = new ReportBuilder(index, _reportCategory, firstRace.Timestamp);
-        reportBuilder.SetTitle($"Data race {reportBuilder.Identifier}");
+        reportBuilder.SetTitle(fieldTitle);
+        reportBuilder.SetTarget(fieldName);
 
         var accessCollector = CollectThreadAccesses(group);
 
         // Count distinct access locations (after field-level deduplication)
         var distinctAccessCount = accessCollector.GetThreads()
             .Sum(t => accessCollector.GetDistinctAccesses(t).Count());
-        reportBuilder.SetDescription($"Data race ({category}) on '{fieldName}' ({distinctAccessCount} distinct access locations).");
+        reportBuilder.SetDescription($"data race ({distinctAccessCount} distinct access locations)");
 
         AddThreadsToReport(reportBuilder, accessCollector);
 
@@ -137,57 +139,23 @@ public abstract class DataRaceReportingHelper
 
     private void AddThreadsToReport(ReportBuilder reportBuilder, ThreadAccessCollector accessCollector)
     {
+        var accessIndex = 0;
         foreach (var threadId in accessCollector.GetThreads())
         {
-            var threadInfo = CreateThreadInfo(threadId, accessCollector);
-            reportBuilder.AddThread(threadInfo);
+            foreach (var (race, access, role) in accessCollector.GetDistinctAccesses(threadId))
+            {
+                var displayName = access.ThreadName ?? $"Thread-{threadId.ThreadId.Value}";
+                var threadInfo = new ThreadInfo(threadId.ThreadId.Value, displayName, accessIndex++);
+                reportBuilder.AddThread(threadInfo);
 
-            var reason = BuildReasonString(threadId, accessCollector);
-            reportBuilder.AddReportReason(threadInfo, reason);
+                var reason = FormatAccessReason(race, access, role);
+                reportBuilder.AddReportReason(threadInfo, reason);
 
-            var stackTrace = BuildStackTrace(threadId, threadInfo, accessCollector);
-            if (stackTrace != null)
+                var frame = CreateStackFrame(threadId.ProcessId, access);
+                var stackTrace = new StackTrace(threadInfo, [frame]);
                 reportBuilder.AddStackTrace(stackTrace);
+            }
         }
-    }
-
-    private static ThreadInfo CreateThreadInfo(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
-    {
-        var firstAccess = accessCollector.GetDistinctAccesses(threadId).First().Access;
-        var displayName = firstAccess.ThreadName ?? $"Thread-{threadId.ThreadId.Value}";
-        return new ThreadInfo(
-            threadId.ThreadId.Value,
-            displayName);
-    }
-
-    private string BuildReasonString(ProcessThreadId threadId, ThreadAccessCollector accessCollector)
-    {
-        var reasons = new List<string>();
-
-        foreach (var (race, access, role) in accessCollector.GetDistinctAccesses(threadId))
-        {
-            reasons.Add(FormatAccessReason(race, access, role));
-        }
-
-        return string.Join("; ", reasons.Distinct());
-    }
-
-    private StackTrace? BuildStackTrace(
-        ProcessThreadId threadId,
-        ThreadInfo threadInfo,
-        ThreadAccessCollector accessCollector)
-    {
-        var stackFrames = ImmutableArray.CreateBuilder<StackFrame>();
-
-        foreach (var (_, access, _) in accessCollector.GetDistinctAccesses(threadId))
-        {
-            var frame = CreateStackFrame(threadId.ProcessId, access);
-            stackFrames.Add(frame);
-        }
-
-        return stackFrames.Count > 0
-            ? new StackTrace(threadInfo, stackFrames.ToImmutable())
-            : null;
     }
 
     private StackFrame CreateStackFrame(uint processId, AccessInfo access)
