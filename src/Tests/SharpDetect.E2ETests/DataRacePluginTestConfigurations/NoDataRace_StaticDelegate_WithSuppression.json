@@ -24,14 +24,11 @@
     "LogLevel": "Information",
     "Configuration": {
       "SuppressAnalysisOfStaticDelegates": true,
-      "Configuration":
-      {
-        "ExcludedFieldAccessModulePrefixes":
-        [
-          "System.",
-          "Microsoft."
-        ]
-      }
+      "ExcludedFieldAccessModulePrefixes":
+      [
+        "System.",
+        "Microsoft."
+      ]
     }
   }
 }
