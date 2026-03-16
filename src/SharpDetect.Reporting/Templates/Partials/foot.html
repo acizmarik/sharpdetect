@@ -55,4 +55,43 @@
         ).some(isSystemViolation);
         btn.style.display = hasSystemViolation ? '' : 'none';
     });
+
+    (function() {
+        const root = document.getElementById('htmlRoot');
+        const toggleBtn = document.getElementById('themeToggle');
+        const toggleIcon = document.getElementById('themeToggleIcon');
+        const toggleLabel = document.getElementById('themeToggleLabel');
+        const STORAGE_KEY = 'sharpdetect-theme';
+
+        function applyTheme(dark) {
+            root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            toggleIcon.textContent = dark ? '☀️' : '🌙';
+            toggleLabel.textContent = dark ? 'Light mode' : 'Dark mode';
+        }
+
+        function isDarkThemePreferred() {
+            // Prefer local storage setting
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored === 'dark')
+                return true;
+            if (stored === 'light')
+                return false;
+            
+            // Otherwise get system preferences
+            return isDarkThemePreferredBySystem();
+        }
+
+        function isDarkThemePreferredBySystem() {
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+
+        let isDark = isDarkThemePreferred();
+        applyTheme(isDark);
+
+        toggleBtn.addEventListener('click', function() {
+            isDark = !isDark;
+            localStorage.setItem(STORAGE_KEY, isDark ? 'dark' : 'light');
+            applyTheme(isDark);
+        });
+    })();
 </script>
