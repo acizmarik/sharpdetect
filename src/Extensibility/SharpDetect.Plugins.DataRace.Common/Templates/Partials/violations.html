@@ -1,6 +1,7 @@
 {{#if reports}}
 <div class="violations-toolbar">
     <input type="text" id="violationsFilter" placeholder="Search violations by field, thread, description..." oninput="filterViolations()">
+    <button class="btn btn-toggle" id="btnHideSystem" onclick="toggleSystemViolations()">Hide System.*</button>
     <button class="btn" onclick="toggleAllViolations(true)">Expand All</button>
     <button class="btn" onclick="toggleAllViolations(false)">Collapse All</button>
 </div>

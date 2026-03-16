@@ -8,15 +8,35 @@
         });
     }
 
+    let _hideSystemViolations = false;
+
+    function isSystemViolation(card) {
+        const target = card.querySelector('.metadata-fullname');
+        if (!target)
+            return false;
+        return target.textContent.trim().startsWith('System.');
+    }
+
     function filterViolations() {
         const filter = document.getElementById('violationsFilter');
         if (!filter) return;
         const query = filter.value.toLowerCase();
         const cards = document.querySelectorAll('#violationsContainer .violation-card');
         cards.forEach(function(card) {
-            const text = card.textContent.toLowerCase();
-            card.style.display = text.includes(query) ? '' : 'none';
+            const hiddenBySystem = _hideSystemViolations && isSystemViolation(card);
+            const hiddenBySearch = query && !card.textContent.toLowerCase().includes(query);
+            card.style.display = (hiddenBySystem || hiddenBySearch) ? 'none' : '';
         });
+    }
+
+    function toggleSystemViolations() {
+        _hideSystemViolations = !_hideSystemViolations;
+        const btn = document.getElementById('btnHideSystem');
+        if (btn) {
+            btn.classList.toggle('btn-active', _hideSystemViolations);
+            btn.textContent = _hideSystemViolations ? 'Show System.*' : 'Hide System.*';
+        }
+        filterViolations();
     }
 
     function toggleAllViolations(expand) {
@@ -25,4 +45,14 @@
             card.open = expand;
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('btnHideSystem');
+        if (!btn)
+            return;
+        const hasSystemViolation = Array.from(
+            document.querySelectorAll('#violationsContainer .violation-card')
+        ).some(isSystemViolation);
+        btn.style.display = hasSystemViolation ? '' : 'none';
+    });
 </script>
