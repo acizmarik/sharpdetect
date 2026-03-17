@@ -15,6 +15,7 @@ namespace SharpDetect.Core.Plugins
         private readonly Dictionary<ThreadInfo, StackTrace> _stackTraces = [];
         private readonly Dictionary<ThreadInfo, string> _reportReasons = [];
         private string? _title;
+        private string? _target;
         private string? _description;
 
         public ReportBuilder(int identifier, string category, DateTime detectionTime)
@@ -48,6 +49,12 @@ namespace SharpDetect.Core.Plugins
             return this;
         }
 
+        public ReportBuilder SetTarget(string target)
+        {
+            _target = target;
+            return this;
+        }
+        
         public ReportBuilder SetDescription(string description)
         {
             _description = description;
@@ -63,6 +70,7 @@ namespace SharpDetect.Core.Plugins
                 identifier: Identifier,
                 category: Category,
                 title: _title,
+                target: _target,
                 description: _description,
                 reportedThreads: _threads,
                 stackTraces: _stackTraces,

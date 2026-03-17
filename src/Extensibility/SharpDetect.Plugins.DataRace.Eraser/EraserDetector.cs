@@ -79,26 +79,29 @@ internal sealed class EraserDetector
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
+        uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
-        return RecordFieldAccess(threadId, moduleId, methodToken, fieldToken, objectId, isWrite: false);
+        return RecordFieldAccess(threadId, moduleId, methodToken, methodOffset, fieldToken, objectId, isWrite: false);
     }
 
     public DataRaceInfo? RecordWrite(
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
+        uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
-        return RecordFieldAccess(threadId, moduleId, methodToken, fieldToken, objectId, isWrite: true);
+        return RecordFieldAccess(threadId, moduleId, methodToken, methodOffset, fieldToken, objectId, isWrite: true);
     }
 
     private DataRaceInfo? RecordFieldAccess(
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
+        uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
         bool isWrite)
@@ -120,7 +123,7 @@ internal sealed class EraserDetector
         var transitionResult = _stateMachine.ComputeTransition(threadId, shadow, threadLockSet, isWrite);
         _shadowMemory.Update(fieldId, objectId, transitionResult.NewShadow);
         var accessType = isWrite ? AccessType.Write : AccessType.Read;
-        var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, accessType);
+        var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, accessType);
         var lastRelevantAccess = isWrite 
             ? _accessTracker.GetLastAccess(fieldId, objectId) 
             : _accessTracker.GetLastWriteAccess(fieldId, objectId);
@@ -136,8 +139,6 @@ internal sealed class EraserDetector
             objectId,
             currentAccess,
             lastRelevantAccess,
-            transitionResult.PreviousState.ToString(),
-            transitionResult.NewState.ToString(),
             Timestamp: _timeProvider.GetUtcNow().DateTime);
     }
 }

@@ -15,20 +15,19 @@ internal class AssemblyLoadContext : IAssemblyLoadContext
     private readonly ConcurrentDictionary<string, AssemblyDef> _assemblies;
     private readonly AssemblyResolver _assemblyResolver;
     private readonly ModuleCreationOptions _moduleCreationOptions;
-    private readonly ModuleContext _moduleContext;
     private readonly ILogger<AssemblyLoadContext> _logger;
 
     public AssemblyLoadContext(ILogger<AssemblyLoadContext> logger)
     {
         _logger = logger;
         _assemblies = new();
-        _moduleContext = ModuleDef.CreateModuleContext();
+        var moduleContext = ModuleDef.CreateModuleContext();
         _moduleCreationOptions = new ModuleCreationOptions()
         {
-            Context = _moduleContext,
-            TryToLoadPdbFromDisk = true
+            Context = moduleContext,
+            TryToLoadPdbFromDisk = false
         };
-        _assemblyResolver = (AssemblyResolver)_moduleContext.AssemblyResolver;
+        _assemblyResolver = (AssemblyResolver)moduleContext.AssemblyResolver;
         _assemblyResolver.UseGAC = false;
         _assemblyResolver.EnableFrameworkRedirect = false;
         _assemblyResolver.FindExactMatch = false;
@@ -44,7 +43,7 @@ internal class AssemblyLoadContext : IAssemblyLoadContext
             if (!Path.IsPathFullyQualified(path))
                 return Error(AssemblyLoadErrorType.InvalidPath);
 
-            assembly = AssemblyDef.Load(path, _moduleContext);
+            assembly = AssemblyDef.Load(path, _moduleCreationOptions);
             _assemblyResolver.AddToCache(assembly);
             return Ok(assembly);
         }

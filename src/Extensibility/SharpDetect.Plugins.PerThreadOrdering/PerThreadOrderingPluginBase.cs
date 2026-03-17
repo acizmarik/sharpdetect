@@ -40,11 +40,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected PerThreadOrderingPluginBase(
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         TimeProvider timeProvider,
         ILogger logger)
-        : base(moduleBindContext, metadataContext, profilerCommandSenderProvider, timeProvider, logger)
+        : base(moduleBindContext, metadataContext, symbolResolver, profilerCommandSenderProvider, timeProvider, logger)
     {
         _metadataContext = metadataContext;
         _argumentsParser = argumentsParser;
@@ -202,7 +203,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
-        StaticFieldRead?.Invoke(new StaticFieldReadArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken));
+        StaticFieldRead?.Invoke(new StaticFieldReadArgs(
+            id,
+            fieldAccess.ModuleId,
+            fieldAccess.MethodToken,
+            fieldAccess.MethodOffset,
+            fieldAccess.FieldToken));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.StaticFieldWrite)]
@@ -210,7 +216,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
-        StaticFieldWritten?.Invoke(new StaticFieldWriteArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken));
+        StaticFieldWritten?.Invoke(new StaticFieldWriteArgs(
+            id,
+            fieldAccess.ModuleId,
+            fieldAccess.MethodToken,
+            fieldAccess.MethodOffset,
+            fieldAccess.FieldToken));
     }
     
     [RecordedEventBind((ushort)RecordedEventType.InstanceFieldRead)]
@@ -218,7 +229,13 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var (fieldAccess, instance) = GetInstrumentedInstanceFieldAccessFromArguments(metadata, args);
-        InstanceFieldRead?.Invoke(new InstanceFieldReadArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken, instance));
+        InstanceFieldRead?.Invoke(new InstanceFieldReadArgs(
+            id,
+            fieldAccess.ModuleId,
+            fieldAccess.MethodToken,
+            fieldAccess.MethodOffset,
+            fieldAccess.FieldToken,
+            instance));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.InstanceFieldWrite)]
@@ -226,7 +243,13 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var (fieldAccess, instance) = GetInstrumentedInstanceFieldAccessFromArguments(metadata, args);
-        InstanceFieldWritten?.Invoke(new InstanceFieldWriteArgs(id, fieldAccess.ModuleId, fieldAccess.MethodToken, fieldAccess.FieldToken, instance));
+        InstanceFieldWritten?.Invoke(new InstanceFieldWriteArgs(
+            id,
+            fieldAccess.ModuleId,
+            fieldAccess.MethodToken,
+            fieldAccess.MethodOffset,
+            fieldAccess.FieldToken,
+            instance));
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)

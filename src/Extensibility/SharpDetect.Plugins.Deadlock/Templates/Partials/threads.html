@@ -1,46 +1,19 @@
-﻿<div class="threads">
-
-    <h2>Thread States</h2>
-    <p class="summary">{{description}}</p>
-    <hr/>
-
-    <table class="styled-table">
-        <colgroup>
-            <col span="1" style="width: 30%;">
-            <col span="1" style="width: 70%;">
-        </colgroup>
-        <thead>
-            <tr>
-                <th>Thread</th>
-                <th>Reason for Report</th>
-            </tr>
-        </thead>
-        {{#threads}}
-        <tr>
-            <td>{{name}}</td>
-            <td>{{reason}}</td>
-        </tr>
-        {{/threads}}
-    </table>
-
-    <h2>Stack Traces</h2>
-    <div class="tab">
-        {{#threads}}
-        <button id="btn{{../reportId}}-{{slugify name}}" class="tablinks" data-group="{{../reportId}}" onclick="openTab('{{../reportId}}-{{slugify name}}')">{{name}}</button>
-        {{/threads}}
-    </div>
-
+﻿<div class="thread-grid">
     {{#threads}}
-    <div id="{{../reportId}}-{{slugify name}}" class="tabcontent" data-group="{{../reportId}}">
-        <div class="stacktrace">
+    <div class="thread-panel">
+        <div class="thread-panel-header">
+            <span class="thread-name">{{name}}</span>
+        </div>
+        <div class="thread-panel-reason">{{reason}}</div>
+        {{#if stacktrace}}
+        <div class="stacktrace-block">
             {{#stacktrace}}
-            <div class="stackframe">
-                <span class="metadata">at {{metadataName}}</span>
-                <sub class="sourceFile">Source file: {{sourceFile}} ({{metadataToken}})</sub>
+            <div class="stacktrace-line">
+                <span class="frame-method">at {{metadataName}}</span>
             </div>
             {{/stacktrace}}
         </div>
+        {{/if}}
     </div>
     {{/threads}}
-
 </div>

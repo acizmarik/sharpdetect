@@ -11,52 +11,49 @@ public enum RaceRole
     Conflicting
 }
 
+public readonly record struct ThreadAccessEntry(DataRaceInfo Race, AccessInfo Access, RaceRole Role);
+
 public sealed class ThreadAccessCollector
 {
-    private readonly record struct ThreadAccessEntry(
-        DataRaceInfo Race,
-        AccessInfo Access,
-        RaceRole Role);
+    private readonly struct AccessKey(int methodToken, uint methodOffset, AccessType accessType) : IEquatable<AccessKey>
+    {
+        private readonly int _methodToken = methodToken;
+        private readonly uint _methodOffset = methodOffset;
+        private readonly AccessType _accessType = accessType;
 
-    private readonly Dictionary<ProcessThreadId, List<ThreadAccessEntry>> _accessesByThread = [];
+        public bool Equals(AccessKey other) =>
+            _methodToken == other._methodToken &&
+            _methodOffset == other._methodOffset &&
+            _accessType == other._accessType;
+
+        public override bool Equals(object? obj) => obj is AccessKey other && Equals(other);
+        public override int GetHashCode() => HashCode.Combine(_methodToken, _methodOffset, _accessType);
+    }
+
+    private readonly Dictionary<ProcessThreadId, (List<ThreadAccessEntry> Entries, HashSet<AccessKey> Seen)> _byThread = [];
 
     public void AddRace(DataRaceInfo race)
     {
         AddAccess(race.CurrentAccess.ProcessThreadId, race, race.CurrentAccess, RaceRole.Triggering);
-        if (race.LastAccess != null)
-            AddAccess(race.LastAccess.ProcessThreadId, race, race.LastAccess, RaceRole.Conflicting);
+        AddAccess(race.LastAccess.ProcessThreadId, race, race.LastAccess, RaceRole.Conflicting);
     }
 
-    public IEnumerable<ProcessThreadId> GetThreads() => _accessesByThread.Keys;
+    public IEnumerable<ProcessThreadId> GetThreads() => _byThread.Keys;
 
-    public AccessInfo GetFirstAccess(ProcessThreadId threadId)
-    {
-        return _accessesByThread[threadId].First().Access;
-    }
-
-    public IEnumerable<(DataRaceInfo Race, AccessInfo Access, RaceRole Role)> GetDistinctAccesses(ProcessThreadId threadId)
-    {
-        return _accessesByThread[threadId]
-            .DistinctBy(a => (a.Access.Timestamp, a.Access.AccessType))
-            .Select(e => (e.Race, e.Access, e.Role));
-    }
-
-    public IEnumerable<AccessInfo> GetDistinctMethods(ProcessThreadId threadId)
-    {
-        return _accessesByThread[threadId]
-            .Select(a => a.Access)
-            .DistinctBy(a => a.MethodToken.Value);
-    }
+    public IEnumerable<ThreadAccessEntry> GetDistinctAccesses(ProcessThreadId threadId)
+        => _byThread[threadId].Entries;
 
     private void AddAccess(ProcessThreadId threadId, DataRaceInfo race, AccessInfo access, RaceRole role)
     {
-        if (!_accessesByThread.TryGetValue(threadId, out var list))
+        if (!_byThread.TryGetValue(threadId, out var bucket))
         {
-            list = [];
-            _accessesByThread[threadId] = list;
+            bucket = ([], []);
+            _byThread[threadId] = bucket;
         }
 
-        list.Add(new ThreadAccessEntry(race, access, role));
+        var key = new AccessKey(access.MethodToken.Value, access.MethodOffset, access.AccessType);
+        if (bucket.Seen.Add(key))
+            bucket.Entries.Add(new ThreadAccessEntry(race, access, role));
     }
 }
 

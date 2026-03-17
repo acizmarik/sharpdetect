@@ -20,6 +20,7 @@ public sealed class TestDeadlockPlugin : DeadlockPlugin
     public TestDeadlockPlugin(
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IRecordedEventsDeliveryContext eventsDeliveryContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
@@ -30,6 +31,7 @@ public sealed class TestDeadlockPlugin : DeadlockPlugin
         : base(
             moduleBindContext,
             metadataContext,
+            symbolResolver,
             argumentsParser,
             eventsDeliveryContext,
             profilerCommandSenderProvider,

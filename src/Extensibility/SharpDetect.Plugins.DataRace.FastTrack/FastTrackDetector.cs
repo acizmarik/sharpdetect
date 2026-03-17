@@ -16,7 +16,6 @@ internal sealed class FastTrackDetector
     private readonly AccessTracker _accessTracker;
     private readonly FieldResolver _fieldResolver;
     private readonly TimeProvider _timeProvider;
-    private readonly Func<ProcessThreadId, string?> _threadNameResolver;
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
 
@@ -29,7 +28,6 @@ internal sealed class FastTrackDetector
     {
         _configuration = configuration;
         _timeProvider = timeProvider;
-        _threadNameResolver = threadNameResolver;
         _accessTracker = new AccessTracker(timeProvider, threadNameResolver);
         _fieldResolver = new FieldResolver(metadataContext, logger);
     }
@@ -108,6 +106,7 @@ internal sealed class FastTrackDetector
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
+        uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
@@ -120,7 +119,6 @@ internal sealed class FastTrackDetector
         var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
-        var previousState = shadow.GetStateDescription(_threadNameResolver);
         
         if (!shadow.WriteEpoch.IsNone && 
             !shadow.WriteEpoch.HappensBefore(threadVc) && 
@@ -128,11 +126,10 @@ internal sealed class FastTrackDetector
         {
             // Write-read race detected: last write does not happen-before this read
             var accessType = AccessType.Read;
-            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, accessType);
+            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, accessType);
             var lastAccess = _accessTracker.GetLastWriteAccess(fieldId, objectId);
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
             UpdateReadState(threadId, shadow, threadVc);
-            var newState = shadow.GetStateDescription(_threadNameResolver);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
             {
@@ -142,13 +139,11 @@ internal sealed class FastTrackDetector
                     objectId,
                     currentAccess,
                     lastAccess,
-                    previousState,
-                    newState,
                     _timeProvider.GetUtcNow().DateTime);
             }
         }
 
-        var readAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, AccessType.Read);
+        var readAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Read);
         _accessTracker.RecordAccess(fieldId, objectId, readAccess);
         UpdateReadState(threadId, shadow, threadVc);
         return null;
@@ -158,6 +153,7 @@ internal sealed class FastTrackDetector
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
+        uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
@@ -170,19 +166,17 @@ internal sealed class FastTrackDetector
         var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
-        var previousState = shadow.GetStateDescription(_threadNameResolver);
         var currentEpoch = threadVc.GetEpoch(threadId);
 
         if (!shadow.WriteEpoch.IsNone && 
             shadow.WriteEpoch.ThreadId != threadId && 
             !shadow.WriteEpoch.HappensBefore(threadVc))
         {
-            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, AccessType.Write);
+            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
             var lastAccess = _accessTracker.GetLastWriteAccess(fieldId, objectId);
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
             shadow.SetWrite(currentEpoch);
             shadow.SetRead(Epoch.None);
-            var newState = shadow.GetStateDescription(_threadNameResolver);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
             {
@@ -192,8 +186,6 @@ internal sealed class FastTrackDetector
                     objectId,
                     currentAccess,
                     lastAccess,
-                    previousState,
-                    newState,
                     _timeProvider.GetUtcNow().DateTime);
             }
         }
@@ -201,12 +193,11 @@ internal sealed class FastTrackDetector
         var readWriteRace = CheckReadWriteRace(threadId, shadow, threadVc);
         if (readWriteRace != null)
         {
-            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, AccessType.Write);
+            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
             var lastAccess = _accessTracker.GetLastAccess(fieldId, objectId);
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
             shadow.SetWrite(currentEpoch);
             shadow.SetRead(Epoch.None);
-            var newState = shadow.GetStateDescription(_threadNameResolver);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
             {
@@ -216,13 +207,11 @@ internal sealed class FastTrackDetector
                     objectId,
                     currentAccess,
                     lastAccess,
-                    previousState,
-                    newState,
                     _timeProvider.GetUtcNow().DateTime);
             }
         }
 
-        var writeAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, AccessType.Write);
+        var writeAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
         _accessTracker.RecordAccess(fieldId, objectId, writeAccess);
         shadow.SetWrite(currentEpoch);
         shadow.SetRead(Epoch.None);

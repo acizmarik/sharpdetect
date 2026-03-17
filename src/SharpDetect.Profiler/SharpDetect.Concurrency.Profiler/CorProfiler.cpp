@@ -751,6 +751,12 @@ HRESULT Profiler::CorProfiler::InjectTypesForProfilingFeatures(LibProfiler::Modu
             injectedTypeDef,
             moduleDef.GetName().c_str());
 
+        _client.Send(LibIPC::Helpers::CreateTypeDefinitionInjectionMsg(
+            CreateMetadataMsg(),
+            moduleDef.GetModuleId(),
+            injectedTypeDef,
+            typeFullName));
+
         std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods;
         for (auto& [methodName, eventType, methodSignatureDescriptor] : methods)
         {

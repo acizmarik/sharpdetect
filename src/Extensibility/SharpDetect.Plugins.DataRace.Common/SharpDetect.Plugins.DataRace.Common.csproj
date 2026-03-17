@@ -4,6 +4,13 @@
         <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Update="Templates\Partials\violations.html">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>DataRace\Templates\Partials\violations.html</TargetPath>
+        </None>
+    </ItemGroup>
+
 </Project>
 
 

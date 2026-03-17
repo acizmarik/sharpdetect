@@ -3,4 +3,4 @@
 
 namespace SharpDetect.Core.Reporting.Model;
 
-public record ThreadInfo(nuint Id, string Name);
+public record ThreadInfo(nuint Id, string Name, int AccessIndex = 0);

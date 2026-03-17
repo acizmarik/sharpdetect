@@ -17,6 +17,7 @@ public sealed record AccessInfo(
     string? ThreadName,
     ModuleId ModuleId,
     MdMethodDef MethodToken,
+    uint MethodOffset,
     AccessType AccessType,
     DateTime Timestamp);
 
@@ -25,8 +26,6 @@ public sealed record DataRaceInfo(
     FieldId FieldId,
     ProcessTrackedObjectId? ObjectId,
     AccessInfo CurrentAccess,
-    AccessInfo? LastAccess,
-    string PreviousState,
-    string NewState,
+    AccessInfo LastAccess,
     DateTime Timestamp);
 

@@ -34,6 +34,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         PluginOptionsConfiguration pluginOptionsConfiguration,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
@@ -42,6 +43,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         : base(
             moduleBindContext,
             metadataContext,
+            symbolResolver,
             argumentsParser,
             profilerCommandSenderProvider,
             timeProvider,
@@ -93,7 +95,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
                 Path.GetDirectoryName(GetType().Assembly.Location)!,
-                "FastTrack",
+                "DataRace",
                 "Templates",
                 "Partials"));
     }
@@ -140,6 +142,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 objectId: null) is { } raceInfo)
         {
@@ -153,6 +156,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 args.ObjectId) is { } raceInfo)
         {
@@ -166,6 +170,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 objectId: null) is { } raceInfo)
         {
@@ -179,6 +184,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.ProcessThreadId,
                 args.ModuleId,
                 args.MethodToken,
+                args.MethodOffset,
                 args.FieldToken,
                 args.ObjectId) is { } raceInfo)
         {
@@ -229,24 +235,12 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     private void RecordDataRace(ProcessThreadId reporterThreadId, DataRaceInfo raceInfo)
     {
         _detectedRaces.Add(raceInfo);
-        var fieldIdentification = raceInfo.ObjectId != null
-            ? $"an instance field {GetFieldDisplayName(raceInfo.FieldId)} on object {raceInfo.ObjectId}"
-            : $"a static field {GetFieldDisplayName(raceInfo.FieldId)}";
-            
-        Logger.LogWarning(
-            "Data race detected on {field} by thread {Thread}. " +
-            "{AccessType} access not ordered after last access by {LastThread} ({PreviousState} → {NewState})",
-            fieldIdentification,
-            Threads[reporterThreadId],
-            raceInfo.CurrentAccess.AccessType,
-            raceInfo.LastAccess?.ThreadName ?? "<unknown-thread>",
-            raceInfo.PreviousState,
-            raceInfo.NewState);
+        DataRaceLogger.LogDataRace(Logger, Threads, reporterThreadId, raceInfo);
     }
 
     private static string GetFieldDisplayName(FieldId fieldId)
     {
-        return $"{fieldId.FieldDef.DeclaringType.FullName}.{fieldId.FieldDef.Name}";
+        return DataRaceLogger.GetFieldDisplayName(fieldId);
     }
 }
 

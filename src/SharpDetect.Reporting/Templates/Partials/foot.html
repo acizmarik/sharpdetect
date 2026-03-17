@@ -1,37 +1,97 @@
 <script>
-    function openTab(tabContentId) {
-        const content = document.getElementById(tabContentId);
-        const button = document.getElementById(`btn${tabContentId}`);
-        const groupId = button.getAttribute("data-group");
-
-        closeAllTabs(groupId);
-        content.style.display = "block";
-        button.classList.add("active");
+    function filterTable(inputId, tableId) {
+        const filter = document.getElementById(inputId).value.toLowerCase();
+        const rows = document.querySelectorAll('#' + tableId + ' tbody tr');
+        rows.forEach(function(row) {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
     }
 
-    function closeAllTabs(groupId) {
-        for (let tabContent of document.querySelectorAll(`div.tabcontent[data-group='${groupId}']`)) {
-            tabContent.style.display = "none";
+    let _hideSystemViolations = false;
+
+    function isSystemViolation(card) {
+        const target = card.querySelector('.metadata-fullname');
+        if (!target)
+            return false;
+        return target.textContent.trim().startsWith('System.');
+    }
+
+    function filterViolations() {
+        const filter = document.getElementById('violationsFilter');
+        if (!filter) return;
+        const query = filter.value.toLowerCase();
+        const cards = document.querySelectorAll('#violationsContainer .violation-card');
+        cards.forEach(function(card) {
+            const hiddenBySystem = _hideSystemViolations && isSystemViolation(card);
+            const hiddenBySearch = query && !card.textContent.toLowerCase().includes(query);
+            card.style.display = (hiddenBySystem || hiddenBySearch) ? 'none' : '';
+        });
+    }
+
+    function toggleSystemViolations() {
+        _hideSystemViolations = !_hideSystemViolations;
+        const btn = document.getElementById('btnHideSystem');
+        if (btn) {
+            btn.classList.toggle('btn-active', _hideSystemViolations);
+            btn.textContent = _hideSystemViolations ? 'Show System.*' : 'Hide System.*';
+        }
+        filterViolations();
+    }
+
+    function toggleAllViolations(expand) {
+        const cards = document.querySelectorAll('#violationsContainer .violation-card');
+        cards.forEach(function(card) {
+            card.open = expand;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('btnHideSystem');
+        if (!btn)
+            return;
+        const hasSystemViolation = Array.from(
+            document.querySelectorAll('#violationsContainer .violation-card')
+        ).some(isSystemViolation);
+        btn.style.display = hasSystemViolation ? '' : 'none';
+    });
+
+    (function() {
+        const root = document.getElementById('htmlRoot');
+        const toggleBtn = document.getElementById('themeToggle');
+        const toggleIcon = document.getElementById('themeToggleIcon');
+        const toggleLabel = document.getElementById('themeToggleLabel');
+        const STORAGE_KEY = 'sharpdetect-theme';
+
+        function applyTheme(dark) {
+            root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            toggleIcon.textContent = dark ? '☀️' : '🌙';
+            toggleLabel.textContent = dark ? 'Light mode' : 'Dark mode';
         }
 
-        for (let tabLink of document.querySelectorAll(`button.tablinks[data-group='${groupId}']`)) {
-            tabLink.classList.remove("active");
+        function isDarkThemePreferred() {
+            // Prefer local storage setting
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored === 'dark')
+                return true;
+            if (stored === 'light')
+                return false;
+            
+            // Otherwise get system preferences
+            return isDarkThemePreferredBySystem();
         }
-    }
 
-    /* Initialize */
-    openTab(document.querySelector("div.tabcontent[data-group='main-tabs']").id);
-    openTab(document.querySelector("div.tabcontent[data-group='violation-reports']").id);
-
-    /* Initialize first stacktrace tab for each report */
-    const reportGroups = new Set();
-    for (let tabContent of document.querySelectorAll("div.tabcontent[data-group^='report-']")) {
-        reportGroups.add(tabContent.getAttribute("data-group"));
-    }
-    for (let groupId of reportGroups) {
-        const firstTab = document.querySelector(`div.tabcontent[data-group='${groupId}']`);
-        if (firstTab) {
-            openTab(firstTab.id);
+        function isDarkThemePreferredBySystem() {
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         }
-    }
+
+        let isDark = isDarkThemePreferred();
+        applyTheme(isDark);
+
+        toggleBtn.addEventListener('click', function() {
+            isDark = !isDark;
+            localStorage.setItem(STORAGE_KEY, isDark ? 'dark' : 'light');
+            applyTheme(isDark);
+        });
+    })();
 </script>

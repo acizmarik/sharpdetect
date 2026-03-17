@@ -50,6 +50,7 @@ public sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThreadI
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
+        uint methodOffset,
         AccessType accessType)
     {
         return new AccessInfo(
@@ -57,6 +58,7 @@ public sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThreadI
             threadNameResolver(threadId),
             moduleId,
             methodToken,
+            methodOffset,
             accessType,
             timeProvider.GetUtcNow().DateTime);
     }

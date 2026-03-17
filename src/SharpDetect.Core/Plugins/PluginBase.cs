@@ -19,6 +19,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
     protected IMetadataContext MetadataContext { get; }
+    protected ISymbolResolver SymbolResolver { get; }
     protected IReadOnlyDictionary<ProcessThreadId, string> Threads { get; }
     protected IReadOnlyDictionary<InstrumentationPointId, InstrumentedFieldAccess> InstrumentedFieldAccesses { get; }
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
@@ -32,12 +33,14 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected PluginBase(
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         TimeProvider timeProvider,
         ILogger logger)
     {
         ModuleBindContext = moduleBindContext;
         MetadataContext = metadataContext;
+        SymbolResolver = symbolResolver;
         Reporter = new SummaryBuilder(timeProvider);
         Logger = logger;
         _profilerCommandSenderProvider = profilerCommandSenderProvider;
@@ -185,7 +188,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void Visit(RecordedEventMetadata metadata, FieldAccessInstrumentationRecordedEvent args)
     {
         var instrumentationId = new InstrumentationPointId(metadata.Pid, args.InstrumentationId);
-        var instrumentedFieldAccess = new InstrumentedFieldAccess(args.ModuleId, args.MethodToken, args.FieldToken);
+        var instrumentedFieldAccess = new InstrumentedFieldAccess(
+            args.ModuleId,
+            args.MethodToken,
+            args.MethodOffset,
+            args.FieldToken);
         _instrumentedFieldAccesses.Add(instrumentationId, instrumentedFieldAccess);
         base.Visit(metadata, args);
     }

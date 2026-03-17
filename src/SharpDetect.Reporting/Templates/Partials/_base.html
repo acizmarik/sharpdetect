@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="htmlRoot">
 <head>
 {{> head}}
 <style type=text/css>
@@ -7,6 +7,10 @@
 </style>
 </head>
 <body>
+<button class="btn theme-toggle" id="themeToggle">
+    <span id="themeToggleIcon">🌙</span>
+    <span id="themeToggleLabel">Dark mode</span>
+</button>
 {{> content}}
 {{> foot}}
 </body>
