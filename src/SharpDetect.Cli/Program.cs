@@ -15,8 +15,7 @@ public static class Program
     
     public static async Task<int> Main()
     {
-        var root = Path.GetDirectoryName(typeof(Program).Assembly.Location);
-        Environment.SetEnvironmentVariable(InstallationRootEnvVariable, root);
+        Environment.SetEnvironmentVariable(InstallationRootEnvVariable, GetSharpDetectRoot());
 
         var builder = new CliApplicationBuilder()
             .AddCommandsFromThisAssembly()
@@ -33,5 +32,12 @@ public static class Program
     {
         builder.AllowDebugMode(isAllowed: false);
         builder.AllowPreviewMode(isAllowed: false);
+    }
+
+    private static string GetSharpDetectRoot()
+    {
+        var parentDirectory = Path.GetDirectoryName(typeof(Program).Assembly.Location)!;
+        return Path.GetFullPath(parentDirectory)
+            .Replace(Path.DirectorySeparatorChar, '/');
     }
 }
