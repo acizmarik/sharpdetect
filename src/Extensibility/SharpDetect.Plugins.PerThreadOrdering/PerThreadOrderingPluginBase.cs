@@ -18,7 +18,6 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
 {
     private readonly ThreadCallStackTracker _callStackTracker = new();
     private readonly ThreadObjectRegistry _threadObjectRegistry = new();
-    private readonly IMetadataContext _metadataContext;
     private readonly IArgumentsParser _argumentsParser;
 
     public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
@@ -47,7 +46,6 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         ILogger logger)
         : base(moduleBindContext, metadataContext, symbolResolver, profilerCommandSenderProvider, timeProvider, logger)
     {
-        _metadataContext = metadataContext;
         _argumentsParser = argumentsParser;
     }
 
@@ -255,18 +253,6 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
     {
         _callStackTracker.InitializeCallStack(new ProcessThreadId(metadata.Pid, args.ThreadId));
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)
-    {
-        ModuleBindContext.LoadModule(metadata, args.ModuleId, args.Path);
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, MethodWrapperInjectionRecordedEvent args)
-    {
-        _metadataContext.GetEmitter(metadata.Pid).Emit(args.ModuleId, args.WrapperMethodToken, args.WrappedMethodToken);
         base.Visit(metadata, args);
     }
 
