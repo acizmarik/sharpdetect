@@ -14,6 +14,11 @@ public static class TemporalAssertionBuilders
         return new(EventMatchers.EventType(type));
     }
 
+    public static EventuallyOperator<ulong, RecordedEventType> EventuallyVolatileFieldAccess(RecordedEventType type)
+    {
+        return new(EventMatchers.VolatileFieldAccess(type));
+    }
+
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodEnter(
         string methodName,
         TestExecutionOrderingPlugin plugin)

@@ -191,6 +191,14 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	ThreadID threadId;
 	corProfilerInfo.GetCurrentThreadID(&threadId);
 
+	BOOL isVolatile;
+	HRESULT hr = IsVolatile(*currentInstruction, &isVolatile);
+	if (FAILED(hr))
+	{
+		LOG_F(ERROR, "Could not analyze if field access is volatile for field token %d in module %s. Error: 0x%x.", fieldToken, moduleDef.GetName().c_str(), hr);
+		return E_FAIL;
+	}
+
 	// Instrument field access
 	const auto eventType = isStore
 		? LibIPC::RecordedEventType::StaticFieldWrite
@@ -228,7 +236,8 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		mdMethodDef,
 		originalOffset,
 		fieldToken,
-		instrumentationMark));
+		instrumentationMark,
+		isVolatile));
 
 	*nextInstruction = currentInstruction;
 	return S_OK;
@@ -398,7 +407,8 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		mdMethodDef,
 		originalOffset,
 		fieldToken,
-		instrumentationMark));
+		instrumentationMark,
+		isVolatile));
 
 	*nextInstruction = currentInstruction;
 	return S_OK;

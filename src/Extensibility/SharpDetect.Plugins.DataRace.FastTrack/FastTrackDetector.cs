@@ -18,6 +18,8 @@ internal sealed class FastTrackDetector
     private readonly TimeProvider _timeProvider;
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
+    private readonly Dictionary<(FieldId, ProcessTrackedObjectId?), VectorClock> _volatileClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _volatileClocksObjectIndex = [];
 
     public FastTrackDetector(
         FastTrackPluginConfiguration configuration,
@@ -60,6 +62,16 @@ internal sealed class FastTrackDetector
             var processObjectId = new ProcessTrackedObjectId(processId, objectId);
             _lockClocks.Remove(processObjectId);
         }
+
+        foreach (var objectId in removedObjectIds)
+        {
+            var processObjectId = new ProcessTrackedObjectId(processId, objectId);
+            if (!_volatileClocksObjectIndex.Remove(processObjectId, out var fieldIds))
+                continue;
+
+            foreach (var fieldId in fieldIds)
+                _volatileClocks.Remove((fieldId, processObjectId));
+        }
     }
     
     public void RecordThreadFork(ProcessThreadId parentThreadId, ProcessThreadId childThreadId)
@@ -100,6 +112,39 @@ internal sealed class FastTrackDetector
     public void RecordObjectWaitReturned(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
     {
         RecordLockAcquired(threadId, lockId);
+    }
+
+    public void RecordVolatileRead(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
+    {
+        if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out _))
+            return;
+
+        var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
+        var threadVc = GetOrCreateThreadClock(threadId);
+        var volatileVc = GetOrCreateVolatileClock(fieldId, objectId);
+        threadVc.Join(volatileVc);
+    }
+
+    public void RecordVolatileWrite(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
+    {
+        if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out _))
+            return;
+
+        var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
+        var key = (fieldId, objectId);
+        var threadVc = GetOrCreateThreadClock(threadId);
+        var volatileVc = GetOrCreateVolatileClock(fieldId, objectId);
+        volatileVc.Join(threadVc);
+        _volatileClocks[key] = threadVc.Clone();
+        threadVc.Increment(threadId);
     }
 
     public DataRaceInfo? RecordRead(
@@ -275,6 +320,29 @@ internal sealed class FastTrackDetector
         {
             vc = new VectorClock();
             _lockClocks[lockId] = vc;
+        }
+
+        return vc;
+    }
+
+    private VectorClock GetOrCreateVolatileClock(FieldId fieldId, ProcessTrackedObjectId? objectId)
+    {
+        var key = (fieldId, objectId);
+        if (!_volatileClocks.TryGetValue(key, out var vc))
+        {
+            vc = new VectorClock();
+            _volatileClocks[key] = vc;
+
+            if (objectId is { } objId)
+            {
+                if (!_volatileClocksObjectIndex.TryGetValue(objId, out var fieldIds))
+                {
+                    fieldIds = [];
+                    _volatileClocksObjectIndex[objId] = fieldIds;
+                }
+
+                fieldIds.Add(fieldId);
+            }
         }
 
         return vc;

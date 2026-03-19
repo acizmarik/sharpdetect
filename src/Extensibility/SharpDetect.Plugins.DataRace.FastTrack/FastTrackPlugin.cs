@@ -138,57 +138,101 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnStaticFieldRead(StaticFieldReadArgs args)
     {
-        if (_detector.RecordRead(
+        if (args.IsVolatile)
+        {
+            _detector.RecordVolatileRead(
                 args.ProcessThreadId,
                 args.ModuleId,
-                args.MethodToken,
-                args.MethodOffset,
                 args.FieldToken,
-                objectId: null) is { } raceInfo)
+                objectId: null);
+        }
+        else
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            if (_detector.RecordRead(
+                    args.ProcessThreadId,
+                    args.ModuleId,
+                    args.MethodToken,
+                    args.MethodOffset,
+                    args.FieldToken,
+                    objectId: null) is { } raceInfo)
+            {
+                RecordDataRace(args.ProcessThreadId, raceInfo);
+            }
         }
     }
 
     private void OnInstanceFieldRead(InstanceFieldReadArgs args)
     {
-        if (_detector.RecordRead(
+        if (args.IsVolatile)
+        {
+            _detector.RecordVolatileRead(
                 args.ProcessThreadId,
                 args.ModuleId,
-                args.MethodToken,
-                args.MethodOffset,
                 args.FieldToken,
-                args.ObjectId) is { } raceInfo)
+                args.ObjectId);
+        }
+        else
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            if (_detector.RecordRead(
+                    args.ProcessThreadId,
+                    args.ModuleId,
+                    args.MethodToken,
+                    args.MethodOffset,
+                    args.FieldToken,
+                    args.ObjectId) is { } raceInfo)
+            {
+                RecordDataRace(args.ProcessThreadId, raceInfo);
+            }
         }
     }
 
     private void OnStaticFieldWritten(StaticFieldWriteArgs args)
     {
-        if (_detector.RecordWrite(
+        if (args.IsVolatile)
+        {
+            _detector.RecordVolatileWrite(
                 args.ProcessThreadId,
                 args.ModuleId,
-                args.MethodToken,
-                args.MethodOffset,
                 args.FieldToken,
-                objectId: null) is { } raceInfo)
+                objectId: null);
+        }
+        else
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            if (_detector.RecordWrite(
+                    args.ProcessThreadId,
+                    args.ModuleId,
+                    args.MethodToken,
+                    args.MethodOffset,
+                    args.FieldToken,
+                    objectId: null) is { } raceInfo)
+            {
+                RecordDataRace(args.ProcessThreadId, raceInfo);
+            }
         }
     }
 
     private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
     {
-        if (_detector.RecordWrite(
+        if (args.IsVolatile)
+        {
+            _detector.RecordVolatileWrite(
                 args.ProcessThreadId,
                 args.ModuleId,
-                args.MethodToken,
-                args.MethodOffset,
                 args.FieldToken,
-                args.ObjectId) is { } raceInfo)
+                args.ObjectId);
+        }
+        else
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            if (_detector.RecordWrite(
+                    args.ProcessThreadId,
+                    args.ModuleId,
+                    args.MethodToken,
+                    args.MethodOffset,
+                    args.FieldToken,
+                    args.ObjectId) is { } raceInfo)
+            {
+                RecordDataRace(args.ProcessThreadId, raceInfo);
+            }
         }
     }
     

@@ -81,6 +81,10 @@ internal static class TestMethodDescriptors
             "Test_Field_Generic_FromType_ValueType_OnValueType_Instance_Write",
             "Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Read",
             "Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Write",
+            "Test_Field_Volatile_ValueType_Static_Read",
+            "Test_Field_Volatile_ValueType_Static_Write",
+            "Test_Field_Volatile_ValueType_Instance_Read",
+            "Test_Field_Volatile_ValueType_Instance_Write",
         };
 
         foreach (var methodName in testMethodNames)

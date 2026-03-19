@@ -211,6 +211,19 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Property_ReferenceType_Static_Write):
                     Test_Property_ReferenceType_Static_Write();
                     break;
+                // Volatile fields
+                case nameof(Test_Field_Volatile_ValueType_Static_Read):
+                    Test_Field_Volatile_ValueType_Static_Read();
+                    break;
+                case nameof(Test_Field_Volatile_ValueType_Static_Write):
+                    Test_Field_Volatile_ValueType_Static_Write();
+                    break;
+                case nameof(Test_Field_Volatile_ValueType_Instance_Read):
+                    Test_Field_Volatile_ValueType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Volatile_ValueType_Instance_Write):
+                    Test_Field_Volatile_ValueType_Instance_Write();
+                    break;
             }
 
             // Array events
@@ -366,6 +379,18 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_ThreadStatic_ReadWrite):
                     Test_NoDataRace_ThreadStatic_ReadWrite();
+                    break;
+                case nameof(Test_NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace):
+                    Test_NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace();
+                    break;
+                case nameof(Test_NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace):
+                    Test_NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace();
+                    break;
+                case nameof(Test_NoDataRace_VolatileField_Static_ReadWriteNoRace):
+                    Test_NoDataRace_VolatileField_Static_ReadWriteNoRace();
+                    break;
+                case nameof(Test_NoDataRace_VolatileField_Instance_ReadWriteNoRace):
+                    Test_NoDataRace_VolatileField_Instance_ReadWriteNoRace();
                     break;
                 case nameof(Test_StaticDelegate_WithSuppression):
                     Test_StaticDelegate_WithSuppression();

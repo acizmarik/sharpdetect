@@ -9,4 +9,5 @@ public readonly record struct InstrumentedFieldAccess(
     ModuleId ModuleId,
     MdMethodDef MethodToken,
     uint MethodOffset,
-    MdToken FieldToken);
+    MdToken FieldToken,
+    bool IsVolatile);

@@ -271,6 +271,42 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         return FieldAccessNotInstrumented(configuration, sdk, RecordedEventType.InstanceFieldWrite);
     }
 
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileStaticField_ValueType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileStaticField_ValueType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileStaticField_ValueType_Read)}.json", "net10.0")]
+    public Task VolatileStaticField_ValueType_Read(string configuration, string sdk)
+    {
+        return VolatileFieldAccess(configuration, sdk, RecordedEventType.StaticFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileStaticField_ValueType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileStaticField_ValueType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileStaticField_ValueType_Write)}.json", "net10.0")]
+    public Task VolatileStaticField_ValueType_Write(string configuration, string sdk)
+    {
+        return VolatileFieldAccess(configuration, sdk, RecordedEventType.StaticFieldWrite);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileInstanceField_ValueType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileInstanceField_ValueType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileInstanceField_ValueType_Read)}.json", "net10.0")]
+    public Task VolatileInstanceField_ValueType_Read(string configuration, string sdk)
+    {
+        return VolatileFieldAccess(configuration, sdk, RecordedEventType.InstanceFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileInstanceField_ValueType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileInstanceField_ValueType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(VolatileInstanceField_ValueType_Write)}.json", "net10.0")]
+    public Task VolatileInstanceField_ValueType_Write(string configuration, string sdk)
+    {
+        return VolatileFieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+    }
+
     private async Task FieldAccess(string configuration, string sdk, RecordedEventType eventType)
     {
         // Arrange
@@ -305,6 +341,27 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 
         // Verify: method enters and exits successfully (no crash from skipped instrumentation)
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    private async Task VolatileFieldAccess(string configuration, string sdk, RecordedEventType eventType)
+    {
+        // Arrange
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyVolatileFieldAccess(eventType))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute

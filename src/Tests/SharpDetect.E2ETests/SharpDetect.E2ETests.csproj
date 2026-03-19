@@ -205,6 +205,18 @@
     <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_ReferenceType_OnValueType_Write.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="FieldAccessTestConfigurations\VolatileStaticField_ValueType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\VolatileStaticField_ValueType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\VolatileInstanceField_ValueType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\VolatileInstanceField_ValueType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="DataRacePluginTestConfigurations\CanDetectDataRace_ReferenceType_Static_ReadWriteRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -260,12 +272,24 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\CanDetectDataRace_StaticDelegate_WithoutSuppression.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\NoDataRace_VolatileField_Static_ReadWriteNoRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DeadlockPluginTestConfigurations\DeadlockPlugin_CanRenderReport.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\CanRenderReport.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\NoDataRace_VolatileField_Instance_ReadWriteNoRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
