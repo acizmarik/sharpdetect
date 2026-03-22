@@ -496,6 +496,28 @@ namespace SharpDetect.E2ETests.Subject
             StaticFieldReferenceType.Test_Property_ReferenceType_Static = new object();
         }
 
+        public static void Test_Field_Volatile_ValueType_Static_Read()
+        {
+            _ = StaticFieldValueType.Test_Field_Volatile_ValueType_Static;
+        }
+
+        public static void Test_Field_Volatile_ValueType_Static_Write()
+        {
+            StaticFieldValueType.Test_Field_Volatile_ValueType_Static = 123;
+        }
+
+        public static void Test_Field_Volatile_ValueType_Instance_Read()
+        {
+            var instance = new InstanceFieldValueType();
+            _ = instance.Test_Field_Volatile_ValueType_Instance;
+        }
+
+        public static void Test_Field_Volatile_ValueType_Instance_Write()
+        {
+            var instance = new InstanceFieldValueType();
+            instance.Test_Field_Volatile_ValueType_Instance = 123;
+        }
+
         public static void Test_Array_I_Read()
         {
             ArrayElement.Test_Array_I = new nuint[1];
@@ -1015,6 +1037,38 @@ namespace SharpDetect.E2ETests.Subject
             DataRace.Test_ThreadStatic_ValueType = 0;
             var task1 = Task.Run(() => { _ = DataRace.Test_ThreadStatic_ValueType; });
             var task2 = Task.Run(() => { DataRace.Test_ThreadStatic_ValueType = 123; });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_NoDataRace_VolatileField_Static_ReadWriteNoRace()
+        {
+            DataRace.Test_Volatile_ValueType_Static = 0;
+            var task1 = Task.Run(() => { _ = DataRace.Test_Volatile_ValueType_Static; });
+            var task2 = Task.Run(() => { DataRace.Test_Volatile_ValueType_Static = 123; });
+            Task.WaitAll(task1, task2);
+        }
+        
+        public static void Test_NoDataRace_VolatileField_Instance_ReadWriteNoRace()
+        {
+            DataRace dataRace = new DataRace();
+            var task1 = Task.Run(() => { _ = dataRace.Test_Volatile_ValueType_Instance; });
+            var task2 = Task.Run(() => { dataRace.Test_Volatile_ValueType_Instance = 123; });
+            Task.WaitAll(task1, task2);
+        }
+        
+        public static void Test_NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace()
+        {
+            DataRace.Test_Volatile_ValueType_Static = 0;
+            var task1 = Task.Run(() => { Volatile.Read(ref DataRace.Test_DataRace_ValueType_Static); });
+            var task2 = Task.Run(() => { Volatile.Write(ref DataRace.Test_DataRace_ValueType_Static, 123); });
+            Task.WaitAll(task1, task2);
+        }
+        
+        public static void Test_NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace()
+        {
+            DataRace dataRace = new DataRace();
+            var task1 = Task.Run(() => { Volatile.Read(ref dataRace.Test_DataRace_ValueType_Instance); });
+            var task2 = Task.Run(() => { Volatile.Write(ref dataRace.Test_DataRace_ValueType_Instance, 123); });
             Task.WaitAll(task1, task2);
         }
 

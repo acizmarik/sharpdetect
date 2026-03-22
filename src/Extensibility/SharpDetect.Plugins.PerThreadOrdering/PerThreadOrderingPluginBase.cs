@@ -206,7 +206,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
             fieldAccess.ModuleId,
             fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
-            fieldAccess.FieldToken));
+            fieldAccess.FieldToken,
+            fieldAccess.IsVolatile));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.StaticFieldWrite)]
@@ -219,7 +220,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
             fieldAccess.ModuleId,
             fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
-            fieldAccess.FieldToken));
+            fieldAccess.FieldToken,
+            fieldAccess.IsVolatile));
     }
     
     [RecordedEventBind((ushort)RecordedEventType.InstanceFieldRead)]
@@ -233,7 +235,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
             fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
-            instance));
+            instance,
+            fieldAccess.IsVolatile));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.InstanceFieldWrite)]
@@ -247,7 +250,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
             fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
-            instance));
+            instance,
+            fieldAccess.IsVolatile));
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)

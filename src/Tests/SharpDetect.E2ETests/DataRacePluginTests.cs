@@ -234,6 +234,54 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Static_ReadWriteNoRace)}.json", "net8.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Static_ReadWriteNoRace)}.json", "net8.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Static_ReadWriteNoRace)}.json", "net9.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Static_ReadWriteNoRace)}.json", "net9.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Static_ReadWriteNoRace)}.json", "net10.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Static_ReadWriteNoRace)}.json", "net10.0", EraserPluginFullTypeName)]
+    public Task NoDataRace_VolatileField_Static_ReadWriteNoRace(string configuration, string sdk, string plugin)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk, plugin);
+    }
+    
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Instance_ReadWriteNoRace)}.json", "net8.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Instance_ReadWriteNoRace)}.json", "net8.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Instance_ReadWriteNoRace)}.json", "net9.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Instance_ReadWriteNoRace)}.json", "net9.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Instance_ReadWriteNoRace)}.json", "net10.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileField_Instance_ReadWriteNoRace)}.json", "net10.0", EraserPluginFullTypeName)]
+    public Task NoDataRace_VolatileField_Instance_ReadWriteNoRace(string configuration, string sdk, string plugin)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk, plugin);
+    }
+    
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace)}.json", "net8.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace)}.json", "net8.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace)}.json", "net9.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace)}.json", "net9.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace)}.json", "net10.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace)}.json", "net10.0", EraserPluginFullTypeName)]
+    public Task NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace(string configuration, string sdk, string plugin)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk, plugin);
+    }
+    
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace)}.json", "net8.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace)}.json", "net8.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace)}.json", "net9.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace)}.json", "net9.0", EraserPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace)}.json", "net10.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace)}.json", "net10.0", EraserPluginFullTypeName)]
+    public Task NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace(string configuration, string sdk, string plugin)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk, plugin);
+    }
+
+    [Theory]
     [InlineData($"{ConfigurationFolder}/{nameof(CanDetectDataRace_StaticDelegate_WithoutSuppression)}.json", "net8.0", FastTrackPluginFullTypeName)]
     [InlineData($"{ConfigurationFolder}/{nameof(CanDetectDataRace_StaticDelegate_WithoutSuppression)}.json", "net8.0", EraserPluginFullTypeName)]
     [InlineData($"{ConfigurationFolder}/{nameof(CanDetectDataRace_StaticDelegate_WithoutSuppression)}.json", "net9.0", FastTrackPluginFullTypeName)]

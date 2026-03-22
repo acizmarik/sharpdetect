@@ -127,6 +127,9 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnStaticFieldRead(StaticFieldReadArgs args)
     {
+        if (args.IsVolatile)
+            return;
+
         if (_detector.RecordRead(
                 args.ProcessThreadId,
                 args.ModuleId,
@@ -141,6 +144,9 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
     
     private void OnInstanceFieldRead(InstanceFieldReadArgs args)
     {
+        if (args.IsVolatile)
+            return;
+
         if (_detector.RecordRead(
                 args.ProcessThreadId,
                 args.ModuleId,
@@ -155,6 +161,9 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnStaticFieldWritten(StaticFieldWriteArgs args)
     {
+        if (args.IsVolatile)
+            return;
+
         if (_detector.RecordWrite(
                 args.ProcessThreadId,
                 args.ModuleId,
@@ -169,6 +178,9 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
     
     private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
     {
+        if (args.IsVolatile)
+            return;
+
         if (_detector.RecordWrite(
                 args.ProcessThreadId,
                 args.ModuleId,
