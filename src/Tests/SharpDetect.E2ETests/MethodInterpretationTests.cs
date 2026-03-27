@@ -187,4 +187,111 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_ScheduleAndStart1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_ScheduleAndStart1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_ScheduleAndStart1.json", "net10.0")]
+    public async Task MethodInterpretation_Task_ScheduleAndStart(string configuration, string sdk)
+    {
+        // Arrange
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.TaskSchedule))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_InnerInvoke1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_InnerInvoke1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_InnerInvoke1.json", "net10.0")]
+    public async Task MethodInterpretation_Task_InnerInvoke(string configuration, string sdk)
+    {
+        // Arrange
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.TaskStart))
+            .Then(EventuallyEventType(RecordedEventType.TaskComplete))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait1.json", "net10.0")]
+    public async Task MethodInterpretation_Task_Wait(string configuration, string sdk)
+    {
+        // Arrange
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await2.json", "net10.0")]
+    public async Task MethodInterpretation_Task_Await(string configuration, string sdk)
+    {
+        // Arrange
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.TaskStart))
+            .Then(EventuallyEventType(RecordedEventType.TaskStart))
+            .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
+            .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
 }

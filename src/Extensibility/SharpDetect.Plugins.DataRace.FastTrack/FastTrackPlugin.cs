@@ -71,8 +71,9 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
             {
                 MethodDescriptors = MonitorMethodDescriptors.GetAllMethods().Concat(
                     LockMethodDescriptors.GetAllMethods()).Concat(
-                    ThreadMethodDescriptors.GetAllMethods().Concat(
-                    FieldAccessDescriptors.GetAllMethods()))
+                    ThreadMethodDescriptors.GetAllMethods()).Concat(
+                    TaskMethodDescriptors.GetAllMethods()).Concat(
+                    FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
                 EnableFieldsAccessInstrumentation = true,
@@ -91,6 +92,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         ThreadJoinReturned += OnThreadJoinReturned;
         ThreadStarting += OnThreadStarting;
         ThreadStarted += OnThreadStarted;
+        TaskScheduled += OnTaskScheduled;
+        TaskStarted += OnTaskStarted;
+        TaskCompleted += OnTaskCompleted;
+        TaskJoinFinished += OnTaskJoinFinished;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -250,6 +255,26 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         
         _detector.RecordThreadCreated(childThreadId);
         _detector.RecordThreadFork(parentThreadId, childThreadId);
+    }
+
+    private void OnTaskScheduled(TaskScheduleArgs args)
+    {
+        _detector.RecordTaskScheduled(args.ProcessThreadId, args.TaskObjectId);
+    }
+
+    private void OnTaskStarted(TaskStartArgs args)
+    {
+        _detector.RecordTaskStarted(args.ProcessThreadId, args.TaskObjectId);
+    }
+
+    private void OnTaskCompleted(TaskCompleteArgs args)
+    {
+        _detector.RecordTaskCompleted(args.ProcessThreadId, args.TaskObjectId);
+    }
+
+    private void OnTaskJoinFinished(TaskJoinFinishArgs args)
+    {
+        _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

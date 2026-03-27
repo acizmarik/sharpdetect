@@ -82,6 +82,21 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ThreadMethods_get_CurrentThread):
                     Test_ThreadMethods_get_CurrentThread();
                     break;
+                case nameof(Test_TaskMethods_ScheduleAndStart1):
+                    Test_TaskMethods_ScheduleAndStart1();
+                    break;
+                case nameof(Test_TaskMethods_InnerInvoke1):
+                    Test_TaskMethods_InnerInvoke1();
+                    break;
+                case nameof(Test_TaskMethods_Wait1):
+                    Test_TaskMethods_Wait1();
+                    break;
+                case nameof(Test_TaskMethods_Await1):
+                    Test_TaskMethods_Await1();
+                    break;
+                case nameof(Test_TaskMethods_Await2):
+                    Test_TaskMethods_Await2();
+                    break;
 #if NET9_0_OR_GREATER
                 case nameof(Test_LockMethods_EnterExit1):
                     Test_LockMethods_EnterExit1();
@@ -391,6 +406,12 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_VolatileField_Instance_ReadWriteNoRace):
                     Test_NoDataRace_VolatileField_Instance_ReadWriteNoRace();
+                    break;
+                case nameof(Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin):
+                    Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin();
+                    break;
+                case nameof(Test_NoDataRace_Task_SequentialTasks_WriteRead):
+                    Test_NoDataRace_Task_SequentialTasks_WriteRead();
                     break;
                 case nameof(Test_StaticDelegate_WithSuppression):
                     Test_StaticDelegate_WithSuppression();

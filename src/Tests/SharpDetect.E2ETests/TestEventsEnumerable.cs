@@ -102,6 +102,14 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, InstanceFieldReadArgs)>(GetNextId(), RecordedEventType.InstanceFieldRead, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.InstanceFieldWritten += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, InstanceFieldWriteArgs)>(GetNextId(), RecordedEventType.InstanceFieldWrite, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.TaskScheduled += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskScheduleArgs)>(GetNextId(), RecordedEventType.TaskSchedule, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.TaskStarted += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskStartArgs)>(GetNextId(), RecordedEventType.TaskStart, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.TaskCompleted += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskCompleteArgs)>(GetNextId(), RecordedEventType.TaskComplete, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.TaskJoinFinished += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskJoinFinishArgs)>(GetNextId(), RecordedEventType.TaskJoinFinish, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
     }
     
     public IEnumerator<IEvent<ulong, RecordedEventType>> GetEnumerator()

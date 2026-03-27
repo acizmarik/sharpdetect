@@ -82,4 +82,11 @@ public enum RecordedEventType : ushort
     LockAcquireResult = 115,
     LockRelease = 116,
     LockReleaseResult = 117,
+
+    /* Task synchronization */
+    TaskSchedule = 120,
+    TaskStart = 121,
+    TaskComplete = 122,
+    TaskJoinStart = 123,
+    TaskJoinFinish = 124,
 }

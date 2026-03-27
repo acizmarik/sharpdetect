@@ -31,6 +31,10 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public event Action<ThreadStartArgs>? ThreadStarted;
     public event Action<ThreadJoinAttemptArgs>? ThreadJoinAttempted;
     public event Action<ThreadJoinResultArgs>? ThreadJoinReturned;
+    public event Action<TaskScheduleArgs>? TaskScheduled;
+    public event Action<TaskStartArgs>? TaskStarted;
+    public event Action<TaskCompleteArgs>? TaskCompleted;
+    public event Action<TaskJoinFinishArgs>? TaskJoinFinished;
     public event Action<StaticFieldReadArgs>? StaticFieldRead;
     public event Action<StaticFieldWriteArgs>? StaticFieldWritten;
     public event Action<InstanceFieldReadArgs>? InstanceFieldRead;
@@ -60,6 +64,10 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected void RaiseThreadStarted(ThreadStartArgs args) => ThreadStarted?.Invoke(args);
     protected void RaiseThreadJoinAttempted(ThreadJoinAttemptArgs args) => ThreadJoinAttempted?.Invoke(args);
     protected void RaiseThreadJoinReturned(ThreadJoinResultArgs args) => ThreadJoinReturned?.Invoke(args);
+    protected void RaiseTaskScheduled(TaskScheduleArgs args) => TaskScheduled?.Invoke(args);
+    protected void RaiseTaskStarted(TaskStartArgs args) => TaskStarted?.Invoke(args);
+    protected void RaiseTaskCompleted(TaskCompleteArgs args) => TaskCompleted?.Invoke(args);
+    protected void RaiseTaskJoinFinished(TaskJoinFinishArgs args) => TaskJoinFinished?.Invoke(args);
     protected void RaiseStaticFieldRead(StaticFieldReadArgs args) => StaticFieldRead?.Invoke(args);
     protected void RaiseStaticFieldWritten(StaticFieldWriteArgs args) => StaticFieldWritten?.Invoke(args);
     protected void RaiseInstanceFieldRead(InstanceFieldReadArgs args) => InstanceFieldRead?.Invoke(args);
@@ -194,6 +202,56 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
         var joinedThreadId = _threadObjectRegistry.GetThreadId(joinedThreadObjectId);
         ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: true));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.TaskSchedule)]
+    public void OnTaskSchedule(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        // Called on the parent thread when a task is scheduled (e.g. Task.Run)
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = ParseArguments(metadata, args);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
+        ProcessTaskSchedule(id, taskObjectId);
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.TaskStart)]
+    public void OnTaskStart(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        // Called on the worker thread when the task body begins executing
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = ParseArguments(metadata, args);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        ProcessTaskStart(id, taskObjectId);
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.TaskComplete)]
+    public void OnTaskComplete(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+    {
+        // Called on the worker thread when the task body finishes executing
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        ProcessTaskComplete(id, taskObjectId);
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.TaskJoinStart)]
+    public void OnTaskJoinStart(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = ParseArguments(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.TaskJoinFinish)]
+    public void OnTaskJoinFinish(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        ProcessTaskJoinFinish(id, taskObjectId);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.StaticFieldRead)]
@@ -365,6 +423,26 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         if (_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joiningThreadId))
             ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(id, joiningThreadId, moduleId, methodToken));
+    }
+
+    protected virtual void ProcessTaskSchedule(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+    {
+        TaskScheduled?.Invoke(new TaskScheduleArgs(id, taskObjectId));
+    }
+
+    protected virtual void ProcessTaskStart(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+    {
+        TaskStarted?.Invoke(new TaskStartArgs(id, taskObjectId));
+    }
+
+    protected virtual void ProcessTaskComplete(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+    {
+        TaskCompleted?.Invoke(new TaskCompleteArgs(id, taskObjectId));
+    }
+
+    protected virtual void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+    {
+        TaskJoinFinished?.Invoke(new TaskJoinFinishArgs(id, taskObjectId));
     }
 
     protected bool TryGetThreadId(ProcessTrackedObjectId threadObjectId, out ProcessThreadId threadId)

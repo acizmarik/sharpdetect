@@ -18,6 +18,8 @@ internal sealed class FastTrackDetector
     private readonly TimeProvider _timeProvider;
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _awaiterClocks = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId?), VectorClock> _volatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _volatileClocksObjectIndex = [];
 
@@ -61,6 +63,7 @@ internal sealed class FastTrackDetector
         {
             var processObjectId = new ProcessTrackedObjectId(processId, objectId);
             _lockClocks.Remove(processObjectId);
+            _taskClocks.Remove(processObjectId);
         }
 
         foreach (var objectId in removedObjectIds)
@@ -88,6 +91,38 @@ internal sealed class FastTrackDetector
         var joinedVc = GetOrCreateThreadClock(joinedThreadId);
         joinerVc.Join(joinedVc);
         joinerVc.Increment(joinerThreadId);
+    }
+
+    public void RecordTaskScheduled(ProcessThreadId parentThreadId, ProcessTrackedObjectId taskId)
+    {
+        var parentVc = GetOrCreateThreadClock(parentThreadId);
+        _taskClocks[taskId] = parentVc.Clone();
+        parentVc.Increment(parentThreadId);
+    }
+
+    public void RecordTaskStarted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
+    {
+        if (_taskClocks.TryGetValue(taskId, out var taskVc))
+        {
+            var workerVc = GetOrCreateThreadClock(workerThreadId);
+            workerVc.Join(taskVc);
+        }
+    }
+
+    public void RecordTaskCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
+    {
+        var workerVc = GetOrCreateThreadClock(workerThreadId);
+        _taskClocks[taskId] = workerVc.Clone();
+        workerVc.Increment(workerThreadId);
+    }
+
+    public void RecordTaskJoinFinished(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
+    {
+        var waiterVc = GetOrCreateThreadClock(waiterThreadId);
+        if (_taskClocks.TryGetValue(taskId, out var taskVc))
+            waiterVc.Join(taskVc);
+
+        waiterVc.Increment(waiterThreadId);
     }
     
     public void RecordLockAcquired(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
