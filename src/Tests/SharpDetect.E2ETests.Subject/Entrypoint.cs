@@ -91,6 +91,12 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_TaskMethods_Wait1):
                     Test_TaskMethods_Wait1();
                     break;
+                case nameof(Test_TaskMethods_Wait2):
+                    Test_TaskMethods_Wait2();
+                    break;
+                case nameof(Test_TaskMethods_Result1):
+                    Test_TaskMethods_Result1();
+                    break;
                 case nameof(Test_TaskMethods_Await1):
                     Test_TaskMethods_Await1();
                     break;

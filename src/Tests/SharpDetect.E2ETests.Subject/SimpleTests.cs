@@ -264,6 +264,16 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => { }).Wait();
         }
 
+        public static void Test_TaskMethods_Wait2()
+        {
+            Task.CompletedTask.Wait();
+        }
+
+        public static void Test_TaskMethods_Result1()
+        {
+            _ = Task.Run(() => 42).Result;
+        }
+
         public static void Test_TaskMethods_Await1()
         {
             Task.Run(() => { }).GetAwaiter().GetResult();

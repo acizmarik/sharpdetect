@@ -49,6 +49,8 @@ internal static class TestMethodDescriptors
             "Test_TaskMethods_ScheduleAndStart1",
             "Test_TaskMethods_InnerInvoke1",
             "Test_TaskMethods_Wait1",
+            "Test_TaskMethods_Wait2",
+            "Test_TaskMethods_Result1",
             "Test_TaskMethods_Await1",
             "Test_TaskMethods_Await2",
             "Test_LockMethods_EnterExit1",

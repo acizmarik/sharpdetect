@@ -30,6 +30,7 @@ public static class TaskMethodDescriptors
     private static readonly MethodDescriptor ContinuationTaskFromResultTaskInnerInvoke;
     private static readonly MethodDescriptor ContinuationResultTaskFromResultTaskInnerInvoke;
     private static readonly MethodDescriptor TaskWait;
+    private static readonly MethodDescriptor TaskResult;
     private static readonly MethodDescriptor TaskAwaiterValidateEnd;
     private static readonly MethodDescriptor TaskAwaiterOnCompleted;
     private static readonly MethodDescriptor TaskAwaiterUnsafeOnCompleted;
@@ -77,6 +78,23 @@ public static class TaskMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: true,
+                Arguments: [ObjectRefArg],
+                ReturnValue: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
+                MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
+        
+        TaskResult = new MethodDescriptor(
+            MethodName: "get_Result",
+            DeclaringTypeFullName: TaskTResultTypeName,
+            VersionDescriptor: null,
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 0,
+                ReturnType: ArgumentTypeDescriptor.CreateGenericTypeParam(0),
+                ArgumentTypeElements: []),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
                 Arguments: [ObjectRefArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
@@ -185,6 +203,7 @@ public static class TaskMethodDescriptors
 
         // Common public API
         yield return TaskWait;
+        yield return TaskResult;
     }
 }
 
