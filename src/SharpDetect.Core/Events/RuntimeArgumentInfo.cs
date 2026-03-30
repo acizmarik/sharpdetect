@@ -6,4 +6,4 @@ using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Core.Events;
 
-public record struct RuntimeArgumentInfo(ushort Index, OneOf<object, TrackedObjectId> Value);
+public record struct RuntimeArgumentInfo(ushort Index, OneOf<object, TrackedObjectId, TrackedObjectId[]> Value);

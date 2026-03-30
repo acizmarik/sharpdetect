@@ -9,5 +9,6 @@ public enum CapturedValue : byte
     None = 0,
     CaptureAsValue = 1,
     CaptureAsReference = 2,
-    IndirectLoad = 4
+    IndirectLoad = 4,
+    CaptureAsReferenceArray = 8
 }

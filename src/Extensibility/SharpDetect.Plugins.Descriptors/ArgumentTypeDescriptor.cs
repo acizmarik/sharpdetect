@@ -30,6 +30,9 @@ public record ArgumentTypeDescriptor
     public static ArgumentTypeDescriptor CreateByRef(ArgumentTypeDescriptor innerType) 
         => new([CorElementType.ELEMENT_TYPE_BYREF, .. innerType.ElementTypes], innerType.TypeName);
     
+    public static ArgumentTypeDescriptor CreateSZArray(ArgumentTypeDescriptor elementType) 
+        => new([CorElementType.ELEMENT_TYPE_SZARRAY, .. elementType.ElementTypes], elementType.TypeName);
+    
     public static ArgumentTypeDescriptor CreateGenericTypeParam(int index) 
         => CreateGenericParam(CorElementType.ELEMENT_TYPE_VAR, index);
     

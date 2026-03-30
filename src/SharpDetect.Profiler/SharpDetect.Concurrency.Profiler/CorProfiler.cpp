@@ -1057,22 +1057,24 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     const auto& argumentInfos = *reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.get());
-    auto const argumentValuesLength = std::accumulate(
+    std::vector<BYTE> argumentValues;
+    std::vector<BYTE> argumentOffsets;
+
+    // Reserve estimated capacity (exact for non-array args; arrays will grow dynamically)
+    auto const estimatedValuesLength = std::accumulate(
         descriptor.rewritingDescriptor.arguments.cbegin(),
         descriptor.rewritingDescriptor.arguments.cend(),
         0, [](const INT sum, const CapturedArgumentDescriptor& d) { return sum + d.value.size; });
-    auto const argumentOffsetsLength = descriptor.rewritingDescriptor.arguments.size() * sizeof(UINT);
-    std::vector<BYTE> argumentValues;
-    argumentValues.resize(argumentValuesLength);
-    std::vector<BYTE> argumentOffsets;
-    argumentOffsets.resize(argumentOffsetsLength);
+    auto const estimatedOffsetsLength = descriptor.rewritingDescriptor.arguments.size() * sizeof(UINT);
+    argumentValues.reserve(estimatedValuesLength);
+    argumentOffsets.reserve(estimatedOffsetsLength);
 
     hr = GetArguments(
         descriptor,
         indirects,
         argumentInfos,
-        std::span(argumentValues.data(), argumentValuesLength),
-        std::span(argumentOffsets.data(), argumentOffsetsLength));
+        argumentValues,
+        argumentOffsets);
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not parse arguments data for method %d. Error: 0x%x.", methodDef, hr);
@@ -1246,8 +1248,8 @@ HRESULT Profiler::CorProfiler::GetArguments(
     const MethodDescriptor& methodDescriptor,
     std::vector<UINT_PTR>& indirects,
     const COR_PRF_FUNCTION_ARGUMENT_INFO& argumentInfos,
-    std::span<BYTE> argumentValues,
-    std::span<BYTE> argumentOffsets)
+    std::vector<BYTE>& argumentValues,
+    std::vector<BYTE>& argumentOffsets)
 {
     for (auto&& argument : methodDescriptor.rewritingDescriptor.arguments)
     {
@@ -1295,10 +1297,16 @@ HRESULT Profiler::CorProfiler::GetArgument(
     const CapturedArgumentDescriptor& argument,
     const COR_PRF_FUNCTION_ARGUMENT_RANGE range,
     std::vector<UINT_PTR>& indirects,
-    std::span<BYTE>& argValue,
-    std::span<BYTE>& argOffset)
+    std::vector<BYTE>& argValues,
+    std::vector<BYTE>& argOffsets)
 {
     auto const flags = argument.value.flags;
+
+    // Handle array of references
+    if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReferenceArray)) != 0)
+    {
+        return GetReferenceArrayArgument(argument, range, argValues, argOffsets);
+    }
 
     if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::IndirectLoad)) != 0)
     {
@@ -1308,30 +1316,108 @@ HRESULT Profiler::CorProfiler::GetArgument(
         indirects.push_back(pointer);
 
         // Read the value
-        std::memcpy(argValue.data(), reinterpret_cast<LPVOID>(pointer), argument.value.size);
+        auto const prevSize = argValues.size();
+        argValues.resize(prevSize + argument.value.size);
+        std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(pointer), argument.value.size);
         UINT argInfo = (argument.index << 16) | argument.value.size;
-        std::memcpy(argOffset.data(), &argInfo, sizeof(UINT));
-        argValue = argValue.subspan(argument.value.size);
+        auto const prevOffsetSize = argOffsets.size();
+        argOffsets.resize(prevOffsetSize + sizeof(UINT));
+        std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
     }
     else
     {
         // Read the value
+        auto const prevSize = argValues.size();
+        argValues.resize(prevSize + range.length);
         const UINT argInfo = (argument.index << 16) | range.length;
-        std::memcpy(argValue.data(), reinterpret_cast<LPVOID>(range.startAddress), range.length);
-        std::memcpy(argOffset.data(), &argInfo, sizeof(UINT));
-        argValue = argValue.subspan(range.length);
+        std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(range.startAddress), range.length);
+        auto const prevOffsetSize = argOffsets.size();
+        argOffsets.resize(prevOffsetSize + sizeof(UINT));
+        std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
     }
 
     if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
     {
         // Managed reference (object can be later moved by GC)
         ObjectID objectId;
-        std::memcpy(&objectId, argValue.data() - sizeof(ObjectID), sizeof(ObjectID));
+        std::memcpy(&objectId, argValues.data() + argValues.size() - sizeof(ObjectID), sizeof(ObjectID));
         auto const trackedObjectId = _objectsTracker.GetTrackedObject(objectId);
-        std::memcpy(argValue.data() - sizeof(ObjectID), &trackedObjectId, sizeof(ObjectID));
+        std::memcpy(argValues.data() + argValues.size() - sizeof(ObjectID), &trackedObjectId, sizeof(ObjectID));
     }
 
-    argOffset = argOffset.subspan(sizeof(UINT));
+    return S_OK;
+}
+
+HRESULT Profiler::CorProfiler::GetReferenceArrayArgument(
+    const CapturedArgumentDescriptor& argument,
+    const COR_PRF_FUNCTION_ARGUMENT_RANGE range,
+    std::vector<BYTE>& argValues,
+    std::vector<BYTE>& argOffsets)
+{
+    // Read the array ObjectID from the argument
+    ObjectID arrayObjectId;
+    std::memcpy(&arrayObjectId, reinterpret_cast<LPVOID>(range.startAddress), sizeof(ObjectID));
+
+    if (arrayObjectId == 0)
+    {
+        // Null array: write count = 0
+        auto const prevSize = argValues.size();
+        argValues.resize(prevSize + sizeof(UINT));
+        UINT count = 0;
+        std::memcpy(argValues.data() + prevSize, &count, sizeof(UINT));
+
+        UINT totalSize = sizeof(UINT);
+        UINT argInfo = (argument.index << 16) | totalSize;
+        auto const prevOffsetSize = argOffsets.size();
+        argOffsets.resize(prevOffsetSize + sizeof(UINT));
+        std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
+        return S_OK;
+    }
+
+    // Use GetArrayObjectInfo to get the array data pointer and dimensions
+    ULONG32 dimensionSize = 0;
+    int lowerBound = 0;
+    BYTE* pData = nullptr;
+    HRESULT hr = _corProfilerInfo->GetArrayObjectInfo(arrayObjectId, 1, &dimensionSize, &lowerBound, &pData);
+    if (FAILED(hr))
+    {
+        LOG_F(ERROR, "Could not retrieve array object info. Error: 0x%x.", hr);
+        return E_FAIL;
+    }
+
+    UINT const elementCount = dimensionSize;
+    UINT const elementSize = sizeof(LibProfiler::TrackedObjectId);
+    UINT const totalSize = sizeof(UINT) + elementCount * elementSize;
+
+    // Write: [4-byte count][N × tracked object IDs]
+    auto const prevSize = argValues.size();
+    argValues.resize(prevSize + totalSize);
+    auto* writePtr = argValues.data() + prevSize;
+    std::memcpy(writePtr, &elementCount, sizeof(UINT));
+    writePtr += sizeof(UINT);
+
+    // Read each element reference and resolve to tracked ID
+    for (UINT i = 0; i < elementCount; i++)
+    {
+        ObjectID elementObjectId;
+        std::memcpy(&elementObjectId, pData + i * sizeof(ObjectID), sizeof(ObjectID));
+
+        LibProfiler::TrackedObjectId trackedId = 0;
+        if (elementObjectId != 0)
+        {
+            trackedId = _objectsTracker.GetTrackedObject(elementObjectId);
+        }
+
+        std::memcpy(writePtr, &trackedId, elementSize);
+        writePtr += elementSize;
+    }
+
+    // Write offset info
+    UINT argInfo = (argument.index << 16) | totalSize;
+    auto const prevOffsetSize = argOffsets.size();
+    argOffsets.resize(prevOffsetSize + sizeof(UINT));
+    std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
+
     return S_OK;
 }
 
