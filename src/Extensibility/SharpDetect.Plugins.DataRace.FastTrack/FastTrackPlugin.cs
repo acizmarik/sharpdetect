@@ -274,7 +274,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnTaskJoinFinished(TaskJoinFinishArgs args)
     {
-        _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
+        if (args.IsSuccess)
+            _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

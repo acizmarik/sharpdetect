@@ -269,6 +269,21 @@ namespace SharpDetect.E2ETests.Subject
             Task.CompletedTask.Wait();
         }
 
+        public static void Test_TaskMethods_Wait3()
+        {
+            Task.Run(() => { }).Wait(millisecondsTimeout: 100);
+        }
+        
+        public static void Test_TaskMethods_Wait4()
+        {
+            Task.Run(() => { }).Wait(timeout: TimeSpan.FromMilliseconds(100));
+        }
+        
+        public static void Test_TaskMethods_Wait5()
+        {
+            Task.Run(() => { }).Wait(timeout: TimeSpan.FromMilliseconds(100), CancellationToken.None);
+        }
+
         public static void Test_TaskMethods_Result1()
         {
             _ = Task.Run(() => 42).Result;

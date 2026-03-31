@@ -243,15 +243,18 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var arguments = ParseArguments(metadata, args);
         _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
     }
-
+    
     [RecordedEventBind((ushort)RecordedEventType.TaskJoinFinish)]
     public void OnTaskJoinFinish(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
-        ProcessTaskJoinFinish(id, taskObjectId);
+        HandleTaskJoinFinish(metadata, args.ModuleId, args.MethodToken, isSuccess: true);
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.TaskJoinFinish)]
+    public void OnTaskJoinFinish(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var isSuccess = MemoryMarshal.Read<bool>(args.ReturnValue);
+        HandleTaskJoinFinish(metadata, args.ModuleId, args.MethodToken, isSuccess);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.StaticFieldRead)]
@@ -337,6 +340,19 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         }
 
         ProcessLockAcquire(id, moduleId, functionToken, lockId);
+    }
+    
+    public void HandleTaskJoinFinish(
+        RecordedEventMetadata metadata,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        bool isSuccess)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, moduleId, methodToken);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        ProcessTaskJoinFinish(id, taskObjectId, isSuccess);
     }
 
     protected virtual void ProcessLockAcquire(
@@ -440,9 +456,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         TaskCompleted?.Invoke(new TaskCompleteArgs(id, taskObjectId));
     }
 
-    protected virtual void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+    protected virtual void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId, bool isSuccess)
     {
-        TaskJoinFinished?.Invoke(new TaskJoinFinishArgs(id, taskObjectId));
+        TaskJoinFinished?.Invoke(new TaskJoinFinishArgs(id, taskObjectId, isSuccess));
     }
 
     protected bool TryGetThreadId(ProcessTrackedObjectId threadObjectId, out ProcessThreadId threadId)

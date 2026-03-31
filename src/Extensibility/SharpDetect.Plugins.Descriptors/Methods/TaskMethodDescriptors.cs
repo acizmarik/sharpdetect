@@ -10,6 +10,7 @@ public static class TaskMethodDescriptors
 {
     private const string TaskTypeName = "System.Threading.Tasks.Task";
     private const string TaskTResultTypeName = "System.Threading.Tasks.Task`1";
+    private const string CancellationTokenTypeName = "System.Threading.CancellationToken";
     private const string ContinuationTaskFromTaskTypeName = "System.Threading.Tasks.ContinuationTaskFromTask";
     private const string ContinuationResultTaskFromTaskTypeName = "System.Threading.Tasks.ContinuationResultTaskFromTask`1";
     private const string ContinuationTaskFromResultTaskTypeName = "System.Threading.Tasks.ContinuationTaskFromResultTask`1";
@@ -72,14 +73,18 @@ public static class TaskMethodDescriptors
             VersionDescriptor: null,
             SignatureDescriptor: new MethodSignatureDescriptor(
                 CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 0,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: []),
+                ParametersCount: 2,
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
+                ArgumentTypeElements:
+                [
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
+                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
+                ]),
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
-                InjectManagedWrapper: true,
+                InjectManagedWrapper: false,
                 Arguments: [ObjectRefArg],
-                ReturnValue: null,
+                ReturnValue: new CapturedValueDescriptor(sizeof(bool), CapturedValue.CaptureAsValue),
                 MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
                 MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
         

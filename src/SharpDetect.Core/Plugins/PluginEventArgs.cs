@@ -24,4 +24,4 @@ public readonly record struct InstanceFieldWriteArgs(ProcessThreadId ProcessThre
 public readonly record struct TaskScheduleArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct TaskStartArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct TaskCompleteArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
-public readonly record struct TaskJoinFinishArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
+public readonly record struct TaskJoinFinishArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId, bool IsSuccess);

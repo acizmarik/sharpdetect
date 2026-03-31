@@ -246,6 +246,15 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait2.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait2.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait3.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait3.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait3.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait4.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait4.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait4.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait5.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait5.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Wait5.json", "net10.0")]
     public async Task MethodInterpretation_Task_Wait(string configuration, string sdk)
     {
         // Arrange

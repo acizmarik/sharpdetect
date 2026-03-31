@@ -319,6 +319,15 @@
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Result1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait3.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait4.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait5.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
