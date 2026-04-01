@@ -10,8 +10,8 @@
 
     let _hideSystemViolations = false;
 
-    function isSystemViolation(card) {
-        const target = card.querySelector('.metadata-fullname');
+    function isSystemViolation(el) {
+        const target = el.querySelector('.metadata-fullname');
         if (!target)
             return false;
         return target.textContent.trim().startsWith('System.');
@@ -21,7 +21,13 @@
         const filter = document.getElementById('violationsFilter');
         if (!filter) return;
         const query = filter.value.toLowerCase();
-        const cards = document.querySelectorAll('#violationsContainer .violation-card');
+        const groups = document.querySelectorAll('#violationsContainer > .violation-group');
+        const cards = document.querySelectorAll('#violationsContainer > .violation-card');
+        groups.forEach(function(group) {
+            const hiddenBySystem = _hideSystemViolations && isSystemViolation(group);
+            const hiddenBySearch = query && !group.textContent.toLowerCase().includes(query);
+            group.style.display = (hiddenBySystem || hiddenBySearch) ? 'none' : '';
+        });
         cards.forEach(function(card) {
             const hiddenBySystem = _hideSystemViolations && isSystemViolation(card);
             const hiddenBySearch = query && !card.textContent.toLowerCase().includes(query);
@@ -40,9 +46,9 @@
     }
 
     function toggleAllViolations(expand) {
-        const cards = document.querySelectorAll('#violationsContainer .violation-card');
-        cards.forEach(function(card) {
-            card.open = expand;
+        const items = document.querySelectorAll('#violationsContainer .violation-group, #violationsContainer .violation-card');
+        items.forEach(function(item) {
+            item.open = expand;
         });
     }
 
@@ -50,9 +56,8 @@
         const btn = document.getElementById('btnHideSystem');
         if (!btn)
             return;
-        const hasSystemViolation = Array.from(
-            document.querySelectorAll('#violationsContainer .violation-card')
-        ).some(isSystemViolation);
+        const items = document.querySelectorAll('#violationsContainer > .violation-group, #violationsContainer > .violation-card');
+        const hasSystemViolation = Array.from(items).some(isSystemViolation);
         btn.style.display = hasSystemViolation ? '' : 'none';
     });
 

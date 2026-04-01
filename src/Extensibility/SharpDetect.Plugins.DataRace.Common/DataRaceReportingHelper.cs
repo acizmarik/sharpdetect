@@ -49,35 +49,43 @@ public abstract class DataRaceReportingHelper
 
     public static IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports)
     {
-        return reports.Select(report => new
-        {
-            title = report.Title,
-            reportId = $"report-{report.Identifier}",
-            description = report.Description,
-            timestamp = report.DetectionTime,
-            target = report.Target,
-            threads = report.GetReportedThreads().Select(threadInfo =>
+        return reports
+            .GroupBy(report => report.Target ?? report.Title)
+            .Select(group => new
             {
-                report.TryGetReportReason(threadInfo, out var reason);
-                report.TryGetStackTrace(threadInfo, out var st);
-                return new
+                target = group.Key,
+                isGrouped = group.Any(r => r.Target != null),
+                childCount = group.Count(),
+                children = group.Select(report => new
                 {
-                    name = threadInfo.Name,
-                    reason = reason ?? "Unknown",
-                    stacktrace = st?.Frames.Select(frame => new
+                    title = report.Title,
+                    reportId = $"report-{report.Identifier}",
+                    description = report.Description,
+                    timestamp = report.DetectionTime,
+                    target = report.Target,
+                    threads = report.GetReportedThreads().Select(threadInfo =>
                     {
-                        metadataName = frame.MethodName,
-                        metadataToken = frame.MethodToken,
-                        methodOffset = $"IL_{frame.MethodOffset:X4}",
-                        instruction = frame.Instruction,
-                        sourceFile = frame.SourceMapping,
-                        sourceFileName = frame.SourceFileName,
-                        sourceLine = frame.SourceLine,
-                        sourceCode = frame.SourceCode,
-                    }).ToArray() ?? []
-                };
-            }).ToArray()
-        });
+                        report.TryGetReportReason(threadInfo, out var reason);
+                        report.TryGetStackTrace(threadInfo, out var st);
+                        return new
+                        {
+                            name = threadInfo.Name,
+                            reason = reason ?? "Unknown",
+                            stacktrace = st?.Frames.Select(frame => new
+                            {
+                                metadataName = frame.MethodName,
+                                metadataToken = frame.MethodToken,
+                                methodOffset = $"IL_{frame.MethodOffset:X4}",
+                                instruction = frame.Instruction,
+                                sourceFile = frame.SourceMapping,
+                                sourceFileName = frame.SourceFileName,
+                                sourceLine = frame.SourceLine,
+                                sourceCode = frame.SourceCode,
+                            }).ToArray() ?? []
+                        };
+                    }).ToArray()
+                }).ToArray()
+            });
     }
     
     private void PrepareNoViolationDiagnostics()
@@ -113,15 +121,25 @@ public abstract class DataRaceReportingHelper
         var fieldName = DataRaceLogger.GetFieldDisplayName(group.Key.FieldId);
 
         var reportBuilder = new ReportBuilder(index, _reportCategory, firstRace.Timestamp);
-        reportBuilder.SetTitle(fieldTitle);
-        reportBuilder.SetTarget(fieldName);
+        if (group.Key.ObjectId is not null)
+        {
+            reportBuilder.SetTitle(fieldTitle);
+            reportBuilder.SetTarget(fieldName);
+        }
+        else
+        {
+            reportBuilder.SetTitle(fieldName);
+        }
 
         var accessCollector = CollectThreadAccesses(group);
 
         // Count distinct access locations (after field-level deduplication)
         var distinctAccessCount = accessCollector.GetThreads()
             .Sum(t => accessCollector.GetDistinctAccesses(t).Count());
-        reportBuilder.SetDescription($"data race ({distinctAccessCount} distinct access locations)");
+        
+        reportBuilder.SetDescription(group.Key.ObjectId is { } objectId
+            ? $"Object {objectId.ObjectId.Value} ({distinctAccessCount} distinct access locations)"
+            : $"{distinctAccessCount} distinct access locations");
 
         AddThreadsToReport(reportBuilder, accessCollector);
 
