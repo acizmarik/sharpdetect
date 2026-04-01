@@ -13,7 +13,11 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
 {
     private readonly record struct ResolvedFieldInfo(FieldDef FieldDef, FieldFlags Flags);
     private readonly Dictionary<FieldDefOrRef, ResolvedFieldInfo> _resolvedFields = [];
-    private TypeDef? _delegateTypeDef;
+    private TypeRef? _delegateTypeRef;
+    private TypeRef? _threadStaticAttributeTypeRef;
+    private TypeRef? _asyncStateMachineTypeRef;
+    private TypeRef? _taskTypeRef;
+    private TypeRef? _continuationTypeRef;
 
     public bool TryResolve(
         uint processId,
@@ -59,6 +63,8 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
     {
         return flags.HasFlag(FieldFlags.IsReadOnly) ||
                flags.HasFlag(FieldFlags.IsThreadStatic) ||
+               flags.HasFlag(FieldFlags.IsAsyncStateMachineInternalField) ||
+               flags.HasFlag(FieldFlags.IsTaskOrContinuationInternalField) ||
                (flags.HasFlag(FieldFlags.IsStaticDelegateType) && configuration.SuppressAnalysisOfStaticDelegates);
     }
 
@@ -72,6 +78,12 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
         if (IsFieldThreadStatic(fieldDef))
             flags |= FieldFlags.IsThreadStatic;
 
+        if (IsFieldInternalTaskStateMachineField(fieldDef))
+            flags |= FieldFlags.IsAsyncStateMachineInternalField;
+
+        if (IsFieldInternalTaskOrContinuationField(fieldDef))
+            flags |= FieldFlags.IsTaskOrContinuationInternalField;
+
         if (IsStaticDelegateField(fieldDef))
             flags |= FieldFlags.IsStaticDelegateType;
 
@@ -83,10 +95,45 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
         return fieldDef.IsInitOnly || fieldDef.IsLiteral;
     }
 
-    private static bool IsFieldThreadStatic(FieldDef fieldDef)
+    private bool IsFieldThreadStatic(FieldDef fieldDef)
     {
+        _threadStaticAttributeTypeRef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(@namespace: "System", name: "ThreadStaticAttribute");
+
+        var comparer = new SigComparer();
         return fieldDef.CustomAttributes.Any(a =>
-            a.AttributeType.FullName.Equals("System.ThreadStaticAttribute", StringComparison.Ordinal));
+            comparer.Equals(a.AttributeType, _threadStaticAttributeTypeRef));
+    }
+
+    private bool IsFieldInternalTaskStateMachineField(FieldDef fieldDef)
+    {
+        _asyncStateMachineTypeRef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(@namespace: "System.Runtime.CompilerServices", name: "IAsyncStateMachine");
+
+        var comparer = new SigComparer();
+        return fieldDef.DeclaringType.HasInterfaces && fieldDef.DeclaringType.Interfaces.Any(i =>
+            comparer.Equals(i.Interface, _asyncStateMachineTypeRef));
+    }
+
+    private bool IsFieldInternalTaskOrContinuationField(FieldDef fieldDef)
+    {
+        _taskTypeRef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(@namespace: "System.Threading.Tasks", name: "Task");
+        _continuationTypeRef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(@namespace: "System.Threading.Tasks", name: "TaskContinuation");
+
+        var comparer = new SigComparer();
+        ITypeDefOrRef? current = fieldDef.DeclaringType;
+        while (current != null)
+        {
+            if (comparer.Equals(current, _taskTypeRef) ||
+                comparer.Equals(current, _continuationTypeRef))
+                return true;
+
+            current = current.ResolveTypeDef()?.BaseType;
+        }
+
+        return false;
     }
 
     private bool IsStaticDelegateField(FieldDef fieldDef)
@@ -96,19 +143,17 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
 
     private bool IsDelegateField(FieldDef fieldDef)
     {
-        var fieldType = fieldDef.FieldType;
-        var typeDef = fieldType.ToTypeDefOrRef()?.ResolveTypeDef();
+        _delegateTypeRef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(@namespace: "System", name: "Delegate");
 
-        _delegateTypeDef ??= fieldDef.Module.CorLibTypes
-            .GetTypeRef(@namespace: "System", name: "Delegate")
-            .ResolveTypeDef();
-
-        while (typeDef != null)
+        var comparer = new SigComparer();
+        ITypeDefOrRef? current = fieldDef.FieldType.ToTypeDefOrRef();
+        while (current != null)
         {
-            if (typeDef == _delegateTypeDef)
+            if (comparer.Equals(current, _delegateTypeRef))
                 return true;
 
-            typeDef = typeDef.BaseType?.ResolveTypeDef();
+            current = current.ResolveTypeDef()?.BaseType;
         }
 
         return false;

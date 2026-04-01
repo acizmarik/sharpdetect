@@ -78,8 +78,8 @@ namespace Profiler
 			const MethodDescriptor& methodDescriptor,
 			std::vector<UINT_PTR>& indirects,
 			const COR_PRF_FUNCTION_ARGUMENT_INFO& argumentInfos,
-			std::span<BYTE> argumentValues,
-			std::span<BYTE> argumentOffsets);
+			std::vector<BYTE>& argumentValues,
+			std::vector<BYTE>& argumentOffsets);
 
 		static HRESULT GetByRefArguments(
 			const MethodDescriptor& methodDescriptor,
@@ -91,8 +91,14 @@ namespace Profiler
 			const CapturedArgumentDescriptor& argument,
 			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
 			std::vector<UINT_PTR>& indirects,
-			std::span<BYTE>& argValue,
-			std::span<BYTE>& argOffset);
+			std::vector<BYTE>& argValues,
+			std::vector<BYTE>& argOffsets);
+
+		HRESULT GetReferenceArrayArgument(
+			const CapturedArgumentDescriptor& argument,
+			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
+			std::vector<BYTE>& argValues,
+			std::vector<BYTE>& argOffsets);
 
 		HRESULT GetReturnValue(
 			const CapturedValueDescriptor& value,

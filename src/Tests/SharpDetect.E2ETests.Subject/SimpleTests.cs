@@ -249,6 +249,56 @@ namespace SharpDetect.E2ETests.Subject
             thread1.Join();
         }
 
+        public static void Test_TaskMethods_ScheduleAndStart1()
+        {
+            Task.Run(() => { }).Wait();
+        }
+
+        public static void Test_TaskMethods_InnerInvoke1()
+        {
+            Task.Run(() => { }).Wait();
+        }
+
+        public static void Test_TaskMethods_Wait1()
+        {
+            Task.Run(() => { }).Wait();
+        }
+
+        public static void Test_TaskMethods_Wait2()
+        {
+            Task.CompletedTask.Wait();
+        }
+
+        public static void Test_TaskMethods_Wait3()
+        {
+            Task.Run(() => { }).Wait(millisecondsTimeout: 100);
+        }
+        
+        public static void Test_TaskMethods_Wait4()
+        {
+            Task.Run(() => { }).Wait(timeout: TimeSpan.FromMilliseconds(100));
+        }
+        
+        public static void Test_TaskMethods_Wait5()
+        {
+            Task.Run(() => { }).Wait(timeout: TimeSpan.FromMilliseconds(100), CancellationToken.None);
+        }
+
+        public static void Test_TaskMethods_Result1()
+        {
+            _ = Task.Run(() => 42).Result;
+        }
+
+        public static void Test_TaskMethods_Await1()
+        {
+            Task.Run(() => { }).GetAwaiter().GetResult();
+        }
+        
+        public static void Test_TaskMethods_Await2()
+        {
+            Task.Run(async () => await Task.Run(() => { })).Wait();
+        }
+
 #if NET9_0_OR_GREATER
         public static void Test_LockMethods_EnterExit1()
         {
@@ -1070,6 +1120,19 @@ namespace SharpDetect.E2ETests.Subject
             var task1 = Task.Run(() => { Volatile.Read(ref dataRace.Test_DataRace_ValueType_Instance); });
             var task2 = Task.Run(() => { Volatile.Write(ref dataRace.Test_DataRace_ValueType_Instance, 123); });
             Task.WaitAll(task1, task2);
+        }
+        
+        public static void Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin()
+        {
+            Task.Run(() => { DataRace.Test_DataRace_ValueType_Static = 42; }).Wait();
+            _ = DataRace.Test_DataRace_ValueType_Static;
+        }
+
+        public static void Test_NoDataRace_Task_SequentialTasks_WriteRead()
+        {
+            DataRace.Test_DataRace_ValueType_Static = 0;
+            Task.Run(() => { DataRace.Test_DataRace_ValueType_Static = 42; }).Wait();
+            Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; }).Wait();
         }
 
         public static void Test_StaticDelegate_WithSuppression()

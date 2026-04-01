@@ -294,6 +294,24 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin)}.json", "net8.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin)}.json", "net9.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin)}.json", "net10.0", FastTrackPluginFullTypeName)]
+    public Task NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin(string configuration, string sdk, string plugin)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk, plugin);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_Task_SequentialTasks_WriteRead)}.json", "net8.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_Task_SequentialTasks_WriteRead)}.json", "net9.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_Task_SequentialTasks_WriteRead)}.json", "net10.0", FastTrackPluginFullTypeName)]
+    public Task NoDataRace_Task_SequentialTasks_WriteRead(string configuration, string sdk, string plugin)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk, plugin);
+    }
+
+    [Theory]
     [InlineData($"{ConfigurationFolder}/{nameof(CanRenderReport)}.json", "net10.0", FastTrackPluginFullTypeName)]
     [InlineData($"{ConfigurationFolder}/{nameof(CanRenderReport)}.json", "net10.0", EraserPluginFullTypeName)]
     public async Task CanRenderReport(string configuration, string sdk, string pluginFullTypeName)

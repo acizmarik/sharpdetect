@@ -76,10 +76,16 @@ internal sealed class ArgumentsParserService : IArgumentsParser
         return new RuntimeArgumentList(arguments, argInfos.Length);
     }
 
-    private static OneOf<object, TrackedObjectId> ParseArgumentValue(TypeSig parameter, ReadOnlySpan<byte> value)
+    private static OneOf<object, TrackedObjectId, TrackedObjectId[]> ParseArgumentValue(TypeSig parameter, ReadOnlySpan<byte> value)
     {
         // If it is indirect, profiler already resolved the actual value
         var paramSig = parameter.IsByRef ? parameter.Next : parameter;
+
+        // Handle SZArray of reference types (e.g., Task[])
+        if (paramSig.IsSZArray)
+        {
+            return ParseReferenceArrayValue(value);
+        }
 
         // If its not a value type then just load the reference
         if (!paramSig.IsValueType)
@@ -112,5 +118,22 @@ internal sealed class ArgumentsParserService : IArgumentsParser
             ElementType.U => MemoryMarshal.Read<nuint>(value),
             _ => throw new NotSupportedException($"Could not parse parameter {paramSig}."),
         };
+    }
+
+    private static TrackedObjectId[] ParseReferenceArrayValue(ReadOnlySpan<byte> value)
+    {
+        // Format: [4-byte count][N × sizeof(ulong) tracked object IDs]
+        var count = MemoryMarshal.Read<uint>(value);
+        var result = new TrackedObjectId[count];
+        var offset = sizeof(uint);
+
+        for (var i = 0; i < count; i++)
+        {
+            var trackedId = new nuint(MemoryMarshal.Read<ulong>(value.Slice(offset, sizeof(ulong))));
+            result[i] = new TrackedObjectId(trackedId);
+            offset += sizeof(ulong);
+        }
+
+        return result;
     }
 }

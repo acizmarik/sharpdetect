@@ -21,3 +21,7 @@ public readonly record struct StaticFieldReadArgs(ProcessThreadId ProcessThreadI
 public readonly record struct StaticFieldWriteArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, uint MethodOffset, MdToken FieldToken, bool IsVolatile);
 public readonly record struct InstanceFieldReadArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, uint MethodOffset, MdToken FieldToken, ProcessTrackedObjectId ObjectId, bool IsVolatile);
 public readonly record struct InstanceFieldWriteArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, uint MethodOffset, MdToken FieldToken, ProcessTrackedObjectId ObjectId, bool IsVolatile);
+public readonly record struct TaskScheduleArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
+public readonly record struct TaskStartArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
+public readonly record struct TaskCompleteArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
+public readonly record struct TaskJoinFinishArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId, bool IsSuccess);

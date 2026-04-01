@@ -85,6 +85,18 @@
     <None Update="ObjectTrackingTestConfigurations\ObjectTracking_SingleGC.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Await1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_InnerInvoke1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_ScheduleAndStart1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Thread_Join1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -271,6 +283,12 @@
     <None Update="DataRacePluginTestConfigurations\NoDataRace_StaticDelegate_WithSuppression.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="DataRacePluginTestConfigurations\NoDataRace_Task_SequentialTasks_WriteRead.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="DataRacePluginTestConfigurations\NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="DataRacePluginTestConfigurations\CanDetectDataRace_StaticDelegate_WithoutSuppression.json">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -290,6 +308,24 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Await2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait2.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Result1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait3.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait4.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_Task_Wait5.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

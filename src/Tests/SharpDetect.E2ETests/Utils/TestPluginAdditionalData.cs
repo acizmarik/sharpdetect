@@ -20,6 +20,7 @@ public record TestPluginAdditionalData(
                 ..MonitorMethodDescriptors.GetAllMethods()
                     .Concat(LockMethodDescriptors.GetAllMethods())
                     .Concat(ThreadMethodDescriptors.GetAllMethods())
+                    .Concat(TaskMethodDescriptors.GetAllMethods())
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
@@ -33,6 +34,7 @@ public record TestPluginAdditionalData(
                 ..MonitorMethodDescriptors.GetAllMethods()
                     .Concat(LockMethodDescriptors.GetAllMethods())
                     .Concat(ThreadMethodDescriptors.GetAllMethods())
+                    .Concat(TaskMethodDescriptors.GetAllMethods())
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
