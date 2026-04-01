@@ -11,18 +11,24 @@
 {{#if isGrouped}}
 <details class="violation-group" data-searchable>
     <summary>
-        <span class="card-title">{{target}}</span>
-        <span class="card-desc">{{childCount}} occurrence(s)</span>
+        <span class="card-title">{{shortTarget}}</span>
+        <span class="card-desc">{{instanceCount}} instance(s)</span>
     </summary>
     <div class="violation-group-body">
         <span class="metadata-fullname">{{target}}</span>
         {{#children}}
         <details class="violation-card">
             <summary>
-                <span class="card-title">{{description}}</span>
+                <span class="card-title">{{summaryText}}</span>
                 <span class="card-timestamp">{{timestamp}}</span>
             </summary>
             <div class="violation-card-body">
+                {{#if hasObjectLabels}}
+                <div class="affected-objects">
+                    {{#objectLabels}}<span class="object-label">{{this}}</span>{{/objectLabels}}
+                    {{#if hasExtraObjects}}<span class="object-label object-label-more">+{{extraObjectCount}} more</span>{{/if}}
+                </div>
+                {{/if}}
                 <div class="thread-grid">
                     {{#threads}}
                     <div class="thread-panel">
@@ -68,7 +74,7 @@
 {{#children}}
 <details class="violation-card" data-searchable>
     <summary>
-        <span class="card-title">{{../target}}</span>
+        <span class="card-title">{{../shortTarget}}</span>
         <span class="card-desc">{{description}}</span>
     </summary>
     <div class="violation-card-body">
