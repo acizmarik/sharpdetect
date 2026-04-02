@@ -18,6 +18,9 @@
     <None Update="Templates\Partials\content.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Templates\Partials\configuration.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Templates\Partials\foot.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

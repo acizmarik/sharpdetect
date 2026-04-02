@@ -622,6 +622,25 @@ body {
     font-family: var(--font-mono);
 }
 
+.config-json {
+    background: var(--color-code-bg);
+    color: var(--color-code-text);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    overflow-x: auto;
+    white-space: pre;
+    tab-size: 2;
+}
+
+.config-json-empty {
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
 .text-sm {
     font-size: 0.8125rem;
 }

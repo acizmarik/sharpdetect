@@ -27,7 +27,7 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
     public string Render(SummaryRenderingContext context)
     {
         var environment = CreateEnvironment(context.AdditionalPartials);
-        var dataContent = BuildDataContext(context.Plugin, context.Summary);
+        var dataContent = BuildDataContext(context.Plugin, context.Summary, context.ConfigurationJson);
         var compiledTemplate = environment.Compile(_template);
         return compiledTemplate(dataContent);
     }
@@ -57,7 +57,7 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
         return environment;
     }
 
-    private static object BuildDataContext(IPlugin plugin, Summary summary)
+    private static object BuildDataContext(IPlugin plugin, Summary summary, string configurationJson)
     {
         var sharpDetectVersion = typeof(HtmlReportRenderer).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
@@ -120,7 +120,8 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
                 publicKey = moduleInfo.PublicKey,
                 culture = moduleInfo.Culture
             }),
-            reports = allReports
+            reports = allReports,
+            configurationJson
         };
     }
 

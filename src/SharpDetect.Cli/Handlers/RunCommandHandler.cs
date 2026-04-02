@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using CliFx.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -59,8 +61,27 @@ internal sealed class RunCommandHandler : IDisposable
         var reportFileName = _arguments.Analysis.ReportFileName;
         var writer = _serviceProvider.GetRequiredService<IReportSummaryWriter>();
         var renderer = _serviceProvider.GetRequiredService<IReportSummaryRenderer>();
-        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates);
+        var configurationJson = SerializeConfigurationJson(_arguments);
+        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates, configurationJson);
         return writer.Write(reportFileName, reportDirectory, context, renderer, cancellationToken);
+    }
+
+    private static string SerializeConfigurationJson(object configuration)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Converters = { new JsonStringEnumConverter() }
+            };
+            return JsonSerializer.Serialize(configuration, options);
+        }
+        catch
+        {
+            return "<unable-to-serialize-configuration>";
+        }
     }
 
     private Type LoadPluginInfo()
