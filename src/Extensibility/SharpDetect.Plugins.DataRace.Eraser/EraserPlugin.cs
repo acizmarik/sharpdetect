@@ -26,6 +26,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
     public DirectoryInfo ReportTemplates { get; }
 
     private readonly EraserDetector _detector;
+    private readonly HashSet<FieldId> _reportedRacyFields = [];
     private readonly List<DataRaceInfo> _detectedRaces = [];
     private readonly HashSet<ProcessThreadId> _trackedThreads = [];
 
@@ -138,7 +139,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.FieldToken,
                 objectId: null) is { } raceInfo)
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            RecordDataRace(raceInfo);
         }
     }
     
@@ -155,7 +156,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.FieldToken,
                 args.ObjectId) is { } raceInfo)
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            RecordDataRace(raceInfo);
         }
     }
 
@@ -172,7 +173,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.FieldToken,
                 objectId: null) is { } raceInfo)
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            RecordDataRace(raceInfo);
         }
     }
     
@@ -189,7 +190,7 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                 args.FieldToken,
                 args.ObjectId) is { } raceInfo)
         {
-            RecordDataRace(args.ProcessThreadId, raceInfo);
+            RecordDataRace(raceInfo);
         }
     }
 
@@ -226,14 +227,10 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
         base.Visit(metadata, args);
     }
     
-    private void RecordDataRace(ProcessThreadId reporterThreadId, DataRaceInfo raceInfo)
+    private void RecordDataRace(DataRaceInfo raceInfo)
     {
         _detectedRaces.Add(raceInfo);
-        DataRaceLogger.LogDataRace(Logger, Threads, reporterThreadId, raceInfo);
-    }
-    
-    private static string GetFieldDisplayName(FieldId fieldId)
-    {
-        return DataRaceLogger.GetFieldDisplayName(fieldId);
+        if (_reportedRacyFields.Add(raceInfo.FieldId))
+            DataRaceLogger.LogDataRace(Logger, raceInfo, MetadataContext);
     }
 }

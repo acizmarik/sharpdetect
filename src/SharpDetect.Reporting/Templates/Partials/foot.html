@@ -9,23 +9,39 @@
     }
 
     let _hideSystemViolations = false;
+    let _hideMicrosoftViolations = false;
 
-    function isSystemViolation(card) {
-        const target = card.querySelector('.metadata-fullname');
+    function isSystemViolation(el) {
+        const target = el.querySelector('.metadata-fullname');
         if (!target)
             return false;
         return target.textContent.trim().startsWith('System.');
+    }
+
+    function isMicrosoftViolation(el) {
+        const target = el.querySelector('.metadata-fullname');
+        if (!target)
+            return false;
+        return target.textContent.trim().startsWith('Microsoft.');
     }
 
     function filterViolations() {
         const filter = document.getElementById('violationsFilter');
         if (!filter) return;
         const query = filter.value.toLowerCase();
-        const cards = document.querySelectorAll('#violationsContainer .violation-card');
+        const groups = document.querySelectorAll('#violationsContainer > .violation-group');
+        const cards = document.querySelectorAll('#violationsContainer > .violation-card');
+        groups.forEach(function(group) {
+            const hiddenBySystem = _hideSystemViolations && isSystemViolation(group);
+            const hiddenByMicrosoft = _hideMicrosoftViolations && isMicrosoftViolation(group);
+            const hiddenBySearch = query && !group.textContent.toLowerCase().includes(query);
+            group.style.display = (hiddenBySystem || hiddenByMicrosoft || hiddenBySearch) ? 'none' : '';
+        });
         cards.forEach(function(card) {
             const hiddenBySystem = _hideSystemViolations && isSystemViolation(card);
+            const hiddenByMicrosoft = _hideMicrosoftViolations && isMicrosoftViolation(card);
             const hiddenBySearch = query && !card.textContent.toLowerCase().includes(query);
-            card.style.display = (hiddenBySystem || hiddenBySearch) ? 'none' : '';
+            card.style.display = (hiddenBySystem || hiddenByMicrosoft || hiddenBySearch) ? 'none' : '';
         });
     }
 
@@ -39,21 +55,37 @@
         filterViolations();
     }
 
+    function toggleMicrosoftViolations() {
+        _hideMicrosoftViolations = !_hideMicrosoftViolations;
+        const btn = document.getElementById('btnHideMicrosoft');
+        if (btn) {
+            btn.classList.toggle('btn-active', _hideMicrosoftViolations);
+            btn.textContent = _hideMicrosoftViolations ? 'Show Microsoft.*' : 'Hide Microsoft.*';
+        }
+        filterViolations();
+    }
+
     function toggleAllViolations(expand) {
-        const cards = document.querySelectorAll('#violationsContainer .violation-card');
-        cards.forEach(function(card) {
-            card.open = expand;
+        const items = document.querySelectorAll('#violationsContainer .violation-group, #violationsContainer .violation-card');
+        items.forEach(function(item) {
+            item.open = expand;
         });
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const btn = document.getElementById('btnHideSystem');
-        if (!btn)
-            return;
-        const hasSystemViolation = Array.from(
-            document.querySelectorAll('#violationsContainer .violation-card')
-        ).some(isSystemViolation);
-        btn.style.display = hasSystemViolation ? '' : 'none';
+        const items = document.querySelectorAll('#violationsContainer > .violation-group, #violationsContainer > .violation-card');
+
+        const btnSystem = document.getElementById('btnHideSystem');
+        if (btnSystem) {
+            const hasSystemViolation = Array.from(items).some(isSystemViolation);
+            btnSystem.style.display = hasSystemViolation ? '' : 'none';
+        }
+
+        const btnMicrosoft = document.getElementById('btnHideMicrosoft');
+        if (btnMicrosoft) {
+            const hasMicrosoftViolation = Array.from(items).some(isMicrosoftViolation);
+            btnMicrosoft.style.display = hasMicrosoftViolation ? '' : 'none';
+        }
     });
 
     (function() {

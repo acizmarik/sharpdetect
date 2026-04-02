@@ -2,22 +2,84 @@
 <div class="violations-toolbar">
     <input type="text" id="violationsFilter" placeholder="Search violations by field, thread, description..." oninput="filterViolations()">
     <button class="btn btn-toggle" id="btnHideSystem" onclick="toggleSystemViolations()">Hide System.*</button>
+    <button class="btn btn-toggle" id="btnHideMicrosoft" onclick="toggleMicrosoftViolations()">Hide Microsoft.*</button>
     <button class="btn" onclick="toggleAllViolations(true)">Expand All</button>
     <button class="btn" onclick="toggleAllViolations(false)">Collapse All</button>
 </div>
 
 <div id="violationsContainer">
 {{#reports}}
+{{#if isGrouped}}
+<details class="violation-group" data-searchable>
+    <summary>
+        <span class="card-title">{{shortTarget}}</span>
+        <span class="card-desc">{{instanceCount}} instance(s)</span>
+    </summary>
+    <div class="violation-group-body">
+        <span class="metadata-fullname">{{target}}</span>
+        {{#children}}
+        <details class="violation-card">
+            <summary>
+                <span class="card-title">{{summaryText}}</span>
+                <span class="card-timestamp">{{timestamp}}</span>
+            </summary>
+            <div class="violation-card-body">
+                {{#if hasObjectLabels}}
+                <div class="affected-objects">
+                    {{#objectLabels}}<span class="object-label">{{this}}</span>{{/objectLabels}}
+                    {{#if hasExtraObjects}}<span class="object-label object-label-more">+{{extraObjectCount}} more</span>{{/if}}
+                </div>
+                {{/if}}
+                <div class="thread-grid">
+                    {{#threads}}
+                    <div class="thread-panel">
+                        <div class="thread-panel-header">
+                            <span class="thread-name">{{name}}</span>
+                        </div>
+                        <div class="thread-panel-reason">{{reason}}</div>
+                        {{#if stacktrace}}
+                        <div class="stacktrace-block">
+                            {{#stacktrace}}
+                            <div class="stacktrace-line">
+                                <span class="frame-method">{{metadataName}}</span>
+                                {{#if sourceCode}}
+                                <div class="frame-source">
+                                    <span class="frame-source-line">{{sourceLine}}</span>
+                                    <code class="frame-source-code">{{sourceCode}}</code>
+                                </div>
+                                {{else}}
+                                <div class="frame-source">
+                                    <span class="frame-source-line">{{methodOffset}}</span>
+                                    <code class="frame-source-code">{{instruction}}</code>
+                                </div>
+                                {{/if}}
+                                <div class="frame-details">
+                                    {{#if sourceFileName}}
+                                    <span class="frame-detail"><span class="frame-detail-label">File</span> {{sourceFileName}}:{{sourceLine}}</span>
+                                    {{/if}}
+                                    <span class="frame-detail"><span class="frame-detail-label">Assembly</span> {{sourceFile}} ({{metadataToken}})</span>
+                                </div>
+                            </div>
+                            {{/stacktrace}}
+                        </div>
+                        {{/if}}
+                    </div>
+                    {{/threads}}
+                </div>
+            </div>
+        </details>
+        {{/children}}
+    </div>
+</details>
+{{else}}
+{{#children}}
 <details class="violation-card" data-searchable>
     <summary>
-        <span class="card-title">{{title}}</span>
+        <span class="card-title">{{../shortTarget}}</span>
         <span class="card-desc">{{description}}</span>
-        <span class="card-timestamp">{{timestamp}}</span>
     </summary>
     <div class="violation-card-body">
-        {{#if target}}
-        <span class="metadata-fullname">{{target}}</span>
-        {{/if}}
+        <span class="metadata-fullname">{{../target}}</span>
         <div class="thread-grid">
             {{#threads}}
             <div class="thread-panel">
@@ -56,6 +118,8 @@
         </div>
     </div>
 </details>
+{{/children}}
+{{/if}}
 {{/reports}}
 </div>
 

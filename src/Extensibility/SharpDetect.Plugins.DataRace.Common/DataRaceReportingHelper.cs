@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Collections.Immutable;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
@@ -47,37 +46,123 @@ public abstract class DataRaceReportingHelper
         return _reporter.Build();
     }
 
+    private const int MaxObjectLabels = 5;
+
     public static IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports)
     {
-        return reports.Select(report => new
-        {
-            title = report.Title,
-            reportId = $"report-{report.Identifier}",
-            description = report.Description,
-            timestamp = report.DetectionTime,
-            target = report.Target,
-            threads = report.GetReportedThreads().Select(threadInfo =>
+        return reports
+            .GroupBy(report => report.Target ?? report.Title)
+            .Select(group =>
             {
-                report.TryGetReportReason(threadInfo, out var reason);
-                report.TryGetStackTrace(threadInfo, out var st);
+                var isGrouped = group.Any(r => r.Target != null);
+                var children = BuildMergedChildren(group).ToArray();
                 return new
                 {
-                    name = threadInfo.Name,
-                    reason = reason ?? "Unknown",
-                    stacktrace = st?.Frames.Select(frame => new
-                    {
-                        metadataName = frame.MethodName,
-                        metadataToken = frame.MethodToken,
-                        methodOffset = $"IL_{frame.MethodOffset:X4}",
-                        instruction = frame.Instruction,
-                        sourceFile = frame.SourceMapping,
-                        sourceFileName = frame.SourceFileName,
-                        sourceLine = frame.SourceLine,
-                        sourceCode = frame.SourceCode,
-                    }).ToArray() ?? []
+                    target = group.Key,
+                    shortTarget = ComputeShortTarget(group.Key),
+                    isGrouped,
+                    instanceCount = group.Count(),
+                    children
                 };
-            }).ToArray()
-        });
+            });
+    }
+
+    private static string ComputeShortTarget(string fullTarget)
+    {
+        var lastDot = fullTarget.LastIndexOf('.');
+        if (lastDot <= 0)
+            return fullTarget;
+
+        var withoutField = fullTarget[..lastDot];
+        var lastSlash = withoutField.LastIndexOf('/');
+        if (lastSlash >= 0)
+        {
+            var nestedType = withoutField[(lastSlash + 1)..];
+            var fieldName = fullTarget[(lastDot + 1)..];
+            return $"{nestedType}.{fieldName}";
+        }
+
+        var secondLastDot = withoutField.LastIndexOf('.');
+        return secondLastDot >= 0
+            ? fullTarget[(secondLastDot + 1)..]
+            : fullTarget;
+    }
+
+    private static string ComputeChildFingerprint(Report report)
+    {
+        var parts = report.GetReportedThreads()
+            .SelectMany(t =>
+            {
+                report.TryGetStackTrace(t, out var st);
+                return st?.Frames.Select(f => $"{f.MethodToken}@{f.MethodOffset}")
+                       ?? [];
+            })
+            .OrderBy(s => s)
+            .Distinct();
+        return string.Join("|", parts);
+    }
+
+    private static IEnumerable<object> BuildMergedChildren(IEnumerable<Report> reports)
+    {
+        return reports
+            .GroupBy(ComputeChildFingerprint)
+            .Select(fg =>
+            {
+                var representative = fg.First();
+                var objectCount = fg.Count();
+
+                var allLabels = fg
+                    .Where(r => r.Target is not null)
+                    .Select(r =>
+                    {
+                        var desc = r.Description;
+                        var parenIdx = desc.IndexOf('(');
+                        return parenIdx > 0 ? desc[..parenIdx].TrimEnd() : desc;
+                    })
+                    .ToArray();
+
+                var displayLabels = allLabels.Take(MaxObjectLabels).ToArray();
+                var extraObjectCount = allLabels.Length - displayLabels.Length;
+
+                var accessCount = representative.GetReportedThreads().Count();
+                var summaryText = objectCount > 1
+                    ? $"{objectCount} objects · {accessCount} distinct access locations"
+                    : representative.Description;
+
+                return (object)new
+                {
+                    reportId = $"report-{representative.Identifier}",
+                    description = representative.Description,
+                    summaryText,
+                    objectCount,
+                    hasObjectLabels = displayLabels.Length > 0,
+                    objectLabels = displayLabels,
+                    hasExtraObjects = extraObjectCount > 0,
+                    extraObjectCount,
+                    timestamp = representative.DetectionTime,
+                    threads = representative.GetReportedThreads().Select(threadInfo =>
+                    {
+                        representative.TryGetReportReason(threadInfo, out var reason);
+                        representative.TryGetStackTrace(threadInfo, out var st);
+                        return new
+                        {
+                            name = threadInfo.Name,
+                            reason = reason ?? "Unknown",
+                            stacktrace = st?.Frames.Select(frame => new
+                            {
+                                metadataName = frame.MethodName,
+                                metadataToken = frame.MethodToken,
+                                methodOffset = $"IL_{frame.MethodOffset:X4}",
+                                instruction = frame.Instruction,
+                                sourceFile = frame.SourceMapping,
+                                sourceFileName = frame.SourceFileName,
+                                sourceLine = frame.SourceLine,
+                                sourceCode = frame.SourceCode,
+                            }).ToArray() ?? []
+                        };
+                    }).ToArray()
+                };
+            });
     }
     
     private void PrepareNoViolationDiagnostics()
@@ -113,15 +198,25 @@ public abstract class DataRaceReportingHelper
         var fieldName = DataRaceLogger.GetFieldDisplayName(group.Key.FieldId);
 
         var reportBuilder = new ReportBuilder(index, _reportCategory, firstRace.Timestamp);
-        reportBuilder.SetTitle(fieldTitle);
-        reportBuilder.SetTarget(fieldName);
+        if (group.Key.ObjectId is not null)
+        {
+            reportBuilder.SetTitle(fieldTitle);
+            reportBuilder.SetTarget(fieldName);
+        }
+        else
+        {
+            reportBuilder.SetTitle(fieldName);
+        }
 
         var accessCollector = CollectThreadAccesses(group);
 
         // Count distinct access locations (after field-level deduplication)
         var distinctAccessCount = accessCollector.GetThreads()
             .Sum(t => accessCollector.GetDistinctAccesses(t).Count());
-        reportBuilder.SetDescription($"data race ({distinctAccessCount} distinct access locations)");
+        
+        reportBuilder.SetDescription(group.Key.ObjectId is { } objectId
+            ? $"Object {objectId.ObjectId.Value} ({distinctAccessCount} distinct access locations)"
+            : $"{distinctAccessCount} distinct access locations");
 
         AddThreadsToReport(reportBuilder, accessCollector);
 

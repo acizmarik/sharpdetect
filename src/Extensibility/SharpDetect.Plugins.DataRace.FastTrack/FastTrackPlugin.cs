@@ -26,6 +26,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     public DirectoryInfo ReportTemplates { get; }
 
     private readonly FastTrackDetector _detector;
+    private readonly HashSet<FieldId> _reportedRacyFields = [];
     private readonly List<DataRaceInfo> _detectedRaces = [];
     private readonly HashSet<ProcessThreadId> _trackedThreads = [];
     private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _startingThreads = [];
@@ -161,7 +162,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     args.FieldToken,
                     objectId: null) is { } raceInfo)
             {
-                RecordDataRace(args.ProcessThreadId, raceInfo);
+                RecordDataRace(raceInfo);
             }
         }
     }
@@ -186,7 +187,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     args.FieldToken,
                     args.ObjectId) is { } raceInfo)
             {
-                RecordDataRace(args.ProcessThreadId, raceInfo);
+                RecordDataRace(raceInfo);
             }
         }
     }
@@ -211,7 +212,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     args.FieldToken,
                     objectId: null) is { } raceInfo)
             {
-                RecordDataRace(args.ProcessThreadId, raceInfo);
+                RecordDataRace(raceInfo);
             }
         }
     }
@@ -236,7 +237,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     args.FieldToken,
                     args.ObjectId) is { } raceInfo)
             {
-                RecordDataRace(args.ProcessThreadId, raceInfo);
+                RecordDataRace(raceInfo);
             }
         }
     }
@@ -302,15 +303,11 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         base.Visit(metadata, args);
     }
 
-    private void RecordDataRace(ProcessThreadId reporterThreadId, DataRaceInfo raceInfo)
+    private void RecordDataRace(DataRaceInfo raceInfo)
     {
         _detectedRaces.Add(raceInfo);
-        DataRaceLogger.LogDataRace(Logger, Threads, reporterThreadId, raceInfo);
-    }
-
-    private static string GetFieldDisplayName(FieldId fieldId)
-    {
-        return DataRaceLogger.GetFieldDisplayName(fieldId);
+        if (_reportedRacyFields.Add(raceInfo.FieldId))
+            DataRaceLogger.LogDataRace(Logger, raceInfo, MetadataContext);
     }
 }
 

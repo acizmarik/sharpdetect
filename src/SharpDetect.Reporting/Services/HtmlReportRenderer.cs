@@ -27,7 +27,7 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
     public string Render(SummaryRenderingContext context)
     {
         var environment = CreateEnvironment(context.AdditionalPartials);
-        var dataContent = BuildDataContext(context.Plugin, context.Summary);
+        var dataContent = BuildDataContext(context.Plugin, context.Summary, context.ConfigurationJson);
         var compiledTemplate = environment.Compile(_template);
         return compiledTemplate(dataContent);
     }
@@ -57,7 +57,7 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
         return environment;
     }
 
-    private static object BuildDataContext(IPlugin plugin, Summary summary)
+    private static object BuildDataContext(IPlugin plugin, Summary summary, string configurationJson)
     {
         var sharpDetectVersion = typeof(HtmlReportRenderer).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
@@ -71,12 +71,13 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
             COR_PRF_RUNTIME_TYPE.COR_PRF_CORE_CLR => "CoreCLR",
             _ => "unknown runtime"
         };
-        var allReports = plugin.CreateReportDataContext(summary.GetAllReports()).ToArray();
+        var rawReports = summary.GetAllReports().ToArray();
+        var allReports = plugin.CreateReportDataContext(rawReports).ToArray();
         return new
         {
             title = summary.Title,
             description = summary.Description,
-            reportCount = allReports.Length,
+            reportCount = rawReports.Length,
             environmentInfo = new
             {
                 sharpDetectVersion,
@@ -119,7 +120,8 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
                 publicKey = moduleInfo.PublicKey,
                 culture = moduleInfo.Culture
             }),
-            reports = allReports
+            reports = allReports,
+            configurationJson
         };
     }
 

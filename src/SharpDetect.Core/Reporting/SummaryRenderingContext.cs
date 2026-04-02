@@ -9,4 +9,5 @@ namespace SharpDetect.Core.Reporting;
 public record SummaryRenderingContext(
     Summary Summary,
     IPlugin Plugin,
-    DirectoryInfo AdditionalPartials);
+    DirectoryInfo AdditionalPartials,
+    string ConfigurationJson);
