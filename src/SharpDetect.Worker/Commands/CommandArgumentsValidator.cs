@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using SharpDetect.Worker.Commands.Run;
 
@@ -18,12 +19,33 @@ public static class CommandArgumentsValidator
     private static void ThrowOnInvalidTargetConfiguration(TargetConfigurationArgs configArgs)
     {
         var target = configArgs.Path;
-        var architecture = configArgs.Architecture;
 
         if (!File.Exists(target))
             throw new ArgumentException($"Could not find target assembly: \"{target}\".");
-        if (architecture != Architecture.X64)
-            throw new ArgumentException($"Unsupported architecture: \"{architecture}\".");
+
+        if (!IsX64CompatibleAssembly(target))
+            throw new ArgumentException("Unsupported target architecture. Only x64 and AnyCPU assemblies are supported.");
+    }
+
+    private static bool IsX64CompatibleAssembly(string assemblyPath)
+    {
+        using var fileStream = new FileStream(assemblyPath, FileMode.Open, FileAccess.Read);
+        using var peReader = new PEReader(fileStream);
+        var machine = peReader.PEHeaders.CoffHeader.Machine;
+
+        switch (machine)
+        {
+            case Machine.Amd64:
+                return true;
+            case Machine.I386:
+            {
+                // AnyCPU is compiled into I386
+                var corFlags = peReader.PEHeaders.CorHeader?.Flags ?? default;
+                return (corFlags & CorFlags.Requires32Bit) == 0;
+            }
+            default:
+                return false;
+        }
     }
 
     private static void ThrowOnInvalidRuntimeConfiguration(RuntimeConfigurationArgs configArgs)

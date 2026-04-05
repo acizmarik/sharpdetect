@@ -2,7 +2,6 @@
     "Target": 
     {
         "Path": "../../Samples/SimpleDataRace/bin/Debug/net10.0/SimpleDataRace.dll",
-        "Architecture": "X64",
         "RedirectInputOutput":
         {
             "SingleConsoleMode": true

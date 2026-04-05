@@ -2,7 +2,6 @@
     "Target": 
     {
         "Path": "../../Samples/SimpleDeadlock/bin/Debug/net10.0/SimpleDeadlock.dll",
-        "Architecture": "X64",
         "RedirectInputOutput":
         {
             "SingleConsoleMode": true

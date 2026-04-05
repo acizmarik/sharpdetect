@@ -178,9 +178,6 @@ public sealed class AnalysisWorker : IAnalysisWorker
     
     private string GetProfilerPath()
     {
-        if (RuntimeInformation.ProcessArchitecture != Architecture.X64)
-            throw new PlatformNotSupportedException($"Architecture: {RuntimeInformation.ProcessArchitecture}.");
-
         var path = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? _arguments.Runtime.Profiler.PathWindowsX64
             : RuntimeInformation.IsOSPlatform(OSPlatform.Linux)

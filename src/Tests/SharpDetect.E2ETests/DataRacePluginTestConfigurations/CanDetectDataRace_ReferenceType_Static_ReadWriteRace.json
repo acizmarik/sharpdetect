@@ -2,7 +2,6 @@
   "Target": {
     "Path": "../../../../SharpDetect.E2ETests.Subject/bin/%BUILD_CONFIGURATION%/%SDK%/SharpDetect.E2ETests.Subject.dll",
     "Args": "Test_DataRace_ReferenceType_Static_ReadWriteRace",
-    "Architecture": "X64",
     "RedirectInputOutput": {
       "SingleConsoleMode": true
     }

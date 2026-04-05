@@ -3,7 +3,6 @@
 
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CliFx.Infrastructure;
@@ -56,7 +55,6 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
 
         var target = new TargetConfigurationArgs(
             Path: targetAssemblyPath,
-            Architecture: RuntimeInformation.ProcessArchitecture,
             Args: null,
             WorkingDirectory: null,
             AdditionalEnvironmentVariables: null,
@@ -64,14 +62,11 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
                 SingleConsoleMode: true,
                 StdinFilePath: null,
                 StdoutFilePath: null,
-                StderrFilePath: null
-            )
-        );
-
+                StderrFilePath: null));
+        
         var runtime = new RuntimeConfigurationArgs(
             Host: null,
-            Profiler: null
-        );
+            Profiler: null);
 
         var analysis = new AnalysisPluginConfigurationArgs(
             Path: defaultPluginPath,
@@ -80,8 +75,7 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
             RenderReport: true,
             LogLevel: LogLevel.Warning,
             TemporaryFilesFolder: null,
-            ReportsFolder: null
-        );
+            ReportsFolder: null);
 
         return new RunCommandArgs(runtime, target, analysis);
     }
