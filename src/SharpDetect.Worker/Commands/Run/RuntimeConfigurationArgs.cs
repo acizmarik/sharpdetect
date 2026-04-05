@@ -5,4 +5,10 @@ namespace SharpDetect.Worker.Commands.Run;
 
 public record RuntimeConfigurationArgs(
     HostConfigurationArgs? Host, 
-    ProfilerConfigurationArgs Profiler);
+    ProfilerConfigurationArgs? Profiler)
+{
+    public ProfilerConfigurationArgs Profiler { get; init; } = Profiler ?? new ProfilerConfigurationArgs();
+    public static readonly RuntimeConfigurationArgs Default = new(
+        Host: null,
+        Profiler: new ProfilerConfigurationArgs());
+}

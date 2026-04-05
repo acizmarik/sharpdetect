@@ -182,10 +182,13 @@ public sealed class AnalysisWorker : IAnalysisWorker
             throw new PlatformNotSupportedException($"Architecture: {RuntimeInformation.ProcessArchitecture}.");
 
         var path = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? _arguments.Runtime.Profiler.Path.WindowsX64
+            ? _arguments.Runtime.Profiler.PathWindowsX64
             : RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
-                ? _arguments.Runtime.Profiler.Path.LinuxX64
+                ? _arguments.Runtime.Profiler.PathLinuxX64
                 : throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
+        
+        if (path is null)
+            throw new ArgumentException($"Profiler path for {RuntimeInformation.OSDescription} was not configured.");
         
         return Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
     }

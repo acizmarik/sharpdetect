@@ -53,10 +53,6 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
     {
         // Defaults
         const string defaultPluginPath = "%SHARPDETECT_ROOT%/Plugins/SharpDetect.Plugins.dll";
-        const string defaultProfilerClsid = "{b2c60596-b36d-460b-902a-3d91f5878529}";
-        var profilerPathArgs = new ProfilerPathArgs(
-            WindowsX64: "%SHARPDETECT_ROOT%/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
-            LinuxX64: "%SHARPDETECT_ROOT%/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so");
 
         var target = new TargetConfigurationArgs(
             Path: targetAssemblyPath,
@@ -74,11 +70,7 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
 
         var runtime = new RuntimeConfigurationArgs(
             Host: null,
-            Profiler: new ProfilerConfigurationArgs(
-                Clsid: defaultProfilerClsid,
-                Path: profilerPathArgs,
-                LogLevel: ProfilerLogLevel.Warning
-            )
+            Profiler: null
         );
 
         var analysis = new AnalysisPluginConfigurationArgs(

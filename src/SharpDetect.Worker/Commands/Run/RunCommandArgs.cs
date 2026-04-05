@@ -4,9 +4,12 @@
 namespace SharpDetect.Worker.Commands.Run;
 
 public record RunCommandArgs(
-    RuntimeConfigurationArgs Runtime,
+    RuntimeConfigurationArgs? Runtime,
     TargetConfigurationArgs Target,
-    AnalysisPluginConfigurationArgs Analysis);
+    AnalysisPluginConfigurationArgs Analysis)
+{
+    public RuntimeConfigurationArgs Runtime { get; init; } = Runtime ?? RuntimeConfigurationArgs.Default;
+}
 
 
 

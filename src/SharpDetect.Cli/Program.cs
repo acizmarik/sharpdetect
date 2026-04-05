@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using CliFx;
+using SharpDetect.Worker.Configuration;
 
 namespace SharpDetect.Cli;
 
@@ -11,12 +12,10 @@ public static class Program
     private const string ProgramTitle = "SharpDetect";
     private const string ProgramDescription = "Dynamic analysis framework for .NET programs";
     private const string ExecutableName = "sharpdetect";
-    private const string InstallationRootEnvVariable = "SHARPDETECT_ROOT";
     
     public static async Task<int> Main()
     {
-        Environment.SetEnvironmentVariable(InstallationRootEnvVariable, GetSharpDetectRoot());
-
+        PrepareEnvironment();
         var builder = new CliApplicationBuilder()
             .AddCommandsFromThisAssembly()
             .SetTitle(ProgramTitle)
@@ -27,17 +26,20 @@ public static class Program
         return await builder.Build().RunAsync();
     }
 
+    private static void PrepareEnvironment()
+    {
+        const string sharpDetectRootEnvVariableName = EnvironmentUtils.InstallationRootEnvVariable;
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(sharpDetectRootEnvVariableName)))
+            return;
+        
+        var sharpDetectRoot = EnvironmentUtils.GetSharpDetectRoot();
+        Environment.SetEnvironmentVariable(sharpDetectRootEnvVariableName, sharpDetectRoot);
+    }
+    
     [Conditional("RELEASE")]
     private static void DisableDebugModeInRelease(CliApplicationBuilder builder)
     {
         builder.AllowDebugMode(isAllowed: false);
         builder.AllowPreviewMode(isAllowed: false);
-    }
-
-    private static string GetSharpDetectRoot()
-    {
-        var parentDirectory = Path.GetDirectoryName(typeof(Program).Assembly.Location)!;
-        return Path.GetFullPath(parentDirectory)
-            .Replace(Path.DirectorySeparatorChar, '/');
     }
 }

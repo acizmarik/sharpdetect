@@ -1,10 +1,15 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Text.Json.Serialization;
+
 namespace SharpDetect.Worker.Commands.Run;
 
 public record ProfilerConfigurationArgs(
-    ProfilerPathArgs Path,
+    [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
+    string? PathWindowsX64 = "%SHARPDETECT_ROOT%/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
+    [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
+    string? PathLinuxX64 = "%SHARPDETECT_ROOT%/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so",
     string Clsid = ProfilerConfigurationArgs.ConcurrencyProfilerClsid,
     ProfilerLogLevel LogLevel = ProfilerLogLevel.Warning)
 {

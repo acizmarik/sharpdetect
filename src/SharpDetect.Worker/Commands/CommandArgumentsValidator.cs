@@ -29,25 +29,26 @@ public static class CommandArgumentsValidator
     private static void ThrowOnInvalidRuntimeConfiguration(RuntimeConfigurationArgs configArgs)
     {
         var profilerClsid = configArgs.Profiler.Clsid;
-        var profilerPaths = configArgs.Profiler.Path;
 
         if (!Guid.TryParse(profilerClsid, out var parsedClsid) || parsedClsid == Guid.Empty)
             throw new ArgumentException($"Invalid profiler CLSID: \"{profilerClsid}\".");
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            if (string.IsNullOrEmpty(profilerPaths.WindowsX64))
+            var windowsProfilerPath = configArgs.Profiler.PathWindowsX64;
+            if (string.IsNullOrEmpty(windowsProfilerPath))
                 throw new ArgumentException($"No profiler path specified for Windows x64 platform.");
-            if (!File.Exists(profilerPaths.WindowsX64))
-                throw new ArgumentException($"Could not find Windows x64 profiler library: \"{profilerPaths.WindowsX64}\".");
+            if (!File.Exists(windowsProfilerPath))
+                throw new ArgumentException($"Could not find Windows x64 profiler library: \"{windowsProfilerPath}\".");
         }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            if (string.IsNullOrEmpty(profilerPaths.LinuxX64))
+            var linuxProfilerPath = configArgs.Profiler.PathLinuxX64;
+            if (string.IsNullOrEmpty(linuxProfilerPath))
                 throw new ArgumentException($"No profiler path specified for Linux x64 platform.");
-            if (!File.Exists(profilerPaths.LinuxX64))
-                throw new ArgumentException($"Could not find Linux x64 profiler library: \"{profilerPaths.LinuxX64}\".");
+            if (!File.Exists(linuxProfilerPath))
+                throw new ArgumentException($"Could not find Linux x64 profiler library: \"{linuxProfilerPath}\".");
         }
 
         if (configArgs.Host is { } host)
