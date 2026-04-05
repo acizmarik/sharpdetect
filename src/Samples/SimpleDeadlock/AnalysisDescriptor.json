@@ -9,7 +9,6 @@
     },
     "Analysis": 
     {
-        "Path": "../../Extensibility/SharpDetect.Plugins/bin/Debug/net10.0/SharpDetect.Plugins.dll",
         "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
         "RenderReport": true
     }

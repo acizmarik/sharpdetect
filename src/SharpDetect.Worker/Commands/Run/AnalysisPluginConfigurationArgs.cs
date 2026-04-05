@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace SharpDetect.Worker.Commands.Run;
 
 public record AnalysisPluginConfigurationArgs(
-    [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
-    string Path, 
     string FullTypeName,
     object? Configuration,
+    [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
+    string Path = "%SHARPDETECT_ROOT%/SharpDetect.Plugins.dll",
     bool RenderReport = false,
     LogLevel LogLevel = LogLevel.Warning,
     [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
