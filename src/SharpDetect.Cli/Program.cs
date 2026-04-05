@@ -15,7 +15,7 @@ public static class Program
     
     public static async Task<int> Main()
     {
-        PrepareEnvironment();
+        EnvironmentUtils.Initialize();
         var builder = new CliApplicationBuilder()
             .AddCommandsFromThisAssembly()
             .SetTitle(ProgramTitle)
@@ -24,16 +24,6 @@ public static class Program
         DisableDebugModeInRelease(builder);
         
         return await builder.Build().RunAsync();
-    }
-
-    private static void PrepareEnvironment()
-    {
-        const string sharpDetectRootEnvVariableName = EnvironmentUtils.InstallationRootEnvVariable;
-        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(sharpDetectRootEnvVariableName)))
-            return;
-        
-        var sharpDetectRoot = EnvironmentUtils.GetSharpDetectRoot();
-        Environment.SetEnvironmentVariable(sharpDetectRootEnvVariableName, sharpDetectRoot);
     }
     
     [Conditional("RELEASE")]

@@ -7,9 +7,9 @@ namespace SharpDetect.Worker.Commands.Run;
 
 public record ProfilerConfigurationArgs(
     [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
-    string? PathWindowsX64 = "%SHARPDETECT_ROOT%/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
+    string? PathWindowsX64 = "%SHARPDETECT_PROFILERS%/win-x64/SharpDetect.Concurrency.Profiler.dll",
     [property: JsonConverter(typeof(NormalizedPathJsonConverter))]
-    string? PathLinuxX64 = "%SHARPDETECT_ROOT%/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so",
+    string? PathLinuxX64 = "%SHARPDETECT_PROFILERS%/linux-x64/SharpDetect.Concurrency.Profiler.so",
     string Clsid = ProfilerConfigurationArgs.ConcurrencyProfilerClsid,
     ProfilerLogLevel LogLevel = ProfilerLogLevel.Warning)
 {
