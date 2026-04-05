@@ -4,6 +4,9 @@
 namespace SharpDetect.Worker.Commands.Run;
 
 public record ProfilerConfigurationArgs(
-    string Clsid,
-    ProfilerPathArgs Path, 
-    ProfilerLogLevel LogLevel = ProfilerLogLevel.Warning);
+    ProfilerPathArgs Path,
+    string Clsid = ProfilerConfigurationArgs.ConcurrencyProfilerClsid,
+    ProfilerLogLevel LogLevel = ProfilerLogLevel.Warning)
+{
+    public const string ConcurrencyProfilerClsid = "{b2c60596-b36d-460b-902a-3d91f5878529}";
+}
