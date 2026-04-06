@@ -13,7 +13,7 @@
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
-    "FullTypeName": "SharpDetect.E2ETests.Utils.TestDeadlockPlugin",
+    "PluginFullTypeName": "SharpDetect.E2ETests.Utils.TestDeadlockPlugin",
     "RenderReport": false,
     "LogLevel": "Information"
   }

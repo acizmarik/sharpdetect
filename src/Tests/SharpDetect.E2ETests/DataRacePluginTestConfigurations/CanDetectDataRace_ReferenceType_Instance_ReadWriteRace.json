@@ -13,7 +13,7 @@
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
-    "FullTypeName": "%PLUGIN_TYPE%",
+    "PluginFullTypeName": "%PLUGIN_TYPE%",
     "RenderReport": false,
     "LogLevel": "Information",
     "Configuration":

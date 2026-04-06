@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CliFx.Infrastructure;
@@ -87,13 +88,27 @@ internal sealed class RunCommandHandler : IDisposable
     private Type LoadPluginInfo()
     {
         var assemblyPath = _arguments.Analysis.Path;
-        var pluginType = _arguments.Analysis.FullTypeName;
+        var pluginTypeName = _arguments.Analysis.PluginFullTypeName;
+        var pluginName = _arguments.Analysis.PluginName;
 
         try
         {
             var assembly = Assembly.LoadFrom(Path.GetFullPath(assemblyPath));
-            return assembly.ManifestModule.GetType(pluginType, ignoreCase: false, throwOnError: true)
-                ?? throw new TypeLoadException($"Could not find type: \"{pluginType}\" in assembly \"{assembly.FullName}\".");
+
+            if (!string.IsNullOrWhiteSpace(pluginTypeName))
+            {
+                return assembly.ManifestModule.GetType(pluginTypeName, ignoreCase: false, throwOnError: true)
+                    ?? throw new TypeLoadException($"Could not find type: \"{pluginTypeName}\" in assembly \"{assembly.FullName}\".");
+            }
+
+            var match = assembly
+                .GetTypes().Concat(assembly.GetForwardedTypes())
+                .SingleOrDefault(type =>
+                    type.GetCustomAttribute<PluginMetadataAttribute>()?.Name
+                        .Equals(pluginName, StringComparison.OrdinalIgnoreCase) == true);
+
+            return match
+                ?? throw new TypeLoadException($"Could not find plugin named \"{pluginName}\" in assembly \"{assembly.FullName}\".");
         }
         catch (Exception e)
         {

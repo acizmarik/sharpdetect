@@ -86,14 +86,15 @@ public static class CommandArgumentsValidator
     
     private static void ThrowOnInvalidAnalysisConfiguration(AnalysisPluginConfigurationArgs configArgs)
     {
-        var pluginTypeName = configArgs.FullTypeName;
+        var pluginTypeName = configArgs.PluginFullTypeName;
+        var pluginName = configArgs.PluginName;
         var pluginPath = configArgs.Path;
 
         if (string.IsNullOrWhiteSpace(pluginPath))
             throw new ArgumentException($"Invalid plugin path: \"{pluginPath}\".");
         if (!File.Exists(pluginPath))
             throw new ArgumentException($"Could not find plugin assembly: \"{pluginPath}\".");
-        if (string.IsNullOrWhiteSpace(pluginTypeName))
-            throw new ArgumentException($"Invalid plugin type fullname: \"{pluginTypeName}\".");
+        if (string.IsNullOrWhiteSpace(pluginTypeName) && string.IsNullOrWhiteSpace(pluginName))
+            throw new ArgumentException($"Either \"{nameof(configArgs.PluginFullTypeName)}\" or \"{configArgs.PluginName}\" must be specified in the analysis configuration.");
     }
 }

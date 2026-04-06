@@ -60,13 +60,13 @@ internal static class TestContextFactory
             },
             Analysis = args.Analysis with
             {
-                FullTypeName = overridePluginTypeFullName ?? args.Analysis.FullTypeName
+                PluginFullTypeName = overridePluginTypeFullName ?? args.Analysis.PluginFullTypeName
             }
         };
         
-        var pluginType = Type.GetType(args.Analysis.FullTypeName)
-                         ?? typeof(Plugins.Deadlock.DeadlockInfo).Assembly.GetType(args.Analysis.FullTypeName)
-                         ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.FullTypeName}.");
+        var pluginType = Type.GetType(args.Analysis.PluginFullTypeName!)
+                         ?? typeof(Plugins.Deadlock.DeadlockInfo).Assembly.GetType(args.Analysis.PluginFullTypeName!)
+                         ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.PluginFullTypeName}.");
             
         return new TestDisposableServiceProvider(new AnalysisServiceProviderBuilder(args)
             .WithTimeProvider(timeProvider)

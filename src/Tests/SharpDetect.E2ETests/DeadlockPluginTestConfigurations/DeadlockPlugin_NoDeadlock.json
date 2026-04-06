@@ -13,7 +13,7 @@
   },
   "Analysis": {
     "Path": "../../../../../Extensibility/SharpDetect.Plugins/bin/%BUILD_CONFIGURATION%/%SDK%/SharpDetect.Plugins.dll",
-    "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
+    "PluginFullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
     "RenderReport": false,
     "LogLevel": "Information"
   }

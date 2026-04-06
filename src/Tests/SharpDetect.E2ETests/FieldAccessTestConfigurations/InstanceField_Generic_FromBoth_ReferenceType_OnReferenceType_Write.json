@@ -13,7 +13,7 @@
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
-    "FullTypeName": "SharpDetect.E2ETests.Utils.TestExecutionOrderingPlugin",
+    "PluginFullTypeName": "SharpDetect.E2ETests.Utils.TestExecutionOrderingPlugin",
     "RenderReport": false,
     "LogLevel": "Information"
   }

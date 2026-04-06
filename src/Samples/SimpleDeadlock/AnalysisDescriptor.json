@@ -9,7 +9,7 @@
     },
     "Analysis": 
     {
-        "FullTypeName": "SharpDetect.Plugins.Deadlock.DeadlockPlugin",
+        "PluginName": "Deadlock",
         "RenderReport": true
     }
 }

@@ -9,7 +9,7 @@
     },
     "Analysis": 
     {
-        "FullTypeName": "SharpDetect.Plugins.DataRace.FastTrack.FastTrackPlugin",
+        "PluginName": "FastTrack",
         "RenderReport": true
     }
 }
