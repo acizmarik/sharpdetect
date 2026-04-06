@@ -5,7 +5,6 @@ namespace SharpDetect.Plugins.DataRace.Common;
 
 public interface IDataRacePluginConfiguration
 {
-    bool SuppressAnalysisOfStaticDelegates { get; }
     string[] ExcludedFieldAccessModulePrefixes { get; }
 }
 

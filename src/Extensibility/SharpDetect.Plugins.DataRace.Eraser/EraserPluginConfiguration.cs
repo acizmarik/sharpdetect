@@ -8,7 +8,6 @@ namespace SharpDetect.Plugins.DataRace.Eraser;
 
 public sealed class EraserPluginConfiguration : PluginOptionsConfiguration, IPluginOptionsConfig<EraserPluginConfiguration>, IDataRacePluginConfiguration
 {
-    public bool SuppressAnalysisOfStaticDelegates { get; init; } = true;
     public string[] ExcludedFieldAccessModulePrefixes { get; init; } = [];
     public static EraserPluginConfiguration Default => new();
 }
