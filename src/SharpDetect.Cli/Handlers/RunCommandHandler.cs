@@ -22,11 +22,13 @@ internal sealed class RunCommandHandler : IDisposable
 {
     private readonly RunCommandArgs _arguments;
     private readonly IServiceProvider _serviceProvider;
+    private readonly string _rawConfigurationJson;
     private bool _disposed;
 
     public RunCommandHandler(string configurationFilePath)
     {
-        _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(configurationFilePath);
+        _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
+        _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
         CommandArgumentsValidator.ValidateRunCommandArguments(_arguments);
 
         var pluginType = LoadPluginInfo();
@@ -62,26 +64,19 @@ internal sealed class RunCommandHandler : IDisposable
         var reportFileName = _arguments.Analysis.ReportFileName;
         var writer = _serviceProvider.GetRequiredService<IReportSummaryWriter>();
         var renderer = _serviceProvider.GetRequiredService<IReportSummaryRenderer>();
-        var configurationJson = SerializeConfigurationJson(_arguments);
-        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates, configurationJson);
+        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates, _rawConfigurationJson);
         return writer.Write(reportFileName, reportDirectory, context, renderer, cancellationToken);
     }
 
-    private static string SerializeConfigurationJson(object configuration)
+    private static string LoadConfigurationJson(string configurationPath)
     {
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                Converters = { new JsonStringEnumConverter() }
-            };
-            return JsonSerializer.Serialize(configuration, options);
+            return File.ReadAllText(configurationPath);
         }
-        catch
+        catch (Exception exception)
         {
-            return "<unable-to-serialize-configuration>";
+            throw new IOException($"Could not load configuration file from path: \"{configurationPath}\".", exception);
         }
     }
 
