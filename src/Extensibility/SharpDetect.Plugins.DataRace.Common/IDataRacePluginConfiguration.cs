@@ -5,6 +5,7 @@ namespace SharpDetect.Plugins.DataRace.Common;
 
 public interface IDataRacePluginConfiguration
 {
-    string[] ExcludedFieldAccessModulePrefixes { get; }
+    bool EnableFieldsAccessInstrumentation { get; }
+    string[] SkipInstrumentationForAssemblies { get; }
 }
 

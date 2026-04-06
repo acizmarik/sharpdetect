@@ -78,8 +78,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
-                EnableFieldsAccessInstrumentation = true,
-                configuration.ExcludedFieldAccessModulePrefixes
+                configuration.EnableFieldsAccessInstrumentation,
+                configuration.SkipInstrumentationForAssemblies
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 

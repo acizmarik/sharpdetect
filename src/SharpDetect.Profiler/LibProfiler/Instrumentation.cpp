@@ -14,11 +14,11 @@
 
 static bool ShouldSkipInstrumentation(
 	IN const LibProfiler::ModuleDef& moduleDef,
-	IN const std::vector<std::string>& excludedFieldAccessModulePrefixes)
+	IN const std::vector<std::string>& skipInstrumentationForAssemblies)
 {
-	for (auto&& excludedNamespacePrefix : excludedFieldAccessModulePrefixes)
+	for (auto&& skippedNamespacePrefix : skipInstrumentationForAssemblies)
 	{
-		if (moduleDef.GetName().starts_with(excludedNamespacePrefix))
+		if (moduleDef.GetName().starts_with(skippedNamespacePrefix))
 			return true;
 	}
 
@@ -33,7 +33,7 @@ HRESULT LibProfiler::PatchMethodBody(
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 	IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
 	IN const BOOL enableFieldsAccessInstrumentation,
-	IN const std::vector<std::string>& excludedFieldAccessModulePrefixes)
+	IN const std::vector<std::string>& skipInstrumentationForAssemblies)
 {
 	if (tokensToPatch.empty() && (!enableFieldsAccessInstrumentation || injectedMethods.empty()))
 		return E_FAIL;
@@ -74,7 +74,7 @@ HRESULT LibProfiler::PatchMethodBody(
 
 		if (enableFieldsAccessInstrumentation)
 		{
-			if (ShouldSkipInstrumentation(moduleDef, excludedFieldAccessModulePrefixes))
+			if (ShouldSkipInstrumentation(moduleDef, skipInstrumentationForAssemblies))
 				continue;
 
 			// Static field access

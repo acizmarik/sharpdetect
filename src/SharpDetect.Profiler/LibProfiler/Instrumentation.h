@@ -27,7 +27,7 @@ namespace LibProfiler
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 		IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
 		IN BOOL enableFieldsAccessInstrumentation,
-		IN const std::vector<std::string>& excludedFieldAccessModulePrefixes);
+		IN const std::vector<std::string>& skipInstrumentationForAssemblies);
 
 	HRESULT CreateManagedWrapperMethod(
 		IN ICorProfilerInfo& corProfilerInfo,

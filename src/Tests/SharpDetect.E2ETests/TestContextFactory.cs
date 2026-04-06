@@ -48,8 +48,9 @@ internal static class TestContextFactory
         #else
         #error Unknown build configuration. Expected DEBUG or RELEASE.
         #endif
-        
-        var args = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(filename);
+
+        var config = File.ReadAllText(filename);
+        var args = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(config);
         args = args with
         {
             Target = args.Target with

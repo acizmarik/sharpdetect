@@ -8,6 +8,7 @@ namespace SharpDetect.Plugins.DataRace.Eraser;
 
 public sealed class EraserPluginConfiguration : PluginOptionsConfiguration, IPluginOptionsConfig<EraserPluginConfiguration>, IDataRacePluginConfiguration
 {
-    public string[] ExcludedFieldAccessModulePrefixes { get; init; } = [];
+    public bool EnableFieldsAccessInstrumentation { get; init; } = true;
+    public string[] SkipInstrumentationForAssemblies { get; init; } = [];
     public static EraserPluginConfiguration Default => new();
 }
