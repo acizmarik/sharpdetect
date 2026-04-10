@@ -11,7 +11,7 @@ using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Handlers;
 
-internal sealed class InitCommandHandler(string outputFile, string pluginType, string targetAssemblyPath)
+internal sealed class InitCommandHandler(string outputFile, string pluginNameOrTypeFullName, string targetAssemblyPath)
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
@@ -41,43 +41,28 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
             return;
         }
 
-        var templateArgs = CreateTemplateConfiguration();
-        var json = JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
-
+        var json = CreateTemplateConfigurationJson();
         await File.WriteAllTextAsync(outputFile, json, cancellationToken);
         await console.Output.WriteLineAsync($"Configuration file created: {Path.GetFullPath(outputFile)}");
     }
 
+    internal string CreateTemplateConfigurationJson()
+    {
+        var templateArgs = CreateTemplateConfiguration();
+        return JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
+    }
+
     private RunCommandArgs CreateTemplateConfiguration()
     {
-        // Defaults
-        const string defaultPluginPath = "%SHARPDETECT_ROOT%/Plugins/SharpDetect.Plugins.dll";
-
         var target = new TargetConfigurationArgs(
-            Path: targetAssemblyPath,
-            Args: null,
-            WorkingDirectory: null,
-            AdditionalEnvironmentVariables: null,
-            RedirectInputOutput: new RedirectInputOutputConfigurationArgs(
-                SingleConsoleMode: true,
-                StdinFilePath: null,
-                StdoutFilePath: null,
-                StderrFilePath: null));
-        
-        var runtime = new RuntimeConfigurationArgs(
-            Host: null,
-            Profiler: null);
+            path: targetAssemblyPath,
+            redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true));
 
-        var analysis = new AnalysisPluginConfigurationArgs(
-            Path: defaultPluginPath,
-            PluginFullTypeName: pluginType,
-            Configuration: null,
-            RenderReport: true,
-            LogLevel: LogLevel.Warning,
-            TemporaryFilesFolder: null,
-            ReportsFolder: null);
+        var analysis = pluginNameOrTypeFullName.Contains('.')
+            ? new AnalysisPluginConfigurationArgs(pluginFullTypeName: pluginNameOrTypeFullName, renderReport: true)
+            : new AnalysisPluginConfigurationArgs(pluginName: pluginNameOrTypeFullName, renderReport: true);
 
-        return new RunCommandArgs(runtime, target, analysis);
+        return new RunCommandArgs(Runtime: null, target, analysis);
     }
 
     private static bool IsValidDotNetAssembly(string filePath)

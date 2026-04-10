@@ -29,6 +29,11 @@ public static class EnvironmentUtils
     {
         return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
     }
+
+    public static string ExpandEnvironmentVariablesForPath(string path)
+    {
+        return Environment.ExpandEnvironmentVariables(path).Replace(Path.DirectorySeparatorChar, '/');
+    }
     
     internal static string GetSharpDetectProfilers()
     {

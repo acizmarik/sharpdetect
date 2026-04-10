@@ -53,16 +53,24 @@ internal static class TestContextFactory
         var args = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(config);
         args = args with
         {
-            Target = args.Target with
-            {
-                Path = args.Target.Path
+            Target = new TargetConfigurationArgs(
+                args.Target.Path
                     .Replace("%SDK%", sdk)
-                    .Replace("%BUILD_CONFIGURATION%", buildConfiguration)
-            },
-            Analysis = args.Analysis with
-            {
-                PluginFullTypeName = overridePluginTypeFullName ?? args.Analysis.PluginFullTypeName
-            }
+                    .Replace("%BUILD_CONFIGURATION%", buildConfiguration),
+                args.Target.Args,
+                args.Target.WorkingDirectory,
+                args.Target.AdditionalEnvironmentVariables,
+                args.Target.RedirectInputOutput),
+            Analysis = new AnalysisPluginConfigurationArgs(
+                args.Analysis.Configuration,
+                overridePluginTypeFullName ?? args.Analysis.PluginFullTypeName,
+                args.Analysis.PluginName,
+                args.Analysis.Path,
+                args.Analysis.RenderReport,
+                args.Analysis.LogLevel,
+                args.Analysis.TemporaryFilesFolder,
+                args.Analysis.ReportsFolder,
+                args.Analysis.ReportFileName)
         };
         
         var pluginType = Type.GetType(args.Analysis.PluginFullTypeName!)

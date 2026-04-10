@@ -3,7 +3,7 @@
 
 namespace SharpDetect.Worker.Commands.Run;
 
-public record RunCommandArgs(
+public sealed record RunCommandArgs(
     RuntimeConfigurationArgs? Runtime,
     TargetConfigurationArgs Target,
     AnalysisPluginConfigurationArgs Analysis)

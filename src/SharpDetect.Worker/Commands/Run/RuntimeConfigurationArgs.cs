@@ -3,7 +3,7 @@
 
 namespace SharpDetect.Worker.Commands.Run;
 
-public record RuntimeConfigurationArgs(
+public sealed record RuntimeConfigurationArgs(
     HostConfigurationArgs? Host, 
     ProfilerConfigurationArgs? Profiler)
 {
