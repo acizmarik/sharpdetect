@@ -17,6 +17,7 @@ using SharpDetect.Plugins.ExecutionOrdering;
 
 namespace SharpDetect.Plugins.Deadlock;
 
+[PluginMetadata(Name = "Deadlock", Description = "Wait-for graph deadlock detector")]
 public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Deadlock";

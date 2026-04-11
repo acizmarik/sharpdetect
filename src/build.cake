@@ -73,12 +73,6 @@ Task("Build-Managed")
     {
         Configuration = configuration
     });
-    
-    EnsureDirectoryExists("artifacts/Plugins");
-    DotNetPublish("./Extensibility/SharpDetect.Plugins", new DotNetPublishSettings
-    {
-        Configuration = configuration
-    });
 });
 
 Task("Build-IPQ")
@@ -172,13 +166,6 @@ Task("CI-Prepare-Managed")
     DotNetPublish("./SharpDetect.Cli", new DotNetPublishSettings
     {
         Configuration = configuration
-    });
-    
-    EnsureDirectoryExists("artifacts/Plugins");
-    DotNetPublish("./Extensibility/SharpDetect.Plugins", new DotNetPublishSettings
-    {
-        Configuration = configuration,
-        OutputDirectory = "artifacts/Plugins"
     });
 });
 

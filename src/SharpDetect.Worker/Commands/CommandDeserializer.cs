@@ -14,14 +14,13 @@ public static class CommandDeserializer
         PropertyNamingPolicy = null
     };
     
-    public static TCommandArgs DeserializeCommandArguments<TCommandArgs>(string configurationFilePath)
+    public static TCommandArgs DeserializeCommandArguments<TCommandArgs>(string configuration)
         where TCommandArgs : class
     {
         try
         {
-            var configurationText = File.ReadAllText(configurationFilePath);
-            var deserialized = JsonSerializer.Deserialize<TCommandArgs>(configurationText, _jsonSerializerOptions) 
-                   ?? throw new JsonException($"Could not parse file: \"{configurationFilePath}\".");
+            var deserialized = JsonSerializer.Deserialize<TCommandArgs>(configuration, _jsonSerializerOptions) 
+                   ?? throw new JsonException("Could not parse provided configuration.");
             return ExpandEnvironmentVariables<TCommandArgs>(deserialized);
         }
         catch (Exception e)

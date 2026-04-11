@@ -18,6 +18,7 @@ using SharpDetect.Plugins.PerThreadOrdering;
 
 namespace SharpDetect.Plugins.DataRace.Eraser;
 
+[PluginMetadata(Name = "Eraser", Description = "Lock-set data race detector")]
 public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "DataRace";
@@ -75,8 +76,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                     FieldAccessDescriptors.GetAllMethods()))
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
-                EnableFieldsAccessInstrumentation = true,
-                configuration.ExcludedFieldAccessModulePrefixes
+                configuration.EnableFieldsAccessInstrumentation,
+                configuration.SkipInstrumentationForAssemblies
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
 

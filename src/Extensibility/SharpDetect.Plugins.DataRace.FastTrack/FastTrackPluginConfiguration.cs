@@ -8,8 +8,8 @@ namespace SharpDetect.Plugins.DataRace.FastTrack;
 
 public sealed class FastTrackPluginConfiguration : PluginOptionsConfiguration, IPluginOptionsConfig<FastTrackPluginConfiguration>, IDataRacePluginConfiguration
 {
-    public bool SuppressAnalysisOfStaticDelegates { get; init; } = true;
-    public string[] ExcludedFieldAccessModulePrefixes { get; init; } = [];
+    public bool EnableFieldsAccessInstrumentation { get; init; } = true;
+    public string[] SkipInstrumentationForAssemblies { get; init; } = [];
     public static FastTrackPluginConfiguration Default => new();
 }
 

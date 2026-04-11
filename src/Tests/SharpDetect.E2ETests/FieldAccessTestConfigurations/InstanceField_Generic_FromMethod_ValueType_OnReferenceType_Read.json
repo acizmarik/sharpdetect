@@ -2,24 +2,18 @@
   "Target": {
     "Path": "../../../../SharpDetect.E2ETests.Subject/bin/%BUILD_CONFIGURATION%/%SDK%/SharpDetect.E2ETests.Subject.dll",
     "Args": "Test_Field_Generic_FromMethod_ValueType_OnReferenceType_Instance_Read",
-    "Architecture": "X64",
     "RedirectInputOutput": {
       "SingleConsoleMode": true
     }
   },
   "Runtime": {
     "Profiler": {
-      "Clsid": "{b2c60596-b36d-460b-902a-3d91f5878529}",
-      "Path": {
-        "WindowsX64": "../../../../../artifacts/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
-        "LinuxX64": "../../../../../artifacts/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so"
-      },
       "LogLevel": "Information"
     }
   },
   "Analysis": {
     "Path": "SharpDetect.E2ETests.dll",
-    "FullTypeName": "SharpDetect.E2ETests.Utils.TestExecutionOrderingPlugin",
+    "PluginFullTypeName": "SharpDetect.E2ETests.Utils.TestExecutionOrderingPlugin",
     "RenderReport": false,
     "LogLevel": "Information"
   }

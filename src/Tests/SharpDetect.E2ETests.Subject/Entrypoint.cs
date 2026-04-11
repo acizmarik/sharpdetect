@@ -428,12 +428,6 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_Task_SequentialTasks_WriteRead):
                     Test_NoDataRace_Task_SequentialTasks_WriteRead();
                     break;
-                case nameof(Test_StaticDelegate_WithSuppression):
-                    Test_StaticDelegate_WithSuppression();
-                    break;
-                case nameof(Test_StaticDelegate_WithoutSuppression):
-                    Test_StaticDelegate_WithoutSuppression();
-                    break;
             }
 
             // Disposables

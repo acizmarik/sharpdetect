@@ -3,7 +3,6 @@
 
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CliFx.Infrastructure;
@@ -12,7 +11,7 @@ using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Handlers;
 
-internal sealed class InitCommandHandler(string outputFile, string pluginType, string targetAssemblyPath)
+internal sealed class InitCommandHandler(string outputFile, string pluginNameOrTypeFullName, string targetAssemblyPath)
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
@@ -42,56 +41,28 @@ internal sealed class InitCommandHandler(string outputFile, string pluginType, s
             return;
         }
 
-        var templateArgs = CreateTemplateConfiguration();
-        var json = JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
-
+        var json = CreateTemplateConfigurationJson();
         await File.WriteAllTextAsync(outputFile, json, cancellationToken);
         await console.Output.WriteLineAsync($"Configuration file created: {Path.GetFullPath(outputFile)}");
     }
 
+    internal string CreateTemplateConfigurationJson()
+    {
+        var templateArgs = CreateTemplateConfiguration();
+        return JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
+    }
+
     private RunCommandArgs CreateTemplateConfiguration()
     {
-        // Defaults
-        const string defaultPluginPath = "%SHARPDETECT_ROOT%/Plugins/SharpDetect.Plugins.dll";
-        const string defaultProfilerClsid = "{b2c60596-b36d-460b-902a-3d91f5878529}";
-        var profilerPathArgs = new ProfilerPathArgs(
-            WindowsX64: "%SHARPDETECT_ROOT%/Profilers/win-x64/SharpDetect.Concurrency.Profiler.dll",
-            LinuxX64: "%SHARPDETECT_ROOT%/Profilers/linux-x64/SharpDetect.Concurrency.Profiler.so");
-
         var target = new TargetConfigurationArgs(
-            Path: targetAssemblyPath,
-            Architecture: RuntimeInformation.ProcessArchitecture,
-            Args: null,
-            WorkingDirectory: null,
-            AdditionalEnvironmentVariables: null,
-            RedirectInputOutput: new RedirectInputOutputConfigurationArgs(
-                SingleConsoleMode: true,
-                StdinFilePath: null,
-                StdoutFilePath: null,
-                StderrFilePath: null
-            )
-        );
+            path: targetAssemblyPath,
+            redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true));
 
-        var runtime = new RuntimeConfigurationArgs(
-            Host: null,
-            Profiler: new ProfilerConfigurationArgs(
-                Clsid: defaultProfilerClsid,
-                Path: profilerPathArgs,
-                LogLevel: ProfilerLogLevel.Warning
-            )
-        );
+        var analysis = pluginNameOrTypeFullName.Contains('.')
+            ? new AnalysisPluginConfigurationArgs(pluginFullTypeName: pluginNameOrTypeFullName, renderReport: true)
+            : new AnalysisPluginConfigurationArgs(pluginName: pluginNameOrTypeFullName, renderReport: true);
 
-        var analysis = new AnalysisPluginConfigurationArgs(
-            Path: defaultPluginPath,
-            FullTypeName: pluginType,
-            Configuration: null,
-            RenderReport: true,
-            LogLevel: LogLevel.Warning,
-            TemporaryFilesFolder: null,
-            ReportsFolder: null
-        );
-
-        return new RunCommandArgs(runtime, target, analysis);
+        return new RunCommandArgs(Runtime: null, target, analysis);
     }
 
     private static bool IsValidDotNetAssembly(string filePath)

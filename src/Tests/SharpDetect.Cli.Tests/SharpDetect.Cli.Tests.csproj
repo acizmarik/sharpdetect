@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <IsPackable>false</IsPackable>
@@ -19,8 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharpDetect.Worker\SharpDetect.Worker.csproj" />
+      <ProjectReference Include="..\..\SharpDetect.Cli\SharpDetect.Cli.csproj" />
     </ItemGroup>
 
 </Project>
-

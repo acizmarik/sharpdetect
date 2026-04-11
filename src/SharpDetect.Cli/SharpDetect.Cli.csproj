@@ -15,7 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Extensibility\SharpDetect.Plugins\SharpDetect.Plugins.csproj" />
     <ProjectReference Include="..\SharpDetect.Worker\SharpDetect.Worker.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SharpDetect.Cli.Tests" />
   </ItemGroup>
 
   <ItemGroup>

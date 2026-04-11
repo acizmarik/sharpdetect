@@ -48,25 +48,34 @@ internal static class TestContextFactory
         #else
         #error Unknown build configuration. Expected DEBUG or RELEASE.
         #endif
-        
-        var args = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(filename);
+
+        var config = File.ReadAllText(filename);
+        var args = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(config);
         args = args with
         {
-            Target = args.Target with
-            {
-                Path = args.Target.Path
+            Target = new TargetConfigurationArgs(
+                args.Target.Path
                     .Replace("%SDK%", sdk)
-                    .Replace("%BUILD_CONFIGURATION%", buildConfiguration)
-            },
-            Analysis = args.Analysis with
-            {
-                FullTypeName = overridePluginTypeFullName ?? args.Analysis.FullTypeName
-            }
+                    .Replace("%BUILD_CONFIGURATION%", buildConfiguration),
+                args.Target.Args,
+                args.Target.WorkingDirectory,
+                args.Target.AdditionalEnvironmentVariables,
+                args.Target.RedirectInputOutput),
+            Analysis = new AnalysisPluginConfigurationArgs(
+                args.Analysis.Configuration,
+                overridePluginTypeFullName ?? args.Analysis.PluginFullTypeName,
+                args.Analysis.PluginName,
+                args.Analysis.Path,
+                args.Analysis.RenderReport,
+                args.Analysis.LogLevel,
+                args.Analysis.TemporaryFilesFolder,
+                args.Analysis.ReportsFolder,
+                args.Analysis.ReportFileName)
         };
         
-        var pluginType = Type.GetType(args.Analysis.FullTypeName)
-                         ?? typeof(Plugins.Deadlock.DeadlockInfo).Assembly.GetType(args.Analysis.FullTypeName)
-                         ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.FullTypeName}.");
+        var pluginType = Type.GetType(args.Analysis.PluginFullTypeName!)
+                         ?? typeof(Plugins.Deadlock.DeadlockInfo).Assembly.GetType(args.Analysis.PluginFullTypeName!)
+                         ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.PluginFullTypeName}.");
             
         return new TestDisposableServiceProvider(new AnalysisServiceProviderBuilder(args)
             .WithTimeProvider(timeProvider)

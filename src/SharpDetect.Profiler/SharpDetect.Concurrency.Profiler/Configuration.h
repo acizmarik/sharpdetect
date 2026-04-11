@@ -30,7 +30,7 @@ namespace Profiler
         std::vector<MethodDescriptor> methodDescriptors;
         std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;
         BOOL enableFieldsAccessInstrumentation;
-        std::vector<std::string> excludedFieldAccessModulePrefixes;
+        std::vector<std::string> skipInstrumentationForAssemblies;
     };
 
 	void to_json(nlohmann::json& json, const Configuration& descriptor);

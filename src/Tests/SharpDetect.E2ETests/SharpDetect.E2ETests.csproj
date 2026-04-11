@@ -280,17 +280,11 @@
     <None Update="DataRacePluginTestConfigurations\NoDataRace_ThreadStatic_ReadWrite.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="DataRacePluginTestConfigurations\NoDataRace_StaticDelegate_WithSuppression.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="DataRacePluginTestConfigurations\NoDataRace_Task_SequentialTasks_WriteRead.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="DataRacePluginTestConfigurations\CanDetectDataRace_StaticDelegate_WithoutSuppression.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="DataRacePluginTestConfigurations\NoDataRace_VolatileField_Static_ReadWriteNoRace.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CliFx.Infrastructure;
@@ -21,11 +22,13 @@ internal sealed class RunCommandHandler : IDisposable
 {
     private readonly RunCommandArgs _arguments;
     private readonly IServiceProvider _serviceProvider;
+    private readonly string _rawConfigurationJson;
     private bool _disposed;
 
     public RunCommandHandler(string configurationFilePath)
     {
-        _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(configurationFilePath);
+        _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
+        _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
         CommandArgumentsValidator.ValidateRunCommandArguments(_arguments);
 
         var pluginType = LoadPluginInfo();
@@ -61,39 +64,46 @@ internal sealed class RunCommandHandler : IDisposable
         var reportFileName = _arguments.Analysis.ReportFileName;
         var writer = _serviceProvider.GetRequiredService<IReportSummaryWriter>();
         var renderer = _serviceProvider.GetRequiredService<IReportSummaryRenderer>();
-        var configurationJson = SerializeConfigurationJson(_arguments);
-        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates, configurationJson);
+        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates, _rawConfigurationJson);
         return writer.Write(reportFileName, reportDirectory, context, renderer, cancellationToken);
     }
 
-    private static string SerializeConfigurationJson(object configuration)
+    private static string LoadConfigurationJson(string configurationPath)
     {
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                Converters = { new JsonStringEnumConverter() }
-            };
-            return JsonSerializer.Serialize(configuration, options);
+            return File.ReadAllText(configurationPath);
         }
-        catch
+        catch (Exception exception)
         {
-            return "<unable-to-serialize-configuration>";
+            throw new IOException($"Could not load configuration file from path: \"{configurationPath}\".", exception);
         }
     }
 
     private Type LoadPluginInfo()
     {
         var assemblyPath = _arguments.Analysis.Path;
-        var pluginType = _arguments.Analysis.FullTypeName;
+        var pluginTypeName = _arguments.Analysis.PluginFullTypeName;
+        var pluginName = _arguments.Analysis.PluginName;
 
         try
         {
             var assembly = Assembly.LoadFrom(Path.GetFullPath(assemblyPath));
-            return assembly.ManifestModule.GetType(pluginType, ignoreCase: false, throwOnError: true)
-                ?? throw new TypeLoadException($"Could not find type: \"{pluginType}\" in assembly \"{assembly.FullName}\".");
+
+            if (!string.IsNullOrWhiteSpace(pluginTypeName))
+            {
+                return assembly.ManifestModule.GetType(pluginTypeName, ignoreCase: false, throwOnError: true)
+                    ?? throw new TypeLoadException($"Could not find type: \"{pluginTypeName}\" in assembly \"{assembly.FullName}\".");
+            }
+
+            var match = assembly
+                .GetTypes().Concat(assembly.GetForwardedTypes())
+                .SingleOrDefault(type =>
+                    type.GetCustomAttribute<PluginMetadataAttribute>()?.Name
+                        .Equals(pluginName, StringComparison.OrdinalIgnoreCase) == true);
+
+            return match
+                ?? throw new TypeLoadException($"Could not find plugin named \"{pluginName}\" in assembly \"{assembly.FullName}\".");
         }
         catch (Exception e)
         {

@@ -1135,24 +1135,6 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; }).Wait();
         }
 
-        public static void Test_StaticDelegate_WithSuppression()
-        {
-            // When SuppressAnalysisOfStaticDelegates is true (default), this should NOT be detected as a race
-            // Note: this is disabled by default because it is used by Roslyn to compile various constructs
-            var task1 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task1"); });
-            var task2 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task2"); });
-            Task.WaitAll(task1, task2);
-        }
-
-        public static void Test_StaticDelegate_WithoutSuppression()
-        {
-            // When SuppressAnalysisOfStaticDelegates is false, this SHOULD be detected as a race
-            // Note: this is disabled by default because it is used by Roslyn to compile various constructs
-            var task1 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task1"); });
-            var task2 = Task.Run(() => { DataRace.Test_StaticDelegate = () => Console.WriteLine("Task2"); });
-            Task.WaitAll(task1, task2);
-        }
-
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()
         {
             // Generate garbage
