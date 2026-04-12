@@ -110,6 +110,12 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskCompleteArgs)>(GetNextId(), RecordedEventType.TaskComplete, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         _plugin.TaskJoinFinished += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskJoinFinishArgs)>(GetNextId(), RecordedEventType.TaskJoinFinish, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.SemaphoreAcquireAttempted += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, SemaphoreAcquireAttemptArgs)>(GetNextId(), RecordedEventType.SemaphoreAcquire, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.SemaphoreAcquireReturned += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, SemaphoreAcquireResultArgs)>(GetNextId(), RecordedEventType.SemaphoreAcquireResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        _plugin.SemaphoreReleased += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, SemaphoreReleaseArgs)>(GetNextId(), RecordedEventType.SemaphoreReleaseResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
     }
     
     public IEnumerator<IEvent<ulong, RecordedEventType>> GetEnumerator()

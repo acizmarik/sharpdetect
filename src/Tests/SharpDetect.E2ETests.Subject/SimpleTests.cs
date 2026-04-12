@@ -1135,6 +1135,73 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; }).Wait();
         }
 
+        public static void Test_SemaphoreSlimMethods_WaitRelease1()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            sem.Wait();
+            sem.Release();
+        }
+
+        public static void Test_SemaphoreSlimMethods_WaitRelease2()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            sem.Wait(CancellationToken.None);
+            sem.Release();
+        }
+
+        public static void Test_SemaphoreSlimMethods_WaitRelease3()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            sem.Wait();
+            sem.Release(releaseCount: 1);
+        }
+
+        public static void Test_SemaphoreSlimMethods_TryWaitRelease1()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            if (sem.Wait(millisecondsTimeout: Timeout.Infinite))
+                sem.Release();
+        }
+
+        public static void Test_SemaphoreSlimMethods_TryWaitRelease2()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            if (sem.Wait(timeout: TimeSpan.FromMilliseconds(Timeout.Infinite)))
+                sem.Release();
+        }
+
+        public static void Test_SemaphoreSlimMethods_TryWaitRelease3()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            if (sem.Wait(millisecondsTimeout: Timeout.Infinite, cancellationToken: CancellationToken.None))
+                sem.Release();
+        }
+
+        public static void Test_SemaphoreSlimMethods_TryWaitRelease4()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            if (sem.Wait(timeout: TimeSpan.FromMilliseconds(Timeout.Infinite), cancellationToken: CancellationToken.None))
+                sem.Release();
+        }
+
+        public static void Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            var task1 = Task.Run(() =>
+            {
+                sem.Wait();
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                sem.Release();
+            });
+            var task2 = Task.Run(() =>
+            {
+                sem.Wait();
+                _ = DataRace.Test_DataRace_ValueType_Static;
+                sem.Release();
+            });
+            Task.WaitAll(task1, task2);
+        }
+
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()
         {
             // Generate garbage

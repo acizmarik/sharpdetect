@@ -39,6 +39,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public event Action<StaticFieldWriteArgs>? StaticFieldWritten;
     public event Action<InstanceFieldReadArgs>? InstanceFieldRead;
     public event Action<InstanceFieldWriteArgs>? InstanceFieldWritten;
+    public event Action<SemaphoreAcquireAttemptArgs>? SemaphoreAcquireAttempted;
+    public event Action<SemaphoreAcquireResultArgs>? SemaphoreAcquireReturned;
+    public event Action<SemaphoreReleaseArgs>? SemaphoreReleased;
 
     protected PerThreadOrderingPluginBase(
         IModuleBindContext moduleBindContext,
@@ -72,6 +75,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected void RaiseStaticFieldWritten(StaticFieldWriteArgs args) => StaticFieldWritten?.Invoke(args);
     protected void RaiseInstanceFieldRead(InstanceFieldReadArgs args) => InstanceFieldRead?.Invoke(args);
     protected void RaiseInstanceFieldWritten(InstanceFieldWriteArgs args) => InstanceFieldWritten?.Invoke(args);
+    protected void RaiseSemaphoreAcquireAttempted(SemaphoreAcquireAttemptArgs args) => SemaphoreAcquireAttempted?.Invoke(args);
+    protected void RaiseSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args) => SemaphoreAcquireReturned?.Invoke(args);
+    protected void RaiseSemaphoreReleased(SemaphoreReleaseArgs args) => SemaphoreReleased?.Invoke(args);
 
     [RecordedEventBind((ushort)RecordedEventType.LockAcquire)]
     [RecordedEventBind((ushort)RecordedEventType.LockTryAcquire)]
@@ -79,7 +85,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockTryAcquire)]
     public void OnLockAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, lockId) = ExtractLockContext(metadata, args);
+        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
         _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
         LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, lockId));
     }
@@ -144,7 +150,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorWaitAttempt)]
     public void OnMonitorWaitAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, lockId) = ExtractLockContext(metadata, args);
+        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
         OnBeforeWaitAttempt(id, lockId);
         _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
         ProcessWaitAttempt(id, args.ModuleId, args.MethodToken, lockId);
@@ -156,11 +162,41 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var frame = _callStackTracker.Peek(id);
         EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var lockId = ExtractLockIdFromFrame(id, frame);
+        var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
         var success = MemoryMarshal.Read<bool>(args.ReturnValue);
         ProcessWaitReturn(id, args.ModuleId, args.MethodToken, lockId, success);
     }
 
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreAcquire)]
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreTryAcquire)]
+    public void OnSemaphoreAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreAcquireResult)]
+    public void OnSemaphoreAcquireExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => HandleSemaphoreAcquireExit(metadata, args.ModuleId, args.MethodToken, isSuccess: true);
+
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreAcquireResult)]
+    public void OnSemaphoreAcquireExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var isSuccess = MemoryMarshal.Read<bool>(args.ReturnValue);
+        HandleSemaphoreAcquireExit(metadata, args.ModuleId, args.MethodToken, isSuccess);
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreRelease)]
+    public void OnSemaphoreReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+        => PushArgumentsOnCallStack(metadata, args);
+
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreReleaseResult)]
+    public void OnSemaphoreReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+    {
+        var (id, semaphoreId) = PopLockContext(metadata, args);
+        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId));
+    }
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadStartCore)]
     public void OnThreadStartCore(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
@@ -330,7 +366,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var frame = _callStackTracker.Peek(id);
         EnsureCallStackIntegrity(frame, moduleId, functionToken);
-        var lockId = ExtractLockIdFromFrame(id, frame);
+        var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
 
         if (!lockTaken)
         {
@@ -473,14 +509,14 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected IReadOnlySet<ProcessThreadId> GetTrackedThreadIds()
         => _callStackTracker.GetThreadIds();
 
-    private (ProcessThreadId Id, RuntimeArgumentList Arguments, ProcessTrackedObjectId LockId) ExtractLockContext(
+    private (ProcessThreadId Id, RuntimeArgumentList Arguments, ProcessTrackedObjectId SynchronizationObjectId) ExtractSynchronizationContext(
         RecordedEventMetadata metadata,
         MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
-        var lockId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
-        return (id, arguments, lockId);
+        var synchronizationObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
+        return (id, arguments, synchronizationObjectId);
     }
 
     private (ProcessThreadId Id, ProcessTrackedObjectId LockId) PopLockContext(
@@ -490,7 +526,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var frame = _callStackTracker.Pop(id);
         EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        return (id, ExtractLockIdFromFrame(id, frame));
+        return (id, ExtractSynchronizationObjectIdFromFrame(id, frame));
     }
 
     private (ProcessThreadId Id, ProcessTrackedObjectId LockId, bool LockTaken) PopLockContextWithFlag(
@@ -519,8 +555,22 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         return true;
     }
 
-    private static ProcessTrackedObjectId ExtractLockIdFromFrame(ProcessThreadId id, StackFrame frame)
+    private static ProcessTrackedObjectId ExtractSynchronizationObjectIdFromFrame(ProcessThreadId id, StackFrame frame)
         => new(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+
+    private void HandleSemaphoreAcquireExit(
+        RecordedEventMetadata metadata,
+        ModuleId moduleId,
+        MdMethodDef functionToken,
+        bool isSuccess)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Peek(id);
+        EnsureCallStackIntegrity(frame, moduleId, functionToken);
+        var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+        _callStackTracker.Pop(id);
+        SemaphoreAcquireReturned?.Invoke(new(id, moduleId, functionToken, semaphoreId, isSuccess));
+    }
 
     private void PushArgumentsOnCallStack(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {

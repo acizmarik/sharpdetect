@@ -288,6 +288,15 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_SemaphoreSlim_ProtectedWriteRead)}.json", "net8.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_SemaphoreSlim_ProtectedWriteRead)}.json", "net9.0", FastTrackPluginFullTypeName)]
+    [InlineData($"{ConfigurationFolder}/{nameof(NoDataRace_SemaphoreSlim_ProtectedWriteRead)}.json", "net10.0", FastTrackPluginFullTypeName)]
+    public Task NoDataRace_SemaphoreSlim_ProtectedWriteRead(string configuration, string sdk, string plugin)
+    {
+        return AssertDoesNotDetectDataRace(configuration, sdk, plugin);
+    }
+
+    [Theory]
     [InlineData($"{ConfigurationFolder}/{nameof(CanRenderReport)}.json", "net10.0", FastTrackPluginFullTypeName)]
     [InlineData($"{ConfigurationFolder}/{nameof(CanRenderReport)}.json", "net10.0", EraserPluginFullTypeName)]
     public async Task CanRenderReport(string configuration, string sdk, string pluginFullTypeName)

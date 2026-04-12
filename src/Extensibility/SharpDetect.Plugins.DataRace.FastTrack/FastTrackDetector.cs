@@ -18,8 +18,8 @@ internal sealed class FastTrackDetector
     private readonly TimeProvider _timeProvider;
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _semaphoreClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _awaiterClocks = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId?), VectorClock> _volatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _volatileClocksObjectIndex = [];
 
@@ -63,6 +63,7 @@ internal sealed class FastTrackDetector
         {
             var processObjectId = new ProcessTrackedObjectId(processId, objectId);
             _lockClocks.Remove(processObjectId);
+            _semaphoreClocks.Remove(processObjectId);
             _taskClocks.Remove(processObjectId);
         }
 
@@ -138,7 +139,22 @@ internal sealed class FastTrackDetector
         _lockClocks[lockId] = threadVc.Clone();
         threadVc.Increment(threadId);
     }
-    
+
+    public void RecordSemaphoreAcquired(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId)
+    {
+        var threadVc = GetOrCreateThreadClock(threadId);
+        var semaphoreVc = GetOrCreateSemaphoreClock(semaphoreId);
+        threadVc.Join(semaphoreVc);
+    }
+
+    public void RecordSemaphoreReleased(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId)
+    {
+        var threadVc = GetOrCreateThreadClock(threadId);
+        var semaphoreVc = GetOrCreateSemaphoreClock(semaphoreId);
+        semaphoreVc.Join(threadVc);
+        threadVc.Increment(threadId);
+    }
+
     public void RecordObjectWaitCalled(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
     {
         RecordLockReleased(threadId, lockId);
@@ -355,6 +371,17 @@ internal sealed class FastTrackDetector
         {
             vc = new VectorClock();
             _lockClocks[lockId] = vc;
+        }
+
+        return vc;
+    }
+
+    private VectorClock GetOrCreateSemaphoreClock(ProcessTrackedObjectId semaphoreId)
+    {
+        if (!_semaphoreClocks.TryGetValue(semaphoreId, out var vc))
+        {
+            vc = new VectorClock();
+            _semaphoreClocks[semaphoreId] = vc;
         }
 
         return vc;

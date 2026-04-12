@@ -21,6 +21,7 @@ public record TestPluginAdditionalData(
                     .Concat(LockMethodDescriptors.GetAllMethods())
                     .Concat(ThreadMethodDescriptors.GetAllMethods())
                     .Concat(TaskMethodDescriptors.GetAllMethods())
+                    .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
@@ -35,6 +36,7 @@ public record TestPluginAdditionalData(
                     .Concat(LockMethodDescriptors.GetAllMethods())
                     .Concat(ThreadMethodDescriptors.GetAllMethods())
                     .Concat(TaskMethodDescriptors.GetAllMethods())
+                    .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
