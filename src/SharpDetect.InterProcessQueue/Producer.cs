@@ -21,7 +21,7 @@ public sealed class Producer : IDisposable
 
     internal Producer(MemoryMappedQueueOptions queueOptions, TimeProvider timeProvider)
     {
-        _queue = new MemoryMappedQueue(queueOptions);
+        _queue = new MemoryMappedQueue(queueOptions, null, timeProvider);
         _timeProvider = timeProvider;
     }
 

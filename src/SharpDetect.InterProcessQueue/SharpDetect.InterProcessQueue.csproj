@@ -7,4 +7,8 @@
   <ItemGroup>
     <PackageReference Include="CSharp.OperationResult" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SharpDetect.InterProcessQueue.Tests" />
+  </ItemGroup>
 </Project>

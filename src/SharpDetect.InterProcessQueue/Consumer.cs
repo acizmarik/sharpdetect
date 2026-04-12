@@ -29,9 +29,7 @@ public sealed class Consumer : IDisposable
 
     internal Consumer(ConsumerMemoryMappedQueueOptions queueOptions, ArrayPool<byte>? arrayPool, TimeProvider timeProvider)
     {
-        _queue = arrayPool != null
-            ? new MemoryMappedQueue(queueOptions, arrayPool)
-            : new MemoryMappedQueue(queueOptions);
+        _queue = new MemoryMappedQueue(queueOptions, arrayPool, timeProvider);
         _timeProvider = timeProvider;
     }
 
