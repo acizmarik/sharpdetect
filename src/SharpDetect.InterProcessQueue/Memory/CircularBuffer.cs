@@ -1,11 +1,9 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Runtime.CompilerServices;
-
 namespace SharpDetect.InterProcessQueue.Memory;
 
-internal unsafe sealed class CircularBuffer
+internal sealed unsafe class CircularBuffer
 {
     private readonly byte* _pointer;
     private readonly long _capacity;
@@ -58,17 +56,6 @@ internal unsafe sealed class CircularBuffer
         Buffer.MemoryCopy(source, _pointer + offset, firstBlockSize, firstBlockSize);
         if (secondBlockSize != 0)
             Buffer.MemoryCopy(source + firstBlockSize, _pointer, secondBlockSize, secondBlockSize);
-    }
-
-    public void Clear()
-    {
-        long elementsToProcess = _capacity;
-        do
-        {
-            uint elementsToProcessStep = (uint)Math.Min(uint.MaxValue, elementsToProcess);
-            Unsafe.InitBlock(_pointer, 0, elementsToProcessStep);
-            elementsToProcess -= elementsToProcessStep;
-        } while (elementsToProcess > 0);
     }
 
     private readonly record struct BlockSizes(long FirstBlockSize, long SecondBlockSize);
