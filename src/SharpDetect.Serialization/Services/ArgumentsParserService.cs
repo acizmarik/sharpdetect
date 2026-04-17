@@ -57,20 +57,28 @@ internal sealed class ArgumentsParserService : IArgumentsParser
         var argInfos = MemoryMarshal.Cast<byte, uint>(offsets);
         var arguments = _arrayPool.Rent(argInfos.Length);
 
-        // Read information about arguments and parse them
-        for (var i = 0; i < argInfos.Length; i++)
+        try
         {
-            // Argument index is stored in upper 16 bits
-            var index = (ushort)((argInfos[i] & 0xFFFF0000) >> 16);
-            // Argument size is stored in the lower 16 bits
-            var size = (ushort)(argInfos[i] & 0x0000FFFF);
+            // Read information about arguments and parse them
+            for (var i = 0; i < argInfos.Length; i++)
+            {
+                // Argument index is stored in upper 16 bits
+                var index = (ushort)((argInfos[i] & 0xFFFF0000) >> 16);
+                // Argument size is stored in the lower 16 bits
+                var size = (ushort)(argInfos[i] & 0x0000FFFF);
 
-            // Retrieve argument
-            var argument = ParseArgumentValue(method.Parameters[index].Type, values.Slice(pValues, size));
-            arguments[i] = new(index, argument);
+                // Retrieve argument
+                var argument = ParseArgumentValue(method.Parameters[index].Type, values.Slice(pValues, size));
+                arguments[i] = new(index, argument);
 
-            // Move values pointer
-            pValues += size;
+                // Move values pointer
+                pValues += size;
+            }
+        }
+        catch
+        {
+            _arrayPool.Return(arguments);
+            throw;
         }
 
         return new RuntimeArgumentList(arguments, argInfos.Length);
