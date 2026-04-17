@@ -54,8 +54,11 @@ internal sealed class RunCommandHandler : IDisposable
         var reportSummary = plugin.CreateDiagnostics();
         
         // Persist report summary
-        var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, cancellationToken);
-        await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(reportFullPath)}.");
+        if (_arguments.Analysis.RenderReport)
+        {
+            var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, cancellationToken);
+            await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(reportFullPath)}.");
+        }
     }
 
     private Task<string> RenderAndWriteReport(IPlugin plugin, Summary reportSummary, CancellationToken cancellationToken)
