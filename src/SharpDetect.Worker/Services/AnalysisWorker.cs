@@ -37,7 +37,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         _logger = logger;
     }
 
-    public ValueTask ExecuteAsync(CancellationToken cancellationToken)
+    public async ValueTask ExecuteAsync(CancellationToken cancellationToken)
     {
         var configurationPath = GetFullConfigurationPath();
         _logger.LogTrace("Running with arguments: {Arguments}.", _arguments);
@@ -53,13 +53,15 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
             ExecuteAnalysis(targetApplicationProcess.Task, cancellationToken);
             _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", targetApplicationProcess.ProcessId);
+
+            var commandResult = await targetApplicationProcess;
+            if (commandResult.ExitCode != 0)
+                _logger.LogWarning("Target process exited with non-zero exit code: {ExitCode}.", commandResult.ExitCode);
         }
         finally
         {
             CleanupConfigurationFile(configurationPath);
         }
-        
-        return ValueTask.CompletedTask;
     }
     
     private Command BuildTargetApplicationCommand()
