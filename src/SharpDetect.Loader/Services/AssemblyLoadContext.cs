@@ -5,14 +5,13 @@ using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
 using OperationResult;
 using SharpDetect.Core.Loader;
-using System.Collections.Concurrent;
 using static OperationResult.Helpers;
 
 namespace SharpDetect.Loader.Services;
 
 internal class AssemblyLoadContext : IAssemblyLoadContext
 {
-    private readonly ConcurrentDictionary<string, AssemblyDef> _assemblies;
+    private readonly Dictionary<string, AssemblyDef> _assemblies;
     private readonly AssemblyResolver _assemblyResolver;
     private readonly ModuleCreationOptions _moduleCreationOptions;
     private readonly ILogger<AssemblyLoadContext> _logger;
@@ -44,6 +43,7 @@ internal class AssemblyLoadContext : IAssemblyLoadContext
                 return Error(AssemblyLoadErrorType.InvalidPath);
 
             assembly = AssemblyDef.Load(path, _moduleCreationOptions);
+            _assemblies.TryAdd(path, assembly);
             _assemblyResolver.AddToCache(assembly);
             return Ok(assembly);
         }

@@ -7,7 +7,6 @@ using OperationResult;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Loader;
-using System.Collections.Concurrent;
 using static OperationResult.Helpers;
 
 namespace SharpDetect.Loader.Services;
@@ -15,8 +14,8 @@ namespace SharpDetect.Loader.Services;
 internal class ModuleBindContext : IModuleBindContext
 {
     private readonly IAssemblyLoadContext _assemblyLoadContext;
-    private readonly ConcurrentDictionary<ModuleEntry, ModuleDef> _modules;
-    private readonly ConcurrentDictionary<uint, ModuleDef> _coreLibraries;
+    private readonly Dictionary<ModuleEntry, ModuleDef> _modules;
+    private readonly Dictionary<uint, ModuleDef> _coreLibraries;
     private readonly ILogger<ModuleBindContext> _logger;
 
     public ModuleBindContext(
