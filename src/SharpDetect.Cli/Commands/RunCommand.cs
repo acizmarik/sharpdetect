@@ -26,7 +26,8 @@ public sealed class RunCommand : ICommand
             Directory.SetCurrentDirectory(workingDirectory);
             var fileName = Path.GetFileName(ArgumentsFile);
             commandHandler = new RunCommandHandler(fileName);
-            await commandHandler.ExecuteAsync(console, CancellationToken.None);
+            var cancellationToken = console.RegisterCancellationHandler();
+            await commandHandler.ExecuteAsync(console, cancellationToken);
         }
         finally
         {

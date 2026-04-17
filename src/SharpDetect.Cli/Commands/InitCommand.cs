@@ -23,7 +23,8 @@ public sealed class InitCommand : ICommand
     public async ValueTask ExecuteAsync(IConsole console)
     {
         var handler = new InitCommandHandler(OutputFile, PluginType, TargetPath);
-        await handler.ExecuteAsync(console, CancellationToken.None);
+        var cancellationToken = console.RegisterCancellationHandler();
+        await handler.ExecuteAsync(console, cancellationToken);
     }
 }
 
