@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <cstring>
+#include <deque>
 #include <ranges>
 #include <string>
 #include <vector>
@@ -45,6 +46,7 @@ HRESULT LibProfiler::PatchMethodBody(
 	ULONG localSignatureVarsCount = 0;
 	ULONG localSignatureByteLength = 0;
 	auto addedLocals = std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>{};
+	auto ownedSignatures = std::deque<std::vector<BYTE>>{};
 
 	// Obtain current method
 	ILRewriter rewriter(&corProfilerInfo, nullptr, moduleDef.GetModuleId(), mdMethodDef);
@@ -128,6 +130,7 @@ HRESULT LibProfiler::PatchMethodBody(
 					currentInstruction,
 					localSignatureVarsCount,
 					addedLocals,
+					ownedSignatures,
 					mark,
 					moduleDef,
 					mdMethodDef,
@@ -250,6 +253,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	IN ILInstr* currentInstruction,
 	IN const UINT16 importedLocalsCount,
 	IN std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>& addedLocals,
+	IN std::deque<std::vector<BYTE>>& ownedSignatures,
 	IN const UINT64 instrumentationMark,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
@@ -316,18 +320,45 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	}
 
 	// For STFLD we need a temporary local whose type comes from the field signature.
-	if (isStore)
+	// If the field signature contains ELEMENT_TYPE_VAR (generic type params like !0), we must resolve it
+	const BYTE* fieldSigForLocal = fieldSignature + 1;
+	ULONG fieldSigForLocalLen = fieldSignatureLength - 1;
+
+	if (isStore && SigTypeContainsGenericParam(fieldSigForLocal, fieldSigForLocalLen))
 	{
-		const BYTE* fSig = fieldSignature + 1;
-		ULONG fSigLen = fieldSignatureLength - 1;
-		// FIXME: for now we skip signatures with ELEMENT_TYPE_VAR or ELEMENT_TYPE_MVAR
-		//        (these are parameters like !0 or !!0 that might be invalid in this context)
-		if (SigTypeContainsGenericParam(fSig, fSigLen))
+		if (TypeFromToken(declaringTypeToken) != mdtTypeSpec)
 		{
-			LOG_F(INFO, "Skipping instance field write instrumentation for field token %d in method %d from module %s: field signature contains generic type parameters.",
+			LOG_F(INFO, "Skipping instance field write instrumentation for field token %d in method %d from module %s. Declaring type token is not TypeSpec. Cannot resolve generic field signature.",
 				fieldToken, mdMethodDef, moduleDef.GetName().c_str());
 			return E_FAIL;
 		}
+
+		PCCOR_SIGNATURE typeSpecSig;
+		ULONG typeSpecSigLen;
+		hr = moduleDef.GetTypeSpecProps(declaringTypeToken, &typeSpecSig, &typeSpecSigLen);
+		if (FAILED(hr))
+			return E_FAIL;
+
+		std::vector<std::pair<const BYTE*, unsigned>> typeArgs;
+		if (!ParseTypeSpecGenericArgs(typeSpecSig, typeSpecSigLen, typeArgs))
+		{
+			LOG_F(ERROR, "Could not parse TypeSpec generic arguments for token %d in module %s.",
+				declaringTypeToken, moduleDef.GetName().c_str());
+			return E_FAIL;
+		}
+
+		std::vector<BYTE> resolvedSig;
+		if (!ResolveSigType(fieldSigForLocal, fieldSigForLocalLen, typeArgs, resolvedSig))
+		{
+			LOG_F(ERROR, "Could not resolve generic field signature for field token %d in module %s.",
+				fieldToken, moduleDef.GetName().c_str());
+			return E_FAIL;
+		}
+
+		ownedSignatures.push_back(std::move(resolvedSig));
+		auto const& stored = ownedSignatures.back();
+		fieldSigForLocal = stored.data();
+		fieldSigForLocalLen = static_cast<ULONG>(stored.size());
 	}
 
 	if (isVolatile)
@@ -341,7 +372,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	if (isStore)
 	{
 		// STLOC <value-local> (store written value)
-		addedLocals.emplace_back(fieldSignature + 1, fieldSignatureLength - 1);
+		addedLocals.emplace_back(fieldSigForLocal, fieldSigForLocalLen);
 		const auto stlocValueInstruction = rewriter.NewILInstr();
 		stlocValueInstruction->m_opcode = CEE_STLOC;
 		stlocValueInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));

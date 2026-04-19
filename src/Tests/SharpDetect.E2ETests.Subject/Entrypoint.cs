@@ -225,6 +225,42 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Write):
                     Test_Field_Generic_FromType_ReferenceType_OnValueType_Instance_Write();
                     break;
+                case nameof(Test_Field_Generic_FromType_ArrayOfValueType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromType_ArrayOfValueType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ArrayOfValueType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromType_ArrayOfValueType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_MultiParam_ValueType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_MultiParam_ValueType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_MultiParam_ValueType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_MultiParam_ValueType_OnReferenceType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Generic_MultiParam_ReferenceType_OnReferenceType_Instance_Read):
+                    Test_Field_Generic_MultiParam_ReferenceType_OnReferenceType_Instance_Read();
+                    break;
+                case nameof(Test_Field_Generic_MultiParam_ReferenceType_OnReferenceType_Instance_Write):
+                    Test_Field_Generic_MultiParam_ReferenceType_OnReferenceType_Instance_Write();
+                    break;
                 case nameof(Test_Field_ValueType_Static_Read):
                     Test_Field_ValueType_Static_Read();
                     break;

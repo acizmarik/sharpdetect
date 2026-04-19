@@ -498,6 +498,78 @@ namespace SharpDetect.E2ETests.Subject
             instance.ReferenceField = new object();
         }
 
+        public static void Test_Field_Generic_FromType_ArrayOfValueType_OnReferenceType_Instance_Read()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<int> { ArrayField = new int[1] };
+            _ = instance.ArrayField;
+        }
+
+        public static void Test_Field_Generic_FromType_ArrayOfValueType_OnReferenceType_Instance_Write()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<int>();
+            instance.ArrayField = new int[1];
+        }
+
+        public static void Test_Field_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Instance_Read()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<object> { ArrayField = new object[1] };
+            _ = instance.ArrayField;
+        }
+
+        public static void Test_Field_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Instance_Write()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<object>();
+            instance.ArrayField = new object[1];
+        }
+
+        public static void Test_Field_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Instance_Read()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<int> { ListField = new List<int> { 42 } };
+            _ = instance.ListField;
+        }
+
+        public static void Test_Field_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Instance_Write()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<int>();
+            instance.ListField = new List<int> { 42 };
+        }
+
+        public static void Test_Field_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Instance_Read()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<object> { ListField = new List<object> { new object() } };
+            _ = instance.ListField;
+        }
+
+        public static void Test_Field_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Instance_Write()
+        {
+            var instance = new ComplexTypeInstanceFieldOnReferenceType<object>();
+            instance.ListField = new List<object> { new object() };
+        }
+
+        public static void Test_Field_Generic_MultiParam_ValueType_OnReferenceType_Instance_Read()
+        {
+            var instance = new TwoTypeParamInstanceFieldOnReferenceType<object, int> { SecondField = 42 };
+            _ = instance.SecondField;
+        }
+
+        public static void Test_Field_Generic_MultiParam_ValueType_OnReferenceType_Instance_Write()
+        {
+            var instance = new TwoTypeParamInstanceFieldOnReferenceType<object, int>();
+            instance.SecondField = 42;
+        }
+
+        public static void Test_Field_Generic_MultiParam_ReferenceType_OnReferenceType_Instance_Read()
+        {
+            var instance = new TwoTypeParamInstanceFieldOnReferenceType<int, object> { SecondField = new object() };
+            _ = instance.SecondField;
+        }
+
+        public static void Test_Field_Generic_MultiParam_ReferenceType_OnReferenceType_Instance_Write()
+        {
+            var instance = new TwoTypeParamInstanceFieldOnReferenceType<int, object>();
+            instance.SecondField = new object();
+        }
+
         public static void Test_Property_ReferenceType_Instance_Write()
         {
             var instance = new InstanceFieldReferenceType();

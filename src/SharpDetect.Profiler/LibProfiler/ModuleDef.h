@@ -137,6 +137,11 @@ namespace LibProfiler
 			OUT PCCOR_SIGNATURE* fieldSignature,
 			OUT ULONG* fieldSignatureLength) const;
 
+		HRESULT GetTypeSpecProps(
+			IN mdTypeSpec typeSpec,
+			OUT PCCOR_SIGNATURE* signature,
+			OUT ULONG* signatureLength) const;
+
 		HRESULT GetSignatureFromToken(
 			IN mdSignature signatureToken,
 			OUT PCCOR_SIGNATURE* signature,

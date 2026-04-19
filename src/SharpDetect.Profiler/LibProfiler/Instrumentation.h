@@ -4,6 +4,7 @@
 #pragma once
 
 #include <atomic>
+#include <deque>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -55,6 +56,7 @@ namespace LibProfiler
 		IN ILInstr* currentInstruction,
 		IN UINT16 importedLocalsCount,
 		IN std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>& addedLocals,
+		IN std::deque<std::vector<BYTE>>& ownedSignatures,
 		IN UINT64 instrumentationMark,
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,

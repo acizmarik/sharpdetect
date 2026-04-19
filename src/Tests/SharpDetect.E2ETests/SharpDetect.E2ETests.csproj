@@ -217,6 +217,42 @@
     <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_ReferenceType_OnValueType_Write.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Read.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="FieldAccessTestConfigurations\InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Write.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="FieldAccessTestConfigurations\VolatileStaticField_ValueType_Read.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
