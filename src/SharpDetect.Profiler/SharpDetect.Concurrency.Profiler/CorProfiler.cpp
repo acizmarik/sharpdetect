@@ -37,9 +37,11 @@ Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
 		configuration.commandQueueName,
 		configuration.commandQueueFile.value_or(std::string()),
 		configuration.commandQueueSize,
+		configuration.commandSemaphoreName,
         configuration.sharedMemoryName,
         configuration.sharedMemoryFile.value_or(std::string()),
-        configuration.sharedMemorySize),
+        configuration.sharedMemorySize,
+        configuration.sharedMemorySemaphoreName),
     _coreModule(0)
 {
     _terminating = false;

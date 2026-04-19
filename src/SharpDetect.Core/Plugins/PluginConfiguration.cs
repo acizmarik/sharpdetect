@@ -11,9 +11,11 @@ public record PluginConfiguration(
     string SharedMemoryName,
     string? SharedMemoryFile,
     uint SharedMemorySize,
+    string SharedMemorySemaphoreName,
     string CommandQueueName,
     string? CommandQueueFile,
     uint CommandQueueSize,
+    string CommandSemaphoreName,
     string? TemporaryFilesFolder,
     object? AdditionalData)
 {
@@ -34,9 +36,11 @@ public record PluginConfiguration(
             SharedMemoryName: "SharpDetect_NotificationsQueue",
             SharedMemoryFile: Path.Combine(tempFolder, "SharpDetect_NotificationsQueue.data"),
             SharedMemorySize: 20_971_520 /* 20 MB */,
+            SharedMemorySemaphoreName: "/SharpDetect_NotificationsQueue_Sem",
             CommandQueueName: "SharpDetect_CommandQueue",
             CommandQueueFile: Path.Combine(tempFolder, "SharpDetect_CommandQueue.data"),
             CommandQueueSize: 1_048_576 /* 1 MB */,
+            CommandSemaphoreName: "/SharpDetect_CommandQueue_Sem",
             temporaryFilesFolder,
             additionalData);
     }
@@ -52,9 +56,11 @@ public record PluginConfiguration(
                 SharedMemoryName,
                 SharedMemoryFile,
                 SharedMemorySize,
+                SharedMemorySemaphoreName,
                 CommandQueueName,
                 CommandQueueFile,
                 CommandQueueSize,
+                CommandSemaphoreName,
                 AdditionalData
             }, _jsonSerializerOptions);
             using var writer = new StreamWriter(fileStream);

@@ -65,6 +65,18 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         Dispose();
     }
 
+    internal void Clear()
+    {
+        var nowTicks = _timeProvider.GetUtcNow().UtcTicks;
+        var header = (QueueHeader*)_sharedMemory.GetPointer();
+        Volatile.Write(ref header->ReadLockToken, 0);
+        Volatile.Write(ref header->WriteLockToken, 0);
+        Volatile.Write(ref header->ReadOffset, 0);
+        Volatile.Write(ref header->WriteOffset, 0);
+        Volatile.Write(ref header->ReadLockAcquiredTimestampTicks, nowTicks);
+        Volatile.Write(ref header->WriteLockAcquiredTimestampTicks, nowTicks);
+    }
+
     public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data)
     {
         var header = GetHeader();

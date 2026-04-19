@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using SharpDetect.InterProcessQueue.Synchronization;
 
 namespace SharpDetect.InterProcessQueue.FFI;
 
@@ -14,22 +15,25 @@ internal static unsafe class Exports
     private static int _lastConsumerId;
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_producer_create")]
-    public static nint CreateProducer(nint queueNamePtr, nint fileNamePtr, int size)
+    public static nint CreateProducer(nint queueNamePtr, nint fileNamePtr, nint semaphoreNamePtr, int size)
     {
         var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
         var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
-        if (clrQueueName == null)
+        var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
+        if (clrQueueName == null || clrSemaphoreName == null)
             return IntPtr.Zero;
 
-        return CreateProducerImpl(clrQueueName, clrFileName, size);
+        return CreateProducerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
     }
 
-    internal static nint CreateProducerImpl(string queueName, string? fileName, int size)
+    internal static nint CreateProducerImpl(string queueName, string? fileName, string semaphoreName, int size)
     {
         try
         {
             var id = Interlocked.Increment(ref _lastProducerId);
-            var producer = new Producer(new Configuration.ProducerMemoryMappedQueueOptions(queueName, fileName, size));
+            var configuration = new Configuration.ProducerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
+            var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
+            var producer = new Producer(configuration, semaphore);
             _producers.TryAdd(id, producer);
             return id;
         }
@@ -64,7 +68,7 @@ internal static unsafe class Exports
         if (!_producers.TryGetValue(producerHandle, out var producer))
             return EnqueueErrorType.Unavailable;
 
-        var status = producer.Enqueue(new ReadOnlySpan<byte>(data, size));
+        var status = producer.TryEnqueue(new ReadOnlySpan<byte>(data, size));
         if (status.IsSuccess)
             return EnqueueErrorType.OK;
 
@@ -72,22 +76,25 @@ internal static unsafe class Exports
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_create")]
-    public static nint CreateConsumer(nint queueNamePtr, nint fileNamePtr, int size)
+    public static nint CreateConsumer(nint queueNamePtr, nint fileNamePtr, nint semaphoreNamePtr, int size)
     {
         var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
         var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
-        if (clrQueueName == null)
+        var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
+        if (clrQueueName == null || clrSemaphoreName == null)
             return IntPtr.Zero;
 
-        return CreateConsumerImpl(clrQueueName, clrFileName, size);
+        return CreateConsumerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
     }
 
-    internal static nint CreateConsumerImpl(string queueName, string? fileName, int size)
+    internal static nint CreateConsumerImpl(string queueName, string? fileName, string semaphoreName, int size)
     {
         try
         {
             var id = Interlocked.Increment(ref _lastConsumerId);
-            var consumer = new Consumer(new Configuration.ConsumerMemoryMappedQueueOptions(queueName, fileName, size));
+            var configuration = new Configuration.ConsumerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
+            var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
+            var consumer = new Consumer(configuration, semaphore);
             _consumers.TryAdd(id, consumer);
             return id;
         }
@@ -123,7 +130,7 @@ internal static unsafe class Exports
         if (!_consumers.TryGetValue(consumerHandle, out var consumer))
             return DequeueErrorType.UnableToAcquireReadLock;
 
-        var result = consumer.Dequeue();
+        var result = consumer.TryDequeue();
         if (!result.IsSuccess)
             return result.Error;
 

@@ -5,8 +5,8 @@ namespace SharpDetect.InterProcessQueue.Configuration;
 
 public sealed record ProducerMemoryMappedQueueOptions : MemoryMappedQueueOptions
 {
-    public ProducerMemoryMappedQueueOptions(string name, string? file, long capacity)
-        : base(name, file, capacity)
+    public ProducerMemoryMappedQueueOptions(string name, string? file, long capacity, string semaphoreName)
+        : base(name, file, capacity, semaphoreName)
     {
 
     }

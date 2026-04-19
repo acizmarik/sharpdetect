@@ -14,6 +14,7 @@ namespace SharpDetect.Worker.Services;
 
 public sealed class AnalysisWorker : IAnalysisWorker
 {
+    private static readonly TimeSpan ProfilerEventReceiveTimeout = TimeSpan.FromMilliseconds(50);
     private readonly RunCommandArgs _arguments;
     private readonly IPlugin _plugin;
     private readonly IPluginHost _pluginHost;
@@ -129,7 +130,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         RecordedEvent? previousRecordedEvent = null;
         while (!ShouldTerminateAnalysis(targetProcessTask, previousRecordedEvent, cancellationToken))
         {
-            if (!_eventReceiver.TryReceiveNotification(out var currentEvent))
+            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
             {
                 previousRecordedEvent = null;
                 continue;

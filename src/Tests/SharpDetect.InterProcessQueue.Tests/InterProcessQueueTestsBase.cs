@@ -8,13 +8,15 @@ public abstract class InterProcessQueueTestsBase : IDisposable
     protected readonly string TestQueueName;
     protected readonly string TestFileName;
     protected readonly int TestQueueSize;
+    protected readonly string TestSemaphoreName;
     private bool _disposed;
 
-    protected InterProcessQueueTestsBase(string queueName, string queueFile, int size)
+    protected InterProcessQueueTestsBase(string queueName, string queueFile, int size, string semaphoreName)
     {
         TestQueueName = queueName;
         TestFileName = queueFile;
         TestQueueSize = size;
+        TestSemaphoreName = semaphoreName;
     }
     
     public void Dispose()

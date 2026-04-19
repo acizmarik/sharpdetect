@@ -4,6 +4,7 @@
 using OperationResult;
 using SharpDetect.InterProcessQueue.Configuration;
 using SharpDetect.InterProcessQueue.Memory;
+using SharpDetect.InterProcessQueue.Synchronization;
 using System.Buffers;
 using static OperationResult.Helpers;
 
@@ -12,54 +13,53 @@ namespace SharpDetect.InterProcessQueue;
 public sealed class Consumer : IDisposable
 {
     private readonly MemoryMappedQueue _queue;
-    private readonly TimeProvider _timeProvider;
+    private readonly ISemaphore _semaphore;
     private bool _disposed;
 
-    public Consumer(ConsumerMemoryMappedQueueOptions queueOptions)
-        : this(queueOptions, arrayPool: null, TimeProvider.System)
+    public Consumer(ConsumerMemoryMappedQueueOptions queueOptions, ISemaphore semaphore)
+        : this(queueOptions, semaphore, arrayPool: null, TimeProvider.System)
     {
 
     }
 
-    public Consumer(ConsumerMemoryMappedQueueOptions queueOptions, ArrayPool<byte> arrayPool)
-        : this(queueOptions, arrayPool, TimeProvider.System)
+    public Consumer(ConsumerMemoryMappedQueueOptions queueOptions, ISemaphore semaphore, ArrayPool<byte> arrayPool)
+        : this(queueOptions, semaphore, arrayPool, TimeProvider.System)
     {
 
     }
 
-    internal Consumer(ConsumerMemoryMappedQueueOptions queueOptions, ArrayPool<byte>? arrayPool, TimeProvider timeProvider)
+    internal Consumer(
+        ConsumerMemoryMappedQueueOptions queueOptions,
+        ISemaphore semaphore,
+        ArrayPool<byte>? arrayPool,
+        TimeProvider timeProvider)
     {
         _queue = new MemoryMappedQueue(queueOptions, arrayPool, timeProvider);
-        _timeProvider = timeProvider;
+        _semaphore = semaphore;
     }
 
-    public Result<ILocalMemory<byte>, DequeueErrorType> Dequeue()
+    public void Clear()
+    {
+        _queue.Clear();
+    }
+
+    public Result<ILocalMemory<byte>, DequeueErrorType> TryDequeue()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!_semaphore.TryWait())
+            return Error(DequeueErrorType.NothingToRead);
+
         return _queue.Dequeue();
     }
 
-    public Result<ILocalMemory<byte>, DequeueErrorType> Dequeue(TimeSpan timeout)
+    public Result<ILocalMemory<byte>, DequeueErrorType> TryDequeue(TimeSpan timeout)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (timeout < TimeSpan.Zero)
+        if (timeout < TimeSpan.Zero || !_semaphore.Wait(timeout))
             return Error(DequeueErrorType.TimeoutExceeded);
 
-        if (timeout == TimeSpan.Zero)
-            return Dequeue();
-
-        var endTimeStamp = _timeProvider.GetUtcNow() + timeout;
-        while (_timeProvider.GetUtcNow() < endTimeStamp)
-        {
-            var result = _queue.Dequeue();
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            Thread.Yield();
-        }
-
-        return Error(DequeueErrorType.TimeoutExceeded);
+        return _queue.Dequeue();
     }
 
     public void Dispose()
@@ -69,5 +69,6 @@ public sealed class Consumer : IDisposable
 
         _disposed = true;
         _queue.Dispose();
+        _semaphore.Dispose();
     }
 }

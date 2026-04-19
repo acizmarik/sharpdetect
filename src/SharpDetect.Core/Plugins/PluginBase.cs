@@ -225,7 +225,8 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
             ipcQueueFileName: Configuration.CommandQueueFile is not null
                 ? $"{Configuration.CommandQueueFile}.{processId}"
                 : null,
-            Configuration.CommandQueueSize);
+            Configuration.CommandQueueSize,
+            semaphoreName: $"{Configuration.CommandSemaphoreName}.{processId}");
         _profilerCommandSenders = _profilerCommandSenders.Add((int)processId, sender);
     }
 

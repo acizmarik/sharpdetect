@@ -10,6 +10,7 @@ using SharpDetect.Core.Serialization;
 using SharpDetect.InterProcessQueue;
 using SharpDetect.InterProcessQueue.Configuration;
 using SharpDetect.InterProcessQueue.Memory;
+using SharpDetect.InterProcessQueue.Synchronization;
 
 namespace SharpDetect.Communication.Services;
 
@@ -26,7 +27,9 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
         IRecordedEventParser recordedEventParser,
         ILogger<IProfilerEventReceiver> logger)
     {
-        _consumer = new Consumer(options, ArrayPool<byte>.Shared);
+        var semaphore = InterProcessSemaphore.CreateOrOpen(options.SemaphoreName, isOwner: true);
+        _consumer = new Consumer(options, semaphore, ArrayPool<byte>.Shared);
+        _consumer.Clear();
         _recordedEventParser = recordedEventParser;
         _logger = logger;
         _queueFilePath = options.File;
@@ -39,7 +42,26 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
     
     public bool TryReceiveNotification([NotNullWhen(true)] out RecordedEvent? recordedEvent)
     {
-        var result = _consumer.Dequeue();
+        var result = _consumer.TryDequeue();
+        if (result.IsError)
+        {
+            recordedEvent = null;
+            return false;
+        }
+
+        if (!TryParseEvent(result.Value, _recordedEventParser, out var parsedEvent))
+        {
+            recordedEvent = null;
+            return false;
+        }
+
+        recordedEvent = parsedEvent;
+        return true;
+    }
+
+    public bool TryReceiveNotification(TimeSpan timeout, [NotNullWhen(true)] out RecordedEvent? recordedEvent)
+    {
+        var result = _consumer.TryDequeue(timeout);
         if (result.IsError)
         {
             recordedEvent = null;

@@ -12,11 +12,13 @@ void Profiler::to_json(nlohmann::json& json, const Configuration& descriptor)
     if (descriptor.sharedMemoryFile.has_value())
         json["sharedMemoryFile"] = descriptor.sharedMemoryFile.value();
     json["sharedMemorySize"] = descriptor.sharedMemorySize;
+    json["sharedMemorySemaphoreName"] = descriptor.sharedMemorySemaphoreName;
 
     json["commandQueueName"] = descriptor.commandQueueName;
     if (descriptor.commandQueueFile.has_value())
         json["commandQueueFile"] = descriptor.commandQueueFile.value();
     json["commandQueueSize"] = descriptor.commandQueueSize;
+    json["commandSemaphoreName"] = descriptor.commandSemaphoreName;
 
     json["additionalData"]["methodDescriptors"] = descriptor.methodDescriptors;
     json["additionalData"]["typeInjectionDescriptors"] = descriptor.typeInjectionDescriptors;
@@ -36,6 +38,7 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
             descriptor.sharedMemoryFile = sharedMemoryFile;
     }
     descriptor.sharedMemorySize = json.at("sharedMemorySize");
+    descriptor.sharedMemorySemaphoreName = json.at("sharedMemorySemaphoreName");
 
 	descriptor.commandQueueName = json.at("commandQueueName");
 	descriptor.commandQueueName = descriptor.commandQueueName + "." + std::to_string(LibProfiler::PAL_GetCurrentPid());
@@ -49,6 +52,8 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
 		}
     }
     descriptor.commandQueueSize = json.at("commandQueueSize");
+    descriptor.commandSemaphoreName = json.at("commandSemaphoreName");
+    descriptor.commandSemaphoreName = descriptor.commandSemaphoreName + "." + std::to_string(LibProfiler::PAL_GetCurrentPid());
 
     const auto& additionalData = json.at("additionalData");
     descriptor.methodDescriptors = additionalData.at("methodDescriptors").get<std::vector<MethodDescriptor>>();
