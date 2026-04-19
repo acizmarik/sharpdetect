@@ -95,6 +95,14 @@ internal static class TestMethodDescriptors
             "Test_Field_Volatile_ValueType_Static_Write",
             "Test_Field_Volatile_ValueType_Instance_Read",
             "Test_Field_Volatile_ValueType_Instance_Write",
+            "Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead",
+            "Test_SemaphoreSlimMethods_WaitRelease1",
+            "Test_SemaphoreSlimMethods_WaitRelease2",
+            "Test_SemaphoreSlimMethods_WaitRelease3",
+            "Test_SemaphoreSlimMethods_TryWaitRelease1",
+            "Test_SemaphoreSlimMethods_TryWaitRelease2",
+            "Test_SemaphoreSlimMethods_TryWaitRelease3",
+            "Test_SemaphoreSlimMethods_TryWaitRelease4",
         };
 
         foreach (var methodName in testMethodNames)

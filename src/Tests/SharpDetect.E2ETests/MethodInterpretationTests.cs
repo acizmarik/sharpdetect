@@ -305,6 +305,75 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease3.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease3.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_WaitRelease3.json", "net10.0")]
+    public async Task MethodInterpretation_SemaphoreSlim_WaitRelease(string configuration, string sdk)
+    {
+        // Arrange
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquire))
+            .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquireResult))
+            .Then(EventuallyEventType(RecordedEventType.SemaphoreReleaseResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease1.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease1.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease1.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease2.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease2.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease2.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease3.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease3.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease3.json", "net10.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease4.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease4.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/MethodInterpretation_SemaphoreSlim_TryWaitRelease4.json", "net10.0")]
+    public async Task MethodInterpretation_SemaphoreSlim_TryWaitRelease(string configuration, string sdk)
+    {
+        // Arrange
+        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
+        using var services = TestContextFactory.CreateServiceProvider(
+            configuration, sdk, pluginAdditionalData, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquire))
+            .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquireResult))
+            .Then(EventuallyEventType(RecordedEventType.SemaphoreReleaseResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await1.json", "net8.0")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await1.json", "net9.0")]
     [InlineData($"{ConfigurationFolder}/MethodInterpretation_Task_Await1.json", "net10.0")]

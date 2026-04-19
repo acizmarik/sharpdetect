@@ -126,6 +126,27 @@ namespace SharpDetect.E2ETests.Subject
                     Test_LockMethods_TryEnterExit2();
                     break;
 #endif
+                case nameof(Test_SemaphoreSlimMethods_WaitRelease1):
+                    Test_SemaphoreSlimMethods_WaitRelease1();
+                    break;
+                case nameof(Test_SemaphoreSlimMethods_WaitRelease2):
+                    Test_SemaphoreSlimMethods_WaitRelease2();
+                    break;
+                case nameof(Test_SemaphoreSlimMethods_WaitRelease3):
+                    Test_SemaphoreSlimMethods_WaitRelease3();
+                    break;
+                case nameof(Test_SemaphoreSlimMethods_TryWaitRelease1):
+                    Test_SemaphoreSlimMethods_TryWaitRelease1();
+                    break;
+                case nameof(Test_SemaphoreSlimMethods_TryWaitRelease2):
+                    Test_SemaphoreSlimMethods_TryWaitRelease2();
+                    break;
+                case nameof(Test_SemaphoreSlimMethods_TryWaitRelease3):
+                    Test_SemaphoreSlimMethods_TryWaitRelease3();
+                    break;
+                case nameof(Test_SemaphoreSlimMethods_TryWaitRelease4):
+                    Test_SemaphoreSlimMethods_TryWaitRelease4();
+                    break;
             }
 
             // Field events
@@ -427,6 +448,9 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_Task_SequentialTasks_WriteRead):
                     Test_NoDataRace_Task_SequentialTasks_WriteRead();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead):
+                    Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead();
                     break;
             }
 

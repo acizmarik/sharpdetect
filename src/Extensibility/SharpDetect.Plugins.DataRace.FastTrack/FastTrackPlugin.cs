@@ -75,6 +75,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     LockMethodDescriptors.GetAllMethods()).Concat(
                     ThreadMethodDescriptors.GetAllMethods()).Concat(
                     TaskMethodDescriptors.GetAllMethods()).Concat(
+                    SemaphoreSlimMethodDescriptors.GetAllMethods()).Concat(
                     FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
@@ -98,6 +99,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         TaskStarted += OnTaskStarted;
         TaskCompleted += OnTaskCompleted;
         TaskJoinFinished += OnTaskJoinFinished;
+        SemaphoreAcquireReturned += OnSemaphoreAcquireReturned;
+        SemaphoreReleased += OnSemaphoreReleased;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -278,6 +281,17 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         if (args.IsSuccess)
             _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
+    }
+
+    private void OnSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args)
+    {
+        if (args.IsSuccess)
+            _detector.RecordSemaphoreAcquired(args.ProcessThreadId, args.SemaphoreId);
+    }
+
+    private void OnSemaphoreReleased(SemaphoreReleaseArgs args)
+    {
+        _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.SemaphoreId);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

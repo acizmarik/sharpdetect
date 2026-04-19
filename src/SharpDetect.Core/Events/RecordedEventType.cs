@@ -82,11 +82,16 @@ public enum RecordedEventType : ushort
     LockAcquireResult = 115,
     LockRelease = 116,
     LockReleaseResult = 117,
+    SemaphoreAcquire = 118,
+    SemaphoreTryAcquire = 119,
+    SemaphoreAcquireResult = 120,
+    SemaphoreRelease = 121,
+    SemaphoreReleaseResult = 122,
 
     /* Task synchronization */
-    TaskSchedule = 120,
-    TaskStart = 121,
-    TaskComplete = 122,
-    TaskJoinStart = 123,
-    TaskJoinFinish = 124,
+    TaskSchedule = 200,
+    TaskStart = 201,
+    TaskComplete = 202,
+    TaskJoinStart = 203,
+    TaskJoinFinish = 204,
 }
