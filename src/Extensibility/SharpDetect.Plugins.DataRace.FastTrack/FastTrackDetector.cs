@@ -237,6 +237,8 @@ internal sealed class FastTrackDetector
                     lastAccess,
                     _timeProvider.GetUtcNow().DateTime);
             }
+
+            return null;
         }
 
         var readAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Read);
@@ -284,6 +286,8 @@ internal sealed class FastTrackDetector
                     lastAccess,
                     _timeProvider.GetUtcNow().DateTime);
             }
+
+            return null;
         }
 
         var readWriteRace = CheckReadWriteRace(threadId, shadow, threadVc);
@@ -305,6 +309,8 @@ internal sealed class FastTrackDetector
                     lastAccess,
                     _timeProvider.GetUtcNow().DateTime);
             }
+
+            return null;
         }
 
         var writeAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
