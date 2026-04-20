@@ -3,4 +3,4 @@
 
 namespace SharpDetect.InterProcessQueue.Configuration;
 
-public record MemoryMappedQueueOptions(string Name, string? File, long Capacity);
+public record MemoryMappedQueueOptions(string Name, string? File, long Capacity, string SemaphoreName);

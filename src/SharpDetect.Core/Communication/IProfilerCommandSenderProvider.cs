@@ -5,5 +5,5 @@ namespace SharpDetect.Core.Communication;
 
 public interface IProfilerCommandSenderProvider
 {
-    IProfilerCommandSender Create(string ipcQueueName, string? ipcQueueFileName, uint size);
+    IProfilerCommandSender Create(string ipcQueueName, string? ipcQueueFileName, uint size, string semaphoreName);
 }

@@ -15,6 +15,7 @@
 #include "Messages.h"
 
 #include "../LibProfiler/PAL.h"
+#include "Semaphore.h"
 
 namespace LibIPC
 {
@@ -30,7 +31,9 @@ namespace LibIPC
 	{
 	public:
 		Client(std::string commandQueueName, std::string commandQueueFile, UINT commandQueueSize,
-			   std::string eventQueueName, std::string eventQueueFile, UINT eventQueueSize);
+			   std::string commandSemaphoreName,
+			   std::string eventQueueName, std::string eventQueueFile, UINT eventQueueSize,
+			   std::string eventSemaphoreName);
 		Client(Client&& other) = delete;
 		Client& operator=(Client&&) = delete;
 		Client(Client& other) = delete;
@@ -65,18 +68,20 @@ namespace LibIPC
 		static const std::string _ipqConsumerDequeueSymbolName;
 		static const std::string _ipqFreeMemorySymbolName;
 
-		using ipq_producer_create = PVOID(*)(const char*, const char*, INT);
+		using ipq_producer_create = PVOID(*)(const char*, const char*, const char*, INT);
 		using ipq_producer_destroy = void (*)(PVOID);
 		using ipq_producer_enqueue = INT(*)(PVOID, BYTE*, INT);
-		using ipq_consumer_create = PVOID(*)(const char*, const char*, INT);
+		using ipq_consumer_create = PVOID(*)(const char*, const char*, const char*, INT);
 		using ipq_consumer_destroy = void (*)(PVOID);
 		using ipq_consumer_dequeue = INT(*)(PVOID, BYTE**, INT*);
 		using ipq_free_memory = void (*)(BYTE*);
 
 		std::string _ipqName;
 		std::string _mmfName;
+		std::string _eventSemaphoreName;
 		std::string _commandQueueName;
 		std::string _commandMmfName;
+		std::string _commandSemaphoreName;
 		MODULE_HANDLE _ipqModuleHandle;
 		PVOID _ffiProducer;
 		PVOID _ffiConsumer;
@@ -98,5 +103,8 @@ namespace LibIPC
 		PVOID _ipqConsumerDestroySymbolAddress;
 		PVOID _ipqConsumerDequeueSymbolAddress;
 		PVOID _ipqFreeMemorySymbolAddress;
+
+		SemaphoreHandle _eventSemaphore;
+		SemaphoreHandle _commandSemaphore;
 	};
 }

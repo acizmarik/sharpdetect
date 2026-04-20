@@ -3,6 +3,7 @@
 
 using OperationResult;
 using SharpDetect.InterProcessQueue.Configuration;
+using SharpDetect.InterProcessQueue.Synchronization;
 using static OperationResult.Helpers;
 
 namespace SharpDetect.InterProcessQueue;
@@ -10,28 +11,33 @@ namespace SharpDetect.InterProcessQueue;
 public sealed class Producer : IDisposable
 {
     private readonly MemoryMappedQueue _queue;
+    private readonly ISemaphore _semaphore;
     private readonly TimeProvider _timeProvider;
     private bool _disposed;
 
-    public Producer(ProducerMemoryMappedQueueOptions queueOptions)
-        : this(queueOptions, TimeProvider.System)
+    public Producer(ProducerMemoryMappedQueueOptions queueOptions, ISemaphore semaphore)
+        : this(queueOptions, semaphore, TimeProvider.System)
     {
 
     }
 
-    internal Producer(MemoryMappedQueueOptions queueOptions, TimeProvider timeProvider)
+    internal Producer(MemoryMappedQueueOptions queueOptions, ISemaphore semaphore, TimeProvider timeProvider)
     {
-        _queue = new MemoryMappedQueue(queueOptions);
+        _queue = new MemoryMappedQueue(queueOptions, null, timeProvider);
+        _semaphore = semaphore;
         _timeProvider = timeProvider;
     }
 
-    public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data)
+    public Status<EnqueueErrorType> TryEnqueue(ReadOnlySpan<byte> data)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return _queue.Enqueue(data);
+        var result = _queue.Enqueue(data);
+        if (result.IsSuccess)
+            _semaphore.Release();
+        return result;
     }
 
-    public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data, TimeSpan timeout)
+    public Status<EnqueueErrorType> TryEnqueue(ReadOnlySpan<byte> data, TimeSpan timeout)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -39,14 +45,17 @@ public sealed class Producer : IDisposable
             return Error(EnqueueErrorType.TimeoutExceeded);
 
         if (timeout == TimeSpan.Zero)
-            return Enqueue(data);
+            return TryEnqueue(data);
 
         var endTimeStamp = _timeProvider.GetUtcNow() + timeout;
         while (_timeProvider.GetUtcNow() < endTimeStamp)
         {
             var result = _queue.Enqueue(data);
             if (result.IsSuccess)
+            {
+                _semaphore.Release();
                 return Ok();
+            }
 
             Thread.Yield();
         }
@@ -61,5 +70,6 @@ public sealed class Producer : IDisposable
 
         _disposed = true;
         _queue.Dispose();
+        _semaphore.Dispose();
     }
 }

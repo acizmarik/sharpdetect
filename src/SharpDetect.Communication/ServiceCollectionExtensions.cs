@@ -21,7 +21,8 @@ public static class ServiceCollectionExtensions
             return new ConsumerMemoryMappedQueueOptions(
                 plugin.Configuration.SharedMemoryName,
                 plugin.Configuration.SharedMemoryFile,
-                plugin.Configuration.SharedMemorySize);
+                plugin.Configuration.SharedMemorySize,
+                plugin.Configuration.SharedMemorySemaphoreName);
         });
     }
 }

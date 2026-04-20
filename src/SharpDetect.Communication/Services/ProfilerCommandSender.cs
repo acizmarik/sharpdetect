@@ -8,6 +8,7 @@ using SharpDetect.Core.Communication;
 using SharpDetect.Core.Serialization;
 using SharpDetect.InterProcessQueue;
 using SharpDetect.InterProcessQueue.Configuration;
+using SharpDetect.InterProcessQueue.Synchronization;
 
 namespace SharpDetect.Communication.Services;
 
@@ -23,11 +24,12 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
     
     public ProfilerCommandSender(
         ProducerMemoryMappedQueueOptions options,
+        ISemaphore semaphore,
         IProfilerCommandSerializer commandSerializer,
         ILogger<ProfilerCommandSender> logger)
     {
         _options = options;
-        _producer = new Producer(options);
+        _producer = new Producer(options, semaphore);
         _commandSerializer = commandSerializer;
         _logger = logger;
         _processId = (uint)Environment.ProcessId;
@@ -44,7 +46,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
         var command = new ProfilerCommand(new RecordedCommandMetadata(_processId, commandId), commandArgs);
         var serializedCommand = _commandSerializer.Serialize(command);
         
-        var result = _producer.Enqueue(serializedCommand);
+        var result = _producer.TryEnqueue(serializedCommand);
         if (!result.IsError)
             return new CommandId(commandId);
         
@@ -63,7 +65,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
         var command = new ProfilerCommand(new RecordedCommandMetadata(_processId, rawCommandId), commandArgs);
         var serializedCommand = _commandSerializer.Serialize(command);
             
-        var result = _producer.Enqueue(serializedCommand);
+        var result = _producer.TryEnqueue(serializedCommand);
         if (!result.IsError)
         {
             commandId = new CommandId(rawCommandId);
@@ -87,7 +89,7 @@ internal sealed class ProfilerCommandSender : IProfilerCommandSender, IDisposabl
         var command = new ProfilerCommand(new RecordedCommandMetadata(_processId, rawCommandId), commandArgs);
         var serializedCommand = _commandSerializer.Serialize(command);
             
-        var result = _producer.Enqueue(serializedCommand, timeout);
+        var result = _producer.TryEnqueue(serializedCommand, timeout);
         if (!result.IsError)
         {
             commandId = new CommandId(rawCommandId);

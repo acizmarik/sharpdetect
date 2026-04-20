@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.InterProcessQueue.Configuration;
+using SharpDetect.InterProcessQueue.Synchronization;
 using Xunit;
 
 namespace SharpDetect.InterProcessQueue.Tests;
@@ -12,7 +13,8 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
         : base(
             queueName: "SharpDetect_IPQ_EnqueueDequeue_Test_Queue",
             queueFile: "SharpDetect_IPQ_EnqueueDequeue__Test.data",
-            size: 1024 * 1024)
+            size: 1024 * 1024,
+            semaphoreName: "SHARPDETECT_IPQ_EnqueueDequeue_Test_Semaphore")
     {
         
     }
@@ -21,15 +23,15 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
     public void InterProcessQueue_Enqueue_SingleMessage_Succeeds()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
-        using var producer = new Producer(producerOptions);
-        using var consumer = new Consumer(consumerOptions);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        using var producer = new Producer(producerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: true));
+        using var consumer = new Consumer(consumerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: false));
         
         var message = "Hello, World!"u8.ToArray();
         
         // Act
-        var enqueueResult = producer.Enqueue(message);
+        var enqueueResult = producer.TryEnqueue(message);
         
         // Assert
         Assert.True(enqueueResult.IsSuccess);
@@ -40,16 +42,16 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
     public void InterProcessQueue_Dequeue_SingleMessage_ReturnsCorrectData()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
-        using var producer = new Producer(producerOptions);
-        using var consumer = new Consumer(consumerOptions);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        using var producer = new Producer(producerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: true));
+        using var consumer = new Consumer(consumerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: false));
         
         var expectedMessage = "Test Message"u8.ToArray();
-        producer.Enqueue(expectedMessage);
+        producer.TryEnqueue(expectedMessage);
         
         // Act
-        var dequeueResult = consumer.Dequeue();
+        var dequeueResult = consumer.TryDequeue();
         
         // Assert
         Assert.True(dequeueResult.IsSuccess);
@@ -64,10 +66,10 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
     public void InterProcessQueue_EnqueueDequeue_MultipleMessages_MaintainsOrder()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
-        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
-        using var producer = new Producer(producerOptions);
-        using var consumer = new Consumer(consumerOptions);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        var consumerOptions = new ConsumerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        using var producer = new Producer(producerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: true));
+        using var consumer = new Consumer(consumerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: false));
         
         var messages = new[]
         {
@@ -78,12 +80,12 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
         
         // Act
         foreach (var message in messages)
-            producer.Enqueue(message);
+            producer.TryEnqueue(message);
         
         // Assert
         foreach (var message in messages)
         {
-            var dequeueResult = consumer.Dequeue();
+            var dequeueResult = consumer.TryDequeue();
             Assert.True(dequeueResult.IsSuccess);
             
             var memory = dequeueResult.Value;
@@ -98,11 +100,11 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
     public void InterProcessQueue_Enqueue_MessageLargerThanQueue_ReturnsNotEnoughMemory()
     {
         // Arrange
-        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize);
-        using var producer = new Producer(producerOptions);
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        using var producer = new Producer(producerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: true));
         
         // Act
-        var result = producer.Enqueue(new byte[TestQueueSize]);
+        var result = producer.TryEnqueue(new byte[TestQueueSize]);
         
         // Assert
         Assert.True(result.IsError);

@@ -22,10 +22,12 @@ namespace Profiler
 		std::string sharedMemoryName;
 		std::optional<std::string> sharedMemoryFile;
 		UINT sharedMemorySize;
+		std::string sharedMemorySemaphoreName;
 
 		std::string commandQueueName;
 		std::optional<std::string> commandQueueFile;
         UINT commandQueueSize;
+        std::string commandSemaphoreName;
 
         std::vector<MethodDescriptor> methodDescriptors;
         std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;

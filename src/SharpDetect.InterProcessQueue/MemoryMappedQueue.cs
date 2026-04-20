@@ -8,6 +8,7 @@ using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using SharpDetect.InterProcessQueue.Synchronization;
 using static OperationResult.Helpers;
 
 namespace SharpDetect.InterProcessQueue;
@@ -35,7 +36,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
 
     }
 
-    private MemoryMappedQueue(MemoryMappedQueueOptions options, ArrayPool<byte>? arrayPool, TimeProvider timeProvider)
+    internal MemoryMappedQueue(MemoryMappedQueueOptions options, ArrayPool<byte>? arrayPool, TimeProvider timeProvider)
     {
         _options = options;
         var headerSize = Unsafe.SizeOf<QueueHeader>();
@@ -64,16 +65,27 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         Dispose();
     }
 
+    internal void Clear()
+    {
+        var nowTicks = _timeProvider.GetUtcNow().UtcTicks;
+        var header = (QueueHeader*)_sharedMemory.GetPointer();
+        Volatile.Write(ref header->ReadLockToken, 0);
+        Volatile.Write(ref header->WriteLockToken, 0);
+        Volatile.Write(ref header->ReadOffset, 0);
+        Volatile.Write(ref header->WriteOffset, 0);
+        Volatile.Write(ref header->ReadLockAcquiredTimestampTicks, nowTicks);
+        Volatile.Write(ref header->WriteLockAcquiredTimestampTicks, nowTicks);
+    }
+
     public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data)
     {
         var header = GetHeader();
-        var timestampUtc = _timeProvider.GetUtcNow();
-        var timestampUtcTicks = timestampUtc.UtcTicks;
+        var token = LockToken.Next();
         var lockAcquired = false;
 
         try
         {
-            lockAcquired = TryAcquireLock(timestampUtc, ref header->WriteLockTimeStampTicksUtc);
+            lockAcquired = TryAcquireLock(token, ref header->WriteLockToken, ref header->WriteLockAcquiredTimestampTicks);
             if (!lockAcquired)
                 return Error(EnqueueErrorType.UnableToAcquireWriteLock);
 
@@ -94,7 +106,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         {
             if (lockAcquired)
             {
-                if (Interlocked.CompareExchange(ref header->WriteLockTimeStampTicksUtc, 0, timestampUtcTicks) != timestampUtcTicks)
+                if (Interlocked.CompareExchange(ref header->WriteLockToken, 0, token) != token)
                     ThrowDataCorruptionDetected();
             }
         }
@@ -105,13 +117,12 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
     public Result<ILocalMemory<byte>, DequeueErrorType> Dequeue()
     {
         var header = GetHeader();
-        var timestampUtc = _timeProvider.GetUtcNow();
-        var timestampUtcTicks = timestampUtc.UtcTicks;
+        var token = LockToken.Next();
         var lockAcquired = false;
 
         try
         {
-            lockAcquired = TryAcquireLock(timestampUtc, ref header->ReadLockTimeStampTicksUtc);
+            lockAcquired = TryAcquireLock(token, ref header->ReadLockToken, ref header->ReadLockAcquiredTimestampTicks);
             if (!lockAcquired)
                 return Error(DequeueErrorType.UnableToAcquireReadLock);
 
@@ -144,30 +155,30 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         {
             if (lockAcquired)
             {
-                if (Interlocked.CompareExchange(ref header->ReadLockTimeStampTicksUtc, 0, timestampUtcTicks) != timestampUtcTicks)
+                if (Interlocked.CompareExchange(ref header->ReadLockToken, 0, token) != token)
                     ThrowDataCorruptionDetected();
             }
         }
     }
 
-    private bool TryAcquireLock(DateTimeOffset timestampUtc, ref long lockField)
+    private bool TryAcquireLock(long token, ref long lockTokenField, ref long lockTimestampField)
     {
-        var timestampUtcTicks = timestampUtc.UtcTicks;
-        var lastLockTimeStamp = Interlocked.CompareExchange(ref lockField, timestampUtcTicks, 0);
-        if (lastLockTimeStamp != 0)
+        var now = _timeProvider.GetUtcNow();
+        var prevToken = Interlocked.CompareExchange(ref lockTokenField, token, 0);
+        if (prevToken != 0)
         {
             // Could not acquire lock - check if the previous lock can be invalidated
-            var lastLockDuration = timestampUtc - new DateTimeOffset(ticks: lastLockTimeStamp, offset: TimeSpan.Zero);
-            if (lastLockDuration <= _maxLockDuration)
+            var prevTimestamp = Volatile.Read(ref lockTimestampField);
+            var prevLockAge = now - new DateTimeOffset(ticks: prevTimestamp, offset: TimeSpan.Zero);
+            if (prevLockAge <= _maxLockDuration)
             {
                 // Lock is still valid
                 return false;
             }
             else
             {
-                // Attempt to clear previous lock and acquire for ourselves
-                var result = Interlocked.CompareExchange(ref lockField, timestampUtcTicks, lastLockTimeStamp);
-                if (result != lastLockTimeStamp)
+                // Attempt to steal the stale lock: replace the old token with ours
+                if (Interlocked.CompareExchange(ref lockTokenField, token, prevToken) != prevToken)
                 {
                     // Somebody was faster to acquire the lock
                     return false;
@@ -175,6 +186,8 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             }
         }
 
+        // Record acquisition timestamp for stale-lock detection by other processes
+        Volatile.Write(ref lockTimestampField, now.UtcTicks);
         return true;
     }
 

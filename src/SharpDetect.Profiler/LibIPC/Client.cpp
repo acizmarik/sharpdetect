@@ -19,11 +19,15 @@ const std::string LibIPC::Client::_ipqFreeMemorySymbolName = "ipq_free_memory";
 
 
 LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFile, const UINT commandQueueSize,
-					   std::string eventQueueName, std::string eventQueueFile, const UINT eventQueueSize) :
+					   std::string commandSemaphoreName,
+					   std::string eventQueueName, std::string eventQueueFile, const UINT eventQueueSize,
+					   std::string eventSemaphoreName) :
 	_ipqName(std::move(eventQueueName)),
 	_mmfName(std::move(eventQueueFile)),
+	_eventSemaphoreName(std::move(eventSemaphoreName)),
 	_commandQueueName(std::move(commandQueueName)),
 	_commandMmfName(std::move(commandQueueFile)),
+	_commandSemaphoreName(std::move(commandSemaphoreName)),
 	_ipqModuleHandle(nullptr),
 	_ffiProducer(nullptr),
 	_ffiConsumer(nullptr),
@@ -38,7 +42,9 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_ipqConsumerCreateSymbolAddress(nullptr),
 	_ipqConsumerDestroySymbolAddress(nullptr),
 	_ipqConsumerDequeueSymbolAddress(nullptr),
-	_ipqFreeMemorySymbolAddress(nullptr)
+	_ipqFreeMemorySymbolAddress(nullptr),
+	_eventSemaphore(InvalidSemaphore),
+	_commandSemaphore(InvalidSemaphore)
 {
 	auto const ipqPathStringPointer = std::getenv("SharpDetect_IPQ_PATH");
 	if (ipqPathStringPointer == nullptr)
@@ -78,7 +84,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	
 	// Create producer for events
 	LOG_F(INFO, "IPC event worker configuration: { name: %s, file: %s, size: %d }", _ipqName.c_str(), _mmfName.c_str(), _eventQueueSize);
-	_ffiProducer = reinterpret_cast<ipq_producer_create>(_ipqProducerCreateSymbolAddress)(_ipqName.c_str(), _mmfName.c_str(), _eventQueueSize);
+	_ffiProducer = reinterpret_cast<ipq_producer_create>(_ipqProducerCreateSymbolAddress)(_ipqName.c_str(), _mmfName.c_str(), _eventSemaphoreName.c_str(), _eventQueueSize);
 	if (_ffiProducer == nullptr)
 	{
 		LOG_F(FATAL, "Communication library could not create producer.");
@@ -87,11 +93,26 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 
 	// Create consumer for commands
 	LOG_F(INFO, "IPC command worker configuration: { name: %s, file: %s, size: %d }", _commandQueueName.c_str(), _commandMmfName.c_str(), _commandQueueSize);
-	_ffiConsumer = reinterpret_cast<ipq_consumer_create>(_ipqConsumerCreateSymbolAddress)(_commandQueueName.c_str(), _commandMmfName.c_str(), _commandQueueSize);
+	_ffiConsumer = reinterpret_cast<ipq_consumer_create>(_ipqConsumerCreateSymbolAddress)(_commandQueueName.c_str(), _commandMmfName.c_str(), _commandSemaphoreName.c_str(), _commandQueueSize);
 	if (_ffiConsumer == nullptr)
 	{
 		LOG_F(FATAL, "Communication library could not create consumer.");
 		throw std::runtime_error("Could not obtain read access to IPC command queue.");
+	}
+
+	// Open inter-process semaphores (created/owned by the managed side)
+	_eventSemaphore = Semaphore_Open(_eventSemaphoreName);
+	if (_eventSemaphore == InvalidSemaphore)
+	{
+		LOG_F(FATAL, "Could not open event semaphore \"%s\".", _eventSemaphoreName.c_str());
+		throw std::runtime_error("Could not open event semaphore.");
+	}
+
+	_commandSemaphore = Semaphore_Open(_commandSemaphoreName);
+	if (_commandSemaphore == InvalidSemaphore)
+	{
+		LOG_F(FATAL, "Could not open command semaphore \"%s\".", _commandSemaphoreName.c_str());
+		throw std::runtime_error("Could not open command semaphore.");
 	}
 
 	LOG_F(INFO, "Communication library initialized with command receiving enabled.");
@@ -124,6 +145,7 @@ void LibIPC::Client::EventThreadLoop()
 			}
 			while (result != 0);
 
+
 			_eventQueue.pop();
 		}
 	}
@@ -138,15 +160,16 @@ void LibIPC::Client::CommandThreadLoop()
 
 	while (!_terminating)
 	{
+		// Block until the managed producer signals that a command is available (or timeout)
+		if (!Semaphore_TimedWait(_commandSemaphore, 5000))
+			continue;
+
 		BYTE* dataPtr = nullptr;
 		INT size = 0;
 
 		auto result = dequeueFn(_ffiConsumer, &dataPtr, &size);
 		if (result != 0)
-		{
-			std::this_thread::yield();
 			continue;
-		}
 
 		try
 		{
@@ -256,4 +279,9 @@ LibIPC::Client::~Client()
 		reinterpret_cast<ipq_consumer_destroy>(_ipqConsumerDestroySymbolAddress)(_ffiConsumer);
 		_ffiConsumer = nullptr;
 	}
+
+	Semaphore_Close(_eventSemaphore);
+	Semaphore_Close(_commandSemaphore);
+	_eventSemaphore = InvalidSemaphore;
+	_commandSemaphore = InvalidSemaphore;
 }

@@ -5,7 +5,10 @@ using System.Runtime.InteropServices;
 
 namespace SharpDetect.InterProcessQueue;
 
-[StructLayout(LayoutKind.Explicit, Size = 32)]
+/// <summary>
+/// Header placed at byte 0 of every shared-memory queue region.
+/// </summary>
+[StructLayout(LayoutKind.Explicit, Size = 48)]
 internal struct QueueHeader
 {
     [FieldOffset(0)]
@@ -15,8 +18,14 @@ internal struct QueueHeader
     public long WriteOffset;
 
     [FieldOffset(16)]
-    public long ReadLockTimeStampTicksUtc;
+    public long ReadLockToken;
 
     [FieldOffset(24)]
-    public long WriteLockTimeStampTicksUtc;
+    public long ReadLockAcquiredTimestampTicks;
+
+    [FieldOffset(32)]
+    public long WriteLockToken;
+
+    [FieldOffset(40)]
+    public long WriteLockAcquiredTimestampTicks;
 }

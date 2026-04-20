@@ -9,4 +9,5 @@ namespace SharpDetect.Core.Communication;
 public interface IProfilerEventReceiver
 {
     bool TryReceiveNotification([NotNullWhen(true)] out RecordedEvent? recordedEvent);
+    bool TryReceiveNotification(TimeSpan timeout, [NotNullWhen(true)] out RecordedEvent? recordedEvent);
 }
