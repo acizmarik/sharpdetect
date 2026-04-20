@@ -383,6 +383,21 @@ HRESULT LibProfiler::ModuleDef::GetFieldRefProps(
 	return S_OK;
 }
 
+HRESULT LibProfiler::ModuleDef::GetTypeSpecProps(
+	IN const mdTypeSpec typeSpec,
+	OUT PCCOR_SIGNATURE* signature,
+	OUT ULONG* signatureLength) const
+{
+	auto& metadataImport = GetMetadataImport();
+	HRESULT hr = metadataImport.GetTypeSpecFromToken(typeSpec, signature, signatureLength);
+	if (FAILED(hr))
+	{
+		LOG_F(ERROR, "Could not get TypeSpec props for token %d from module=%" UINT_PTR_FORMAT ". Error: 0x%x.", typeSpec, _moduleId, hr);
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
 HRESULT LibProfiler::ModuleDef::GetSignatureFromToken(
 	const mdSignature signatureToken,
 	PCCOR_SIGNATURE* signature,

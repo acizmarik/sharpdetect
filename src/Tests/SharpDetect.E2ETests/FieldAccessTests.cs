@@ -142,7 +142,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ValueType_OnReferenceType_Write)}.json", "net10.0")]
     public Task InstanceField_Generic_FromType_ValueType_OnReferenceType_Write(string configuration, string sdk)
     {
-        return FieldAccessNotInstrumented(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
     }
 
     [Theory]
@@ -160,7 +160,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ReferenceType_OnReferenceType_Write)}.json", "net10.0")]
     public Task InstanceField_Generic_FromType_ReferenceType_OnReferenceType_Write(string configuration, string sdk)
     {
-        return FieldAccessNotInstrumented(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
     }
     
     [Theory]
@@ -214,7 +214,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromBoth_ValueType_OnReferenceType_Write)}.json", "net10.0")]
     public Task InstanceField_Generic_FromBoth_ValueType_OnReferenceType_Write(string configuration, string sdk)
     {
-        return FieldAccessNotInstrumented(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
     }
 
     [Theory]
@@ -232,7 +232,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromBoth_ReferenceType_OnReferenceType_Write)}.json", "net10.0")]
     public Task InstanceField_Generic_FromBoth_ReferenceType_OnReferenceType_Write(string configuration, string sdk)
     {
-        return FieldAccessNotInstrumented(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
     }
 
     [Theory]
@@ -269,6 +269,114 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     public Task InstanceField_Generic_FromType_ReferenceType_OnValueType_Write(string configuration, string sdk)
     {
         return FieldAccessNotInstrumented(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Read)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Read(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Write)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_ArrayOfValueType_OnReferenceType_Write(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Read)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Read(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Write)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_ArrayOfReferenceType_OnReferenceType_Write(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Read)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Read(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Write)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_NestedGeneric_ValueType_OnReferenceType_Write(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Read)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Read(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Write)}.json", "net10.0")]
+    public Task InstanceField_Generic_FromType_NestedGeneric_ReferenceType_OnReferenceType_Write(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Read)}.json", "net10.0")]
+    public Task InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Read(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Write)}.json", "net10.0")]
+    public Task InstanceField_Generic_MultiParam_ValueType_OnReferenceType_Write(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Read)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Read)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Read)}.json", "net10.0")]
+    public Task InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Read(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldRead);
+    }
+
+    [Theory]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Write)}.json", "net8.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Write)}.json", "net9.0")]
+    [InlineData($"{ConfigurationFolder}/{nameof(InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Write)}.json", "net10.0")]
+    public Task InstanceField_Generic_MultiParam_ReferenceType_OnReferenceType_Write(string configuration, string sdk)
+    {
+        return FieldAccess(configuration, sdk, RecordedEventType.InstanceFieldWrite);
     }
 
     [Theory]
