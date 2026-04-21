@@ -529,6 +529,8 @@ HRESULT LibProfiler::ModuleDef::GetPlaceHolderMethodRVA(OUT UINT* rva)
 			LOG_F(ERROR, "Could not obtain RVA for method=%s on type=%s. Error: 0x%x.", systemObjectCtorMethodName.c_str(), systemObjectMetadataName.c_str(), hr);
 			return E_FAIL;
 		}
+
+		_objectCtorRva = rva;
 	}
 
 	return S_OK;
