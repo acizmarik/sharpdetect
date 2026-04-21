@@ -1581,6 +1581,7 @@ HRESULT Profiler::CorProfiler::CaptureStackTrace(const UINT64 commandId, const T
         return hr;
     }
 
+    const auto frameCount = moduleIds.size();
     _client.Send(LibIPC::Helpers::CreateStackTraceSnapshotMsg(
         CreateMetadataMsg(commandId),
         threadId,
@@ -1588,7 +1589,7 @@ HRESULT Profiler::CorProfiler::CaptureStackTrace(const UINT64 commandId, const T
         std::move(methodTokens)));
 
     LOG_F(INFO, "Sent stack trace snapshot notification for thread %" UINT_PTR_FORMAT " with %zu frames (commandId: %lu).",
-        threadId, moduleIds.size(), commandId);
+        threadId, frameCount, commandId);
 
     return S_OK;
 }
