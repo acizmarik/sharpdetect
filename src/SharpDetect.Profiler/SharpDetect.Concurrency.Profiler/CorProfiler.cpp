@@ -1125,7 +1125,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         methodDef,
         originalMethodExitEvent,
         customMethodExitEvent);
-    auto const hasCustomMethodEnterWithArgumentsEvent = FindCustomEventMapping(
+    auto const hasCustomMethodExitWithArgumentsEvent = FindCustomEventMapping(
         _customEventOnMethodExitLookup,
         moduleId,
         methodDef,
@@ -1227,7 +1227,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         CreateMetadataMsg(),
         moduleId,
         methodDef,
-        hasCustomMethodEnterWithArgumentsEvent
+        hasCustomMethodExitWithArgumentsEvent
             ? customMethodExitWithArgumentsEvent
             : originalMethodExitWithArgumentsEvent,
         std::move(returnValue),
