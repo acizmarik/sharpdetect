@@ -145,8 +145,8 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
             .Then(EventuallyEventType(RecordedEventType.ThreadStartCore))
-            .Then(EventuallyEventType(RecordedEventType.ThreadStartCallback))
             .Then(EventuallyEventType(RecordedEventType.ThreadCreate))
+            .Then(EventuallyEventType(RecordedEventType.ThreadStartCallback))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
         
         // Execute

@@ -96,7 +96,7 @@ ThreadRenameMsg Helpers::CreateThreadRenameMsg(MetadataMsg&& metadataMsg, UINT64
 
 ThreadDestroyMsg Helpers::CreateThreadDestroyMsg(MetadataMsg&& metadataMsg, UINT64 threadId)
 {
-    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::ThreadCreate);
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::ThreadDestroy);
     return { std::move(metadataMsg), ThreadDestroyMsgArgsInstance(discriminator, ThreadDestroyMsgArgs(threadId)) };
 }
 
