@@ -58,7 +58,7 @@ internal abstract class PluginHostBase : IPluginHost, IDisposable
 
     private static bool IsEventFromManagedThread(RecordedEvent recordedEvent)
     {
-        return recordedEvent.Metadata.Tid != default;
+        return recordedEvent.Metadata.Tid != default || recordedEvent.EventArgs is ProfilerInitializeRecordedEvent;
     }
 
     public void Dispose()
