@@ -3,4 +3,4 @@
 
 namespace SharpDetect.Core.Reporting.Model;
 
-public record ModuleInfo(string Name, string Path, Version Version, string Culture, string PublicKey);
+public record ModuleInfo(string Name, string Path, Version Version, string Culture, string PublicKey, uint ProcessId);

@@ -1,4 +1,4 @@
-﻿*,
+*,
 *::before,
 *::after {
     box-sizing: border-box;
@@ -250,6 +250,17 @@ body {
     font-size: 0.75rem;
     color: var(--color-text-muted);
     font-family: var(--font-mono);
+}
+.card-pid-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
 }
 .violation-card-body {
     border-top: 1px solid var(--color-border);

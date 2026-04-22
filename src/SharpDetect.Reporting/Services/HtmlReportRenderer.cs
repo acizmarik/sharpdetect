@@ -65,12 +65,6 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
                       ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
                       ?? "unknown version";
         
-        var runtimeName = summary.RuntimeInfo.Type switch
-        {
-            COR_PRF_RUNTIME_TYPE.COR_PRF_DESKTOP_CLR => "CLR",
-            COR_PRF_RUNTIME_TYPE.COR_PRF_CORE_CLR => "CoreCLR",
-            _ => "unknown runtime"
-        };
         var rawReports = summary.GetAllReports().ToArray();
         var allReports = plugin.CreateReportDataContext(rawReports).ToArray();
         return new
@@ -91,8 +85,6 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
             },
             runtimeInfo = new
             {
-                type = runtimeName,
-                version = summary.RuntimeInfo.Version,
                 timingInfo = new
                 {
                     startTime = summary.TimingInfo.AnalysisStartTime.ToString("o", CultureInfo.InvariantCulture),
@@ -118,7 +110,8 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
                 version = moduleInfo.Version,
                 path = moduleInfo.Path,
                 publicKey = moduleInfo.PublicKey,
-                culture = moduleInfo.Culture
+                culture = moduleInfo.Culture,
+                processId = moduleInfo.ProcessId.ToString()
             }),
             reports = allReports,
             configurationJson

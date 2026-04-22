@@ -11,6 +11,7 @@ namespace SharpDetect.Core.Plugins
         public readonly string Category;
         public readonly int Identifier;
         public readonly DateTime DetectionTime;
+        public readonly uint ProcessId;
         private readonly List<ThreadInfo> _threads = [];
         private readonly Dictionary<ThreadInfo, StackTrace> _stackTraces = [];
         private readonly Dictionary<ThreadInfo, string> _reportReasons = [];
@@ -18,10 +19,11 @@ namespace SharpDetect.Core.Plugins
         private string? _target;
         private string? _description;
 
-        public ReportBuilder(int identifier, string category, DateTime detectionTime)
+        public ReportBuilder(int identifier, string category, uint processId, DateTime detectionTime)
         {
             Identifier = identifier;
             Category = category;
+            ProcessId = processId;
             DetectionTime = detectionTime;
         }
 
@@ -75,7 +77,8 @@ namespace SharpDetect.Core.Plugins
                 reportedThreads: _threads,
                 stackTraces: _stackTraces,
                 reportReasons: _reportReasons,
-                detectionTime: DetectionTime);
+                detectionTime: DetectionTime,
+                processId: ProcessId);
         }
     }
 }

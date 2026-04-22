@@ -501,6 +501,17 @@ namespace SharpDetect.E2ETests.Subject
                     break;
             }
 
+            // Multi-process scenarios
+            switch (args[0])
+            {
+                case nameof(Test_MultiProcess_ChildExitsBeforeParent):
+                    Test_MultiProcess_ChildExitsBeforeParent();
+                    break;
+                case nameof(Test_MultiProcess_Child_LockAndExit):
+                    Test_MultiProcess_Child_LockAndExit();
+                    break;
+            }
+
             // Garbage collection events
             switch (args[0])
             {
