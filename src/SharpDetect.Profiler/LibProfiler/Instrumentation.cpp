@@ -95,10 +95,10 @@ HRESULT LibProfiler::PatchMethodBody(
 					mdMethodDef,
 					injectedMethods,
 					&nextInstruction)))
-				{
-					isRewritten = true;
-					currentInstruction = nextInstruction;
-				}
+					{
+						isRewritten = true;
+						currentInstruction = nextInstruction;
+					}
 			}
 			// Instance field access
 			if (currentInstruction->m_opcode == CEE_LDFLD || currentInstruction->m_opcode == CEE_STFLD)

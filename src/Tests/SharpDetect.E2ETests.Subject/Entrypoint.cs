@@ -485,6 +485,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_Task_SequentialTasks_WriteRead):
                     Test_NoDataRace_Task_SequentialTasks_WriteRead();
                     break;
+                case nameof(Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace):
+                    Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace();
+                    break;
                 case nameof(Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead):
                     Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead();
                     break;
