@@ -5,5 +5,5 @@ using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.DataRace.Common;
 
-public readonly record struct FieldDefOrRef(ModuleId ModuleId, MdToken Token);
+public readonly record struct FieldDefOrRef(uint ProcessId, ModuleId ModuleId, MdToken Token);
 

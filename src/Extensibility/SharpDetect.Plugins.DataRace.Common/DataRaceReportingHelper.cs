@@ -51,15 +51,16 @@ public abstract class DataRaceReportingHelper
     public static IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports)
     {
         return reports
-            .GroupBy(report => report.Target ?? report.Title)
+            .GroupBy(report => (report.ProcessId, Key: report.Target ?? report.Title))
             .Select(group =>
             {
                 var isGrouped = group.Any(r => r.Target != null);
                 var children = BuildMergedChildren(group).ToArray();
                 return new
                 {
-                    target = group.Key,
-                    shortTarget = ComputeShortTarget(group.Key),
+                    target = group.Key.Key,
+                    shortTarget = ComputeShortTarget(group.Key.Key),
+                    processId = group.Key.ProcessId.ToString(),
                     isGrouped,
                     instanceCount = group.Count(),
                     children
@@ -99,7 +100,7 @@ public abstract class DataRaceReportingHelper
             })
             .OrderBy(s => s)
             .Distinct();
-        return string.Join("|", parts);
+        return $"{report.ProcessId}:{string.Join("|", parts)}";
     }
 
     private static IEnumerable<object> BuildMergedChildren(IEnumerable<Report> reports)
@@ -132,6 +133,7 @@ public abstract class DataRaceReportingHelper
                 return (object)new
                 {
                     reportId = $"report-{representative.Identifier}",
+                    processId = representative.ProcessId.ToString(),
                     description = representative.Description,
                     summaryText,
                     objectCount,
@@ -197,7 +199,7 @@ public abstract class DataRaceReportingHelper
         var fieldTitle = DataRaceLogger.GetFieldTitle(group.Key.FieldId);
         var fieldName = DataRaceLogger.GetFieldDisplayName(group.Key.FieldId);
 
-        var reportBuilder = new ReportBuilder(index, _reportCategory, firstRace.Timestamp);
+        var reportBuilder = new ReportBuilder(index, _reportCategory, firstRace.ProcessId, firstRace.Timestamp);
         if (group.Key.ObjectId is not null)
         {
             reportBuilder.SetTitle(fieldTitle);

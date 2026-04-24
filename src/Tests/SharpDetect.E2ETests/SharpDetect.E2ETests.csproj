@@ -382,6 +382,9 @@
     <None Update="MethodInterpretationTestConfigurations\MethodInterpretation_SemaphoreSlim_TryWaitRelease4.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="MultiProcessTestConfigurations\MultiProcess_ChildExitsBeforeParent.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

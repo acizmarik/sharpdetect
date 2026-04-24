@@ -25,7 +25,7 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
         out FieldDef? fieldDef,
         out FieldFlags fieldFlags)
     {
-        var fieldDefOrRef = new FieldDefOrRef(moduleId, fieldToken);
+        var fieldDefOrRef = new FieldDefOrRef(processId, moduleId, fieldToken);
 
         if (_resolvedFields.TryGetValue(fieldDefOrRef, out var cached))
         {

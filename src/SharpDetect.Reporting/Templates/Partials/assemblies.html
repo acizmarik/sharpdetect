@@ -1,4 +1,4 @@
-﻿<div class="table-filter">
+<div class="table-filter">
     <input type="text" id="assembliesFilter" placeholder="Search assemblies by name or path..." oninput="filterTable('assembliesFilter', 'assembliesTable')">
 </div>
 <div class="table-container">
@@ -9,6 +9,7 @@
                 <th>Version</th>
                 <th>Public Key</th>
                 <th>Culture</th>
+                <th>PID</th>
                 <th>Path</th>
             </tr>
         </thead>
@@ -19,6 +20,7 @@
                 <td class="text-mono">{{version}}</td>
                 <td class="text-mono text-sm">{{publicKey}}</td>
                 <td>{{culture}}</td>
+                <td class="text-mono">{{processId}}</td>
                 <td class="text-mono text-sm" title="{{path}}">{{path}}</td>
             </tr>
         {{/assemblies}}

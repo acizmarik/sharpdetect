@@ -13,7 +13,7 @@ namespace SharpDetect.Core.Plugins
         private readonly List<(string, string)> _collectionProperties;
         private readonly List<ModuleInfo> _modules;
         private readonly List<Report> _reports;
-        private RuntimeInfo? _runtimeInfo;
+        private readonly List<(uint Pid, RuntimeInfo RuntimeInfo)> _runtimeInfos;
         private ulong _injectedTypesCount;
         private ulong _injectedMethodsCount;
         private ulong _rewrittenMethodsCount;
@@ -32,6 +32,7 @@ namespace SharpDetect.Core.Plugins
             _collectionProperties = [];
             _modules = [];
             _reports = [];
+            _runtimeInfos = [];
         }
 
         public SummaryBuilder AddReport(Report report)
@@ -52,9 +53,9 @@ namespace SharpDetect.Core.Plugins
             return this;
         }
 
-        public SummaryBuilder SetRuntimeInfo(RuntimeInfo runtimeInfo)
+        public SummaryBuilder AddRuntimeInfo(uint processId, RuntimeInfo runtimeInfo)
         {
-            _runtimeInfo = runtimeInfo;
+            _runtimeInfos.Add((processId, runtimeInfo));
             return this;
         }
         
@@ -122,7 +123,6 @@ namespace SharpDetect.Core.Plugins
         {
             Guard.IsNotNullOrWhiteSpace(_title);
             Guard.IsNotNullOrWhiteSpace(_description);
-            Guard.IsNotNull(_runtimeInfo);
 
             var endTime = DateTime.UtcNow;
             var timingInfo = new TimingInfo(
@@ -132,10 +132,21 @@ namespace SharpDetect.Core.Plugins
 
             _collectionProperties.Add(("Garbage Collections Count", _garbageCollectionsCount.ToString()));
             _collectionProperties.Add(("Method Enter/Exit Count", _methodEnterExitCount.ToString()));
+
+            foreach (var (pid, info) in _runtimeInfos)
+            {
+                var typeName = info.Type switch
+                {
+                    Events.Profiler.COR_PRF_RUNTIME_TYPE.COR_PRF_DESKTOP_CLR => "CLR",
+                    Events.Profiler.COR_PRF_RUNTIME_TYPE.COR_PRF_CORE_CLR => "CoreCLR",
+                    _ => "unknown"
+                };
+                _runtimeProperties.Add(($"Runtime (PID {pid})", $"{typeName} {info.Version}"));
+            }
+
             return new Summary(
                 title: _title,
                 description: _description,
-                runtimeInfo: _runtimeInfo,
                 rewritingInfo: new RewritingInfo(
                     _analyzedMethodsCount,
                     _injectedTypesCount,

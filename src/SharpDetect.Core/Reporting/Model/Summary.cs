@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using SharpDetect.Core.Reporting.Model;
 using System.Collections.Immutable;
 
 namespace SharpDetect.Core.Reporting.Model;
@@ -10,7 +9,6 @@ public class Summary
 {
     public readonly string Title;
     public readonly string Description;
-    public readonly RuntimeInfo RuntimeInfo;
     public readonly RewritingInfo RewritingInfo;
     public readonly TimingInfo TimingInfo;
     public readonly EnvironmentInfo EnvironmentInfo;
@@ -22,7 +20,6 @@ public class Summary
     public Summary(
         string title,
         string description,
-        RuntimeInfo runtimeInfo,
         RewritingInfo rewritingInfo,
         TimingInfo timingInfo,
         EnvironmentInfo environmentInfo,
@@ -33,7 +30,6 @@ public class Summary
     {
         Title = title;
         Description = description;
-        RuntimeInfo = runtimeInfo;
         RewritingInfo = rewritingInfo;
         TimingInfo = timingInfo;
         EnvironmentInfo = environmentInfo;

@@ -59,19 +59,19 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         var runtimeInfo = new RuntimeInfo(
             Type: args.RuntimeType,
             Version: new Version(args.MajorVersion, args.MinorVersion, args.BuildVersion, args.QfeVersion));
-        Reporter.SetRuntimeInfo(runtimeInfo);
+        Reporter.AddRuntimeInfo(metadata.Pid, runtimeInfo);
         InitializeCommandsChannel(metadata.Pid);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ProfilerInitializeRecordedEvent args)
     {
-        Reporter.AddRuntimeProperty("Profiler", "Attached");
+        Reporter.AddRuntimeProperty($"Profiler (PID {metadata.Pid})", "Attached");
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ProfilerAbortInitializeEvent args)
     {
-        Reporter.AddRuntimeProperty("Profiler", $"Aborted. Reason: \"{args.Reason}\"");
+        Reporter.AddRuntimeProperty($"Profiler (PID {metadata.Pid})", $"Aborted. Reason: \"{args.Reason}\"");
         base.Visit(metadata, args);
     }
 
@@ -89,7 +89,8 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
             args.Path,
             assemblyDef.Version,
             string.IsNullOrWhiteSpace(culture) ? "neutral" : culture,
-            assemblyDef.PublicKeyToken?.ToString() ?? "null"));
+            assemblyDef.PublicKeyToken?.ToString() ?? "null",
+            metadata.Pid));
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)

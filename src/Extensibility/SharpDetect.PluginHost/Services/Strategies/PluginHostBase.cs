@@ -27,7 +27,7 @@ internal abstract class PluginHostBase : IPluginHost, IDisposable
 
     public RecordedEventState ProcessEvent(RecordedEvent recordedEvent)
     {
-        if (!IsEventFromManagedThread(recordedEvent))
+        if (!ShouldProcessEvent(recordedEvent))
             return RecordedEventState.Discarded;
 
         BoundMethodEnterExitHandler? customHandler = null;
@@ -56,9 +56,11 @@ internal abstract class PluginHostBase : IPluginHost, IDisposable
         return RecordedEventState.Executed;
     }
 
-    private static bool IsEventFromManagedThread(RecordedEvent recordedEvent)
+    private static bool ShouldProcessEvent(RecordedEvent recordedEvent)
     {
-        return recordedEvent.Metadata.Tid != default;
+        // Native threads don't have managed thread ID
+        return recordedEvent.Metadata.Tid != default ||
+               recordedEvent.EventArgs is ProfilerInitializeRecordedEvent;
     }
 
     public void Dispose()

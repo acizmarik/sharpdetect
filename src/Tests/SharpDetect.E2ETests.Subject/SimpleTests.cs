@@ -1388,6 +1388,25 @@ namespace SharpDetect.E2ETests.Subject
             var disposable = new Disposables.CustomDisposable();
             disposable.Dispose();
         }
+        
+        public static void Test_MultiProcess_ChildExitsBeforeParent()
+        {
+            var hostPath = Environment.ProcessPath!;
+            var assemblyPath = Environment.GetCommandLineArgs()[0];
+            var child = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = hostPath,
+                Arguments = $"{assemblyPath} {nameof(Test_MultiProcess_Child_LockAndExit)}",
+                UseShellExecute = false
+            })!;
+            lock (new object()) { }
+            child.WaitForExit(timeout: TimeSpan.FromSeconds(3));
+        }
+        
+        public static void Test_MultiProcess_Child_LockAndExit()
+        {
+            lock (new object()) { }
+        }
     }
 }
 
