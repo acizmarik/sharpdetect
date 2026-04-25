@@ -156,7 +156,9 @@ Task("Tests")
 {
     DotNetTest("./SharpDetect.slnx", new DotNetTestSettings
     {
-        Configuration = configuration
+        Configuration = configuration,
+        Loggers = new[] { "trx" },
+        ResultsDirectory = "./TestResults"
     });
 });
 

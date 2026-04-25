@@ -32,6 +32,10 @@ jobs:
 
   tests:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: read
+      checks: write
     strategy:
       fail-fast: false
       matrix:
@@ -56,3 +60,10 @@ jobs:
         cd src
         dotnet tool restore
         dotnet cake --rid=${{ matrix.rid }} --target=Tests
+    - name: Report test results
+      uses: dorny/test-reporter@v3
+      if: ${{ !cancelled() }}
+      with:
+        name: Tests (${{ matrix.rid }})
+        path: src/TestResults/**/*.trx
+        reporter: dotnet-trx
