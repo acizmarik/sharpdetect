@@ -14,19 +14,18 @@ namespace SharpDetect.E2ETests;
 [Collection("E2E")]
 public class DeadlockPluginTests(ITestOutputHelper testOutput)
 {
-    private const string ConfigurationFolder = "DeadlockPluginTestConfigurations";
     private const string SynchronizationMutexName = "SharpDetect_E2E_Tests";
-    
+    private const string ExternalDeadlockPluginTypeName = "SharpDetect.Plugins.Deadlock.DeadlockPlugin";
+
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_NoDeadlock)}.json", "net10.0")]
-    public async Task DeadlockPlugin_NoDeadlock(string configuration, string sdk)
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task DeadlockPlugin_NoDeadlock(string sdk)
     {
         // Arrange
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
-        using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput);
+        using var services = E2ETestBuilder
+            .ForSubject("Test_NoDeadlock")
+            .WithExternalPlugin(ExternalDeadlockPluginTypeName)
+            .Build(sdk, testOutput);
         var plugin = services.GetRequiredService<IPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
@@ -39,49 +38,37 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMonitorDeadlock)}.json", "net10.0")]
-    public Task DeadlockPlugin_CanDetectMonitorDeadlock(string configuration, string sdk)
-    {
-        return CanDetectDeadlock(configuration, sdk);
-    }
-    
-    [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectLockDeadlock)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectLockDeadlock)}.json", "net10.0")]
-    public Task DeadlockPlugin_CanDetectLockDeadlock(string configuration, string sdk)
-    {
-        return CanDetectDeadlock(configuration, sdk);
-    }
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task DeadlockPlugin_CanDetectMonitorDeadlock(string sdk)
+        => CanDetectDeadlock("Test_Deadlock_SimpleDeadlock_UsingMonitor", sdk);
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectThreadJoinDeadlock)}.json", "net10.0")]
-    public Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string configuration, string sdk)
-    {
-        return CanDetectDeadlock(configuration, sdk);
-    }
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public Task DeadlockPlugin_CanDetectLockDeadlock(string sdk)
+        => CanDetectDeadlock("Test_Deadlock_SimpleDeadlock_UsingLock", sdk);
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanDetectMixedDeadlock)}.json", "net10.0")]
-    public Task DeadlockPlugin_CanDetectMixedDeadlock(string configuration, string sdk)
-    {
-        return CanDetectDeadlock(configuration, sdk);
-    }
-    
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string sdk)
+        => CanDetectDeadlock("Test_Deadlock_ThreadJoinDeadlock", sdk);
+
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(DeadlockPlugin_CanRenderReport)}.json", "net10.0")]
-    public async Task DeadlockPlugin_CanRenderReport(string configuration, string sdk)
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task DeadlockPlugin_CanDetectMixedDeadlock(string sdk)
+        => CanDetectDeadlock("Test_Deadlock_MixedMonitorAndThreadJoinDeadlock", sdk);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10Only), MemberType = typeof(SdkVersions))]
+    public async Task DeadlockPlugin_CanRenderReport(string sdk)
     {
         // Arrange
         var timeProvider = new TestTimeProvider(DateTimeOffset.MinValue);
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
-        using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, overridePluginTypeFullName: null, pluginAdditionalData, testOutput, timeProvider);
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject("Test_Deadlock_SimpleDeadlock_UsingLock")
+            .WithExternalPlugin(ExternalDeadlockPluginTypeName)
+            .WithRenderReport()
+            .Build(sdk, testOutput, additionalData, timeProvider);
         var plugin = services.GetRequiredService<IPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var reportRenderer = services.GetRequiredService<IReportSummaryRenderer>();
@@ -96,13 +83,14 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         // Assert
         Assert.Null(exception);
     }
-    
-    private async Task CanDetectDeadlock(string configuration, string sdk)
+
+    private async Task CanDetectDeadlock(string subjectArgs, string sdk)
     {
         // Arrange
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
-        using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput);
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestDeadlockPlugin>()
+            .Build(sdk, testOutput);
         using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();

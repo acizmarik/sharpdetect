@@ -14,28 +14,48 @@ namespace SharpDetect.E2ETests;
 [Collection("E2E")]
 public class ShadowCallstackTests(ITestOutputHelper testOutput)
 {
-    private const string ConfigurationFolder = "ShadowCallstackTestConfigurations";
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task ShadowCallstack_Monitor_Wait_ReentrancyWithPulse(string sdk)
+    {
+        return IntegrityTest("Test_ShadowCallstack_MonitorWait_ReentrancyWithPulse", sdk);
+    }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Wait_ReentrancyWithPulse.json", "net10.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_TryEnter_LockNotTaken.json", "net10.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_Pulse.json", "net10.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_PulseAll.json", "net10.0")]
-    [InlineData($"{ConfigurationFolder}/ShadowCallstack_Monitor_ExitIfLockTaken.json", "net10.0")]
-    public async Task ShadowCallstack_IntegrityTest(string configuration, string sdk)
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task ShadowCallstack_Monitor_TryEnter_LockNotTaken(string sdk)
+    {
+        return IntegrityTest("Test_ShadowCallstack_MonitorTryEnter_LockNotTaken", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task ShadowCallstack_Monitor_Pulse(string sdk)
+    {
+        return IntegrityTest("Test_ShadowCallstack_MonitorPulse", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task ShadowCallstack_Monitor_PulseAll(string sdk)
+    {
+        return IntegrityTest("Test_ShadowCallstack_MonitorPulseAll", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10Only), MemberType = typeof(SdkVersions))]
+    public Task ShadowCallstack_Monitor_ExitIfLockTaken(string sdk)
+    {
+        return IntegrityTest("Test_ShadowCallstack_MonitorExitIfLockTaken", sdk);
+    }
+
+    private async Task IntegrityTest(string subjectArgs, string sdk)
     {
         // Arrange
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
-        using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput);
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestExecutionOrderingPlugin>()
+            .Build(sdk, testOutput);
         var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var eventsDeliveryContext = services.GetRequiredService<IRecordedEventsDeliveryContext>();
@@ -117,4 +137,3 @@ public class ShadowCallstackTests(ITestOutputHelper testOutput)
         return plugin.GetThreadName(processThreadId).StartsWith("TEST_");
     }
 }
-

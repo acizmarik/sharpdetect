@@ -12,18 +12,15 @@ namespace SharpDetect.E2ETests;
 [Collection("E2E")]
 public class MultiProcessTests(ITestOutputHelper testOutput)
 {
-    private const string ConfigurationFolder = "MultiProcessTestConfigurations";
-    
     [Theory]
-    [InlineData($"{ConfigurationFolder}/{nameof(MultiProcess_ChildExitsBeforeParent)}.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(MultiProcess_ChildExitsBeforeParent)}.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/{nameof(MultiProcess_ChildExitsBeforeParent)}.json", "net10.0")]
-    public async Task MultiProcess_ChildExitsBeforeParent(string configuration, string sdk)
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MultiProcess_ChildExitsBeforeParent(string sdk)
     {
         // Arrange
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
-        using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput);
+        using var services = E2ETestBuilder
+            .ForSubject("Test_MultiProcess_ChildExitsBeforeParent")
+            .WithPlugin<TestExecutionOrderingPlugin>()
+            .Build(sdk, testOutput);
         var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var initializedPids = new System.Collections.Concurrent.ConcurrentBag<uint>();
