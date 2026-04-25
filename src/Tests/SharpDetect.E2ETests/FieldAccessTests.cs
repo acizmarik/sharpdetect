@@ -14,9 +14,10 @@ using static SharpDetect.E2ETests.TemporalAssertionBuilders;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class FieldAccessTests(ITestOutputHelper testOutput)
 {
+    public const string CollectionName = "E2E_FieldAccessTests";
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task StaticField_ValueType_Read(string sdk)

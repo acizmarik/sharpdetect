@@ -82,7 +82,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 configuration.EnableFieldsAccessInstrumentation,
                 configuration.SkipInstrumentationForAssemblies
             },
-            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
+            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder,
+            sessionId: pathsConfiguration.SessionId);
 
         LockAcquireReturned += OnLockAcquireReturned;
         LockReleased += OnLockReleased;

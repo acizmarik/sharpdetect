@@ -14,9 +14,10 @@ using static SharpDetect.E2ETests.TemporalAssertionBuilders;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class MethodInterpretationTests(ITestOutputHelper testOutput)
 {
+    public const string CollectionName = "E2E_MethodInterpretationTests";
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Monitor_EnterExit1(string sdk)

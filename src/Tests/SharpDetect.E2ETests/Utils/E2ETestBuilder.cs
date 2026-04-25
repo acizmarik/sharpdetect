@@ -27,6 +27,7 @@ internal sealed class E2ETestBuilder
     private string? _analysisAssemblyPath;
     private object? _pluginConfiguration;
     private bool _renderReport;
+    private KeyValuePair<string, string>[]? _additionalTargetEnvironmentVariables;
     private const ProfilerLogLevel ProfilerLogLevel = Worker.Commands.Run.ProfilerLogLevel.Information;
     private const LogLevel AnalysisLogLevel = LogLevel.Information;
 
@@ -74,6 +75,12 @@ internal sealed class E2ETestBuilder
         return this;
     }
 
+    public E2ETestBuilder WithTargetEnvironmentVariables(params KeyValuePair<string, string>[] variables)
+    {
+        _additionalTargetEnvironmentVariables = variables;
+        return this;
+    }
+
     public TestDisposableServiceProvider Build(
         string sdk,
         ITestOutputHelper output,
@@ -82,6 +89,10 @@ internal sealed class E2ETestBuilder
     {
         if (_pluginTypeName is null)
             throw new InvalidOperationException("A plugin must be configured via WithPlugin<T>() or WithExternalPlugin().");
+
+        var sessionId = Guid.NewGuid().ToString("N");
+        var temporaryFilesFolder = Path.Combine(Path.GetTempPath(), sessionId);
+        Directory.CreateDirectory(temporaryFilesFolder);
 
         var resolvedSubjectPath = SubjectRelativePath
             .Replace("%SDK%", sdk)
@@ -99,13 +110,16 @@ internal sealed class E2ETestBuilder
             Target: new TargetConfigurationArgs(
                 path: resolvedSubjectPath,
                 args: _subjectArgs,
+                additionalEnvironmentVariables: _additionalTargetEnvironmentVariables,
                 redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true)),
             Analysis: new AnalysisPluginConfigurationArgs(
                 configuration: _pluginConfiguration,
                 pluginFullTypeName: _pluginTypeName,
                 path: resolvedAnalysisPath,
                 renderReport: _renderReport,
-                logLevel: AnalysisLogLevel));
+                logLevel: AnalysisLogLevel,
+                temporaryFilesFolder: temporaryFilesFolder,
+                sessionId: sessionId));
 
         return TestContextFactory.CreateServiceProvider(
             args,

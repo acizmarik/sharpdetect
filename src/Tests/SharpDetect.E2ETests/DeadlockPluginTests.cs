@@ -11,10 +11,11 @@ using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class DeadlockPluginTests(ITestOutputHelper testOutput)
 {
-    private const string SynchronizationMutexName = "SharpDetect_E2E_Tests";
+    public const string CollectionName = "E2E_DeadlockPluginTests";
+    private const string DefaultSynchronizationMutexName = "SharpDetect_E2E_Tests";
     private const string ExternalDeadlockPluginTypeName = "SharpDetect.Plugins.Deadlock.DeadlockPlugin";
 
     [Theory]
@@ -87,11 +88,13 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
     private async Task CanDetectDeadlock(string subjectArgs, string sdk)
     {
         // Arrange
+        var mutexName = $"SharpDetect_E2E_Deadlock_{Guid.NewGuid():N}";
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
             .WithPlugin<TestDeadlockPlugin>()
+            .WithTargetEnvironmentVariables(new KeyValuePair<string, string>("SHARPDETECT_DEADLOCK_MUTEX", mutexName))
             .Build(sdk, testOutput);
-        using var mutex = new Mutex(initiallyOwned: true, SynchronizationMutexName);
+        using var mutex = new Mutex(initiallyOwned: true, mutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         plugin.StackTraceSnapshotsCreated += _ => mutex.ReleaseMutex();

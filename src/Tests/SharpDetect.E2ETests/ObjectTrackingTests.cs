@@ -10,9 +10,10 @@ using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class ObjectTrackingTests(ITestOutputHelper testOutput)
 {
+    public const string CollectionName = "E2E_ObjectTrackingTests";
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task ObjectTracking_SingleGC(string sdk)

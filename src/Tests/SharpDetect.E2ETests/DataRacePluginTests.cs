@@ -10,9 +10,10 @@ using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class DataRacePluginTests(ITestOutputHelper testOutput)
 {
+    public const string CollectionName = "E2E_DataRacePluginTests";
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Static_ReadWriteRace(string sdk, string plugin)

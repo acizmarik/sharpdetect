@@ -97,7 +97,8 @@ public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, I
                 additionalData.TypeInjectionDescriptors,
                 additionalData.EnableFieldsAccessInstrumentation
             },
-            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
+            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder,
+            sessionId: pathsConfiguration.SessionId);
     }
 
     public Result<MethodDef, MetadataResolverErrorType> Resolve(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef methodToken)

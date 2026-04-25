@@ -79,7 +79,8 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                 configuration.EnableFieldsAccessInstrumentation,
                 configuration.SkipInstrumentationForAssemblies
             },
-            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
+            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder,
+            sessionId: pathsConfiguration.SessionId);
 
         // Subscribe to execution ordering events
         LockAcquireReturned += OnLockAcquireReturned;

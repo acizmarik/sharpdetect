@@ -11,9 +11,10 @@ using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class ShadowCallstackTests(ITestOutputHelper testOutput)
 {
+    public const string CollectionName = "E2E_ShadowCallstackTests";
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task ShadowCallstack_Monitor_Wait_ReentrancyWithPulse(string sdk)

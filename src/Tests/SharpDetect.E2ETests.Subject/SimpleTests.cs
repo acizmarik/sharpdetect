@@ -12,6 +12,10 @@ namespace SharpDetect.E2ETests.Subject
     public static partial class Program
     {
         private static readonly TimeSpan _waitTimeout = TimeSpan.FromSeconds(5);
+        private const string DefaultSynchronizationMutexName = "SharpDetect_E2E_Tests";
+
+        private static string GetSynchronizationMutexName()
+            => Environment.GetEnvironmentVariable("SHARPDETECT_DEADLOCK_MUTEX") ?? DefaultSynchronizationMutexName;
         
         public static void Test_MonitorMethods_EnterExit1()
         {
@@ -839,7 +843,7 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_Deadlock_SimpleDeadlock_UsingMonitor()
         {
-            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
+            using var mutex = Mutex.OpenExisting(GetSynchronizationMutexName());
             var lockObj1 = new object();
             var lockObj2 = new object();
             var syncEvent = new AutoResetEvent(true);
@@ -886,7 +890,7 @@ namespace SharpDetect.E2ETests.Subject
 #if NET9_0_OR_GREATER
         public static void Test_Deadlock_SimpleDeadlock_UsingLock()
         {
-            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
+            using var mutex = Mutex.OpenExisting(GetSynchronizationMutexName());
             var lockObj1 = new Lock();
             var lockObj2 = new Lock();
             var syncEvent = new AutoResetEvent(true);
@@ -933,7 +937,7 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_Deadlock_ThreadJoinDeadlock()
         {
-            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
+            using var mutex = Mutex.OpenExisting(GetSynchronizationMutexName());
             Thread? thread1 = null;
             Thread? thread2 = null;
             var thread1Ready = new AutoResetEvent(false);
@@ -964,7 +968,7 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_Deadlock_MixedMonitorAndThreadJoinDeadlock()
         {
-            using var mutex = Mutex.OpenExisting("SharpDetect_E2E_Tests");
+            using var mutex = Mutex.OpenExisting(GetSynchronizationMutexName());
             Thread? thread1 = null;
             Thread? thread2 = null;
             Thread? thread3 = null;

@@ -196,7 +196,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
     private string GetFullConfigurationPath()
     {
         var tempFolder = _plugin.Configuration.TemporaryFilesFolder ?? Path.GetTempPath();
-        return Path.Combine(tempFolder, PluginConfiguration.ConfigurationFileName);
+        return Path.Combine(tempFolder, PluginConfiguration.GetConfigurationFileName(_plugin.Configuration.SessionId));
     }
 
     private void CleanupConfigurationFile(string configurationPath)

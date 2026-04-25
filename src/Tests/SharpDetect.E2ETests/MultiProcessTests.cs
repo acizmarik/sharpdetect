@@ -9,9 +9,10 @@ using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class MultiProcessTests(ITestOutputHelper testOutput)
 {
+    public const string CollectionName = "E2E_MultiProcessTests";
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MultiProcess_ChildExitsBeforeParent(string sdk)
