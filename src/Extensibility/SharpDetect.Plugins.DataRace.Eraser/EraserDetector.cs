@@ -115,7 +115,7 @@ internal sealed class EraserDetector
             return null;
 
         // Get or create shadow variable for this field
-        var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
+        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadLockSet = _threadLockSetTracker.GetLockSet(threadId);
 

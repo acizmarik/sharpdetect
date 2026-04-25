@@ -14,6 +14,8 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
     private readonly record struct ResolvedFieldInfo(FieldDef FieldDef, FieldFlags Flags);
     private readonly Dictionary<FieldDefOrRef, ResolvedFieldInfo> _resolvedFields = [];
     private TypeRef? _threadStaticAttributeTypeRef;
+    private TypeRef? _compilerGeneratedAttributeTypeRef;
+    private TypeRef? _multicastDelegateTypeRef;
     private TypeRef? _asyncStateMachineTypeRef;
     private TypeRef? _taskTypeRef;
     private TypeRef? _continuationTypeRef;
@@ -63,7 +65,8 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
         return flags.HasFlag(FieldFlags.IsReadOnly) ||
                flags.HasFlag(FieldFlags.IsThreadStatic) ||
                flags.HasFlag(FieldFlags.IsAsyncStateMachineInternalField) ||
-               flags.HasFlag(FieldFlags.IsTaskOrContinuationInternalField);
+               flags.HasFlag(FieldFlags.IsTaskOrContinuationInternalField) ||
+               flags.HasFlag(FieldFlags.IsStaticDelegateType);
     }
 
     private FieldFlags ComputeFieldFlags(FieldDef fieldDef)
@@ -81,6 +84,9 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
 
         if (IsFieldInternalTaskOrContinuationField(fieldDef))
             flags |= FieldFlags.IsTaskOrContinuationInternalField;
+
+        if (IsFieldDelegateCacheInCompilerGeneratedType(fieldDef))
+            flags |= FieldFlags.IsStaticDelegateType;
 
         return flags;
     }
@@ -126,6 +132,44 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
                 return true;
 
             current = current.ResolveTypeDef()?.BaseType;
+        }
+
+        return false;
+    }
+
+    private bool IsFieldDelegateCacheInCompilerGeneratedType(FieldDef fieldDef)
+    {
+        var declaringType = fieldDef.DeclaringType;
+        if (!fieldDef.IsStatic ||
+            fieldDef.IsInitOnly ||
+            !declaringType.IsNested ||
+            declaringType.HasInterfaces)
+        {
+            return false;
+        }
+
+        _compilerGeneratedAttributeTypeRef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(
+                @namespace: "System.Runtime.CompilerServices",
+                name: "CompilerGeneratedAttribute");
+
+        var sigComparer = new SigComparer();
+        var hasCompilerGenerated = declaringType.CustomAttributes.Any(a =>
+            sigComparer.Equals(a.AttributeType, _compilerGeneratedAttributeTypeRef));
+
+        if (!hasCompilerGenerated)
+            return false;
+
+        _multicastDelegateTypeRef ??= fieldDef.Module.CorLibTypes
+            .GetTypeRef(@namespace: "System", name: "MulticastDelegate");
+
+        var fieldType = fieldDef.FieldType.ToTypeDefOrRef();
+        while (fieldType != null)
+        {
+            if (sigComparer.Equals(fieldType, _multicastDelegateTypeRef))
+                return true;
+
+            fieldType = fieldType.ResolveTypeDef()?.BaseType;
         }
 
         return false;

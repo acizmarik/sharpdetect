@@ -174,7 +174,7 @@ internal sealed class FastTrackDetector
         if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out _))
             return;
 
-        var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
+        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var threadVc = GetOrCreateThreadClock(threadId);
         var volatileVc = GetOrCreateVolatileClock(fieldId, objectId);
         threadVc.Join(volatileVc);
@@ -189,7 +189,7 @@ internal sealed class FastTrackDetector
         if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out _))
             return;
 
-        var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
+        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var key = (fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
         var volatileVc = GetOrCreateVolatileClock(fieldId, objectId);
@@ -212,7 +212,7 @@ internal sealed class FastTrackDetector
             return null;
         }
 
-        var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
+        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
         
@@ -261,7 +261,7 @@ internal sealed class FastTrackDetector
             return null;
         }
 
-        var fieldId = new FieldId(threadId.ProcessId, fieldDef!);
+        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
         var currentEpoch = threadVc.GetEpoch(threadId);
