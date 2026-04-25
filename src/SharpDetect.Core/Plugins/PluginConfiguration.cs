@@ -17,32 +17,39 @@ public record PluginConfiguration(
     uint CommandQueueSize,
     string CommandSemaphoreName,
     string? TemporaryFilesFolder,
-    object? AdditionalData)
+    object? AdditionalData,
+    string SessionId)
 {
-    public const string ConfigurationFileName = "SharpDetect_Configuration.json";
+    public const string DefaultConfigurationFileName = "SharpDetect_Configuration.json";
     private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    public static string GetConfigurationFileName(string sessionId)
+        => $"SharpDetect_Configuration_{sessionId}.json";
+
     public static PluginConfiguration Create(
         COR_PRF_MONITOR eventMask,
         string? temporaryFilesFolder,
-        object? additionalData)
+        object? additionalData,
+        string? sessionId = null)
     {
+        var id = sessionId ?? Guid.NewGuid().ToString("N");
         var tempFolder = temporaryFilesFolder ?? Path.GetTempPath();
         return new PluginConfiguration(
             EventMask: (uint)eventMask,
-            SharedMemoryName: "SharpDetect_NotificationsQueue",
-            SharedMemoryFile: Path.Combine(tempFolder, "SharpDetect_NotificationsQueue.data"),
+            SharedMemoryName: $"SharpDetect_NotificationsQueue_{id}",
+            SharedMemoryFile: Path.Combine(tempFolder, $"SharpDetect_NotificationsQueue_{id}.data"),
             SharedMemorySize: 20_971_520 /* 20 MB */,
-            SharedMemorySemaphoreName: "/SharpDetect_NotificationsQueue_Sem",
-            CommandQueueName: "SharpDetect_CommandQueue",
-            CommandQueueFile: Path.Combine(tempFolder, "SharpDetect_CommandQueue.data"),
+            SharedMemorySemaphoreName: $"/SharpDetect_NotificationsQueue_Sem_{id}",
+            CommandQueueName: $"SharpDetect_CommandQueue_{id}",
+            CommandQueueFile: Path.Combine(tempFolder, $"SharpDetect_CommandQueue_{id}.data"),
             CommandQueueSize: 1_048_576 /* 1 MB */,
-            CommandSemaphoreName: "/SharpDetect_CommandQueue_Sem",
-            temporaryFilesFolder,
-            additionalData);
+            CommandSemaphoreName: $"/SharpDetect_CommandQueue_Sem_{id}",
+            TemporaryFilesFolder: temporaryFilesFolder,
+            AdditionalData: additionalData,
+            SessionId: id);
     }
 
     public void SerializeToFile(string absolutePath)

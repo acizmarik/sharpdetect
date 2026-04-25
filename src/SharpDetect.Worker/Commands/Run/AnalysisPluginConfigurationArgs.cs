@@ -23,6 +23,7 @@ public sealed class AnalysisPluginConfigurationArgs
     public string? TemporaryFilesFolder { get; }
     public string? ReportsFolder { get; }
     public string? ReportFileName { get; }
+    public string? SessionId { get; }
 
     [JsonConstructor]
     public AnalysisPluginConfigurationArgs(
@@ -34,7 +35,8 @@ public sealed class AnalysisPluginConfigurationArgs
         LogLevel logLevel = DefaultLogLevel,
         string? temporaryFilesFolder = null,
         string? reportsFolder = null,
-        string? reportFileName = null)
+        string? reportFileName = null,
+        string? sessionId = null)
     {
         Guard.IsNotNullOrWhiteSpace(path);
         if (string.IsNullOrWhiteSpace(pluginFullTypeName) && string.IsNullOrWhiteSpace(pluginName))
@@ -49,6 +51,7 @@ public sealed class AnalysisPluginConfigurationArgs
         TemporaryFilesFolder = temporaryFilesFolder;
         ReportsFolder = reportsFolder;
         ReportFileName = reportFileName;
+        SessionId = sessionId;
     }
     
     [JsonPropertyName(nameof(Path))]

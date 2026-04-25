@@ -10,28 +10,38 @@ using Xunit.Abstractions;
 
 namespace SharpDetect.E2ETests;
 
-[Collection("E2E")]
+[Collection(CollectionName)]
 public class ObjectTrackingTests(ITestOutputHelper testOutput)
 {
-    private const string TestMethodName = "Main";
-    private const string ConfigurationFolder = "ObjectTrackingTestConfigurations";
+    public const string CollectionName = "E2E_ObjectTrackingTests";
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task ObjectTracking_SingleGC(string sdk)
+    {
+        return ObjectsTracking("Test_SingleGarbageCollection_ObjectTracking_Simple", sdk);
+    }
 
     [Theory]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_SingleGC.json", "net10.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC.json", "net10.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting.json", "net8.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting.json", "net9.0")]
-    [InlineData($"{ConfigurationFolder}/ObjectTracking_MultiGC_Compacting.json", "net10.0")]
-    public async Task ObjectsTracking(string configuration, string sdk)
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task ObjectTracking_MultiGC(string sdk)
+    {
+        return ObjectsTracking("Test_MultipleGarbageCollection_ObjectTracking_Simple", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task ObjectTracking_MultiGC_Compacting(string sdk)
+    {
+        return ObjectsTracking("Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject", sdk);
+    }
+
+    private async Task ObjectsTracking(string subjectArgs, string sdk)
     {
         // Arrange
-        var pluginAdditionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationDisabled();
-        using var services = TestContextFactory.CreateServiceProvider(
-            configuration, sdk, pluginAdditionalData, testOutput);
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestExecutionOrderingPlugin>()
+            .Build(sdk, testOutput);
         var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;

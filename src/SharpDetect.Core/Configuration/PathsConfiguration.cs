@@ -7,5 +7,6 @@ public sealed class PathsConfiguration
 {
     public string? TemporaryFilesFolder { get; init; }
     public string? ReportsFolder { get; init; }
+    public string? SessionId { get; init; }
 }
 

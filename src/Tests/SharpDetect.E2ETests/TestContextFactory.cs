@@ -15,6 +15,31 @@ namespace SharpDetect.E2ETests;
 internal static class TestContextFactory
 {
     public static TestDisposableServiceProvider CreateServiceProvider(
+        RunCommandArgs args,
+        TestPluginAdditionalData additionalData,
+        ITestOutputHelper output,
+        TimeProvider? timeProvider = null)
+    {
+        var pluginType = Type.GetType(args.Analysis.PluginFullTypeName!)
+                         ?? typeof(Plugins.Deadlock.DeadlockInfo).Assembly.GetType(args.Analysis.PluginFullTypeName!)
+                         ?? throw new InvalidOperationException($"Could not find analysis plugin type {args.Analysis.PluginFullTypeName}.");
+
+        return new TestDisposableServiceProvider(new AnalysisServiceProviderBuilder(args)
+            .WithTimeProvider(timeProvider ?? TimeProvider.System)
+            .WithPlugin(pluginType)
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton(additionalData);
+            })
+            .ConfigureLogging(logging =>
+            {
+                logging.AddProvider(new XUnitLoggerProvider(output));
+                logging.SetMinimumLevel(args.Analysis.LogLevel);
+            })
+            .Build());
+    }
+
+    public static TestDisposableServiceProvider CreateServiceProvider(
         string filename,
         string sdk,
         TestPluginAdditionalData additionalData,

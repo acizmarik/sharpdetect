@@ -80,7 +80,8 @@ public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
                 TypeInjectionDescriptors = Array.Empty<TypeInjectionDescriptor>(),
                 EnableFieldsAccessInstrumentation = false
             },
-            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder);
+            temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder,
+            sessionId: pathsConfiguration.SessionId);
 
         _waitForGraphs = [];
         _deadlocks = [];

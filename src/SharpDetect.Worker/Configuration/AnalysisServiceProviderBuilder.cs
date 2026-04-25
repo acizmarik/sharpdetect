@@ -56,7 +56,8 @@ public sealed class AnalysisServiceProviderBuilder(RunCommandArgs arguments)
         _services.AddSingleton(new PathsConfiguration
         {
             TemporaryFilesFolder = arguments.Analysis.TemporaryFilesFolder,
-            ReportsFolder = arguments.Analysis.ReportsFolder
+            ReportsFolder = arguments.Analysis.ReportsFolder,
+            SessionId = arguments.Analysis.SessionId
         });
         _services.AddSingleton(new PluginOptionsConfiguration
         {
