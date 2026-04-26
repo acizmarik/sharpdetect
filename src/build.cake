@@ -56,6 +56,7 @@ Task("Build-Managed")
 });
 
 Task("Build-IPQ")
+    .IsDependentOn("Build-Managed")
     .Does(() =>
 {
     DotNetPublish("./SharpDetect.InterProcessQueue", new DotNetPublishSettings
@@ -75,8 +76,7 @@ Task("Build-Profiler")
     {
         Arguments = new ProcessArgumentBuilder()
             .Append("../..")
-            .Append($"-DCMAKE_BUILD_TYPE={configuration}")
-            .Append("-DMSGPACK_USE_BOOST=off"),
+            .Append($"-DCMAKE_BUILD_TYPE={configuration}"),
         WorkingDirectory = profilerArtifactsDirectory
     });
 
@@ -199,8 +199,7 @@ Task("CI-Pack")
     DotNetPack("./SharpDetect.Cli", new DotNetPackSettings
     {
         Configuration = configuration,
-        OutputDirectory = outputDirectory,
-        NoBuild = false
+        OutputDirectory = outputDirectory
     });
     
     Information($"Package created in: {outputDirectory}");
