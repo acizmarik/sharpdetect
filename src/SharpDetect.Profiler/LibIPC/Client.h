@@ -57,8 +57,18 @@ namespace LibIPC
 		[[nodiscard]] bool IsCommandReceivingEnabled() const { return _commandReceivingEnabled; }
 
 	private:
+		using ipq_producer_create = PVOID(*)(const char*, const char*, const char*, INT);
+		using ipq_producer_destroy = void (*)(PVOID);
+		using ipq_producer_enqueue = INT(*)(PVOID, BYTE*, INT);
+		using ipq_consumer_create = PVOID(*)(const char*, const char*, const char*, INT);
+		using ipq_consumer_destroy = void (*)(PVOID);
+		using ipq_consumer_dequeue = INT(*)(PVOID, BYTE**, INT*);
+		using ipq_free_memory = void (*)(BYTE*);
+
 		void EventThreadLoop();
 		void CommandThreadLoop();
+		void SendDirect(ipq_producer_enqueue enqueueFn, msgpack::sbuffer& buffer);
+		void DrainEventQueue(ipq_producer_enqueue enqueueFn);
 
 		static const std::string _ipqProducerCreateSymbolName;
 		static const std::string _ipqProducerDestroySymbolName;
@@ -67,14 +77,6 @@ namespace LibIPC
 		static const std::string _ipqConsumerDestroySymbolName;
 		static const std::string _ipqConsumerDequeueSymbolName;
 		static const std::string _ipqFreeMemorySymbolName;
-
-		using ipq_producer_create = PVOID(*)(const char*, const char*, const char*, INT);
-		using ipq_producer_destroy = void (*)(PVOID);
-		using ipq_producer_enqueue = INT(*)(PVOID, BYTE*, INT);
-		using ipq_consumer_create = PVOID(*)(const char*, const char*, const char*, INT);
-		using ipq_consumer_destroy = void (*)(PVOID);
-		using ipq_consumer_dequeue = INT(*)(PVOID, BYTE**, INT*);
-		using ipq_free_memory = void (*)(BYTE*);
 
 		std::string _ipqName;
 		std::string _mmfName;

@@ -120,35 +120,54 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_commandThread = std::thread(&LibIPC::Client::CommandThreadLoop, this);
 }
 
+void LibIPC::Client::SendDirect(const ipq_producer_enqueue enqueueFn, msgpack::sbuffer& buffer)
+{
+	const auto byteStream = reinterpret_cast<BYTE*>(buffer.data());
+	INT result = 0;
+	do
+	{
+		if (result != 0)
+			std::this_thread::yield();
+
+		result = enqueueFn(_ffiProducer, byteStream, buffer.size());
+	}
+	while (result != 0);
+}
+
+void LibIPC::Client::DrainEventQueue(const ipq_producer_enqueue enqueueFn)
+{
+	std::queue<msgpack::sbuffer> pending;
+	{
+		auto lock = std::unique_lock(_eventMutex);
+		std::swap(pending, _eventQueue);
+	}
+
+	while (!pending.empty())
+	{
+		auto item = std::move(pending.front());
+		pending.pop();
+		SendDirect(enqueueFn, item);
+	}
+}
+
 void LibIPC::Client::EventThreadLoop()
 {
 	LOG_F(INFO, "IPC event worker thread started.");
 	const auto enqueueFn = reinterpret_cast<ipq_producer_enqueue>(_ipqProducerEnqueueSymbolAddress);
-	while (!_terminating)
+	while (true)
 	{
-		auto lock = std::unique_lock<std::mutex>(_eventMutex);
-		if (_eventQueueNonEmptySignal.wait_for(lock, std::chrono::seconds(2)) == std::cv_status::timeout || _eventQueue.empty())
-			continue;
-
-		while (!_eventQueue.empty())
 		{
-			auto&& item = std::move(_eventQueue.front());
-
-			auto byteStream = reinterpret_cast<BYTE*>(item.data());
-			INT result = 0;
-			do
-			{
-				if (result != 0)
-					std::this_thread::yield();
-
-				result = enqueueFn(_ffiProducer, byteStream, item.size());
-			}
-			while (result != 0);
-
-
-			_eventQueue.pop();
+			auto lock = std::unique_lock(_eventMutex);
+			if (!_eventQueueNonEmptySignal.wait_for(lock, std::chrono::seconds(2), [this]{ return !_eventQueue.empty() || _terminating; }))
+				continue;
 		}
+
+		DrainEventQueue(enqueueFn);
+
+		if (_terminating)
+			break;
 	}
+
 	LOG_F(INFO, "IPC event worker thread terminated.");
 }
 
@@ -264,12 +283,28 @@ LibIPC::Client::~Client()
 	if (_ffiProducer == nullptr)
 		return;
 
-	_terminating = true;
+	{
+		std::lock_guard<std::mutex> guard(_eventMutex);
+		_terminating = true;
+	}
+
+	// Terminate event worker and ensure internal queue is sent
+	const auto enqueueFn = reinterpret_cast<ipq_producer_enqueue>(_ipqProducerEnqueueSymbolAddress);
+	_eventQueueNonEmptySignal.notify_all();
 	if (_eventThread.joinable())
 		_eventThread.join();
+	DrainEventQueue(enqueueFn);
 
+	// Terminate command worker
 	if (_commandReceivingEnabled && _commandThread.joinable())
 		_commandThread.join();
+
+	// Notify managed that we are gracefully terminating
+	const auto destroyMsg = Helpers::CreateProfilerDestroyMsg(
+		Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), 0));
+	msgpack::sbuffer buffer;
+	msgpack::pack(buffer, destroyMsg);
+	SendDirect(enqueueFn, buffer);
 
 	reinterpret_cast<ipq_producer_destroy>(_ipqProducerDestroySymbolAddress)(_ffiProducer);
 	_ffiProducer = nullptr;

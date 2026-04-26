@@ -127,15 +127,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
     
     private void ExecuteAnalysis(Task targetProcessTask, CancellationToken cancellationToken)
     {
-        RecordedEvent? previousRecordedEvent = null;
-        while (!ShouldTerminateAnalysis(targetProcessTask, previousRecordedEvent, cancellationToken))
+        foreach (var currentEvent in ReceiveEvents(targetProcessTask, cancellationToken))
         {
-            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
-            {
-                previousRecordedEvent = null;
-                continue;
-            }
-            
+            if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent)
+                return;
+
             if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
             {
                 LogFailureAndTerminateAnalysis();
@@ -164,19 +160,44 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     }
                 }
             }
-
-            previousRecordedEvent = currentEvent;
         }
     }
-    
-    private static bool ShouldTerminateAnalysis(
-        Task targetProcessTask,
-        RecordedEvent? recordedEvents,
-        CancellationToken cancellationToken)
+
+    private IEnumerable<RecordedEvent> ReceiveEvents(Task targetProcessTask, CancellationToken cancellationToken)
     {
-        return cancellationToken.IsCancellationRequested ||
-               (targetProcessTask.IsCompleted && recordedEvents == null) || 
-               (recordedEvents?.EventArgs is ProfilerDestroyRecordedEvent);
+        // Phase 1: process is running
+        while (!cancellationToken.IsCancellationRequested && !targetProcessTask.IsCompleted)
+        {
+            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
+            {
+                if (targetProcessTask.IsCompleted)
+                    break;
+                
+                continue;
+            }
+
+            yield return currentEvent;
+        }
+
+        // Phase 2: process has exited. Ensure the ring buffer is drained.
+        const int maxConsecutiveEmptyPolls = 4;
+        var consecutiveEmptyPolls = 0;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
+            {
+                if (++consecutiveEmptyPolls >= maxConsecutiveEmptyPolls)
+                    break;
+            }
+            else
+            {
+                consecutiveEmptyPolls = 0;
+                yield return currentEvent;
+
+                if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent)
+                    yield break;
+            }
+        }
     }
     
     private string GetProfilerPath()
