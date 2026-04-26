@@ -50,10 +50,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
             _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
 
             var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(cancellationToken);
-            _logger.LogInformation("Started process with PID: {Pid}.", targetApplicationProcess.ProcessId);
+            var rootPid = (uint)targetApplicationProcess.ProcessId;
+            _logger.LogInformation("Started process with PID: {Pid}.", rootPid);
 
-            ExecuteAnalysis(targetApplicationProcess.Task, cancellationToken);
-            _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", targetApplicationProcess.ProcessId);
+            ExecuteAnalysis(targetApplicationProcess.Task, rootPid, cancellationToken);
+            _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", rootPid);
 
             var commandResult = await targetApplicationProcess;
             if (commandResult.ExitCode != 0)
@@ -125,17 +126,13 @@ public sealed class AnalysisWorker : IAnalysisWorker
         return command;
     }
     
-    private void ExecuteAnalysis(Task targetProcessTask, CancellationToken cancellationToken)
+    private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
     {
-        RecordedEvent? previousRecordedEvent = null;
-        while (!ShouldTerminateAnalysis(targetProcessTask, previousRecordedEvent, cancellationToken))
+        foreach (var currentEvent in ReceiveEvents(targetProcessTask, rootPid, cancellationToken))
         {
-            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
-            {
-                previousRecordedEvent = null;
-                continue;
-            }
-            
+            if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
+                return;
+
             if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
             {
                 LogFailureAndTerminateAnalysis();
@@ -164,19 +161,44 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     }
                 }
             }
-
-            previousRecordedEvent = currentEvent;
         }
     }
-    
-    private static bool ShouldTerminateAnalysis(
-        Task targetProcessTask,
-        RecordedEvent? recordedEvents,
-        CancellationToken cancellationToken)
+
+    private IEnumerable<RecordedEvent> ReceiveEvents(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
     {
-        return cancellationToken.IsCancellationRequested ||
-               (targetProcessTask.IsCompleted && recordedEvents == null) || 
-               (recordedEvents?.EventArgs is ProfilerDestroyRecordedEvent);
+        // Phase 1: process is running
+        while (!cancellationToken.IsCancellationRequested && !targetProcessTask.IsCompleted)
+        {
+            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
+            {
+                if (targetProcessTask.IsCompleted)
+                    break;
+                
+                continue;
+            }
+
+            yield return currentEvent;
+        }
+
+        // Phase 2: process has exited. Ensure the ring buffer is drained.
+        const int maxConsecutiveEmptyPolls = 4;
+        var consecutiveEmptyPolls = 0;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
+            {
+                if (++consecutiveEmptyPolls >= maxConsecutiveEmptyPolls)
+                    break;
+            }
+            else
+            {
+                consecutiveEmptyPolls = 0;
+                yield return currentEvent;
+
+                if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
+                    yield break;
+            }
+        }
     }
     
     private string GetProfilerPath()
