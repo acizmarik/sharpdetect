@@ -15,7 +15,6 @@
 #include "Messages.h"
 
 #include "../LibProfiler/PAL.h"
-#include "Semaphore.h"
 
 namespace LibIPC
 {
@@ -66,6 +65,7 @@ namespace LibIPC
 		static const std::string _ipqConsumerCreateSymbolName;
 		static const std::string _ipqConsumerDestroySymbolName;
 		static const std::string _ipqConsumerDequeueSymbolName;
+		static const std::string _ipqConsumerDequeueTimeoutSymbolName;
 		static const std::string _ipqFreeMemorySymbolName;
 
 		using ipq_producer_create = PVOID(*)(const char*, const char*, const char*, INT);
@@ -74,6 +74,7 @@ namespace LibIPC
 		using ipq_consumer_create = PVOID(*)(const char*, const char*, const char*, INT);
 		using ipq_consumer_destroy = void (*)(PVOID);
 		using ipq_consumer_dequeue = INT(*)(PVOID, BYTE**, INT*);
+		using ipq_consumer_dequeue_timeout = INT(*)(PVOID, BYTE**, INT*, INT);
 		using ipq_free_memory = void (*)(BYTE*);
 
 		std::string _ipqName;
@@ -102,9 +103,7 @@ namespace LibIPC
 		PVOID _ipqConsumerCreateSymbolAddress;
 		PVOID _ipqConsumerDestroySymbolAddress;
 		PVOID _ipqConsumerDequeueSymbolAddress;
+		PVOID _ipqConsumerDequeueTimeoutSymbolAddress;
 		PVOID _ipqFreeMemorySymbolAddress;
-
-		SemaphoreHandle _eventSemaphore;
-		SemaphoreHandle _commandSemaphore;
 	};
 }

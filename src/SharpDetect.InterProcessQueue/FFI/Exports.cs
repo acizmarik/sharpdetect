@@ -3,14 +3,15 @@
 
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using SharpDetect.InterProcessQueue.Memory;
 using SharpDetect.InterProcessQueue.Synchronization;
 
 namespace SharpDetect.InterProcessQueue.FFI;
 
 internal static unsafe class Exports
 {
-    private static readonly ConcurrentDictionary<nint, Producer> _producers = new();
-    private static readonly ConcurrentDictionary<nint, Consumer> _consumers = new();
+    private static readonly ConcurrentDictionary<nint, Producer> Producers = new();
+    private static readonly ConcurrentDictionary<nint, Consumer> Consumers = new();
     private static int _lastProducerId;
     private static int _lastConsumerId;
 
@@ -34,7 +35,7 @@ internal static unsafe class Exports
             var configuration = new Configuration.ProducerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
             var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
             var producer = new Producer(configuration, semaphore);
-            _producers.TryAdd(id, producer);
+            Producers.TryAdd(id, producer);
             return id;
         }
         catch
@@ -51,7 +52,7 @@ internal static unsafe class Exports
 
     internal static void DestroyProducerImpl(nint producerHandle)
     {
-        if (!_producers.TryGetValue(producerHandle, out var producer))
+        if (!Producers.TryGetValue(producerHandle, out var producer))
             return;
 
         producer.Dispose();
@@ -65,7 +66,7 @@ internal static unsafe class Exports
 
     internal static EnqueueErrorType EnqueueImpl(nint producerHandle, byte* data, int size)
     {
-        if (!_producers.TryGetValue(producerHandle, out var producer))
+        if (!Producers.TryGetValue(producerHandle, out var producer))
             return EnqueueErrorType.Unavailable;
 
         var status = producer.TryEnqueue(new ReadOnlySpan<byte>(data, size));
@@ -95,7 +96,7 @@ internal static unsafe class Exports
             var configuration = new Configuration.ConsumerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
             var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
             var consumer = new Consumer(configuration, semaphore);
-            _consumers.TryAdd(id, consumer);
+            Consumers.TryAdd(id, consumer);
             return id;
         }
         catch
@@ -112,11 +113,11 @@ internal static unsafe class Exports
 
     internal static void DestroyConsumerImpl(nint consumerHandle)
     {
-        if (!_consumers.TryGetValue(consumerHandle, out var consumer))
+        if (!Consumers.TryGetValue(consumerHandle, out var consumer))
             return;
 
         consumer.Dispose();
-        _consumers.TryRemove(consumerHandle, out _);
+        Consumers.TryRemove(consumerHandle, out _);
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_dequeue")]
@@ -127,16 +128,38 @@ internal static unsafe class Exports
 
     internal static DequeueErrorType DequeueImpl(nint consumerHandle, byte** dataPtr, int* sizePtr)
     {
-        if (!_consumers.TryGetValue(consumerHandle, out var consumer))
+        if (!Consumers.TryGetValue(consumerHandle, out var consumer))
             return DequeueErrorType.UnableToAcquireReadLock;
 
         var result = consumer.TryDequeue();
         if (!result.IsSuccess)
             return result.Error;
 
+        return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_dequeue_timeout")]
+    public static DequeueErrorType DequeueWithTimeout(nint consumerHandle, byte** dataPtr, int* sizePtr, int timeoutMs)
+    {
+        return DequeueWithTimeoutImpl(consumerHandle, dataPtr, sizePtr, timeoutMs);
+    }
+
+    internal static DequeueErrorType DequeueWithTimeoutImpl(nint consumerHandle, byte** dataPtr, int* sizePtr, int timeoutMs)
+    {
+        if (!Consumers.TryGetValue(consumerHandle, out var consumer))
+            return DequeueErrorType.UnableToAcquireReadLock;
+
+        var result = consumer.TryDequeue(TimeSpan.FromMilliseconds(timeoutMs));
+        if (!result.IsSuccess)
+            return result.Error;
+
+        return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+    }
+
+    private static DequeueErrorType CopyToUnmanaged(ILocalMemory<byte> memory, byte** dataPtr, int* sizePtr)
+    {
         try
         {
-            var memory = result.Value;
             var localMemory = memory.GetLocalMemory();
             
             // Allocate unmanaged memory and copy data

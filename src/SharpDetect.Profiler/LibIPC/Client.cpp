@@ -15,6 +15,7 @@ const std::string LibIPC::Client::_ipqProducerEnqueueSymbolName = "ipq_producer_
 const std::string LibIPC::Client::_ipqConsumerCreateSymbolName = "ipq_consumer_create";
 const std::string LibIPC::Client::_ipqConsumerDestroySymbolName = "ipq_consumer_destroy";
 const std::string LibIPC::Client::_ipqConsumerDequeueSymbolName = "ipq_consumer_dequeue";
+const std::string LibIPC::Client::_ipqConsumerDequeueTimeoutSymbolName = "ipq_consumer_dequeue_timeout";
 const std::string LibIPC::Client::_ipqFreeMemorySymbolName = "ipq_free_memory";
 
 
@@ -42,9 +43,8 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_ipqConsumerCreateSymbolAddress(nullptr),
 	_ipqConsumerDestroySymbolAddress(nullptr),
 	_ipqConsumerDequeueSymbolAddress(nullptr),
-	_ipqFreeMemorySymbolAddress(nullptr),
-	_eventSemaphore(InvalidSemaphore),
-	_commandSemaphore(InvalidSemaphore)
+	_ipqConsumerDequeueTimeoutSymbolAddress(nullptr),
+	_ipqFreeMemorySymbolAddress(nullptr)
 {
 	auto const ipqPathStringPointer = std::getenv("SharpDetect_IPQ_PATH");
 	if (ipqPathStringPointer == nullptr)
@@ -68,6 +68,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_ipqConsumerCreateSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerCreateSymbolName);
 	_ipqConsumerDestroySymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerDestroySymbolName);
 	_ipqConsumerDequeueSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerDequeueSymbolName);
+	_ipqConsumerDequeueTimeoutSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerDequeueTimeoutSymbolName);
 	_ipqFreeMemorySymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqFreeMemorySymbolName);
 
 	if (_ipqProducerCreateSymbolAddress == nullptr ||
@@ -76,6 +77,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 		_ipqConsumerCreateSymbolAddress == nullptr ||
 		_ipqConsumerDestroySymbolAddress == nullptr ||
 		_ipqConsumerDequeueSymbolAddress == nullptr ||
+		_ipqConsumerDequeueTimeoutSymbolAddress == nullptr ||
 		_ipqFreeMemorySymbolAddress == nullptr)
 	{
 		LOG_F(FATAL, "Communication library does not contain expected symbols.");
@@ -98,21 +100,6 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	{
 		LOG_F(FATAL, "Communication library could not create consumer.");
 		throw std::runtime_error("Could not obtain read access to IPC command queue.");
-	}
-
-	// Open inter-process semaphores (created/owned by the managed side)
-	_eventSemaphore = Semaphore_Open(_eventSemaphoreName);
-	if (_eventSemaphore == InvalidSemaphore)
-	{
-		LOG_F(FATAL, "Could not open event semaphore \"%s\".", _eventSemaphoreName.c_str());
-		throw std::runtime_error("Could not open event semaphore.");
-	}
-
-	_commandSemaphore = Semaphore_Open(_commandSemaphoreName);
-	if (_commandSemaphore == InvalidSemaphore)
-	{
-		LOG_F(FATAL, "Could not open command semaphore \"%s\".", _commandSemaphoreName.c_str());
-		throw std::runtime_error("Could not open command semaphore.");
 	}
 
 	LOG_F(INFO, "Communication library initialized with command receiving enabled.");
@@ -155,19 +142,16 @@ void LibIPC::Client::EventThreadLoop()
 void LibIPC::Client::CommandThreadLoop()
 {
 	LOG_F(INFO, "IPC command worker thread started.");
-	const auto dequeueFn = reinterpret_cast<ipq_consumer_dequeue>(_ipqConsumerDequeueSymbolAddress);
+	const auto dequeueFn = reinterpret_cast<ipq_consumer_dequeue_timeout>(_ipqConsumerDequeueTimeoutSymbolAddress);
 	const auto freeMemoryFn = reinterpret_cast<ipq_free_memory>(_ipqFreeMemorySymbolAddress);
 
 	while (!_terminating)
 	{
-		// Block until the managed producer signals that a command is available (or timeout)
-		if (!Semaphore_TimedWait(_commandSemaphore, 5000))
-			continue;
-
 		BYTE* dataPtr = nullptr;
 		INT size = 0;
 
-		auto result = dequeueFn(_ffiConsumer, &dataPtr, &size);
+		// Try dequeue with 1s timeout (1000ms)
+		auto result = dequeueFn(_ffiConsumer, &dataPtr, &size, 1000);
 		if (result != 0)
 			continue;
 
@@ -279,9 +263,4 @@ LibIPC::Client::~Client()
 		reinterpret_cast<ipq_consumer_destroy>(_ipqConsumerDestroySymbolAddress)(_ffiConsumer);
 		_ffiConsumer = nullptr;
 	}
-
-	Semaphore_Close(_eventSemaphore);
-	Semaphore_Close(_commandSemaphore);
-	_eventSemaphore = InvalidSemaphore;
-	_commandSemaphore = InvalidSemaphore;
 }

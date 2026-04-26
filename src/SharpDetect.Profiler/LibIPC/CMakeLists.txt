@@ -1,7 +1,6 @@
 set(SOURCES
 	"Client.cpp"
-	"Messages.cpp"
-	"Semaphore.cpp")
+	"Messages.cpp")
 
 add_library (LibIPC STATIC ${SOURCES})
 
