@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -27,20 +25,27 @@ internal sealed class RunCommandHandler : IDisposable
 
     public RunCommandHandler(string configurationFilePath)
     {
-        _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
-        _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
-        CommandArgumentsValidator.ValidateRunCommandArguments(_arguments);
+        try
+        {
+            _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
+            _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
+            CommandArgumentsValidator.ValidateRunCommandArguments(_arguments);
 
-        var pluginType = LoadPluginInfo();
-        _serviceProvider = new AnalysisServiceProviderBuilder(_arguments)
-            .WithTimeProvider(TimeProvider.System)
-            .ConfigureLogging(logging =>
-            {
-                logging.AddConsole();
-                logging.SetMinimumLevel(_arguments.Analysis.LogLevel);
-            })
-            .WithPlugin(pluginType)
-            .Build();
+            var pluginType = LoadPluginInfo();
+            _serviceProvider = new AnalysisServiceProviderBuilder(_arguments)
+                .WithTimeProvider(TimeProvider.System)
+                .ConfigureLogging(logging =>
+                {
+                    logging.AddConsole();
+                    logging.SetMinimumLevel(_arguments.Analysis.LogLevel);
+                })
+                .WithPlugin(pluginType)
+                .Build();
+        }
+        catch (Exception ex) when (ex is not CommandException)
+        {
+            throw new CommandException(ex.Message, (int)ExitCode.ConfigurationError, innerException: ex);
+        }
     }
 
     public async ValueTask ExecuteAsync(IConsole console, CancellationToken cancellationToken)
@@ -59,6 +64,9 @@ internal sealed class RunCommandHandler : IDisposable
             var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, cancellationToken);
             await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(reportFullPath)}.");
         }
+
+        if (reportSummary.GetAllReports().Any())
+            throw new CommandException("Analysis detected issue(s)", (int)ExitCode.IssuesFound);
     }
 
     private Task<string> RenderAndWriteReport(IPlugin plugin, Summary reportSummary, CancellationToken cancellationToken)

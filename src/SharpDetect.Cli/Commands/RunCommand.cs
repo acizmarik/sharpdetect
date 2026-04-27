@@ -3,6 +3,7 @@
 
 using CliFx;
 using CliFx.Attributes;
+using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Handlers;
 
@@ -28,6 +29,23 @@ public sealed class RunCommand : ICommand
             commandHandler = new RunCommandHandler(fileName);
             var cancellationToken = console.RegisterCancellationHandler();
             await commandHandler.ExecuteAsync(console, cancellationToken);
+        }
+        catch (CommandException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw new CommandException(
+                message: "Analysis was cancelled by user",
+                exitCode: (int)ExitCode.Cancelled);
+        }
+        catch (Exception exception)
+        {
+            throw new CommandException(
+                message: "Analysis failed due to an internal error",
+                exitCode: (int)ExitCode.AnalysisError,
+                innerException: exception);
         }
         finally
         {

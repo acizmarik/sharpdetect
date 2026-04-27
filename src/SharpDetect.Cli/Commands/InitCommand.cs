@@ -3,6 +3,7 @@
 
 using CliFx;
 using CliFx.Attributes;
+using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Handlers;
 
@@ -22,9 +23,23 @@ public sealed class InitCommand : ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        var handler = new InitCommandHandler(OutputFile, PluginType, TargetPath);
-        var cancellationToken = console.RegisterCancellationHandler();
-        await handler.ExecuteAsync(console, cancellationToken);
+        try
+        {
+            var handler = new InitCommandHandler(OutputFile, PluginType, TargetPath);
+            var cancellationToken = console.RegisterCancellationHandler();
+            await handler.ExecuteAsync(console, cancellationToken);
+        }
+        catch (CommandException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw new CommandException(
+                message: exception.Message,
+                exitCode: (int)ExitCode.ConfigurationError,
+                innerException: exception);
+        }
     }
 }
 
