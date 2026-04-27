@@ -5,8 +5,8 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CliFx.Exceptions;
 using CliFx.Infrastructure;
-using Microsoft.Extensions.Logging;
 using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Handlers;
@@ -24,22 +24,13 @@ internal sealed class InitCommandHandler(string outputFile, string pluginNameOrT
     public async ValueTask ExecuteAsync(IConsole console, CancellationToken cancellationToken)
     {
         if (File.Exists(outputFile))
-        {
-            await console.Error.WriteLineAsync($"File '{outputFile}' already exists.");
-            return;
-        }
+            throw new CommandException($"File '{outputFile}' already exists.", (int)ExitCode.ConfigurationError);
 
         if (!File.Exists(targetAssemblyPath))
-        {
-            await console.Error.WriteLineAsync($"File '{targetAssemblyPath}' does not exist. Please specify a valid target application path.");
-            return;
-        }
+            throw new CommandException($"File '{targetAssemblyPath}' does not exist. Please specify a valid target application path.", (int)ExitCode.ConfigurationError);
 
         if (!IsValidDotNetAssembly(targetAssemblyPath))
-        {
-            await console.Error.WriteLineAsync($"File '{targetAssemblyPath}' is not a valid .NET assembly.");
-            return;
-        }
+            throw new CommandException($"File '{targetAssemblyPath}' is not a valid .NET assembly.", (int)ExitCode.ConfigurationError);
 
         var json = CreateTemplateConfigurationJson();
         await File.WriteAllTextAsync(outputFile, json, cancellationToken);
