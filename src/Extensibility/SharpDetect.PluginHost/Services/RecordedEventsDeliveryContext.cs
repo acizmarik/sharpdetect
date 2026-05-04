@@ -131,8 +131,7 @@ internal class RecordedEventsDeliveryContext : IRecordedEventsDeliveryContext
 
         while (undelivereds.Count > 0)
         {
-            yield return undelivereds.Peek();
-            undelivereds.Dequeue();
+            yield return undelivereds.Dequeue();
         }
     }
 
