@@ -13,12 +13,11 @@ using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
 using SharpDetect.Core.Serialization;
-using SharpDetect.Plugins;
-using SharpDetect.Plugins.ExecutionOrdering;
+using SharpDetect.Plugins.PerThreadOrdering;
 
 namespace SharpDetect.E2ETests.Utils;
 
-public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, IPlugin, ITestEventsSource, IMetadataResolver
+public sealed class TestPerThreadOrderingPlugin : PerThreadOrderingPluginBase, IPlugin, ITestEventsSource, IMetadataResolver
 {
     public string ReportCategory => "Test";
     public RecordedEventActionVisitorBase EventsVisitor => this;
@@ -55,23 +54,21 @@ public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, I
     public event Action<(RecordedEventMetadata Metadata, TypeReferenceInjectionRecordedEvent Args)>? TypeReferenceInjected;
     private readonly IMetadataContext _metadataContext;
 
-    public TestExecutionOrderingPlugin(
+    public TestPerThreadOrderingPlugin(
         TestPluginAdditionalData additionalData,
         IModuleBindContext moduleBindContext,
         IMetadataContext metadataContext,
         ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
-        IRecordedEventsDeliveryContext eventsDeliveryContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         PathsConfiguration pathsConfiguration,
         TimeProvider timeProvider,
-        ILogger<TestExecutionOrderingPlugin> logger)
+        ILogger<TestPerThreadOrderingPlugin> logger)
         : base(
             moduleBindContext,
             metadataContext,
             symbolResolver,
             argumentsParser,
-            eventsDeliveryContext,
             profilerCommandSenderProvider,
             timeProvider,
             logger)
@@ -178,6 +175,7 @@ public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, I
         base.Visit(metadata, args);
         MethodExited?.Invoke((metadata, args));
     }
+
     protected override void Visit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
         base.Visit(metadata, args);
@@ -195,11 +193,13 @@ public sealed class TestExecutionOrderingPlugin : ExecutionOrderingPluginBase, I
         base.Visit(metadata, args);
         MethodWrapperInjected?.Invoke((metadata, args));
     }
+
     protected override void Visit(RecordedEventMetadata metadata, ModuleLoadRecordedEvent args)
     {
         base.Visit(metadata, args);
         ModuleLoaded?.Invoke((metadata, args));
     }
+
     protected override void Visit(RecordedEventMetadata metadata, ProfilerDestroyRecordedEvent args)
     {
         base.Visit(metadata, args);

@@ -21,14 +21,14 @@ public static class TemporalAssertionBuilders
 
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodEnter(
         string methodName,
-        TestExecutionOrderingPlugin plugin)
+        IMetadataResolver plugin)
     {
         return new(EventMatchers.MethodEnter(methodName, plugin));
     }
 
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodExit(
         string methodName,
-        TestExecutionOrderingPlugin plugin)
+        IMetadataResolver plugin)
     {
         return new(EventMatchers.MethodExit(methodName, plugin));
     }

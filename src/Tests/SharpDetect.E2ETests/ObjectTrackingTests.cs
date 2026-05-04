@@ -40,9 +40,9 @@ public class ObjectTrackingTests(ITestOutputHelper testOutput)
         // Arrange
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
-            .WithPlugin<TestExecutionOrderingPlugin>()
+            .WithPlugin<TestPerThreadOrderingPlugin>()
             .Build(sdk, testOutput);
-        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var enteredTest = false;
         var exitedTest = false;

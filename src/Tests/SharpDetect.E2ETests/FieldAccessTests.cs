@@ -244,10 +244,10 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
-            .WithPlugin<TestExecutionOrderingPlugin>()
+            .WithPlugin<TestPerThreadOrderingPlugin>()
             .Build(sdk, testOutput, additionalData);
         var args = services.GetRequiredService<RunCommandArgs>();
-        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
@@ -267,10 +267,10 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
-            .WithPlugin<TestExecutionOrderingPlugin>()
+            .WithPlugin<TestPerThreadOrderingPlugin>()
             .Build(sdk, testOutput, additionalData);
         var args = services.GetRequiredService<RunCommandArgs>();
-        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
 
@@ -291,10 +291,10 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
-            .WithPlugin<TestExecutionOrderingPlugin>()
+            .WithPlugin<TestPerThreadOrderingPlugin>()
             .Build(sdk, testOutput, additionalData);
         var args = services.GetRequiredService<RunCommandArgs>();
-        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)

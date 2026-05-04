@@ -20,9 +20,9 @@ public class MultiProcessTests(ITestOutputHelper testOutput)
         // Arrange
         using var services = E2ETestBuilder
             .ForSubject("Test_MultiProcess_ChildExitsBeforeParent")
-            .WithPlugin<TestExecutionOrderingPlugin>()
+            .WithPlugin<TestPerThreadOrderingPlugin>()
             .Build(sdk, testOutput);
-        var plugin = services.GetRequiredService<TestExecutionOrderingPlugin>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var initializedPids = new System.Collections.Concurrent.ConcurrentBag<uint>();
         plugin.ProfilerInitialized += e => initializedPids.Add(e.Metadata.Pid);

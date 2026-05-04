@@ -31,7 +31,7 @@ public static class EventMatchers
         }, description: $"VolatileFieldAccess({type})");
     }
 
-    public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, TestExecutionOrderingPlugin plugin)
+    public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, IMetadataResolver plugin)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(evt =>
         {
@@ -48,7 +48,7 @@ public static class EventMatchers
         }, description: $"MethodEnter({methodName})");
     }
 
-    public static AtomicPredicate<ulong, RecordedEventType> MethodExit(string methodName, TestExecutionOrderingPlugin plugin)
+    public static AtomicPredicate<ulong, RecordedEventType> MethodExit(string methodName, IMetadataResolver plugin)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(evt =>
         {
