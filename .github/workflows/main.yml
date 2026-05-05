@@ -59,7 +59,7 @@ jobs:
       run: |
         cd src
         dotnet tool restore
-        dotnet cake --rid=${{ matrix.rid }} --target=CI-Tests
+        dotnet cake --rid=${{ matrix.rid }} --target=Tests
     - name: Report test results
       uses: dorny/test-reporter@v3
       if: ${{ !cancelled() }}

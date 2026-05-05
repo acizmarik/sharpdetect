@@ -162,19 +162,6 @@ Task("Tests")
     });
 });
 
-Task("CI-Tests")
-    .IsDependentOn("Build-Local-Environment")
-    .Does(() =>
-{
-    DotNetTest("./SharpDetect.slnx", new DotNetTestSettings
-    {
-        Configuration = configuration,
-        Loggers = new[] { "trx" },
-        ResultsDirectory = "./TestResults",
-        ArgumentCustomization = args => args.Append("-maxcpucount:1")
-    });
-});
-
 Task("CI-Prepare-Managed")
     .Does(() =>
 {
