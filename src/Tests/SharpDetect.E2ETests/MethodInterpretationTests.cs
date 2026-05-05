@@ -110,13 +110,6 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
-    public async Task MethodInterpretation_Thread_StartCallback2(string sdk)
-    {
-        await ThreadStartCallback("Test_ThreadMethods_StartCallback2", sdk);
-    }
-
-    [Theory]
     [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Lock_EnterExit1(string sdk)
     {

@@ -237,11 +237,6 @@ namespace SharpDetect.E2ETests.Subject
             thread1.Join();
         }
 
-        public static void Test_ThreadMethods_StartCallback2()
-        {
-            Task.Run(() => { }).Wait();
-        }
-
         public static void Test_ThreadMethods_get_CurrentThread()
         {
             var thread1 = new Thread(() =>

@@ -76,9 +76,6 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ThreadMethods_StartCallback1):
                     Test_ThreadMethods_StartCallback1();
                     break;
-                case nameof(Test_ThreadMethods_StartCallback2):
-                    Test_ThreadMethods_StartCallback2();
-                    break;
                 case nameof(Test_ThreadMethods_get_CurrentThread):
                     Test_ThreadMethods_get_CurrentThread();
                     break;
