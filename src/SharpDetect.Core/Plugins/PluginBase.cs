@@ -211,6 +211,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
             : sender;
     }
 
+    protected bool TryGetCommandSender(uint pid, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out IProfilerCommandSender? sender)
+    {
+        return _profilerCommandSenders.TryGetValue((int)pid, out sender);
+    }
+
     private void CreateNewThread(ProcessThreadId processThreadId)
     {
         _threads[processThreadId] = $"T{_nextFreeThreadId++}";

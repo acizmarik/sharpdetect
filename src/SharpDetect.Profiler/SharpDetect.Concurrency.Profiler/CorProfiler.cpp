@@ -1510,8 +1510,9 @@ HRESULT Profiler::CorProfiler::AbortAttach(const std::string& reason)
 
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg() const
 {
-    ThreadID threadId;
-    _corProfilerInfo->GetCurrentThreadID(&threadId);
+    ThreadID threadId = 0;
+    if (FAILED(_corProfilerInfo->GetCurrentThreadID(&threadId)))
+        threadId = 0;
     return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId);
 }
 

@@ -124,8 +124,15 @@ public partial class DeadlockPlugin
     {
         if (IsDeadlockAlreadyRecorded(deadlock))
             return;
-        
-        var commandSender = GetCommandSender(deadlock.ProcessId);
+
+        if (!TryGetCommandSender(deadlock.ProcessId, out var commandSender))
+        {
+            Logger.LogWarning(
+                "[PID={Pid}] Deadlock detected but command sender is not yet initialized - stack trace snapshots will not be captured.",
+                deadlock.ProcessId);
+            return;
+        }
+
         var threadIds = deadlock.Cycle.Select(t => t.ProcessThreadId.ThreadId).ToArray();
         var commandId = commandSender.SendCommand(new CreateStackTraceSnapshotsCommand(threadIds));
         
