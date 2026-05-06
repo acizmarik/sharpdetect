@@ -19,7 +19,6 @@ public sealed class AnalysisWorker : IAnalysisWorker
     private readonly IPlugin _plugin;
     private readonly IPluginHost _pluginHost;
     private readonly IProfilerEventReceiver _eventReceiver;
-    private readonly IRecordedEventsDeliveryContext _eventsDeliveryContext;
     private readonly ILogger<AnalysisWorker> _logger;
 
     public AnalysisWorker(
@@ -27,14 +26,12 @@ public sealed class AnalysisWorker : IAnalysisWorker
         IPlugin plugin,
         IPluginHost pluginHost,
         IProfilerEventReceiver eventReceiver,
-        IRecordedEventsDeliveryContext eventsDeliveryContext,
         ILogger<AnalysisWorker> logger)
     {
         _arguments = arguments;
         _plugin = plugin;
         _pluginHost = pluginHost;
         _eventReceiver = eventReceiver;
-        _eventsDeliveryContext = eventsDeliveryContext;
         _logger = logger;
     }
 
@@ -137,29 +134,6 @@ public sealed class AnalysisWorker : IAnalysisWorker
             {
                 LogFailureAndTerminateAnalysis();
                 return;
-            }
-
-            // Check if we unlocked some thread(s) and execute blocked events if possible
-            if (_eventsDeliveryContext.HasUnblockedThreads())
-            {
-                foreach (var unblockedThreadId in _eventsDeliveryContext.ConsumeUnblockedThreads())
-                {
-                    foreach (var undeliveredEvent in _eventsDeliveryContext.ConsumeUndeliveredEvents(unblockedThreadId))
-                    {
-                        var processingResult = _pluginHost.ProcessEvent(undeliveredEvent);
-                        if (processingResult == RecordedEventState.Failed)
-                        {
-                            LogFailureAndTerminateAnalysis();
-                            return;
-                        }
-
-                        if (processingResult != RecordedEventState.Executed)
-                        {
-                            // Continue with the next thread
-                            break;
-                        }
-                    }
-                }
             }
         }
     }

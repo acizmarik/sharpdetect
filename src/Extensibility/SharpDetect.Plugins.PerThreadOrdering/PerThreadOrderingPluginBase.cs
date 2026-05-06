@@ -18,6 +18,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
 {
     private readonly ThreadCallStackTracker _callStackTracker = new();
     private readonly ThreadObjectRegistry _threadObjectRegistry = new();
+    private readonly Dictionary<ProcessTrackedObjectId, List<(ProcessThreadId JoiningThread, ModuleId ModuleId, MdMethodDef MethodToken)>> _pendingJoinAttempts = [];
     private readonly IArgumentsParser _argumentsParser;
 
     public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
@@ -215,6 +216,11 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var arguments = ParseArguments(metadata, args);
         var threadObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
         _threadObjectRegistry.RegisterMapping(threadObjectId, id);
+        if (_pendingJoinAttempts.Remove(threadObjectId, out var pendingJoins))
+        {
+            foreach (var (joiningThread, moduleId, methodToken) in pendingJoins)
+                ProcessThreadJoinAttempt(joiningThread, threadObjectId, moduleId, methodToken);
+        }
         ProcessThreadStartCallback(id, threadObjectId);
         Logger.LogInformation("Thread started {Name}.", Threads[id]);
     }
@@ -475,6 +481,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         if (_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joiningThreadId))
             ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(id, joiningThreadId, moduleId, methodToken));
+        else
+        {
+            if (!_pendingJoinAttempts.TryGetValue(joinedThreadObjectId, out var pending))
+                _pendingJoinAttempts[joinedThreadObjectId] = pending = [];
+            pending.Add((id, moduleId, methodToken));
+        }
     }
 
     protected virtual void ProcessTaskSchedule(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
