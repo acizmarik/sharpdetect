@@ -841,37 +841,28 @@ namespace SharpDetect.E2ETests.Subject
             using var mutex = Mutex.OpenExisting(GetSynchronizationMutexName());
             var lockObj1 = new object();
             var lockObj2 = new object();
-            var syncEvent = new AutoResetEvent(true);
-            
+            var thread1HoldsLock1 = new SemaphoreSlim(0, 1);
+            var thread2HoldsLock2 = new SemaphoreSlim(0, 1);
+
             var thread1 = new Thread(() =>
             {
                 Thread.CurrentThread.Name = "TEST_Thread1";
-                for (;;)
+                lock (lockObj1)
                 {
-                    syncEvent.WaitOne();
-                    lock (lockObj1)
-                    {
-                        syncEvent.Set();
-                        lock (lockObj2)
-                        {
-                        }
-                    }
+                    thread1HoldsLock1.Release();
+                    thread2HoldsLock2.Wait();
+                    lock (lockObj2) { }
                 }
             });
 
             var thread2 = new Thread(() =>
             {
-                for (;;)
+                Thread.CurrentThread.Name = "TEST_Thread2";
+                lock (lockObj2)
                 {
-                    Thread.CurrentThread.Name = "TEST_Thread2";
-                    syncEvent.WaitOne();
-                    lock (lockObj2)
-                    {
-                        syncEvent.Set();
-                        lock (lockObj1)
-                        {
-                        }
-                    }
+                    thread2HoldsLock2.Release();
+                    thread1HoldsLock1.Wait();
+                    lock (lockObj1) { }
                 }
             });
 
@@ -888,37 +879,28 @@ namespace SharpDetect.E2ETests.Subject
             using var mutex = Mutex.OpenExisting(GetSynchronizationMutexName());
             var lockObj1 = new Lock();
             var lockObj2 = new Lock();
-            var syncEvent = new AutoResetEvent(true);
-            
+            var thread1HoldsLock1 = new SemaphoreSlim(0, 1);
+            var thread2HoldsLock2 = new SemaphoreSlim(0, 1);
+
             var thread1 = new Thread(() =>
             {
                 Thread.CurrentThread.Name = "TEST_Thread1";
-                for (;;)
+                lock (lockObj1)
                 {
-                    syncEvent.WaitOne();
-                    lock (lockObj1)
-                    {
-                        syncEvent.Set();
-                        lock (lockObj2)
-                        {
-                        }
-                    }
+                    thread1HoldsLock1.Release();
+                    thread2HoldsLock2.Wait();
+                    lock (lockObj2) { }
                 }
             });
 
             var thread2 = new Thread(() =>
             {
-                for (;;)
+                Thread.CurrentThread.Name = "TEST_Thread2";
+                lock (lockObj2)
                 {
-                    Thread.CurrentThread.Name = "TEST_Thread2";
-                    syncEvent.WaitOne();
-                    lock (lockObj2)
-                    {
-                        syncEvent.Set();
-                        lock (lockObj1)
-                        {
-                        }
-                    }
+                    thread2HoldsLock2.Release();
+                    thread1HoldsLock1.Wait();
+                    lock (lockObj1) { }
                 }
             });
 

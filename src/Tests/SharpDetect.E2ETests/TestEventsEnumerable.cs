@@ -16,9 +16,6 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
     private readonly ConcurrentQueue<IEvent<ulong, RecordedEventType>> _queue = new();
     private ulong _currentId = 0;
     
-    public TestEventsEnumerable(TestExecutionOrderingPlugin plugin)
-        : this(plugin, plugin) { }
-
     public TestEventsEnumerable(TestPerThreadOrderingPlugin plugin)
         : this(plugin, plugin) { }
 

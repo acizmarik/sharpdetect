@@ -3,9 +3,8 @@
 
 using System.Diagnostics.CodeAnalysis;
 using SharpDetect.Core.Plugins;
-using SharpDetect.Core.Plugins.Models;
 
-namespace SharpDetect.Plugins.ExecutionOrdering;
+namespace SharpDetect.Plugins.Deadlock;
 
 public sealed class ConcurrencyContext
 {
@@ -15,7 +14,6 @@ public sealed class ConcurrencyContext
     private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _lockOwners = [];
 
     public bool HasThread(ProcessThreadId id) => _waitingForLocks.ContainsKey(id);
-    public bool HasLock(ProcessThreadId id, ProcessTrackedObjectId lockId) => _takenLocks[id].Contains(lockId);
 
     public bool TryGetWaitingLock(ProcessThreadId id, [NotNullWhen(true)] out ProcessTrackedObjectId? lockId)
     {
@@ -30,19 +28,6 @@ public sealed class ConcurrencyContext
     public bool TryGetWaitingThread(ProcessThreadId id, [NotNullWhen(true)] out ProcessThreadId? processThreadId)
     {
         return _waitingForThreads.TryGetValue(id, out processThreadId) && processThreadId is not null;
-    }
-    
-    public ProcessTrackedObjectId GetWaitingLock(ProcessThreadId id)
-    {
-        if (!_waitingForLocks.TryGetValue(id, out var lockId) || lockId == null)
-            throw new InvalidOperationException($"Thread {id} is not waiting for any lock.");
-        
-        return lockId.Value;
-    }
-    
-    public IEnumerable<ProcessTrackedObjectId> GetTakenLocks(ProcessThreadId id)
-    {
-        return _takenLocks[id];
     }
     
     public void RecordLockAcquireCalled(ProcessThreadId id, ProcessTrackedObjectId lockId)
@@ -81,15 +66,8 @@ public sealed class ConcurrencyContext
     public void RecordThreadCreated(ProcessThreadId id)
     {
         _waitingForLocks[id] = null;
-        _takenLocks[id] = new HashSet<ProcessTrackedObjectId>();
+        _takenLocks[id] = [];
         _waitingForThreads[id] = null;
-    }
-    
-    public void RecordThreadDestroyed(ProcessThreadId id)
-    {
-        _waitingForLocks.Remove(id);
-        _takenLocks.Remove(id);
-        _waitingForThreads.Remove(id);
     }
     
     public void RecordThreadJoinCalled(ProcessThreadId id, ProcessThreadId processJoiningThreadId)

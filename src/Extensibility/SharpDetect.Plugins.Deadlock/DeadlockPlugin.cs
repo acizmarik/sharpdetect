@@ -13,12 +13,12 @@ using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Serialization;
 using SharpDetect.Plugins.Descriptors;
 using SharpDetect.Plugins.Descriptors.Methods;
-using SharpDetect.Plugins.ExecutionOrdering;
+using SharpDetect.Plugins.PerThreadOrdering;
 
 namespace SharpDetect.Plugins.Deadlock;
 
 [PluginMetadata(Name = "Deadlock", Description = "Wait-for graph deadlock detector")]
-public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
+public partial class DeadlockPlugin : PerThreadOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Deadlock";
     public RecordedEventActionVisitorBase EventsVisitor => this;
@@ -37,7 +37,6 @@ public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
         IMetadataContext metadataContext,
         ISymbolResolver symbolResolver,
         IArgumentsParser argumentsParser,
-        IRecordedEventsDeliveryContext eventsDeliveryContext,
         IProfilerCommandSenderProvider profilerCommandSenderProvider,
         ICallstackResolver callstackResolver,
         PathsConfiguration pathsConfiguration,
@@ -48,7 +47,6 @@ public partial class DeadlockPlugin : ExecutionOrderingPluginBase, IPlugin
             metadataContext,
             symbolResolver,
             argumentsParser,
-            eventsDeliveryContext,
             profilerCommandSenderProvider,
             timeProvider,
             logger)
