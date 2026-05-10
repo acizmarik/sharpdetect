@@ -22,9 +22,13 @@ internal sealed class PluginHostFactory
 
     public IPluginHost CreateHost(IPlugin plugin)
     {
-        return new PassthroughPluginHost(
+        var passthrough = new PassthroughPluginHost(
             _recordedEventBindingsCompiler,
             plugin,
             _loggerFactory.CreateLogger<PassthroughPluginHost>());
+
+        return new ReorderingPluginHost(
+            passthrough,
+            _loggerFactory.CreateLogger<ReorderingPluginHost>());
     }
 }

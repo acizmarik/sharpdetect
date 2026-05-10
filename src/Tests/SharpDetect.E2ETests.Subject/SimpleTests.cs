@@ -1256,6 +1256,29 @@ namespace SharpDetect.E2ETests.Subject
             Task.WaitAll(task1, task2);
         }
 
+        public static void Test_NoDataRace_Monitor_HighContention_WriteRead()
+        {
+            const int iterations = 5000;
+            var lockObj = new object();
+            RunConcurrently(
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        lock (lockObj)
+                            DataRace.Test_DataRace_ValueType_Static = i;
+                    }
+                },
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        lock (lockObj)
+                            _ = DataRace.Test_DataRace_ValueType_Static;
+                    }
+                });
+        }
+
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()
         {
             // Generate garbage

@@ -488,6 +488,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead):
                     Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead();
                     break;
+                case nameof(Test_NoDataRace_Monitor_HighContention_WriteRead):
+                    Test_NoDataRace_Monitor_HighContention_WriteRead();
+                    break;
             }
 
             // Disposables

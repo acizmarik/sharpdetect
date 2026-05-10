@@ -7,7 +7,7 @@ public enum RecordedEventState
 {
     Unavailable = 0,
     Executed = 1,
-    Defered = 2,
+    Deferred = 2,
     Discarded = 3,
     Failed = 4
 }
