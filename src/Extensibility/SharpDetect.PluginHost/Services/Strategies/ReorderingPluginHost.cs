@@ -61,6 +61,14 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         var kind = (RecordedEventType)enter.Interpretation;
         switch (kind)
         {
+            case RecordedEventType.SemaphoreCreate:
+            {
+                var semaphoreId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
+                var initialCount = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[(byte)nint.Size..]);
+                GetOrCreateSemaphore(semaphoreId).Initialize(initialCount);
+                return inner.ProcessEvent(recordedEvent);
+            }
+
             case RecordedEventType.MonitorLockAcquire:
             case RecordedEventType.MonitorLockTryAcquire:
             case RecordedEventType.LockAcquire:

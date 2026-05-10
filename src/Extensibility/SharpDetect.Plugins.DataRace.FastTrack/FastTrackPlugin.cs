@@ -100,6 +100,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         TaskStarted += OnTaskStarted;
         TaskCompleted += OnTaskCompleted;
         TaskJoinFinished += OnTaskJoinFinished;
+        SemaphoreCreated += OnSemaphoreCreated;
         SemaphoreAcquireReturned += OnSemaphoreAcquireReturned;
         SemaphoreReleased += OnSemaphoreReleased;
 
@@ -282,6 +283,11 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         if (args.IsSuccess)
             _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
+    }
+
+    private void OnSemaphoreCreated(SemaphoreCreatedArgs args)
+    {
+        _detector.RecordSemaphoreCreated(args.SemaphoreId, args.InitialCount);
     }
 
     private void OnSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args)

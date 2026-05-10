@@ -255,13 +255,14 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreRelease, S1));
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
 
         // Assert
-        Assert.Equal(4, recorder.Dispatched.Count);
+        Assert.Equal(5, recorder.Dispatched.Count);
         Assert.All(recorder.Dispatched, e => Assert.Equal(T1, e.Metadata.Tid.Value));
     }
 
@@ -272,6 +273,7 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
@@ -284,6 +286,7 @@ public class ReorderingPluginHostTests
         var kinds = recorder.Dispatched.Select(ClassifyDispatched).ToArray();
         Assert.Equal(new[]
         {
+            (T1, RecordedEventType.SemaphoreCreate),
             (T1, RecordedEventType.SemaphoreAcquire),
             (T1, RecordedEventType.SemaphoreAcquireResult),
             (T2, RecordedEventType.SemaphoreAcquire),
@@ -301,6 +304,7 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
@@ -325,14 +329,40 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreTryAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, false));
 
         // Assert
-        Assert.Equal(4, recorder.Dispatched.Count);
+        Assert.Equal(5, recorder.Dispatched.Count);
         Assert.Equal((T2, RecordedEventType.SemaphoreAcquireResult), ClassifyDispatched(recorder.Dispatched[^1]));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_Semaphore_InitialCountTwo_BothAcquiresSucceedWithoutRelease()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true));
+        var kinds = recorder.Dispatched.Select(ClassifyDispatched).ToArray();
+        
+        // Assert
+        Assert.Equal(new[]
+        {
+            (T1, RecordedEventType.SemaphoreCreate),
+            (T1, RecordedEventType.SemaphoreAcquire),
+            (T1, RecordedEventType.SemaphoreAcquireResult),
+            (T2, RecordedEventType.SemaphoreAcquire),
+            (T2, RecordedEventType.SemaphoreAcquireResult),
+        }, kinds);
     }
 
     [Fact]
