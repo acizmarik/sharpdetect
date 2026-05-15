@@ -8,20 +8,33 @@ namespace SharpDetect.PluginHost.Services.Strategies.Shadows;
 internal sealed class ShadowTask
 {
     public bool Completed { get; private set; }
-    private readonly Queue<ProcessThreadId> _waiters = [];
+    public ProcessThreadId? OwnerThreadId { get; private set; }
+    private LinkedList<ProcessThreadId> _waiters = [];
+
+    public void AttachOwner(ProcessThreadId tid) => OwnerThreadId ??= tid;
 
     public bool RegisterWaiter(ProcessThreadId tid)
     {
         if (Completed)
             return false;
         
-        _waiters.Enqueue(tid);
+        _waiters.AddLast(tid);
         return true;
     }
 
     public IReadOnlyCollection<ProcessThreadId> Complete()
     {
         Completed = true;
-        return _waiters.Count == 0 ? [] : _waiters;
+        if (_waiters.Count == 0)
+            return [];
+
+        var result = _waiters;
+        _waiters = [];
+        return result;
+    }
+
+    public void RemoveWaiter(ProcessThreadId tid)
+    {
+        _waiters.Remove(tid);
     }
 }

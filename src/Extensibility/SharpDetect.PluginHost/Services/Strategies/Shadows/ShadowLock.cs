@@ -10,7 +10,7 @@ internal sealed class ShadowLock
 {
     public ProcessThreadId? Owner { get; private set; }
     public int ReentrantCount { get; private set; }
-    private readonly Queue<ProcessThreadId> _waiters = [];
+    private readonly LinkedList<ProcessThreadId> _waiters = [];
 
     public bool TryAcquire(ProcessThreadId tid)
     {
@@ -27,7 +27,7 @@ internal sealed class ShadowLock
             return true;
         }
         
-        _waiters.Enqueue(tid);
+        _waiters.AddLast(tid);
         return false;
     }
 
@@ -73,7 +73,7 @@ internal sealed class ShadowLock
             return true;
         }
         
-        _waiters.Enqueue(tid);
+        _waiters.AddLast(tid);
         return false;
     }
 
@@ -87,6 +87,18 @@ internal sealed class ShadowLock
         return DequeueWaiterOrNull();
     }
 
+    public void RemoveWaiter(ProcessThreadId tid)
+    {
+        _waiters.Remove(tid);
+    }
+
     private ProcessThreadId? DequeueWaiterOrNull()
-        => _waiters.Count > 0 ? _waiters.Dequeue() : null;
+    {
+        if (_waiters.Count == 0)
+            return null;
+
+        var result = _waiters.First();
+        _waiters.RemoveFirst();
+        return result;
+    }
 }

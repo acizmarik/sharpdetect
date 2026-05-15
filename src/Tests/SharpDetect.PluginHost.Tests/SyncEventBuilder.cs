@@ -69,9 +69,21 @@ internal static class SyncEventBuilder
             ArgumentValues: [],
             ArgumentInfos: []));
 
+    public static RecordedEvent FieldAccessInstrumentation(uint tid, ulong instrumentationId)
+        => new(Meta(tid), new FieldAccessInstrumentationRecordedEvent(
+            ModuleId: Module,
+            MethodToken: Method,
+            MethodOffset: 0,
+            FieldToken: new MdToken(0x04000001),
+            InstrumentationId: instrumentationId,
+            IsVolatile: false));
+
     public static RecordedEvent ProfilerDestroy(uint tid)
         => new(Meta(tid), new ProfilerDestroyRecordedEvent());
 
     public static RecordedEvent ThreadDestroy(uint tid)
         => new(Meta(tid), new ThreadDestroyRecordedEvent(new ThreadId(tid)));
+
+    public static RecordedEvent ThreadDestroy(uint destroyedTid, uint emitterTid)
+        => new(Meta(emitterTid), new ThreadDestroyRecordedEvent(new ThreadId(destroyedTid)));
 }

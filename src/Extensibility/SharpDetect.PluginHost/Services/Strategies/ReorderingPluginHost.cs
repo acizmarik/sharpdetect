@@ -36,7 +36,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         var tid = new ProcessThreadId(recordedEvent.Metadata.Pid, recordedEvent.Metadata.Tid);
         var thread = GetOrCreateThread(tid);
 
-        if (thread.BlockedOn is not null)
+        if (thread.BlockedOn is not null && ShouldDeferIfBlocked(recordedEvent))
         {
             thread.PendingQueue.AddLast(recordedEvent);
             return RecordedEventState.Deferred;
@@ -49,6 +49,49 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             MethodExitWithArgumentsRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, tid, thread, exit.ReturnValue),
             ThreadDestroyRecordedEvent destroy => HandleThreadDestroy(recordedEvent, destroy),
             _ => inner.ProcessEvent(recordedEvent)
+        };
+    }
+
+    // Defer only events that participate in the happens-before (sync operations and shared-memory accesses)
+    private static bool ShouldDeferIfBlocked(RecordedEvent recordedEvent)
+    {
+        if (recordedEvent.EventArgs is not ICustomizableEventType customizable)
+            return false;
+
+        return (RecordedEventType)customizable.Interpretation switch
+        {
+            RecordedEventType.StaticFieldRead or
+            RecordedEventType.StaticFieldWrite or
+            RecordedEventType.InstanceFieldRead or
+            RecordedEventType.InstanceFieldWrite or
+            RecordedEventType.MonitorLockAcquire or
+            RecordedEventType.MonitorLockTryAcquire or
+            RecordedEventType.MonitorLockAcquireResult or
+            RecordedEventType.MonitorLockRelease or
+            RecordedEventType.MonitorLockReleaseResult or
+            RecordedEventType.MonitorWaitAttempt or
+            RecordedEventType.MonitorWaitResult or
+            RecordedEventType.MonitorPulseOneAttempt or
+            RecordedEventType.MonitorPulseOneResult or
+            RecordedEventType.MonitorPulseAllAttempt or
+            RecordedEventType.MonitorPulseAllResult or
+            RecordedEventType.LockAcquire or
+            RecordedEventType.LockTryAcquire or
+            RecordedEventType.LockAcquireResult or
+            RecordedEventType.LockRelease or
+            RecordedEventType.LockReleaseResult or
+            RecordedEventType.SemaphoreAcquire or
+            RecordedEventType.SemaphoreTryAcquire or
+            RecordedEventType.SemaphoreAcquireResult or
+            RecordedEventType.SemaphoreRelease or
+            RecordedEventType.SemaphoreReleaseResult or
+            RecordedEventType.ThreadJoinAttempt or
+            RecordedEventType.ThreadJoinResult or
+            RecordedEventType.TaskStart or
+            RecordedEventType.TaskComplete or
+            RecordedEventType.TaskJoinStart or
+            RecordedEventType.TaskJoinFinish => true,
+            _ => false
         };
     }
 
@@ -86,18 +129,22 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 var taskId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
                 thread.SyncTargetStack.Push(taskId);
-                GetOrCreateTask(taskId);
+                GetOrCreateTask(taskId).AttachOwner(tid);
                 return inner.ProcessEvent(recordedEvent);
             }
 
             case RecordedEventType.MonitorWaitAttempt:
             {
                 var target = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
-                thread.SyncTargetStack.Push(target);
                 var shadowLock = GetOrCreateLock(target);
                 if (!shadowLock.TryReleaseForWait(tid, out var nextWaiter, out var suspendedCount))
-                    return RecordedEventState.Discarded;
-                
+                {
+                    // Waiting without ownership throws at runtime
+                    // We are not pushing the target (there won't be matching reacquire
+                    return inner.ProcessEvent(recordedEvent);
+                }
+
+                thread.SyncTargetStack.Push(target);
                 thread.SuspendedWaitCount = suspendedCount.Value;
                 if (nextWaiter is not null)
                     _drainQueue.Enqueue(nextWaiter.Value);
@@ -134,7 +181,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 return HandleSemaphoreAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, true));
 
             case RecordedEventType.SemaphoreReleaseResult:
-                return HandleSemaphoreReleaseResult(recordedEvent, thread);
+                return HandleSemaphoreReleaseResult(recordedEvent, tid, thread);
 
             case RecordedEventType.TaskComplete:
                 return HandleTaskComplete(recordedEvent, thread);
@@ -179,12 +226,6 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         if (!TryPeekTarget(thread, out var lockId))
             return inner.ProcessEvent(recordedEvent);
 
-        if (!success)
-        {
-            thread.SyncTargetStack.Pop();
-            thread.SuspendedWaitCount = null;
-            return inner.ProcessEvent(recordedEvent);
-        }
 
         var suspended = thread.SuspendedWaitCount ?? 1;
         if (!GetOrCreateLock(lockId).TryReacquireAfterWait(tid, suspended))
@@ -207,13 +248,13 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         return inner.ProcessEvent(recordedEvent);
     }
 
-    private RecordedEventState HandleSemaphoreReleaseResult(RecordedEvent recordedEvent, ShadowThread thread)
+    private RecordedEventState HandleSemaphoreReleaseResult(RecordedEvent recordedEvent, ProcessThreadId tid, ShadowThread thread)
     {
         if (!TryPopTarget(thread, out var semaphoreId))
             return inner.ProcessEvent(recordedEvent);
 
         var result = inner.ProcessEvent(recordedEvent);
-        EnqueueDrain(GetOrCreateSemaphore(semaphoreId).Release());
+        EnqueueDrain(GetOrCreateSemaphore(semaphoreId).Release(tid));
         return result;
     }
 
@@ -255,12 +296,36 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
 
         foreach (var (lockId, shadow) in _locks)
         {
+            shadow.RemoveWaiter(destroyedTid);
             var next = shadow.AbandonByDestroy(destroyedTid);
             if (next is null)
                 continue;
             
             logger.LogWarning("Thread {Thread} destroyed while still owning lock {Lock}.", destroyedTid, lockId);
             _drainQueue.Enqueue(next.Value);
+        }
+
+        foreach (var (semaphoreId, shadow) in _semaphores)
+        {
+            shadow.RemoveWaiter(destroyedTid);
+            var abandonedPermits = shadow.AbandonPermitsByDestroy(destroyedTid);
+            if (abandonedPermits > 0)
+            {
+                logger.LogWarning(
+                    "Thread {Thread} destroyed while holding {Permits} outstanding permit(s) on semaphore {Semaphore}; permits will not be released.",
+                    destroyedTid, abandonedPermits, semaphoreId);
+            }
+        }
+
+        foreach (var (taskId, shadow) in _tasks)
+        {
+            shadow.RemoveWaiter(destroyedTid);
+            if (shadow.Completed || shadow.OwnerThreadId != destroyedTid)
+                continue;
+
+            logger.LogWarning("Thread {Thread} destroyed mid-task {Task}; completing task and waking joiners.", destroyedTid, taskId);
+            foreach (var waiter in shadow.Complete())
+                _drainQueue.Enqueue(waiter);
         }
 
         _threads.Remove(destroyedTid);
