@@ -86,4 +86,13 @@ internal static class SyncEventBuilder
 
     public static RecordedEvent ThreadDestroy(uint destroyedTid, uint emitterTid)
         => new(Meta(emitterTid), new ThreadDestroyRecordedEvent(new ThreadId(destroyedTid)));
+
+    public static RecordedEvent GarbageCollected(uint emitterTid, params nuint[] removedObjects)
+    {
+        var ids = new TrackedObjectId[removedObjects.Length];
+        for (var i = 0; i < removedObjects.Length; i++)
+            ids[i] = new TrackedObjectId(removedObjects[i]);
+
+        return new RecordedEvent(Meta(emitterTid), new GarbageCollectedTrackedObjectsRecordedEvent(ids));
+    }
 }

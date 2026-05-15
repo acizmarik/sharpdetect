@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using SharpDetect.Core.Plugins;
 
 namespace SharpDetect.PluginHost.Services.Strategies.Shadows;
@@ -53,5 +54,21 @@ internal sealed class ShadowSemaphore
     public int AbandonPermitsByDestroy(ProcessThreadId tid)
     {
         return _outstandingPermits.Remove(tid, out var held) ? held : 0;
+    }
+
+    public bool TryDescribeResidualState([NotNullWhen(true)] out string? description)
+    {
+        if (_waiters.Count == 0 && _outstandingPermits.Count == 0)
+        {
+            description = null;
+            return false;
+        }
+
+        var totalPermits = 0;
+        foreach (var kvp in _outstandingPermits)
+            totalPermits += kvp.Value;
+
+        description = $"waiters={_waiters.Count}, outstandingPermits={totalPermits} across {_outstandingPermits.Count} thread(s)";
+        return true;
     }
 }

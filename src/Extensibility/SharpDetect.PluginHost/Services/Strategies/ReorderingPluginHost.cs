@@ -19,6 +19,10 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     private readonly Queue<ProcessThreadId> _drainQueue = [];
     private bool _isDisposed;
 
+    internal int ShadowLockCount => _locks.Count;
+    internal int ShadowSemaphoreCount => _semaphores.Count;
+    internal int ShadowTaskCount => _tasks.Count;
+
     public RecordedEventState ProcessEvent(RecordedEvent recordedEvent)
     {
         var topResult = ProcessOne(recordedEvent);
@@ -48,6 +52,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             MethodExitRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, tid, thread, returnValue: null),
             MethodExitWithArgumentsRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, tid, thread, exit.ReturnValue),
             ThreadDestroyRecordedEvent destroy => HandleThreadDestroy(recordedEvent, destroy),
+            GarbageCollectedTrackedObjectsRecordedEvent gc => HandleGarbageCollectedTrackedObjects(recordedEvent, gc),
             _ => inner.ProcessEvent(recordedEvent)
         };
     }
@@ -329,6 +334,42 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         }
 
         _threads.Remove(destroyedTid);
+        return inner.ProcessEvent(recordedEvent);
+    }
+
+    private RecordedEventState HandleGarbageCollectedTrackedObjects(
+        RecordedEvent recordedEvent,
+        GarbageCollectedTrackedObjectsRecordedEvent gc)
+    {
+        var pid = recordedEvent.Metadata.Pid;
+        foreach (var objectId in gc.RemovedTrackedObjectIds)
+        {
+            var key = new ProcessTrackedObjectId(pid, objectId);
+
+            if (_locks.TryGetValue(key, out var shadowLock))
+            {
+                if (shadowLock.TryDescribeResidualState(out var description))
+                    logger.LogWarning("Lock {Lock} garbage collected with residual state: {State}.", key, description);
+                _locks.Remove(key);
+                continue;
+            }
+
+            if (_semaphores.TryGetValue(key, out var shadowSemaphore))
+            {
+                if (shadowSemaphore.TryDescribeResidualState(out var description))
+                    logger.LogWarning("Semaphore {Semaphore} garbage collected with residual state: {State}.", key, description);
+                _semaphores.Remove(key);
+                continue;
+            }
+
+            if (_tasks.TryGetValue(key, out var shadowTask))
+            {
+                if (shadowTask.TryDescribeResidualState(out var description))
+                    logger.LogWarning("Task {Task} garbage collected with residual state: {State}.", key, description);
+                _tasks.Remove(key);
+            }
+        }
+
         return inner.ProcessEvent(recordedEvent);
     }
 

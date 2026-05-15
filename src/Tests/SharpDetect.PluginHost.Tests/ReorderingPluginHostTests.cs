@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
@@ -25,6 +26,13 @@ public class ReorderingPluginHostTests
     {
         recorder = new RecordingPluginHost();
         return new ReorderingPluginHost(recorder, NullLogger<ReorderingPluginHost>.Instance);
+    }
+
+    private static ReorderingPluginHost Build(out RecordingPluginHost recorder, out CapturingLogger<ReorderingPluginHost> logger)
+    {
+        recorder = new RecordingPluginHost();
+        logger = new CapturingLogger<ReorderingPluginHost>();
+        return new ReorderingPluginHost(recorder, logger);
     }
 
     [Fact]
@@ -656,6 +664,155 @@ public class ReorderingPluginHostTests
             e.Metadata.Tid.Value == T2 &&
             e.EventArgs is MethodEnterWithArgumentsRecordedEvent enter &&
             (RecordedEventType)enter.Interpretation == RecordedEventType.ThreadStartCore);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_CleanLock_RemovesShadowAndForwardsEvent()
+    {
+        // Arrange
+        var host = Build(out var recorder, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        Assert.Equal(1, host.ShadowLockCount);
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowLockCount);
+        Assert.Contains(recorder.Dispatched, e => e.EventArgs is GarbageCollectedTrackedObjectsRecordedEvent);
+        Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_CleanSemaphore_RemovesShadowAndForwardsEvent()
+    {
+        // Arrange
+        var host = Build(out var recorder, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreRelease, S1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
+        Assert.Equal(1, host.ShadowSemaphoreCount);
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, S1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowSemaphoreCount);
+        Assert.Contains(recorder.Dispatched, e => e.EventArgs is GarbageCollectedTrackedObjectsRecordedEvent);
+        Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_CleanTask_RemovesShadowAndForwardsEvent()
+    {
+        // Arrange
+        var host = Build(out var recorder, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskComplete));
+        Assert.Equal(1, host.ShadowTaskCount);
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, Task1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowTaskCount);
+        Assert.Contains(recorder.Dispatched, e => e.EventArgs is GarbageCollectedTrackedObjectsRecordedEvent);
+        Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_MixedObjects_RemovesAllMatchingShadows()
+    {
+        // Arrange
+        var host = Build(out _, out _);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskComplete));
+        Assert.Equal(1, host.ShadowLockCount);
+        Assert.Equal(1, host.ShadowSemaphoreCount);
+        Assert.Equal(1, host.ShadowTaskCount);
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1, S1, Task1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowLockCount);
+        Assert.Equal(0, host.ShadowSemaphoreCount);
+        Assert.Equal(0, host.ShadowTaskCount);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_LockWithOwner_LogsWarning()
+    {
+        // Arrange
+        var host = Build(out _, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowLockCount);
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("Lock"));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_SemaphoreWithOutstandingPermits_LogsWarning()
+    {
+        // Arrange
+        var host = Build(out _, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreCreate, S1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, S1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowSemaphoreCount);
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("Semaphore"));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_TaskNotCompleted_LogsWarning()
+    {
+        // Arrange
+        var host = Build(out _, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, Task1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowTaskCount);
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("Task"));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_UnknownObject_NoOp()
+    {
+        // Arrange
+        var host = Build(out var recorder, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1, S1, Task1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowLockCount);
+        Assert.Equal(0, host.ShadowSemaphoreCount);
+        Assert.Equal(0, host.ShadowTaskCount);
+        Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
+        Assert.Contains(recorder.Dispatched, e => e.EventArgs is GarbageCollectedTrackedObjectsRecordedEvent);
     }
 
     private static (uint Tid, RecordedEventType Type) ClassifyDispatched(RecordedEvent e)

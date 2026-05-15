@@ -92,6 +92,18 @@ internal sealed class ShadowLock
         _waiters.Remove(tid);
     }
 
+    public bool TryDescribeResidualState([NotNullWhen(true)] out string? description)
+    {
+        if (Owner is null && _waiters.Count == 0)
+        {
+            description = null;
+            return false;
+        }
+
+        description = $"owner={Owner?.ToString() ?? "none"}, reentrantCount={ReentrantCount}, waiters={_waiters.Count}";
+        return true;
+    }
+
     private ProcessThreadId? DequeueWaiterOrNull()
     {
         if (_waiters.Count == 0)
