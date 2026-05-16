@@ -1279,6 +1279,31 @@ namespace SharpDetect.E2ETests.Subject
                 });
         }
 
+        public static void Test_NoDataRace_Semaphore_HighContention_WriteRead()
+        {
+            const int iterations = 5000;
+            var semaphore = new SemaphoreSlim(1, 1);
+            RunConcurrently(
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        semaphore.Wait();
+                        DataRace.Test_DataRace_ValueType_Static = i;
+                        semaphore.Release();
+                    }
+                },
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        semaphore.Wait();
+                        _ = DataRace.Test_DataRace_ValueType_Static;
+                        semaphore.Release();
+                    }
+                });
+        }
+
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()
         {
             // Generate garbage

@@ -173,7 +173,32 @@ public class ReorderingPluginHostTests
             e.Metadata.Tid.Value == T1 &&
             (e.EventArgs as MethodExitRecordedEvent)?.Interpretation == (ushort)RecordedEventType.TaskJoinFinish);
     }
-    
+
+    [Fact]
+    public void ReorderingPluginHost_TaskJoin_QueuesSubsequentPlainMethodExitOnSameThread()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.TaskJoinFinish)); // deferred
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MethodExit)); // must also defer
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskComplete)); // wake T1
+
+        // Assert
+        var t1Exits = recorder.Dispatched
+            .Where(e => e.Metadata.Tid.Value == T1 && e.EventArgs is MethodExitRecordedEvent)
+            .Select(e => (RecordedEventType)((MethodExitRecordedEvent)e.EventArgs).Interpretation)
+            .ToArray();
+        Assert.Equal(new[]
+        {
+            RecordedEventType.TaskJoinFinish,
+            RecordedEventType.MethodExit,
+        }, t1Exits);
+    }
+
     [Fact]
     public void ReorderingPluginHost_MonitorWait_ReleasesAndReacquires()
     {
@@ -625,45 +650,6 @@ public class ReorderingPluginHostTests
             (T2, RecordedEventType.MonitorLockAcquireResult),
             (T2, RecordedEventType.InstanceFieldRead),
         }, t2Events);
-    }
-
-    [Fact]
-    public void ReorderingPluginHost_FieldAccessInstrumentation_FromBlockedThread_DispatchedImmediately()
-    {
-        // Arrage
-        var host = Build(out var recorder);
-
-        // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // T2 deferred
-        host.ProcessEvent(SyncEventBuilder.FieldAccessInstrumentation(T2, instrumentationId: 42));
-        
-        // Assert
-        Assert.Contains(recorder.Dispatched, e =>
-            e.Metadata.Tid.Value == T2 && e.EventArgs is FieldAccessInstrumentationRecordedEvent reg
-            && reg.InstrumentationId == 42);
-    }
-
-    [Fact]
-    public void ReorderingPluginHost_ThreadStartCore_FromBlockedThread_DispatchedImmediately()
-    {
-        // Arrange
-        var host = Build(out var recorder);
-
-        // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // T2 deferred
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.ThreadStartCore, 0x3000));
-
-        // Assert
-        Assert.Contains(recorder.Dispatched, e =>
-            e.Metadata.Tid.Value == T2 &&
-            e.EventArgs is MethodEnterWithArgumentsRecordedEvent enter &&
-            (RecordedEventType)enter.Interpretation == RecordedEventType.ThreadStartCore);
     }
 
     [Fact]

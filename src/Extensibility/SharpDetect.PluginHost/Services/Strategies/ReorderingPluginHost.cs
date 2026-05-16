@@ -25,7 +25,13 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
 
     public RecordedEventState ProcessEvent(RecordedEvent recordedEvent)
     {
-        var topResult = ProcessOne(recordedEvent);
+        var tid = new ProcessThreadId(recordedEvent.Metadata.Pid, recordedEvent.Metadata.Tid);
+        var thread = GetOrCreateThread(tid);
+        
+        var topResult = ProcessOne(thread, recordedEvent);
+        if (topResult == RecordedEventState.Deferred)
+            thread.EnqueuePendingEvent(recordedEvent);
+        
         if (topResult == RecordedEventState.Failed)
             return RecordedEventState.Failed;
 
@@ -35,68 +41,19 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             : topResult;
     }
 
-    private RecordedEventState ProcessOne(RecordedEvent recordedEvent)
+    private RecordedEventState ProcessOne(ShadowThread thread, RecordedEvent recordedEvent)
     {
-        var tid = new ProcessThreadId(recordedEvent.Metadata.Pid, recordedEvent.Metadata.Tid);
-        var thread = GetOrCreateThread(tid);
-
-        if (thread.BlockedOn is not null && ShouldDeferIfBlocked(recordedEvent))
-        {
-            thread.PendingQueue.AddLast(recordedEvent);
+        if (thread.BlockedOn is not null)
             return RecordedEventState.Deferred;
-        }
 
         return recordedEvent.EventArgs switch
         {
-            MethodEnterWithArgumentsRecordedEvent enter => HandleEnter(recordedEvent, enter, tid, thread),
-            MethodExitRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, tid, thread, returnValue: null),
-            MethodExitWithArgumentsRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, tid, thread, exit.ReturnValue),
+            MethodEnterWithArgumentsRecordedEvent enter => HandleEnter(recordedEvent, enter, thread.Id, thread),
+            MethodExitRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, returnValue: null),
+            MethodExitWithArgumentsRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, exit.ReturnValue),
             ThreadDestroyRecordedEvent destroy => HandleThreadDestroy(recordedEvent, destroy),
             GarbageCollectedTrackedObjectsRecordedEvent gc => HandleGarbageCollectedTrackedObjects(recordedEvent, gc),
             _ => inner.ProcessEvent(recordedEvent)
-        };
-    }
-
-    // Defer only events that participate in the happens-before (sync operations and shared-memory accesses)
-    private static bool ShouldDeferIfBlocked(RecordedEvent recordedEvent)
-    {
-        if (recordedEvent.EventArgs is not ICustomizableEventType customizable)
-            return false;
-
-        return (RecordedEventType)customizable.Interpretation switch
-        {
-            RecordedEventType.StaticFieldRead or
-            RecordedEventType.StaticFieldWrite or
-            RecordedEventType.InstanceFieldRead or
-            RecordedEventType.InstanceFieldWrite or
-            RecordedEventType.MonitorLockAcquire or
-            RecordedEventType.MonitorLockTryAcquire or
-            RecordedEventType.MonitorLockAcquireResult or
-            RecordedEventType.MonitorLockRelease or
-            RecordedEventType.MonitorLockReleaseResult or
-            RecordedEventType.MonitorWaitAttempt or
-            RecordedEventType.MonitorWaitResult or
-            RecordedEventType.MonitorPulseOneAttempt or
-            RecordedEventType.MonitorPulseOneResult or
-            RecordedEventType.MonitorPulseAllAttempt or
-            RecordedEventType.MonitorPulseAllResult or
-            RecordedEventType.LockAcquire or
-            RecordedEventType.LockTryAcquire or
-            RecordedEventType.LockAcquireResult or
-            RecordedEventType.LockRelease or
-            RecordedEventType.LockReleaseResult or
-            RecordedEventType.SemaphoreAcquire or
-            RecordedEventType.SemaphoreTryAcquire or
-            RecordedEventType.SemaphoreAcquireResult or
-            RecordedEventType.SemaphoreRelease or
-            RecordedEventType.SemaphoreReleaseResult or
-            RecordedEventType.ThreadJoinAttempt or
-            RecordedEventType.ThreadJoinResult or
-            RecordedEventType.TaskStart or
-            RecordedEventType.TaskComplete or
-            RecordedEventType.TaskJoinStart or
-            RecordedEventType.TaskJoinFinish => true,
-            _ => false
         };
     }
 
@@ -180,7 +137,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 return HandleReleaseResult(recordedEvent, tid, thread);
 
             case RecordedEventType.MonitorWaitResult:
-                return HandleWaitResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, true));
+                return HandleWaitResult(recordedEvent, tid, thread);
 
             case RecordedEventType.SemaphoreAcquireResult:
                 return HandleSemaphoreAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, true));
@@ -208,7 +165,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             return inner.ProcessEvent(recordedEvent);
 
         if (success && !GetOrCreateLock(lockId).TryAcquire(tid))
-            return Defer(thread, lockId, recordedEvent);
+            return Defer(thread, lockId);
         
         thread.SyncTargetStack.Pop();
         return inner.ProcessEvent(recordedEvent);
@@ -226,7 +183,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         return result;
     }
 
-    private RecordedEventState HandleWaitResult(RecordedEvent recordedEvent, ProcessThreadId tid, ShadowThread thread, bool success)
+    private RecordedEventState HandleWaitResult(RecordedEvent recordedEvent, ProcessThreadId tid, ShadowThread thread)
     {
         if (!TryPeekTarget(thread, out var lockId))
             return inner.ProcessEvent(recordedEvent);
@@ -234,7 +191,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
 
         var suspended = thread.SuspendedWaitCount ?? 1;
         if (!GetOrCreateLock(lockId).TryReacquireAfterWait(tid, suspended))
-            return Defer(thread, lockId, recordedEvent);
+            return Defer(thread, lockId);
         
         thread.SyncTargetStack.Pop();
         thread.SuspendedWaitCount = null;
@@ -247,7 +204,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             return inner.ProcessEvent(recordedEvent);
 
         if (success && !GetOrCreateSemaphore(semaphoreId).TryAcquire(tid))
-            return Defer(thread, semaphoreId, recordedEvent);
+            return Defer(thread, semaphoreId);
         
         thread.SyncTargetStack.Pop();
         return inner.ProcessEvent(recordedEvent);
@@ -288,7 +245,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
 
         // Only tasks whose start we observed can defer; others like Task.CompletedTask are pass-through
         if (_tasks.TryGetValue(taskId, out var shadow) && shadow.RegisterWaiter(tid))
-            return Defer(thread, taskId, recordedEvent);
+            return Defer(thread, taskId);
 
         thread.SyncTargetStack.Pop();
         return inner.ProcessEvent(recordedEvent);
@@ -381,32 +338,26 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             if (!_threads.TryGetValue(tid, out var thread))
                 continue;
 
-            thread.BlockedOn = null;
-            while (thread.BlockedOn is null && thread.PendingQueue.Count > 0)
+            thread.ClearBlockedOn();
+            while (thread.BlockedOn is null && thread.PendingQueueCount > 0)
             {
-                var pendingEvent = thread.PendingQueue.First!.Value;
-                thread.PendingQueue.RemoveFirst();
-                var state = ProcessOne(pendingEvent);
-
+                var pendingEvent = thread.PeekPendingEvent();
+                var state = ProcessOne(thread, pendingEvent);
                 if (state == RecordedEventState.Failed)
                     return RecordedEventState.Failed;
 
-                if (state != RecordedEventState.Deferred)
-                    continue;
+                if (state == RecordedEventState.Deferred)
+                    break;
                 
-                var node = thread.PendingQueue.Last!;
-                thread.PendingQueue.RemoveLast();
-                thread.PendingQueue.AddFirst(node);
-                break;
+                thread.DequeuePendingEvent();
             }
         }
         return RecordedEventState.Executed;
     }
 
-    private static RecordedEventState Defer(ShadowThread thread, ProcessTrackedObjectId target, RecordedEvent recordedEvent)
+    private static RecordedEventState Defer(ShadowThread thread, ProcessTrackedObjectId target)
     {
-        thread.BlockedOn = target;
-        thread.PendingQueue.AddLast(recordedEvent);
+        thread.SetBlockedOn(target);
         return RecordedEventState.Deferred;
     }
 
@@ -419,7 +370,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     private ShadowThread GetOrCreateThread(ProcessThreadId tid)
     {
         if (!_threads.TryGetValue(tid, out var thread))
-            _threads[tid] = thread = new ShadowThread();
+            _threads[tid] = thread = new ShadowThread(tid, logger);
         return thread;
     }
 

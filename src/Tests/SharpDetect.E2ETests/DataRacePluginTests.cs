@@ -138,6 +138,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_Monitor_HighContention_WriteRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Monitor_HighContention_WriteRead", sdk, plugin);
+    
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlim_HighContention_WriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Semaphore_HighContention_WriteRead", sdk, plugin);
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
