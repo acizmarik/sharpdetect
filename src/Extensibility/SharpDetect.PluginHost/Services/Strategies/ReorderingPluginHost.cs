@@ -70,7 +70,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 var semaphoreId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
                 var initialCount = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[(byte)nint.Size..]);
-                GetOrCreateSemaphore(semaphoreId).Initialize(initialCount);
+                var capacity = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[((byte)nint.Size + sizeof(int))..]);
+                CreateSemaphore(semaphoreId, initialCount, capacity);
                 return inner.ProcessEvent(recordedEvent);
             }
 
@@ -203,7 +204,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         if (!TryPeekTarget(thread, out var semaphoreId))
             return inner.ProcessEvent(recordedEvent);
 
-        if (success && !GetOrCreateSemaphore(semaphoreId).TryAcquire(tid))
+        if (success && !_semaphores[semaphoreId].TryAcquire(tid))
             return Defer(thread, semaphoreId);
         
         thread.SyncTargetStack.Pop();
@@ -216,7 +217,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             return inner.ProcessEvent(recordedEvent);
 
         var result = inner.ProcessEvent(recordedEvent);
-        EnqueueDrain(GetOrCreateSemaphore(semaphoreId).Release(tid));
+        EnqueueDrain(_semaphores[semaphoreId].Release(tid));
         return result;
     }
 
@@ -381,11 +382,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         return shadow;
     }
 
-    private ShadowSemaphore GetOrCreateSemaphore(ProcessTrackedObjectId semaphoreId)
+    private ShadowSemaphore CreateSemaphore(ProcessTrackedObjectId semaphoreId, int initialCount, int capacity)
     {
-        if (!_semaphores.TryGetValue(semaphoreId, out var shadow))
-            _semaphores[semaphoreId] = shadow = new ShadowSemaphore();
-        return shadow;
+        return _semaphores[semaphoreId] = new ShadowSemaphore(initialCount, capacity);
     }
 
     private ShadowTask GetOrCreateTask(ProcessTrackedObjectId taskId)

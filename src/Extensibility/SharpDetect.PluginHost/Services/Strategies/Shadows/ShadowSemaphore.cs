@@ -6,13 +6,12 @@ using SharpDetect.Core.Plugins;
 
 namespace SharpDetect.PluginHost.Services.Strategies.Shadows;
 
-internal sealed class ShadowSemaphore
+internal sealed class ShadowSemaphore(int initialCount, int capacity)
 {
-    public int Count { get; private set; }
+    public int Capacity { get; } = capacity;
+    public int Count { get; private set; } = initialCount;
     private readonly LinkedList<ProcessThreadId> _waiters = [];
     private readonly Dictionary<ProcessThreadId, int> _outstandingPermits = [];
-
-    public void Initialize(int initialCount) => Count = initialCount;
 
     public bool TryAcquire(ProcessThreadId tid)
     {
