@@ -145,6 +145,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Semaphore_HighContention_WriteRead", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlim_BatchRelease_WriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Semaphore_BatchRelease_WriteRead", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace", sdk, plugin);

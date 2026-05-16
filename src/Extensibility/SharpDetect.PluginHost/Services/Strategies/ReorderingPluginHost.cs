@@ -83,10 +83,16 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             case RecordedEventType.LockRelease:
             case RecordedEventType.SemaphoreAcquire:
             case RecordedEventType.SemaphoreTryAcquire:
-            case RecordedEventType.SemaphoreRelease:
             case RecordedEventType.TaskJoinStart:
                 thread.SyncTargetStack.Push(ReadTargetId(enter.ArgumentValues, tid.ProcessId));
                 return inner.ProcessEvent(recordedEvent);
+
+            case RecordedEventType.SemaphoreRelease:
+            {
+                thread.SyncTargetStack.Push(ReadTargetId(enter.ArgumentValues, tid.ProcessId));
+                thread.PendingReleaseCount = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[(byte)nint.Size..]);
+                return inner.ProcessEvent(recordedEvent);
+            }
 
             case RecordedEventType.TaskStart:
             {
@@ -216,8 +222,12 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         if (!TryPopTarget(thread, out var semaphoreId))
             return inner.ProcessEvent(recordedEvent);
 
+        var count = thread.PendingReleaseCount!.Value;
+        thread.PendingReleaseCount = null;
+
         var result = inner.ProcessEvent(recordedEvent);
-        EnqueueDrain(_semaphores[semaphoreId].Release(tid));
+        foreach (var waiter in _semaphores[semaphoreId].Release(tid, count))
+            _drainQueue.Enqueue(waiter);
         return result;
     }
 

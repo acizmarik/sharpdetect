@@ -155,10 +155,12 @@ internal sealed class FastTrackDetector
         threadVc.Join(slotVc);
     }
 
-    public void RecordSemaphoreReleased(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId)
+    public void RecordSemaphoreReleased(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId, int releaseCount)
     {
         var threadVc = GetOrCreateThreadClock(threadId);
-        _semaphoreClocks[semaphoreId].Enqueue(threadVc.Clone());
+        var pool = _semaphoreClocks[semaphoreId];
+        for (var i = 0; i < releaseCount; i++)
+            pool.Enqueue(threadVc.Clone());
         threadVc.Increment(threadId);
     }
 

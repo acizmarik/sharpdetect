@@ -1304,6 +1304,15 @@ namespace SharpDetect.E2ETests.Subject
                 });
         }
 
+        public static void Test_NoDataRace_Semaphore_BatchRelease_WriteRead()
+        {
+            const int permits = 4;
+            var semaphore = new SemaphoreSlim(0, permits);
+            semaphore.Release(permits);
+            for (var i = 0; i < permits; i++)
+                semaphore.Wait();
+        }
+
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()
         {
             // Generate garbage

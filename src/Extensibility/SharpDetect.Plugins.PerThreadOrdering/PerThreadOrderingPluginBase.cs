@@ -205,8 +205,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreReleaseResult)]
     public void OnSemaphoreReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
-        var (id, semaphoreId) = PopLockContext(metadata, args);
-        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId));
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+        var releaseCount = (int)frame.Arguments!.Value[1].Value.AsT0;
+        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
     }
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadStartCore)]

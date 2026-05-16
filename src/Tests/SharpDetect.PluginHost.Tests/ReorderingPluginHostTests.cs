@@ -315,7 +315,7 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreRelease, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
 
         // Assert
@@ -336,7 +336,7 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [no permits]
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreRelease, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult)); // wakes T2
 
         // Assert
@@ -368,14 +368,36 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [1st]
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T3, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [2nd]
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreRelease, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult)); // wakes T2
         var t2AcqIdx = recorder.Dispatched.FindIndex(e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
         var t3AcqIdx = recorder.Dispatched.FindIndex(e => e.Metadata.Tid.Value == T3 && IsSemaphoreAcquireResult(e));
         Assert.True(t2AcqIdx >= 0, "T2 acquire result should have dispatched after T1 release");
         Assert.True(t3AcqIdx < 0, "T3 acquire result should still be deferred");
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreRelease, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T2, RecordedEventType.SemaphoreRelease, S1, 1));
         host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.SemaphoreReleaseResult));
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsSemaphoreAcquireResult(e));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_SemaphoreReleaseWithCount_WakesMultipleWaiters()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 10));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T3, RecordedEventType.SemaphoreAcquireResult, true)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult)); // wakes T2 and T3
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsSemaphoreAcquireResult(e));
     }
 
@@ -578,7 +600,7 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T3, RecordedEventType.SemaphoreAcquireResult, true)); // deferred
         host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T2, TReaper));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreRelease, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
 
         // Assert
@@ -682,7 +704,7 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreRelease, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
         Assert.Equal(1, host.ShadowSemaphoreCount);
         host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, S1));

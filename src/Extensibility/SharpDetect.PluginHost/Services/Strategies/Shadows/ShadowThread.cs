@@ -11,6 +11,7 @@ internal sealed class ShadowThread(ProcessThreadId id, ILogger logger)
 {
     public Stack<ProcessTrackedObjectId> SyncTargetStack { get; } = [];
     public int? SuspendedWaitCount { get; set; }
+    public int? PendingReleaseCount { get; set; }
 
     public ProcessThreadId Id { get; } = id;
     public ProcessTrackedObjectId? BlockedOn { get; private set; }

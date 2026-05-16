@@ -298,7 +298,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnSemaphoreReleased(SemaphoreReleaseArgs args)
     {
-        _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.SemaphoreId);
+        _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.SemaphoreId, args.ReleaseCount);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

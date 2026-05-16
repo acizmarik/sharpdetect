@@ -26,23 +26,30 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
         return false;
     }
 
-    public ProcessThreadId? Release(ProcessThreadId tid)
+    public IReadOnlyList<ProcessThreadId> Release(ProcessThreadId tid, int count)
     {
-        Count++;
+        Count += count;
         if (_outstandingPermits.TryGetValue(tid, out var held) && held > 0)
         {
-            if (held == 1)
+            var decrement = Math.Min(held, count);
+            var remaining = held - decrement;
+            if (remaining == 0)
                 _outstandingPermits.Remove(tid);
             else
-                _outstandingPermits[tid] = held - 1;
+                _outstandingPermits[tid] = remaining;
         }
 
-        if (_waiters.Count == 0)
-            return null;
+        var wakeCount = Math.Min(count, _waiters.Count);
+        if (wakeCount == 0)
+            return [];
 
-        var result = _waiters.First();
-        _waiters.RemoveFirst();
-        return result;
+        var woken = new ProcessThreadId[wakeCount];
+        for (var i = 0; i < wakeCount; i++)
+        {
+            woken[i] = _waiters.First!.Value;
+            _waiters.RemoveFirst();
+        }
+        return woken;
     }
 
     public void RemoveWaiter(ProcessThreadId tid)
