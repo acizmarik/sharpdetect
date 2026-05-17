@@ -9,6 +9,8 @@
         <RepositoryBranch Condition="'$(GITHUB_REF_NAME)' != ''">$(GITHUB_REF_NAME)</RepositoryBranch>
         <RepositoryCommit Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</RepositoryCommit>
         <RepositoryUrl>https://github.com/acizmarik/sharpdetect</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/acizmarik/sharpdetect</PackageProjectUrl>
+        <PackageReleaseNotes>https://github.com/acizmarik/sharpdetect/releases</PackageReleaseNotes>
     </PropertyGroup>
     
     <!-- Licensing -->
