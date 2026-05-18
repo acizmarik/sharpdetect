@@ -17,14 +17,44 @@ public static class SemaphoreSlimMethodDescriptors
     
     private static readonly CapturedArgumentDescriptor ObjectRefArg =
         new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference));
+
+    private static readonly CapturedArgumentDescriptor ReleaseCountArg =
+        new(1, new(sizeof(int), CapturedValue.CaptureAsValue));
     
+    private static readonly CapturedArgumentDescriptor InitialCountArg =
+        new(1, new(sizeof(int), CapturedValue.CaptureAsValue));
+    
+    private static readonly CapturedArgumentDescriptor MaximumCountArg =
+        new(2, new(sizeof(int), CapturedValue.CaptureAsValue));
+
+    private static readonly MethodDescriptor CtorWithMaxCount;
     private static readonly MethodDescriptor WaitV8;
     private static readonly MethodDescriptor WaitCoreV10;
-    private static readonly MethodDescriptor ReleaseNoArgs;
     private static readonly MethodDescriptor ReleaseWithCount;
 
     static SemaphoreSlimMethodDescriptors()
     {
+        CtorWithMaxCount = new MethodDescriptor(
+            MethodName: ".ctor",
+            DeclaringTypeFullName: SemaphoreSlimTypeName,
+            VersionDescriptor: null,
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 2,
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                ArgumentTypeElements:
+                [
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4)
+                ]),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ObjectRefArg, InitialCountArg, MaximumCountArg],
+                ReturnValue: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreCreate,
+                MethodExitInterpretation: null));
+
         WaitV8 = new MethodDescriptor(
             MethodName: "Wait",
             DeclaringTypeFullName: SemaphoreSlimTypeName,
@@ -67,23 +97,6 @@ public static class SemaphoreSlimMethodDescriptors
                 MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreTryAcquire,
                 MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreAcquireResult));
 
-        ReleaseNoArgs = new MethodDescriptor(
-            MethodName: "Release",
-            DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 0,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
-                ArgumentTypeElements: []),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreRelease,
-                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreReleaseResult));
-
         ReleaseWithCount = new MethodDescriptor(
             MethodName: "Release",
             DeclaringTypeFullName: SemaphoreSlimTypeName,
@@ -96,7 +109,7 @@ public static class SemaphoreSlimMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
+                Arguments: [ ObjectRefArg, ReleaseCountArg ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreRelease,
                 MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreReleaseResult));
@@ -104,13 +117,13 @@ public static class SemaphoreSlimMethodDescriptors
 
     public static IEnumerable<MethodDescriptor> GetAllMethods()
     {
+        // Public API
+        yield return CtorWithMaxCount;
+        yield return ReleaseWithCount;
+
         // Internal API
         yield return WaitV8;
         yield return WaitCoreV10;
-        
-        // Public API
-        yield return ReleaseNoArgs;
-        yield return ReleaseWithCount;
     }
 }
 

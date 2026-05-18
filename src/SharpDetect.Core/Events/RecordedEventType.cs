@@ -87,6 +87,7 @@ public enum RecordedEventType : ushort
     SemaphoreAcquireResult = 120,
     SemaphoreRelease = 121,
     SemaphoreReleaseResult = 122,
+    SemaphoreCreate = 123,
 
     /* Task synchronization */
     TaskSchedule = 200,

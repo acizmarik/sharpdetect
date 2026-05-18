@@ -18,7 +18,7 @@ internal sealed class FastTrackDetector
     private readonly TimeProvider _timeProvider;
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _semaphoreClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId?), VectorClock> _volatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _volatileClocksObjectIndex = [];
@@ -140,18 +140,27 @@ internal sealed class FastTrackDetector
         threadVc.Increment(threadId);
     }
 
+    public void RecordSemaphoreCreated(ProcessTrackedObjectId semaphoreId, int initialCount)
+    {
+        var pool = new Queue<VectorClock>(capacity: initialCount);
+        for (var i = 0; i < initialCount; i++)
+            pool.Enqueue(new VectorClock());
+        _semaphoreClocks[semaphoreId] = pool;
+    }
+
     public void RecordSemaphoreAcquired(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId)
     {
         var threadVc = GetOrCreateThreadClock(threadId);
-        var semaphoreVc = GetOrCreateSemaphoreClock(semaphoreId);
-        threadVc.Join(semaphoreVc);
+        var slotVc = _semaphoreClocks[semaphoreId].Dequeue();
+        threadVc.Join(slotVc);
     }
 
-    public void RecordSemaphoreReleased(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId)
+    public void RecordSemaphoreReleased(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId, int releaseCount)
     {
         var threadVc = GetOrCreateThreadClock(threadId);
-        var semaphoreVc = GetOrCreateSemaphoreClock(semaphoreId);
-        semaphoreVc.Join(threadVc);
+        var pool = _semaphoreClocks[semaphoreId];
+        for (var i = 0; i < releaseCount; i++)
+            pool.Enqueue(threadVc.Clone());
         threadVc.Increment(threadId);
     }
 
@@ -382,16 +391,6 @@ internal sealed class FastTrackDetector
         return vc;
     }
 
-    private VectorClock GetOrCreateSemaphoreClock(ProcessTrackedObjectId semaphoreId)
-    {
-        if (!_semaphoreClocks.TryGetValue(semaphoreId, out var vc))
-        {
-            vc = new VectorClock();
-            _semaphoreClocks[semaphoreId] = vc;
-        }
-
-        return vc;
-    }
 
     private VectorClock GetOrCreateVolatileClock(FieldId fieldId, ProcessTrackedObjectId? objectId)
     {

@@ -100,6 +100,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         TaskStarted += OnTaskStarted;
         TaskCompleted += OnTaskCompleted;
         TaskJoinFinished += OnTaskJoinFinished;
+        SemaphoreCreated += OnSemaphoreCreated;
         SemaphoreAcquireReturned += OnSemaphoreAcquireReturned;
         SemaphoreReleased += OnSemaphoreReleased;
 
@@ -284,6 +285,11 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
             _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
     }
 
+    private void OnSemaphoreCreated(SemaphoreCreatedArgs args)
+    {
+        _detector.RecordSemaphoreCreated(args.SemaphoreId, args.InitialCount);
+    }
+
     private void OnSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args)
     {
         if (args.IsSuccess)
@@ -292,7 +298,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnSemaphoreReleased(SemaphoreReleaseArgs args)
     {
-        _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.SemaphoreId);
+        _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.SemaphoreId, args.ReleaseCount);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

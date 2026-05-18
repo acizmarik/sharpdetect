@@ -40,6 +40,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public event Action<StaticFieldWriteArgs>? StaticFieldWritten;
     public event Action<InstanceFieldReadArgs>? InstanceFieldRead;
     public event Action<InstanceFieldWriteArgs>? InstanceFieldWritten;
+    public event Action<SemaphoreCreatedArgs>? SemaphoreCreated;
     public event Action<SemaphoreAcquireAttemptArgs>? SemaphoreAcquireAttempted;
     public event Action<SemaphoreAcquireResultArgs>? SemaphoreAcquireReturned;
     public event Action<SemaphoreReleaseArgs>? SemaphoreReleased;
@@ -76,6 +77,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected void RaiseStaticFieldWritten(StaticFieldWriteArgs args) => StaticFieldWritten?.Invoke(args);
     protected void RaiseInstanceFieldRead(InstanceFieldReadArgs args) => InstanceFieldRead?.Invoke(args);
     protected void RaiseInstanceFieldWritten(InstanceFieldWriteArgs args) => InstanceFieldWritten?.Invoke(args);
+    protected void RaiseSemaphoreCreated(SemaphoreCreatedArgs args) => SemaphoreCreated?.Invoke(args);
     protected void RaiseSemaphoreAcquireAttempted(SemaphoreAcquireAttemptArgs args) => SemaphoreAcquireAttempted?.Invoke(args);
     protected void RaiseSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args) => SemaphoreAcquireReturned?.Invoke(args);
     protected void RaiseSemaphoreReleased(SemaphoreReleaseArgs args) => SemaphoreReleased?.Invoke(args);
@@ -168,6 +170,14 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         ProcessWaitReturn(id, args.ModuleId, args.MethodToken, lockId, success);
     }
 
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreCreate)]
+    public void OnSemaphoreCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
+        var initialCount = (int)arguments[1].Value.AsT0;
+        SemaphoreCreated?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, initialCount));
+    }
+
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreAcquire)]
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreTryAcquire)]
     public void OnSemaphoreAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
@@ -195,8 +205,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreReleaseResult)]
     public void OnSemaphoreReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
-        var (id, semaphoreId) = PopLockContext(metadata, args);
-        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId));
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+        var releaseCount = (int)frame.Arguments!.Value[1].Value.AsT0;
+        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
     }
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadStartCore)]

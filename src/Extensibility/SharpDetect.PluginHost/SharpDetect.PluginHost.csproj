@@ -5,4 +5,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="SharpDetect.PluginHost.Tests" />
+    </ItemGroup>
 </Project>

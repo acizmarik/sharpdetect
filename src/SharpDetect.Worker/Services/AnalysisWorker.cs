@@ -125,16 +125,24 @@ public sealed class AnalysisWorker : IAnalysisWorker
     
     private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
     {
-        foreach (var currentEvent in ReceiveEvents(targetProcessTask, rootPid, cancellationToken))
+        try
         {
-            if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
-                return;
-
-            if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
+            foreach (var currentEvent in ReceiveEvents(targetProcessTask, rootPid, cancellationToken))
             {
-                LogFailureAndTerminateAnalysis();
-                return;
+                if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
+                    return;
+
+                if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
+                {
+                    LogFailureAndTerminateAnalysis();
+                    return;
+                }
             }
+        }
+        finally
+        {
+            if (_pluginHost is IDisposable disposable)
+                disposable.Dispose();
         }
     }
 

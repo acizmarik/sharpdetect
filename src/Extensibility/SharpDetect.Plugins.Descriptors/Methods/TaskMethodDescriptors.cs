@@ -15,9 +15,7 @@ public static class TaskMethodDescriptors
     private const string ContinuationResultTaskFromTaskTypeName = "System.Threading.Tasks.ContinuationResultTaskFromTask`1";
     private const string ContinuationTaskFromResultTaskTypeName = "System.Threading.Tasks.ContinuationTaskFromResultTask`1";
     private const string ContinuationResultTaskFromResultTaskTypeName = "System.Threading.Tasks.ContinuationResultTaskFromResultTask`2";
-    private const string ActionTypeName = "System.Action";
     private const string TaskAwaiterTypeName = "System.Runtime.CompilerServices.TaskAwaiter";
-    private const string IAsyncStateMachineBoxTypeName = "System.Runtime.CompilerServices.IAsyncStateMachineBox";
     private const string ConfigureAwaitOptionsTypeName = "System.Threading.Tasks.ConfigureAwaitOptions";
 
     private static readonly CapturedArgumentDescriptor ObjectRefArg =
@@ -33,8 +31,6 @@ public static class TaskMethodDescriptors
     private static readonly MethodDescriptor TaskWait;
     private static readonly MethodDescriptor TaskResult;
     private static readonly MethodDescriptor TaskAwaiterValidateEnd;
-    private static readonly MethodDescriptor TaskAwaiterOnCompleted;
-    private static readonly MethodDescriptor TaskAwaiterUnsafeOnCompleted;
 
     static TaskMethodDescriptors()
     {
@@ -125,51 +121,6 @@ public static class TaskMethodDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
                 MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
-        
-        TaskAwaiterOnCompleted= new MethodDescriptor(
-            MethodName: "OnCompletedInternal",
-            DeclaringTypeFullName: TaskAwaiterTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: 4,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateClass(TaskTypeName),
-                    ArgumentTypeDescriptor.CreateClass(ActionTypeName),
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)) ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
-                MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
-        
-        TaskAwaiterUnsafeOnCompleted= new MethodDescriptor(
-            MethodName: "UnsafeOnCompletedInternal",
-            DeclaringTypeFullName: TaskAwaiterTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: 3,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateClass(TaskTypeName),
-                    ArgumentTypeDescriptor.CreateClass(IAsyncStateMachineBoxTypeName),
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)) ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
-                MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
     }
 
     private static MethodDescriptor CreateInnerInvokeMethodDescriptorForType(string typeName)
@@ -203,8 +154,6 @@ public static class TaskMethodDescriptors
         yield return ContinuationTaskFromResultTaskInnerInvoke;
         yield return ContinuationResultTaskFromResultTaskInnerInvoke;
         yield return TaskAwaiterValidateEnd;
-        yield return TaskAwaiterOnCompleted;
-        yield return TaskAwaiterUnsafeOnCompleted;
 
         // Common public API
         yield return TaskWait;

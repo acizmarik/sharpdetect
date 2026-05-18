@@ -1256,6 +1256,63 @@ namespace SharpDetect.E2ETests.Subject
             Task.WaitAll(task1, task2);
         }
 
+        public static void Test_NoDataRace_Monitor_HighContention_WriteRead()
+        {
+            const int iterations = 5000;
+            var lockObj = new object();
+            RunConcurrently(
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        lock (lockObj)
+                            DataRace.Test_DataRace_ValueType_Static = i;
+                    }
+                },
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        lock (lockObj)
+                            _ = DataRace.Test_DataRace_ValueType_Static;
+                    }
+                });
+        }
+
+        public static void Test_NoDataRace_Semaphore_HighContention_WriteRead()
+        {
+            const int iterations = 5000;
+            var semaphore = new SemaphoreSlim(1, 1);
+            RunConcurrently(
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        semaphore.Wait();
+                        DataRace.Test_DataRace_ValueType_Static = i;
+                        semaphore.Release();
+                    }
+                },
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        semaphore.Wait();
+                        _ = DataRace.Test_DataRace_ValueType_Static;
+                        semaphore.Release();
+                    }
+                });
+        }
+
+        public static void Test_NoDataRace_Semaphore_BatchRelease_WriteRead()
+        {
+            const int permits = 4;
+            var semaphore = new SemaphoreSlim(0, permits);
+            semaphore.Release(permits);
+            for (var i = 0; i < permits; i++)
+                semaphore.Wait();
+        }
+
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()
         {
             // Generate garbage

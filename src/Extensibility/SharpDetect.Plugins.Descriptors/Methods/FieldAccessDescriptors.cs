@@ -35,7 +35,7 @@ public static class FieldAccessDescriptors
                 ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.StaticFieldRead,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: (ushort)RecordedEventType.StaticFieldRead));
         
         ReadInstanceField = new MethodDescriptor(
             MethodName: "ReadInstanceField",
@@ -60,7 +60,7 @@ public static class FieldAccessDescriptors
                 ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.InstanceFieldRead,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: (ushort)RecordedEventType.InstanceFieldRead));
 
         WriteStaticField = new MethodDescriptor(
             MethodName: "WriteStaticField",
@@ -80,7 +80,7 @@ public static class FieldAccessDescriptors
                 ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.StaticFieldWrite,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: (ushort)RecordedEventType.StaticFieldWrite));
         
         WriteInstanceField = new MethodDescriptor(
             MethodName: "WriteInstanceField",
@@ -105,7 +105,7 @@ public static class FieldAccessDescriptors
                 ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.InstanceFieldWrite,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: (ushort)RecordedEventType.InstanceFieldWrite));
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods()
