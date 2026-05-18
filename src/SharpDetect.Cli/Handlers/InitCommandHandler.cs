@@ -11,7 +11,13 @@ using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Handlers;
 
-internal sealed class InitCommandHandler(string outputFile, string pluginNameOrTypeFullName, string targetAssemblyPath)
+internal sealed class InitCommandHandler(
+    string outputFile,
+    string pluginNameOrTypeFullName,
+    string targetAssemblyPath,
+    bool isTest = false,
+    TestRunner testRunner = TestTargetConfigurationArgs.DefaultRunner,
+    string? testFilter = null)
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
@@ -39,15 +45,31 @@ internal sealed class InitCommandHandler(string outputFile, string pluginNameOrT
 
     internal string CreateTemplateConfigurationJson()
     {
-        var templateArgs = CreateTemplateConfiguration();
+        var templateArgs = BuildRunCommandArgs(
+            pluginNameOrTypeFullName: pluginNameOrTypeFullName,
+            targetAssemblyPath: targetAssemblyPath,
+            isTest: isTest,
+            testRunner: testRunner,
+            testFilter: testFilter);
         return JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
     }
 
-    private RunCommandArgs CreateTemplateConfiguration()
+    internal static RunCommandArgs BuildRunCommandArgs(
+        string pluginNameOrTypeFullName,
+        string targetAssemblyPath,
+        bool isTest = false,
+        TestRunner testRunner = TestTargetConfigurationArgs.DefaultRunner,
+        string? testFilter = null)
     {
-        var target = new TargetConfigurationArgs(
-            path: targetAssemblyPath,
-            redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true));
+        var target = isTest
+            ? new TargetConfigurationArgs(
+                path: targetAssemblyPath,
+                kind: TargetKind.TestAssembly,
+                redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true),
+                test: new TestTargetConfigurationArgs(runner: testRunner, filter: testFilter))
+            : new TargetConfigurationArgs(
+                path: targetAssemblyPath,
+                redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true));
 
         var analysis = pluginNameOrTypeFullName.Contains('.')
             ? new AnalysisPluginConfigurationArgs(pluginFullTypeName: pluginNameOrTypeFullName, renderReport: true)
@@ -55,6 +77,9 @@ internal sealed class InitCommandHandler(string outputFile, string pluginNameOrT
 
         return new RunCommandArgs(Runtime: null, target, analysis);
     }
+
+    internal static string SerializeRunCommandArgs(RunCommandArgs args)
+        => JsonSerializer.Serialize(args, JsonSerializerOptions);
 
     private static bool IsValidDotNetAssembly(string filePath)
     {
@@ -74,4 +99,3 @@ internal sealed class InitCommandHandler(string outputFile, string pluginNameOrT
         }
     }
 }
-

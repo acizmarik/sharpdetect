@@ -73,6 +73,16 @@ Task("Build-Managed")
     {
         Configuration = configuration
     });
+
+    // Some samples are intentionally left out of solution (cannot mix VSTest and MTP projects in a single solution)
+    DotNetBuild("./Samples/SimpleDataRaceTestsMtp/SimpleDataRaceTestsMtp.csproj", new DotNetBuildSettings
+    {
+        Configuration = configuration
+    });
+    DotNetBuild("./Samples/SimpleDataRaceTestsVSTest/SimpleDataRaceTestsVSTest.csproj", new DotNetBuildSettings
+    {
+        Configuration = configuration
+    });
 });
 
 Task("Build-IPQ")

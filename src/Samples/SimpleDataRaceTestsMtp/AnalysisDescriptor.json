@@ -1,0 +1,21 @@
+{
+    "Target":
+    {
+        "Path": "../../Samples/SimpleDataRaceTestsMtp/bin/Debug/net10.0/SimpleDataRaceTestsMtp.dll",
+        "Kind": "TestAssembly",
+        "Test":
+        {
+            "Runner": "Mtp",
+            "Filter": "/*/*/*/RaceFact"
+        }
+    },
+    "Analysis":
+    {
+        "PluginName": "FastTrack",
+        "RenderReport": true,
+        "Configuration":
+        {
+            "SkipInstrumentationForAssemblies": [ "System.", "Microsoft.", "TUnit." ]
+        }
+    }
+}

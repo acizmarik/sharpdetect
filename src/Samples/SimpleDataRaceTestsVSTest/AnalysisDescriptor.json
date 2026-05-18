@@ -1,0 +1,21 @@
+{
+    "Target":
+    {
+        "Path": "../../Samples/SimpleDataRaceTestsVSTest/bin/Debug/net10.0/SimpleDataRaceTestsVSTest.dll",
+        "Kind": "TestAssembly",
+        "Test":
+        {
+            "Runner": "VsTest",
+            "Filter": "FullyQualifiedName~RaceFact"
+        }
+    },
+    "Analysis":
+    {
+        "PluginName": "FastTrack",
+        "RenderReport": true,
+        "Configuration":
+        {
+            "SkipInstrumentationForAssemblies": [ "System.", "Microsoft." ]
+        }
+    }
+}

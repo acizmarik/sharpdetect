@@ -79,13 +79,15 @@ internal static class TestContextFactory
         args = args with
         {
             Target = new TargetConfigurationArgs(
-                args.Target.Path
+                path: args.Target.Path
                     .Replace("%SDK%", sdk)
                     .Replace("%BUILD_CONFIGURATION%", buildConfiguration),
-                args.Target.Args,
-                args.Target.WorkingDirectory,
-                args.Target.AdditionalEnvironmentVariables,
-                args.Target.RedirectInputOutput),
+                args: args.Target.Args,
+                workingDirectory: args.Target.WorkingDirectory,
+                additionalEnvironmentVariables: args.Target.AdditionalEnvironmentVariables,
+                redirectInputOutput: args.Target.RedirectInputOutput,
+                kind: args.Target.Kind,
+                test: args.Target.Test),
             Analysis = new AnalysisPluginConfigurationArgs(
                 args.Analysis.Configuration,
                 overridePluginTypeFullName ?? args.Analysis.PluginFullTypeName,
