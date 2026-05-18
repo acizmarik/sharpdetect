@@ -53,7 +53,9 @@ HRESULT LibProfiler::PatchMethodBody(
 	HRESULT hr = rewriter.Import();
 	if (FAILED(hr))
 	{
-		LOG_F(ERROR, "Could not import method body for %d from module %s. Error: 0x%x.", mdMethodDef, moduleDef.GetName().c_str(), hr);
+        if (hr != CORPROF_E_FUNCTION_NOT_IL)
+			LOG_F(ERROR, "Could not import method body for %d from module %s. Error: 0x%x.", mdMethodDef, moduleDef.GetName().c_str(), hr);
+		
 		return E_FAIL;
 	}
 
