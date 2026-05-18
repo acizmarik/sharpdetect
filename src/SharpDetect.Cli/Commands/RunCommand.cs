@@ -31,9 +31,12 @@ public sealed class RunCommand : ICommand
     [CommandOption("runner", Description = "Test runner: Mtp (default) | VSTest (requires --test)")]
     public TestRunner TestRunner { get; init; } = TestTargetConfigurationArgs.DefaultRunner;
 
+    [CommandOption("instrument-system-libraries", Description = "Instrument system assemblies (System, Microsoft, test frameworks..)")]
+    public bool InstrumentSystemLibraries { get; init; }
+
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        ValidateOptions(ArgumentsFile, PluginType, TargetPath, IsTest, TestFilter, TestRunner);
+        ValidateOptions(ArgumentsFile, PluginType, TargetPath, IsTest, TestFilter, TestRunner, InstrumentSystemLibraries);
 
         var useInlineForm = string.IsNullOrEmpty(ArgumentsFile);
         var previousDirectory = Directory.GetCurrentDirectory();
@@ -48,7 +51,8 @@ public sealed class RunCommand : ICommand
                     targetAssemblyPath: TargetPath!,
                     isTest: IsTest,
                     testRunner: TestRunner,
-                    testFilter: TestFilter);
+                    testFilter: TestFilter,
+                    instrumentSystemLibraries: InstrumentSystemLibraries);
                 var rawJson = InitCommandHandler.SerializeRunCommandArgs(arguments);
                 commandHandler = new RunCommandHandler(arguments, rawJson);
             }
@@ -94,7 +98,8 @@ public sealed class RunCommand : ICommand
         string? targetPath,
         bool isTest,
         string? testFilter,
-        TestRunner testRunner)
+        TestRunner testRunner,
+        bool instrumentSystemLibraries = false)
     {
         var hasConfigFile = !string.IsNullOrEmpty(argumentsFile);
         var hasPlugin = !string.IsNullOrEmpty(pluginType);
@@ -124,6 +129,11 @@ public sealed class RunCommand : ICommand
         if (!isTest && testRunner != TestTargetConfigurationArgs.DefaultRunner)
             throw new CommandException(
                 "--runner requires --test.",
+                (int)ExitCode.ConfigurationError);
+
+        if (hasConfigFile && instrumentSystemLibraries)
+            throw new CommandException(
+                "--instrument-system-libraries cannot be combined with a configuration file; set SkipInstrumentationForAssemblies in the file instead.",
                 (int)ExitCode.ConfigurationError);
     }
 }

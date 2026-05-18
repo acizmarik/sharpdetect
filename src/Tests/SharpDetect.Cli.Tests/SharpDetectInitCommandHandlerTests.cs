@@ -22,6 +22,12 @@ public class SharpDetectInitCommandHandlerTests
                 }
               },
               "Analysis": {
+                "Configuration": {
+                  "SkipInstrumentationForAssemblies": [
+                    "System.",
+                    "Microsoft."
+                  ]
+                },
                 "PluginName": "TestPlugin",
                 "RenderReport": true,
                 "LogLevel": "Warning"
@@ -39,7 +45,11 @@ public class SharpDetectInitCommandHandlerTests
             new InitCommandHandler(
                 outputFile: "TestConfig.json", 
                 pluginNameOrTypeFullName: "TestPlugin", 
-                targetAssemblyPath: "TestTarget.dll")
+                targetAssemblyPath: "TestTarget.dll",
+                instrumentSystemLibraries: false,
+                isTest: false,
+                testRunner: null,
+                testFilter: null)
             .CreateTemplateConfigurationJson()
             .ReplaceLineEndings();
         
@@ -55,15 +65,21 @@ public class SharpDetectInitCommandHandlerTests
               "Target": {
                 "Path": "TestTarget.dll",
                 "Kind": "TestAssembly",
-                "RedirectInputOutput": {
-                  "SingleConsoleMode": true
-                },
                 "Test": {
                   "Runner": "Mtp",
                   "Filter": "FullyQualifiedName~MyNamespace.RaceFact"
                 }
               },
               "Analysis": {
+                "Configuration": {
+                  "SkipInstrumentationForAssemblies": [
+                    "System.",
+                    "Microsoft.",
+                    "xunit.",
+                    "nunit.",
+                    "TUnit."
+                  ]
+                },
                 "PluginName": "TestPlugin",
                 "RenderReport": true,
                 "LogLevel": "Warning"
@@ -82,6 +98,7 @@ public class SharpDetectInitCommandHandlerTests
                 outputFile: "TestConfig.json",
                 pluginNameOrTypeFullName: "TestPlugin",
                 targetAssemblyPath: "TestTarget.dll",
+                instrumentSystemLibraries: false,
                 isTest: true,
                 testRunner: TestRunner.Mtp,
                 testFilter: "FullyQualifiedName~MyNamespace.RaceFact")
@@ -89,5 +106,85 @@ public class SharpDetectInitCommandHandlerTests
             .ReplaceLineEndings();
 
         Assert.Equal(expectedTemplate, actualTemplate);
+    }
+
+    [Fact]
+    public void Init_FastTrackPlugin_EmitsBaseSkipList()
+    {
+        var actualTemplate =
+            new InitCommandHandler(
+                outputFile: "TestConfig.json",
+                pluginNameOrTypeFullName: "FastTrack",
+                targetAssemblyPath: "TestTarget.dll",
+                instrumentSystemLibraries: false,
+                isTest: false,
+                testRunner: null,
+                testFilter: null)
+            .CreateTemplateConfigurationJson();
+
+        Assert.Contains("\"System.\"", actualTemplate);
+        Assert.Contains("\"Microsoft.\"", actualTemplate);
+        Assert.DoesNotContain("xunit.", actualTemplate);
+        Assert.DoesNotContain("nunit.", actualTemplate);
+        Assert.DoesNotContain("TUnit.", actualTemplate);
+    }
+
+    [Fact]
+    public void Init_FastTrackPlugin_TestMode_EmitsExtendedSkipList()
+    {
+        var actualTemplate =
+            new InitCommandHandler(
+                outputFile: "TestConfig.json",
+                pluginNameOrTypeFullName: "FastTrack",
+                targetAssemblyPath: "TestTarget.dll",
+                instrumentSystemLibraries: false,
+                isTest: true,
+                testRunner: TestRunner.Mtp,
+                testFilter: "FullyQualifiedName~MyNamespace.RaceFact")
+            .CreateTemplateConfigurationJson();
+
+        Assert.Contains("\"System.\"", actualTemplate);
+        Assert.Contains("\"Microsoft.\"", actualTemplate);
+        Assert.Contains("\"xunit.\"", actualTemplate);
+        Assert.Contains("\"nunit.\"", actualTemplate);
+        Assert.Contains("\"TUnit.\"", actualTemplate);
+    }
+
+    [Fact]
+    public void Init_FastTrackPlugin_InstrumentSystemLibraries_EmitsEmptyList()
+    {
+        var actualTemplate =
+            new InitCommandHandler(
+                outputFile: "TestConfig.json",
+                pluginNameOrTypeFullName: "FastTrack",
+                targetAssemblyPath: "TestTarget.dll",
+                instrumentSystemLibraries: true,
+                isTest: false,
+                testRunner: null,
+                testFilter: null)
+            .CreateTemplateConfigurationJson();
+
+        Assert.Contains("\"SkipInstrumentationForAssemblies\": []", actualTemplate);
+        Assert.DoesNotContain("\"System.\"", actualTemplate);
+        Assert.DoesNotContain("\"Microsoft.\"", actualTemplate);
+    }
+
+    [Fact]
+    public void Init_EraserPlugin_EmitsBaseSkipList()
+    {
+        var actualTemplate =
+            new InitCommandHandler(
+                outputFile: "TestConfig.json",
+                pluginNameOrTypeFullName: "Eraser",
+                targetAssemblyPath: "TestTarget.dll",
+                instrumentSystemLibraries: false,
+                isTest: false,
+                testRunner: null,
+                testFilter: null)
+            .CreateTemplateConfigurationJson();
+
+        Assert.Contains("\"Configuration\": {", actualTemplate);
+        Assert.Contains("\"System.\"", actualTemplate);
+        Assert.Contains("\"Microsoft.\"", actualTemplate);
     }
 }

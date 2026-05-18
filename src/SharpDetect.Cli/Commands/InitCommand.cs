@@ -31,6 +31,9 @@ public sealed class InitCommand : ICommand
     [CommandOption("runner", Description = "Test runner: Mtp (default) | VSTest (requires --test)")]
     public TestRunner TestRunner { get; init; } = TestTargetConfigurationArgs.DefaultRunner;
 
+    [CommandOption("instrument-system-libraries", Description = "Instrument system assemblies (System, Microsoft, test frameworks..)")]
+    public bool InstrumentSystemLibraries { get; init; }
+
     public async ValueTask ExecuteAsync(IConsole console)
     {
         if (!IsTest && TestFilter is not null)
@@ -55,7 +58,8 @@ public sealed class InitCommand : ICommand
                 targetAssemblyPath: TargetPath,
                 isTest: IsTest,
                 testRunner: TestRunner,
-                testFilter: TestFilter);
+                testFilter: TestFilter,
+                instrumentSystemLibraries: InstrumentSystemLibraries);
             var cancellationToken = console.RegisterCancellationHandler();
             await handler.ExecuteAsync(console, cancellationToken);
         }
