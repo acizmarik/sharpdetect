@@ -17,6 +17,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     private readonly Dictionary<ProcessTrackedObjectId, ShadowTask> _tasks = [];
     private readonly Dictionary<ProcessThreadId, ShadowThread> _threads = [];
     private readonly Queue<ProcessThreadId> _drainQueue = [];
+    private readonly HashSet<ProcessTrackedObjectId> _pendingThreadStarts = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ShadowThread> _pendingThreadStartWaiters = [];
     private bool _isDisposed;
 
     internal int ShadowLockCount => _locks.Count;
@@ -44,7 +46,14 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     private RecordedEventState ProcessOne(ShadowThread thread, RecordedEvent recordedEvent)
     {
         if (thread.BlockedOn is not null)
+        {
+            if (recordedEvent.EventArgs is MethodEnterWithArgumentsRecordedEvent deferredEnter &&
+                (RecordedEventType)deferredEnter.Interpretation == RecordedEventType.ThreadStartCore)
+            {
+                _pendingThreadStarts.Add(ReadTargetId(deferredEnter.ArgumentValues, thread.Id.ProcessId));
+            }
             return RecordedEventState.Deferred;
+        }
 
         return recordedEvent.EventArgs switch
         {
@@ -118,6 +127,25 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 if (nextWaiter is not null)
                     _drainQueue.Enqueue(nextWaiter.Value);
                 return inner.ProcessEvent(recordedEvent);
+            }
+
+            case RecordedEventType.ThreadStartCore:
+            {
+                var objectId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
+                _pendingThreadStarts.Remove(objectId);
+                if (_pendingThreadStartWaiters.Remove(objectId, out var childThread))
+                    _drainQueue.Enqueue(childThread.Id);
+                return inner.ProcessEvent(recordedEvent);
+            }
+
+            case RecordedEventType.ThreadStartCallback:
+            {
+                var objectId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
+                if (!_pendingThreadStarts.Contains(objectId))
+                    return inner.ProcessEvent(recordedEvent);
+                
+                _pendingThreadStartWaiters[objectId] = thread;
+                return Defer(thread, objectId);
             }
 
             default:

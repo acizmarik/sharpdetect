@@ -823,6 +823,55 @@ public class ReorderingPluginHostTests
         Assert.Contains(recorder.Dispatched, e => e.EventArgs is GarbageCollectedTrackedObjectsRecordedEvent);
     }
 
+    [Fact]
+    public void ReorderingPluginHost_ThreadStartCore_NotBlocked_ThreadStartCallback_ProcessedImmediately()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.ThreadStartCore, T3));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.ThreadStartCallback, T3));
+        Assert.Contains(recorder.Dispatched, e =>
+            ClassifyDispatched(e) == (T1, RecordedEventType.ThreadStartCore));
+        Assert.Contains(recorder.Dispatched, e =>
+            ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
+        var coreIdx = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T1, RecordedEventType.ThreadStartCore));
+        var callbackIdx = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
+        Assert.True(coreIdx < callbackIdx);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_ThreadStartCallback_DeferredUntilParentThreadStartCoreProcessed()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.ThreadStartCore, T3));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.ThreadStartCallback, T3));
+        Assert.DoesNotContain(recorder.Dispatched, e =>
+            ClassifyDispatched(e) == (T2, RecordedEventType.ThreadStartCore));
+        Assert.DoesNotContain(recorder.Dispatched, e =>
+            ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        Assert.Contains(recorder.Dispatched, e =>
+            ClassifyDispatched(e) == (T2, RecordedEventType.ThreadStartCore));
+        Assert.Contains(recorder.Dispatched, e =>
+            ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
+        var coreIdx = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.ThreadStartCore));
+        var callbackIdx = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
+        Assert.True(coreIdx < callbackIdx);
+    }
+
     private static (uint Tid, RecordedEventType Type) ClassifyDispatched(RecordedEvent e)
     {
         var tid = e.Metadata.Tid.Value;
