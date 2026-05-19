@@ -55,7 +55,10 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
             var commandResult = await targetApplicationProcess;
             if (commandResult.ExitCode != 0)
-                _logger.LogWarning("Target process exited with non-zero exit code: {ExitCode}.", commandResult.ExitCode);
+            {
+                var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
+                _logger.Log(level, "Target process exited with non-zero exit code: {ExitCode}.", commandResult.ExitCode);
+            }
         }
         finally
         {
@@ -66,37 +69,22 @@ public sealed class AnalysisWorker : IAnalysisWorker
     private Command BuildTargetApplicationCommand()
     {
         var host = _arguments.Runtime.Host?.Path ?? "dotnet";
-        var argsBuilder = new List<string>(capacity: 3);
-        if (_arguments.Runtime.Host?.Args is { } hostArgs)
-            argsBuilder.Add(hostArgs);
-        argsBuilder.Add(_arguments.Target.Path);
-        if (_arguments.Target.Args is { } targetArgs)
-            argsBuilder.Add(targetArgs);
-
-        var profilerPath = GetProfilerPath();
-        var extension = Path.GetExtension(profilerPath);
-        var profilerDirectory = Path.GetDirectoryName(profilerPath)!;
-        var ipqPath = $"{Path.Combine(profilerDirectory, "SharpDetect.InterProcessQueue")}{extension}";
+        var environmentVariables = BuildTargetEnvironmentVariables();
+        var argsBuilder = TargetArgumentsBuilder.Build(_arguments, environmentVariables);
 
         var command = Cli.Wrap(host)
             .WithArguments(argsBuilder)
-            .WithEnvironmentVariables(builder =>
-            {
-                builder.Set("CORECLR_ENABLE_PROFILING", "1");
-                builder.Set("CORECLR_PROFILER", _arguments.Runtime.Profiler.Clsid.ToString());
-                builder.Set("CORECLR_PROFILER_PATH", profilerPath);
-                builder.Set("SharpDetect_IPQ_PATH", ipqPath);
-                builder.Set("SharpDetect_CONFIGURATION_PATH", GetFullConfigurationPath());
-                builder.Set("SharpDetect_LOG_LEVEL", ((int)_arguments.Runtime.Profiler.LogLevel).ToString());
-
-                foreach (var (key, value) in _arguments.Runtime.Host?.AdditionalEnvironmentVariables ?? Enumerable.Empty<KeyValuePair<string, string>>())
-                    builder.Set(key, value);
-                
-                foreach (var (key, value) in _arguments.Target.AdditionalEnvironmentVariables ?? Enumerable.Empty<KeyValuePair<string, string>>())
-                    builder.Set(key, value);
-            })
             .WithValidation(CommandResultValidation.None);
-        
+
+        if (!TargetArgumentsBuilder.RequiresEnvironmentInjection(_arguments))
+        {
+            command = command.WithEnvironmentVariables(builder =>
+            {
+                foreach (var (key, value) in environmentVariables)
+                    builder.Set(key, value);
+            });
+        }
+
         if (_arguments.Target.WorkingDirectory is { } workingDirectory)
             command = command.WithWorkingDirectory(workingDirectory);
 
@@ -122,7 +110,33 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
         return command;
     }
-    
+
+    private Dictionary<string, string> BuildTargetEnvironmentVariables()
+    {
+        var profilerPath = GetProfilerPath();
+        var extension = Path.GetExtension(profilerPath);
+        var profilerDirectory = Path.GetDirectoryName(profilerPath)!;
+        var ipqPath = $"{Path.Combine(profilerDirectory, "SharpDetect.InterProcessQueue")}{extension}";
+
+        var envVars = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["CORECLR_ENABLE_PROFILING"] = "1",
+            ["CORECLR_PROFILER"] = _arguments.Runtime.Profiler.Clsid.ToString(),
+            ["CORECLR_PROFILER_PATH"] = profilerPath,
+            ["SharpDetect_IPQ_PATH"] = ipqPath,
+            ["SharpDetect_CONFIGURATION_PATH"] = GetFullConfigurationPath(),
+            ["SharpDetect_LOG_LEVEL"] = ((int)_arguments.Runtime.Profiler.LogLevel).ToString()
+        };
+
+        foreach (var (key, value) in _arguments.Runtime.Host?.AdditionalEnvironmentVariables ?? Enumerable.Empty<KeyValuePair<string, string>>())
+            envVars[key] = value;
+
+        foreach (var (key, value) in _arguments.Target.AdditionalEnvironmentVariables ?? Enumerable.Empty<KeyValuePair<string, string>>())
+            envVars[key] = value;
+
+        return envVars;
+    }
+
     private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
     {
         try

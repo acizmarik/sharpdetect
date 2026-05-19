@@ -24,6 +24,9 @@ public sealed class MultiProcessTestsCollection : ICollectionFixture<EndToEndCol
 [CollectionDefinition(ObjectTrackingTests.CollectionName)]
 public sealed class ObjectTrackingTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
 
+[CollectionDefinition(TestProjectIntegrationTests.CollectionName)]
+public sealed class TestProjectIntegrationTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
+
 public sealed class EndToEndCollectionFixture
 {
     public EndToEndCollectionFixture()

@@ -28,6 +28,9 @@ internal sealed class E2ETestBuilder
     private object? _pluginConfiguration;
     private bool _renderReport;
     private KeyValuePair<string, string>[]? _additionalTargetEnvironmentVariables;
+    private string? _customTargetRelativePath;
+    private TargetKind _targetKind = TargetKind.Executable;
+    private TestTargetConfigurationArgs? _testTargetConfiguration;
     private const ProfilerLogLevel ProfilerLogLevel = Worker.Commands.Run.ProfilerLogLevel.Information;
     private const LogLevel AnalysisLogLevel = LogLevel.Information;
 
@@ -39,6 +42,14 @@ internal sealed class E2ETestBuilder
     public static E2ETestBuilder ForSubject(string subjectArgs)
     {
         return new E2ETestBuilder(subjectArgs);
+    }
+
+    public E2ETestBuilder WithCustomTarget(string relativeAssemblyPath, TargetKind kind, TestTargetConfigurationArgs? test = null)
+    {
+        _customTargetRelativePath = relativeAssemblyPath;
+        _targetKind = kind;
+        _testTargetConfiguration = test;
+        return this;
     }
 
     public E2ETestBuilder WithPlugin<TPlugin>() where TPlugin : class
@@ -94,7 +105,7 @@ internal sealed class E2ETestBuilder
         var temporaryFilesFolder = Path.Combine(Path.GetTempPath(), sessionId);
         Directory.CreateDirectory(temporaryFilesFolder);
 
-        var resolvedSubjectPath = SubjectRelativePath
+        var resolvedSubjectPath = (_customTargetRelativePath ?? SubjectRelativePath)
             .Replace("%SDK%", sdk)
             .Replace("%BUILD_CONFIGURATION%", BuildConfiguration);
 
@@ -109,9 +120,11 @@ internal sealed class E2ETestBuilder
                     logLevel: ProfilerLogLevel)),
             Target: new TargetConfigurationArgs(
                 path: resolvedSubjectPath,
-                args: _subjectArgs,
+                args: _customTargetRelativePath is null ? _subjectArgs : null,
                 additionalEnvironmentVariables: _additionalTargetEnvironmentVariables,
-                redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true)),
+                redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true),
+                kind: _targetKind,
+                test: _testTargetConfiguration),
             Analysis: new AnalysisPluginConfigurationArgs(
                 configuration: _pluginConfiguration,
                 pluginFullTypeName: _pluginTypeName,

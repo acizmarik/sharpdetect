@@ -25,6 +25,15 @@ public static class CommandArgumentsValidator
 
         if (!IsX64CompatibleAssembly(target))
             throw new ArgumentException("Unsupported target architecture. Only x64 and AnyCPU assemblies are supported.");
+
+        switch (configArgs.Kind)
+        {
+            case TargetKind.Executable:
+            case TargetKind.TestAssembly:
+                break;
+            default:
+                throw new ArgumentException($"Unsupported target kind: \"{configArgs.Kind}\".");
+        }
     }
 
     private static bool IsX64CompatibleAssembly(string assemblyPath)

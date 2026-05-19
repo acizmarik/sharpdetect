@@ -29,23 +29,42 @@ internal sealed class RunCommandHandler : IDisposable
         {
             _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
             _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
-            CommandArgumentsValidator.ValidateRunCommandArguments(_arguments);
-
-            var pluginType = LoadPluginInfo();
-            _serviceProvider = new AnalysisServiceProviderBuilder(_arguments)
-                .WithTimeProvider(TimeProvider.System)
-                .ConfigureLogging(logging =>
-                {
-                    logging.AddConsole();
-                    logging.SetMinimumLevel(_arguments.Analysis.LogLevel);
-                })
-                .WithPlugin(pluginType)
-                .Build();
+            _serviceProvider = Initialize(_arguments);
         }
         catch (Exception ex) when (ex is not CommandException)
         {
             throw new CommandException(ex.Message, (int)ExitCode.ConfigurationError, innerException: ex);
         }
+    }
+
+    public RunCommandHandler(RunCommandArgs arguments, string rawConfigurationJson)
+    {
+        try
+        {
+            _arguments = arguments;
+            _rawConfigurationJson = rawConfigurationJson;
+            _serviceProvider = Initialize(_arguments);
+        }
+        catch (Exception ex) when (ex is not CommandException)
+        {
+            throw new CommandException(ex.Message, (int)ExitCode.ConfigurationError, innerException: ex);
+        }
+    }
+
+    private IServiceProvider Initialize(RunCommandArgs arguments)
+    {
+        CommandArgumentsValidator.ValidateRunCommandArguments(arguments);
+        var pluginType = LoadPluginInfo();
+        var provider = new AnalysisServiceProviderBuilder(arguments)
+            .WithTimeProvider(TimeProvider.System)
+            .ConfigureLogging(logging =>
+            {
+                logging.AddConsole();
+                logging.SetMinimumLevel(arguments.Analysis.LogLevel);
+            })
+            .WithPlugin(pluginType)
+            .Build();
+        return provider;
     }
 
     public async ValueTask ExecuteAsync(IConsole console, CancellationToken cancellationToken)
@@ -66,7 +85,7 @@ internal sealed class RunCommandHandler : IDisposable
         }
 
         if (reportSummary.GetAllReports().Any())
-            throw new CommandException("Analysis detected issue(s)", (int)ExitCode.IssuesFound);
+            throw new CommandException("Analysis detected issue(s)");
     }
 
     private Task<string> RenderAndWriteReport(IPlugin plugin, Summary reportSummary, CancellationToken cancellationToken)
