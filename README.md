@@ -43,28 +43,17 @@ namespace Example
 }
 ```
 
-### 2. Create an Analysis Configuration File
+### 2. Run analysis
 
-Use the `sharpdetect init` command to generate a configuration file:
-
-```bash
-sharpdetect init \
-  --plugin "FastTrack" \
-  --target "<path/to/YourExecutableDotNetAssembly.dll>" \
-  --output "AnalysisConfiguration.json"
-```
-
-*Replace `<path/to/YourExecutableDotNetAssembly.dll>` with the path to your compiled assembly (e.g., `bin/Debug/net10.0/MyApp.dll`).*
-
-### 3. Run Analysis
-
-Use the `sharpdetect run` command with configuration file from previous step to execute the analysis:
+Use the `sharpdetect run` command to run the analysis:
 
 ```bash
-sharpdetect run AnalysisConfiguration.json
+sharpdetect run \
+  --target "bin/Debug/net10.0/TestApp.dll" \
+  --plugin "FastTrack"
 ```
 
-### 4. View the Report
+### 3. View the Report
 
 When a data race is detected, a log message is emitted:
 
