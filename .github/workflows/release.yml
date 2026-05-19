@@ -29,7 +29,7 @@ jobs:
         dotnet tool restore
         dotnet cake --rid=${{ matrix.rid }} --target="CI-Prepare-Native-Libs" --configuration=Release
     - name: Upload
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.rid }}
         path: src/artifacts/Profilers/${{matrix.rid}}/*
@@ -52,7 +52,7 @@ jobs:
         dotnet tool restore
         dotnet cake --rid="linux-x64" --target="CI-Prepare-Managed" --configuration=Release
     - name: Download Native
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: "*64"
         path: src/artifacts/Profilers
@@ -63,7 +63,7 @@ jobs:
         dotnet cake --rid="linux-x64" --target="CI-Pack" --configuration=Release
         ls -R artifacts/
     - name: Upload
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: NuGet
         path: src/artifacts/SharpDetect*.nupkg
