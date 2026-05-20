@@ -9,9 +9,16 @@
 *.config    text        eol=lf
 *.csproj    text        eol=lf
 *.json      text        eol=lf
-*.yml		text		eol=lf
+*.yml       text        eol=lf
 *.md        text        eol=lf
 *.props     text        eol=lf
 *.sh        text        eol=lf
 *.targets   text        eol=lf
 *.sln       text        eol=crlf
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.svg       binary

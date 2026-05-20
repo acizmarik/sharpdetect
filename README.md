@@ -1,16 +1,14 @@
 # SharpDetect
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/acizmarik/sharpdetect/LICENSE.md)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/acizmarik/sharpdetect/blob/main/LICENSE)
 [![GitHub Actions](https://github.com/acizmarik/sharpdetect/actions/workflows/main.yml/badge.svg)](https://github.com/acizmarik/sharpdetect/actions)
 [![NuGet Stable Version](https://img.shields.io/nuget/v/SharpDetect)](https://www.nuget.org/packages/SharpDetect)
 [![NuGet Preview Version](https://img.shields.io/nuget/vpre/SharpDetect)](https://www.nuget.org/packages/SharpDetect)
 
 ## Overview
 
-SharpDetect is a dynamic analysis tool for .NET programs.
-It detects concurrency issues - data races and deadlocks.
-Monitoring and instrumentation support is implemented using custom profiler.
-Analysis is performed by plugins that evaluate runtime properties of the target program.
+SharpDetect is a dynamic analysis tool for .NET applications that detects concurrency issues such as data races and deadlocks.
+It attaches a native CoreCLR profiler to the target process and routes runtime events through analysis plugins.
 
 ## Installation
 
@@ -25,17 +23,17 @@ dotnet tool install --global SharpDetect --prerelease # Latest preview
 
 ### 1. Create a Program to Analyze
 
-Create and build a new console .NET application (targeting .NET 8, 9, or 10) with the following code:
+Create and build a new console .NET application with the following code:
 
 ```csharp
 // Two threads write to a shared field with no synchronization — a data race.
-var thread1 = new Thread(() => { Example.Test.Field = 1; });
-var thread2 = new Thread(() => { Example.Test.Field = 2; });
+var t1 = new Thread(() => { Example.Test.Field = 1; });
+var t2 = new Thread(() => { Example.Test.Field = 2; });
 
-thread1.Start();
-thread2.Start();
-thread1.Join();
-thread2.Join();
+t1.Start();
+t2.Start();
+t1.Join();
+t2.Join();
 
 namespace Example
 {
@@ -43,7 +41,7 @@ namespace Example
 }
 ```
 
-### 2. Run analysis
+### 2. Run Analysis
 
 Use the `sharpdetect run` command to run the analysis:
 
@@ -52,6 +50,8 @@ sharpdetect run \
   --target "bin/Debug/net10.0/TestApp.dll" \
   --plugin "FastTrack"
 ```
+
+The command above launches target application, attaches profiler and configures analysis pipeline with the FastTrack plugin for data race detection.
 
 ### 3. View the Report
 
@@ -66,14 +66,18 @@ warn: SharpDetect.Plugins.DataRace.FastTrack.FastTrackPlugin[0]
               at Program/<>c.<<Main>$>b__0_0:IL_0002
 ```
 
-When the target program terminates, the path to the generated report is printed:
+When the target application terminates, the path to the generated report is printed:
 
 ```text
 Report stored to file: /home/user/Workspace/SharpDetect_Report_20251223_095828.html.
 ```
 
-Reports are self-contained HTML files.
-Each report includes the affected field, the racing threads and their stack frames at the point of the conflicting accesses.
+![Example HTML report showing the detected data race](docs/assets/report-example.png)
+
+Reports are self-contained HTML files. Each report includes:
+- The affected field
+- The participating threads
+- Stack frames at the point of the conflicting accesses
 
 ## Analysis Plugins
 
@@ -95,7 +99,9 @@ The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanaga
 - Static fields (`LDSFLD`, `STSFLD`)
 - Instance fields (`LDFLD`, `STFLD`)
 
-#### Usage
+#### Configuration
+
+To customize instrumentation scope, generate an analysis configuration file:
 
 ```bash
 sharpdetect init \
@@ -103,10 +109,6 @@ sharpdetect init \
   --target "<path/to/YourExecutableDotNetAssembly.dll>" \
   --output "AnalysisConfiguration.json"
 ```
-  
-#### Known Limitations
-- Memory accesses protected by unsupported primitives may be reported as false positives
-- Analysis introduces overhead 
 
 ### Deadlock Detection
 
@@ -119,7 +121,9 @@ The `Deadlock` plugin detects deadlocks by tracking lock acquisition order acros
 #### Supported Threading Primitives
 - `System.Threading.Thread`
 
-#### Usage
+#### Configuration
+
+To customize instrumentation scope, generate an analysis configuration file:
 
 ```bash
 sharpdetect init \
@@ -128,9 +132,30 @@ sharpdetect init \
   --output "AnalysisConfiguration.json"
 ```
 
-#### Known Limitations
-- Deadlocks involving unsupported primitives may not be detected
-- Analysis introduces overhead
+## Limitations / Known Issues
+
+### Data Race Detection
+
+- **False positives**:
+   - Memory accesses guarded by unsupported synchronization primitives may report data races.
+- **False negatives**: 
+   - Array element accesses are not analyzed.
+   - Heuristics for determining object publication is responsible for missing some data races.
+- **Performance overhead**:
+   - Every analyzed memory access needs to be instrumented and emits runtime event.
+   - Every analyzed synchronization operation (acquire, release, ...) emits runtime event.
+   - Every thread lifecycle action (start, join, ...) emits runtime event.
+   - Every task lifecycle action (schedule, start, ...) emits runtime event.
+   - Programs that heavily utilize operations above will observe significant slowdowns.
+
+### Deadlock Detection
+
+- **False negatives**:
+   - Deadlocks involving unsupported synchronization primitives will not be detected.
+- **Performance**: 
+   - Every analyzed synchronization operation (acquire, release, ...) emits runtime event.
+   - Every thread lifecycle action (start, join, ...) emits runtime event.
+   - Programs that heavily utilize operations above will observe significant slowdowns.
 
 ## Building from Source
 
