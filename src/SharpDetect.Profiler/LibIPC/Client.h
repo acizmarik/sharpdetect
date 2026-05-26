@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 #include <queue>
+#include <vector>
 
 #include "../lib/msgpack-c/include/msgpack.hpp"
 #include "cor.h"
@@ -44,9 +45,32 @@ namespace LibIPC
 		{
 			msgpack::sbuffer buffer;
 			msgpack::pack(buffer, data);
+			const auto bufferSize = buffer.size();
+			std::vector<char> compact(buffer.data(), buffer.data() + bufferSize);
+			{
+				std::unique_lock<std::mutex> lock(_eventMutex);
+				_eventQueueDrainedSignal.wait(lock, [this, bufferSize] {
+					return _terminating
+						|| _eventQueueBytes + bufferSize <= _eventQueueMaxBytes
+						|| _eventQueue.empty();
+				});
+				_eventQueueBytes += bufferSize;
+				_eventQueue.emplace(std::move(compact));
+			}
+
+			_eventQueueNonEmptySignal.notify_one();
+		}
+
+		template<class... Types>
+		void SendPriority(msgpack::type::tuple<Types...>&& data)
+		{
+			msgpack::sbuffer buffer;
+			msgpack::pack(buffer, data);
+			std::vector<char> compact(buffer.data(), buffer.data() + buffer.size());
 			{
 				std::lock_guard<std::mutex> guard(_eventMutex);
-				_eventQueue.emplace(std::move(buffer));
+				_eventQueueBytes += compact.size();
+				_eventQueue.emplace(std::move(compact));
 			}
 
 			_eventQueueNonEmptySignal.notify_one();
@@ -67,8 +91,8 @@ namespace LibIPC
 
 		void EventThreadLoop();
 		void CommandThreadLoop();
-		void SendDirect(ipq_producer_enqueue enqueueFn, msgpack::sbuffer& buffer);
-		void DrainEventQueue(ipq_producer_enqueue enqueueFn);
+		void SendDirect(ipq_producer_enqueue enqueueFn, std::vector<char>& buffer);
+		void DrainQueues(ipq_producer_enqueue enqueueFn);
 
 		static const std::string _ipqProducerCreateSymbolName;
 		static const std::string _ipqProducerDestroySymbolName;
@@ -95,7 +119,10 @@ namespace LibIPC
 		std::mutex _eventMutex;
 		std::atomic_bool _terminating;
 		std::condition_variable _eventQueueNonEmptySignal;
-		std::queue<msgpack::sbuffer> _eventQueue;
+		std::condition_variable _eventQueueDrainedSignal;
+		std::queue<std::vector<char>> _eventQueue;
+		std::size_t _eventQueueBytes;
+		std::size_t _eventQueueMaxBytes;
 		bool _commandReceivingEnabled;
 		ICommandHandler* _commandHandler;
 

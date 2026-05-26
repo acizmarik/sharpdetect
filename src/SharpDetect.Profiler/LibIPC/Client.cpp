@@ -35,6 +35,8 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_eventQueueSize(eventQueueSize),
 	_commandQueueSize(commandQueueSize),
 	_terminating(false),
+	_eventQueueBytes(0),
+	_eventQueueMaxBytes(64 * 1024 * 1024),
 	_commandReceivingEnabled(true),
 	_commandHandler(nullptr),
 	_ipqProducerCreateSymbolAddress(nullptr),
@@ -53,6 +55,21 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 		throw std::runtime_error("Error while configuring memory mapped file.");
 	}
 	auto const ipqPath = std::string(ipqPathStringPointer);
+
+	if (auto const eventBufferMaxStringPointer = std::getenv("SharpDetect_EVENT_BUFFER_MAX_BYTES"))
+	{
+		try
+		{
+			auto const parsed = std::stoull(eventBufferMaxStringPointer);
+			if (parsed > 0)
+				_eventQueueMaxBytes = static_cast<std::size_t>(parsed);
+		}
+		catch (const std::exception&)
+		{
+			LOG_F(WARNING, "Could not parse SharpDetect_EVENT_BUFFER_MAX_BYTES=%s; using default.", eventBufferMaxStringPointer);
+		}
+	}
+	LOG_F(INFO, "Event buffer cap: %zu bytes.", _eventQueueMaxBytes);
 
 	_ipqModuleHandle = LibProfiler::PAL_LoadLibrary(ipqPath);
 	if (_ipqModuleHandle == nullptr)
@@ -107,7 +124,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_commandThread = std::thread(&LibIPC::Client::CommandThreadLoop, this);
 }
 
-void LibIPC::Client::SendDirect(const ipq_producer_enqueue enqueueFn, msgpack::sbuffer& buffer)
+void LibIPC::Client::SendDirect(const ipq_producer_enqueue enqueueFn, std::vector<char>& buffer)
 {
 	const auto byteStream = reinterpret_cast<BYTE*>(buffer.data());
 	INT result = 0;
@@ -116,18 +133,20 @@ void LibIPC::Client::SendDirect(const ipq_producer_enqueue enqueueFn, msgpack::s
 		if (result != 0)
 			std::this_thread::yield();
 
-		result = enqueueFn(_ffiProducer, byteStream, buffer.size());
+		result = enqueueFn(_ffiProducer, byteStream, static_cast<INT>(buffer.size()));
 	}
 	while (result != 0);
 }
 
-void LibIPC::Client::DrainEventQueue(const ipq_producer_enqueue enqueueFn)
+void LibIPC::Client::DrainQueues(const ipq_producer_enqueue enqueueFn)
 {
-	std::queue<msgpack::sbuffer> pending;
+	std::queue<std::vector<char>> pending;
 	{
 		auto lock = std::unique_lock(_eventMutex);
 		std::swap(pending, _eventQueue);
+		_eventQueueBytes = 0;
 	}
+	_eventQueueDrainedSignal.notify_all();
 
 	while (!pending.empty())
 	{
@@ -149,7 +168,7 @@ void LibIPC::Client::EventThreadLoop()
 				continue;
 		}
 
-		DrainEventQueue(enqueueFn);
+		DrainQueues(enqueueFn);
 
 		if (_terminating)
 			break;
@@ -275,9 +294,10 @@ LibIPC::Client::~Client()
 	// Terminate event worker and ensure internal queue is sent
 	const auto enqueueFn = reinterpret_cast<ipq_producer_enqueue>(_ipqProducerEnqueueSymbolAddress);
 	_eventQueueNonEmptySignal.notify_all();
+	_eventQueueDrainedSignal.notify_all();
 	if (_eventThread.joinable())
 		_eventThread.join();
-	DrainEventQueue(enqueueFn);
+	DrainQueues(enqueueFn);
 
 	// Terminate command worker
 	if (_commandReceivingEnabled && _commandThread.joinable())
@@ -286,8 +306,9 @@ LibIPC::Client::~Client()
 	// Notify managed that we are gracefully terminating
 	const auto destroyMsg = Helpers::CreateProfilerDestroyMsg(
 		Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), 0));
-	msgpack::sbuffer buffer;
-	msgpack::pack(buffer, destroyMsg);
+	msgpack::sbuffer sbuf;
+	msgpack::pack(sbuf, destroyMsg);
+	std::vector<char> buffer(sbuf.data(), sbuf.data() + sbuf.size());
 	SendDirect(enqueueFn, buffer);
 
 	reinterpret_cast<ipq_producer_destroy>(_ipqProducerDestroySymbolAddress)(_ffiProducer);
