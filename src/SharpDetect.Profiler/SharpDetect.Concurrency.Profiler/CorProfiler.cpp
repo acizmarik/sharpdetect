@@ -910,13 +910,36 @@ BOOL Profiler::CorProfiler::FindCustomEventMapping(
     USHORT original,
     USHORT& mapping)
 {
-    auto guard = std::unique_lock(_customEventLookupsMutex);
+    auto guard = std::shared_lock(_customEventLookupsMutex);
     const auto mappingIt = lookup.find(std::make_tuple(moduleId, methodDef, original));
     if (mappingIt == lookup.cend())
         return false;
 
     mapping = mappingIt->second;
     return true;
+}
+
+Profiler::CorProfiler::CustomEventMappingResult Profiler::CorProfiler::FindCustomEventMappings(
+    const CustomEventsLookup& lookup,
+    ModuleID moduleId,
+    mdMethodDef methodDef,
+    USHORT originalEvent,
+    USHORT originalWithArgsEvent)
+{
+    CustomEventMappingResult result { };
+    auto guard = std::shared_lock(_customEventLookupsMutex);
+
+    auto it = lookup.find(std::make_tuple(moduleId, methodDef, originalEvent));
+    result.hasEvent = (it != lookup.cend());
+    if (result.hasEvent)
+        result.eventMapping = it->second;
+
+    it = lookup.find(std::make_tuple(moduleId, methodDef, originalWithArgsEvent));
+    result.hasWithArgsEvent = (it != lookup.cend());
+    if (result.hasWithArgsEvent)
+        result.withArgsEventMapping = it->second;
+
+    return result;
 }
 
 HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef)
@@ -996,25 +1019,19 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     // Check if event mapping is available
-    USHORT customMethodEnterEvent;
-    USHORT customMethodEnterWithArgumentsEvent;
     constexpr auto originalMethodEnterEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnter);
     constexpr auto originalMethodEnterWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments);
-    auto const hasCustomMethodEnterEvent = FindCustomEventMapping(
-        _customEventOnMethodEntryLookup,
-        moduleId,
-        methodDef,
-        originalMethodEnterEvent,
-        customMethodEnterEvent);
-    auto const hasCustomMethodEnterWithArgumentsEvent = FindCustomEventMapping(
-        _customEventOnMethodEntryLookup,
-        moduleId,
-        methodDef,
-        originalMethodEnterWithArgumentsEvent,
-        customMethodEnterWithArgumentsEvent);
+    auto const [hasCustomMethodEnterEvent, customMethodEnterEvent,
+                hasCustomMethodEnterWithArgumentsEvent, customMethodEnterWithArgumentsEvent] =
+        FindCustomEventMappings(
+            _customEventOnMethodEntryLookup,
+            moduleId,
+            methodDef,
+            originalMethodEnterEvent,
+            originalMethodEnterWithArgumentsEvent);
 
-    auto const hasDescriptor = HasMethodDescriptor(moduleId, methodDef);
-    if (!hasDescriptor)
+    const auto descriptorPointer = TryGetMethodDescriptor(moduleId, methodDef);
+    if (!descriptorPointer)
     {
         // Notify about method enter without arguments
         _client.Send(LibIPC::Helpers::CreateMethodEnterMsg(
@@ -1026,7 +1043,6 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     // Retrieve information about arguments
-    const auto descriptorPointer = GetMethodDescriptor(moduleId, methodDef);
     const auto& descriptor = *descriptorPointer.get();
     if (descriptor.rewritingDescriptor.arguments.empty())
     {
@@ -1115,25 +1131,19 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     }
 
     // Check if event mapping is available
-    USHORT customMethodExitEvent;
-    USHORT customMethodExitWithArgumentsEvent;
     constexpr auto originalMethodExitEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit);
     constexpr auto originalMethodExitWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
-    auto const hasCustomMethodExitEvent = FindCustomEventMapping(
-        _customEventOnMethodExitLookup,
-        moduleId,
-        methodDef,
-        originalMethodExitEvent,
-        customMethodExitEvent);
-    auto const hasCustomMethodExitWithArgumentsEvent = FindCustomEventMapping(
-        _customEventOnMethodExitLookup,
-        moduleId,
-        methodDef,
-        originalMethodExitWithArgumentsEvent,
-        customMethodExitWithArgumentsEvent);
+    auto const [hasCustomMethodExitEvent, customMethodExitEvent,
+                hasCustomMethodExitWithArgumentsEvent, customMethodExitWithArgumentsEvent] =
+        FindCustomEventMappings(
+            _customEventOnMethodExitLookup,
+            moduleId,
+            methodDef,
+            originalMethodExitEvent,
+            originalMethodExitWithArgumentsEvent);
 
-    auto const hasDescriptor = HasMethodDescriptor(moduleId, methodDef);
-    if (!hasDescriptor)
+    const auto descriptorPointer = TryGetMethodDescriptor(moduleId, methodDef);
+    if (!descriptorPointer)
     {
         // Notify about method leave without arguments
         _client.Send(LibIPC::Helpers::CreateMethodExitMsg(
@@ -1145,8 +1155,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     }
 
     // Retrieve information about arguments
-    const auto descriptorPtr = GetMethodDescriptor(moduleId, methodDef);
-    const auto& descriptor = *descriptorPtr.get();
+    const auto& descriptor = *descriptorPointer.get();
     auto const hasIndirects = HasIndirects(descriptor);
     auto const hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
     if (!hasReturnValue && !hasIndirects)
@@ -1461,8 +1470,15 @@ std::shared_ptr<LibProfiler::AssemblyDef> Profiler::CorProfiler::GetAssemblyDef(
 
 std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
 {
-    auto guard = std::unique_lock(_methodDescriptorsMutex);
+    auto guard = std::shared_lock(_methodDescriptorsMutex);
     return _methodDescriptorsLookup.find(std::make_pair(moduleId, methodDef))->second;
+}
+
+std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::TryGetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
+{
+    auto guard = std::shared_lock(_methodDescriptorsMutex);
+    const auto it = _methodDescriptorsLookup.find(std::make_pair(moduleId, methodDef));
+    return (it != _methodDescriptorsLookup.cend()) ? it->second : nullptr;
 }
 
 BOOL Profiler::CorProfiler::HasModuleDef(const ModuleID moduleId)
@@ -1479,7 +1495,7 @@ BOOL Profiler::CorProfiler::HasAssemblyDef(const AssemblyID assemblyId)
 
 BOOL Profiler::CorProfiler::HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
 {
-    auto guard = std::unique_lock(_methodDescriptorsMutex);
+    auto guard = std::shared_lock(_methodDescriptorsMutex);
     return _methodDescriptorsLookup.contains(std::make_pair(moduleId, methodDef));
 }
 
@@ -1494,7 +1510,7 @@ std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::FindMethodDes
         return { };
     }
 
-    auto guard = std::unique_lock(_methodDescriptorsMutex);
+    auto guard = std::shared_lock(_methodDescriptorsMutex);
     const auto it = _methodDescriptorsLookup.find(std::make_pair(moduleId, mdMethodDef));
     return (it != _methodDescriptorsLookup.cend()) ? it->second : nullptr;
 }

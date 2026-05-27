@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <mutex>
+#include <shared_mutex>
 
 #include "cor.h"
 
@@ -58,6 +59,7 @@ namespace Profiler
 		[[nodiscard]] BOOL HasModuleDef(ModuleID moduleId);
 		[[nodiscard]] BOOL HasAssemblyDef(AssemblyID assemblyId);
 		[[nodiscard]] BOOL HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
+		[[nodiscard]] std::shared_ptr<MethodDescriptor> TryGetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
 		[[nodiscard]] std::shared_ptr<LibProfiler::ModuleDef> GetModuleDef(ModuleID moduleId);
 		[[nodiscard]] std::shared_ptr<LibProfiler::AssemblyDef> GetAssemblyDef(AssemblyID assemblyID);
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
@@ -128,13 +130,13 @@ namespace Profiler
 		LibProfiler::ObjectsTracker _objectsTracker;
 		std::vector< std::shared_ptr<MethodDescriptor>> _methodDescriptors;
 		std::unordered_map<MethodId, std::shared_ptr<MethodDescriptor>, MethodIdHasher> _methodDescriptorsLookup;
-		std::mutex _methodDescriptorsMutex;
+		std::shared_mutex _methodDescriptorsMutex;
 
 		using MethodInvocationId = std::tuple<ModuleID, mdMethodDef, USHORT>;
 		using MethodInvocationIdHasher = tuple_hash<ModuleID, mdMethodDef, USHORT>;
 		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodEntryLookup;
 		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodExitLookup;
-		std::mutex _customEventLookupsMutex;
+		std::shared_mutex _customEventLookupsMutex;
 
 		using CustomEventsLookup = std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher>;
 		void AddCustomEventMapping(
@@ -149,5 +151,20 @@ namespace Profiler
 			mdMethodDef methodDef,
 			USHORT original,
 			USHORT& mapping);
+
+		struct CustomEventMappingResult
+		{
+			BOOL hasEvent;
+			USHORT eventMapping;
+			BOOL hasWithArgsEvent;
+			USHORT withArgsEventMapping;
+		};
+		
+		CustomEventMappingResult FindCustomEventMappings(
+			const CustomEventsLookup& lookup,
+			ModuleID moduleId,
+			mdMethodDef methodDef,
+			USHORT originalEvent,
+			USHORT originalWithArgsEvent);
 	};
 }
