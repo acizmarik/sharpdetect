@@ -84,6 +84,19 @@ internal static class SyncEventBuilder
             ByRefArgumentInfos: []));
     }
 
+    public static RecordedEvent ExitWithByRefSuccess(uint tid, RecordedEventType type, bool success)
+    {
+        var byRef = new byte[1];
+        MemoryMarshal.Write(byRef, in success);
+        return new RecordedEvent(Meta(tid), new MethodExitWithArgumentsRecordedEvent(
+            ModuleId: Module,
+            MethodToken: Method,
+            Interpretation: (ushort)type,
+            ReturnValue: [],
+            ByRefArgumentValues: byRef,
+            ByRefArgumentInfos: []));
+    }
+
     public static RecordedEvent FieldRead(uint tid)
         => new(Meta(tid), new MethodEnterWithArgumentsRecordedEvent(
             ModuleId: Module,

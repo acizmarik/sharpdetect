@@ -872,6 +872,72 @@ public class ReorderingPluginHostTests
         Assert.True(coreIdx < callbackIdx);
     }
 
+    [Fact]
+    public void ReorderingPluginHost_FailedTryEnterViaByRef_NotDeferred_NotReordered()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockTryAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.MonitorLockAcquireResult, success: false));
+
+        // Assert
+        Assert.Equal(4, recorder.Dispatched.Count);
+        Assert.Equal((T2, RecordedEventType.MonitorLockAcquireResult), ClassifyDispatched(recorder.Dispatched[^1]));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_FailedTryEnterViaByRef_DoesNotCreatePhantomOwner()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockTryAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.MonitorLockAcquireResult, success: false));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_SuccessfulTryEnterViaByRef_IsDeferred_IsReordered()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockTryAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.MonitorLockAcquireResult, success: true)); // deferred
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+
+        // Assert
+        var kinds = recorder.Dispatched.Select(ClassifyDispatched).ToArray();
+        Assert.Equal(new[]
+        {
+            (T1, RecordedEventType.MonitorLockAcquire),
+            (T1, RecordedEventType.MonitorLockAcquireResult),
+            (T2, RecordedEventType.MonitorLockTryAcquire),
+            (T1, RecordedEventType.MonitorLockRelease),
+            (T1, RecordedEventType.MonitorLockReleaseResult),
+            (T2, RecordedEventType.MonitorLockAcquireResult),
+            (T2, RecordedEventType.InstanceFieldRead),
+        }, kinds);
+    }
+
     private static (uint Tid, RecordedEventType Type) ClassifyDispatched(RecordedEvent e)
     {
         var tid = e.Metadata.Tid.Value;
