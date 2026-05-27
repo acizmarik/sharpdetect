@@ -43,7 +43,8 @@ namespace LibIPC
 		template<class... Types>
 		void Send(msgpack::type::tuple<Types...>&& data)
 		{
-			msgpack::sbuffer buffer;
+			thread_local msgpack::sbuffer buffer;
+			buffer.clear();
 			msgpack::pack(buffer, data);
 			const auto bufferSize = buffer.size();
 			std::vector<char> compact(buffer.data(), buffer.data() + bufferSize);
@@ -64,7 +65,8 @@ namespace LibIPC
 		template<class... Types>
 		void SendPriority(msgpack::type::tuple<Types...>&& data)
 		{
-			msgpack::sbuffer buffer;
+			thread_local msgpack::sbuffer buffer;
+			buffer.clear();
 			msgpack::pack(buffer, data);
 			std::vector<char> compact(buffer.data(), buffer.data() + buffer.size());
 			{
