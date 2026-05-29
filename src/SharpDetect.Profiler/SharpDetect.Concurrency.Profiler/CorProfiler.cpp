@@ -262,7 +262,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::GarbageCollectionStarted(
 
     auto collectedGenerations = std::vector<BOOL>(generationCollected, generationCollected + cGenerations);
     _objectsTracker.ProcessGarbageCollectionStarted(std::move(collectedGenerations), std::move(ranges));
-    _client.Send(LibIPC::Helpers::CreateGarbageCollectionStartMsg(CreateMetadataMsg()));
+    _client.SendPriority(LibIPC::Helpers::CreateGarbageCollectionStartMsg(CreateMetadataMsg()));
     return S_OK;
 }
 
@@ -280,13 +280,13 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::GarbageCollectionFinished()
     }
     if (!removedTrackedObjectIds.empty())
     {
-        _client.Send(LibIPC::Helpers::CreateGarbageCollectedTrackedObjectsMsg(
-            CreateMetadataMsg(), 
+        _client.SendPriority(LibIPC::Helpers::CreateGarbageCollectedTrackedObjectsMsg(
+            CreateMetadataMsg(),
             std::move(removedTrackedObjectIds)));
     }
 
     const auto newSize = _objectsTracker.GetTrackedObjectsCount();
-    _client.Send(LibIPC::Helpers::CreateGarbageCollectionFinishMsg(CreateMetadataMsg(), oldSize, newSize));
+    _client.SendPriority(LibIPC::Helpers::CreateGarbageCollectionFinishMsg(CreateMetadataMsg(), oldSize, newSize));
     return S_OK;
 }
 
