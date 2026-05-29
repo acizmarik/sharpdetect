@@ -6,7 +6,15 @@ var rid = Argument<string>("rid", GetDefaultRuntimeIdentifier());
 var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
-var sdk = Argument("sdk", "net10.0");
+var sdk = Argument("sdk", GetTargetFramework());
+
+string GetTargetFramework()
+{
+    var tfm = XmlPeek("./Directory.Build.props", "/Project/PropertyGroup/TargetFramework/text()");
+    if (string.IsNullOrEmpty(tfm))
+        throw new Exception("Could not read <TargetFramework> from Directory.Build.props.");
+    return tfm;
+}
 
 string GetDefaultRuntimeIdentifier()
 {
@@ -130,16 +138,21 @@ Task("Copy-Native-Artifacts")
 
     foreach (var profilerName in profilers)
     {
-        var profilerLibrary = (rid.StartsWith("win"))
-            ? $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{configuration}/{profilerName}.{libraryExtension}"
-            : $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}/{profilerName}.{libraryExtension}";
-        
+        var profilerLibrary = GetProfilerLibraryPath(profilerName);
         if (!System.IO.File.Exists(profilerLibrary))
             throw new Exception($"Profiler library not found at: {profilerLibrary}");
         
         CopyFileToDirectory(profilerLibrary, nativeArtifactsDirectory);
     }
 });
+
+string GetProfilerLibraryPath(string profilerName)
+{
+    var baseDirectory = $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}";
+    return rid.StartsWith("win")
+        ? $"{baseDirectory}/{configuration}/{profilerName}.{libraryExtension}"
+        : $"{baseDirectory}/{profilerName}.{libraryExtension}";
+}
 
 Task("Tests")
     .IsDependentOn("Build-Local-Environment")
