@@ -9,7 +9,7 @@ endif()
 function(apply_profiler_compile_options target_name)
     if (UNIX AND NOT APPLE)
         target_compile_options(${target_name} PRIVATE
-            -g
+            $<$<NOT:$<CONFIG:Release>>:-g>
             -fPIC
             -fms-extensions
             -Wno-pragma-pack)
@@ -18,6 +18,7 @@ function(apply_profiler_compile_options target_name)
             HOST_64BIT
             PLATFORM_UNIX
             PAL_STDCPP_COMPAT)
+        target_link_options(${target_name} PRIVATE $<$<CONFIG:Release>:LINKER:-s>)
     endif()
 endfunction()
 
