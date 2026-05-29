@@ -58,8 +58,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         return recordedEvent.EventArgs switch
         {
             MethodEnterWithArgumentsRecordedEvent enter => HandleEnter(recordedEvent, enter, thread.Id, thread),
-            MethodExitRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, returnValue: null),
-            MethodExitWithArgumentsRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, exit.ReturnValue),
+            MethodExitRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, returnValue: null, byRefArgumentValues: null),
+            MethodExitWithArgumentsRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, exit.ReturnValue, exit.ByRefArgumentValues),
             ThreadDestroyRecordedEvent destroy => HandleThreadDestroy(recordedEvent, destroy),
             GarbageCollectedTrackedObjectsRecordedEvent gc => HandleGarbageCollectedTrackedObjects(recordedEvent, gc),
             _ => inner.ProcessEvent(recordedEvent)
@@ -158,14 +158,15 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         ushort interpretation,
         ProcessThreadId tid,
         ShadowThread thread,
-        byte[]? returnValue)
+        byte[]? returnValue,
+        byte[]? byRefArgumentValues)
     {
         var kind = (RecordedEventType)interpretation;
         switch (kind)
         {
             case RecordedEventType.MonitorLockAcquireResult:
             case RecordedEventType.LockAcquireResult:
-                return HandleAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, true));
+                return HandleAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, byRefArgumentValues, true));
 
             case RecordedEventType.MonitorLockReleaseResult:
             case RecordedEventType.LockReleaseResult:
@@ -175,7 +176,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 return HandleWaitResult(recordedEvent, tid, thread);
 
             case RecordedEventType.SemaphoreAcquireResult:
-                return HandleSemaphoreAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, true));
+                return HandleSemaphoreAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, byRefArgumentValues, true));
 
             case RecordedEventType.SemaphoreReleaseResult:
                 return HandleSemaphoreReleaseResult(recordedEvent, tid, thread);
@@ -184,7 +185,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 return HandleTaskComplete(recordedEvent, thread);
 
             case RecordedEventType.TaskJoinFinish:
-                return HandleTaskJoinFinish(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, true));
+                return HandleTaskJoinFinish(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, byRefArgumentValues, true));
 
             case RecordedEventType.MonitorPulseOneResult:
             case RecordedEventType.MonitorPulseAllResult:
@@ -438,11 +439,13 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         return new ProcessTrackedObjectId(pid, new TrackedObjectId(raw));
     }
 
-    private static bool ReadBoolOrDefault(byte[]? buffer, bool defaultValue)
+    private static bool ReadBoolOrDefault(byte[]? returnValue, byte[]? byRefArgumentValues, bool defaultValue)
     {
-        if (buffer is null || buffer.Length == 0)
-            return defaultValue;
-        return MemoryMarshal.Read<bool>(buffer);
+        if (returnValue is not null && returnValue.Length > 0)
+            return MemoryMarshal.Read<bool>(returnValue);
+        if (byRefArgumentValues is not null && byRefArgumentValues.Length > 0)
+            return MemoryMarshal.Read<bool>(byRefArgumentValues);
+        return defaultValue;
     }
     
     private static bool TryPeekTarget(ShadowThread thread, out ProcessTrackedObjectId target)
