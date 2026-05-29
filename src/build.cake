@@ -77,6 +77,7 @@ Task("Build-IPQ")
 });
 
 Task("Build-Profiler")
+    .IsDependentOn("Build-IPQ")
     .Does(() =>
 {
     var profilerArtifactsDirectory = $"./SharpDetect.Profiler/artifacts/{rid}";
@@ -159,31 +160,6 @@ Task("CI-Prepare-Managed")
     {
         Configuration = configuration
     });
-});
-
-Task("CI-Prepare-Native-Libs")
-    .IsDependentOn("Build-IPQ")
-    .IsDependentOn("Build-Profiler")
-    .IsDependentOn("Copy-Native-Artifacts")
-    .Does(() =>
-{
-    var files = GetFiles($"{nativeArtifactsDirectory}*");
-    foreach (var file in files)
-    {
-        if (rid.StartsWith("linux"))
-        {
-            Information($"Stripping symbols from: {file.GetFilename()}");
-            var exitCode = StartProcess("strip", new ProcessSettings
-            {
-                Arguments = new ProcessArgumentBuilder()
-                    .Append("-s")
-                    .Append(file.FullPath)
-            });
-            
-            if (exitCode != 0)
-                Warning($"Failed to strip {file.GetFilename()}, exit code: {exitCode}");
-        }
-    }
 });
 
 Task("CI-Pack")

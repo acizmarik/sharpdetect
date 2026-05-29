@@ -27,7 +27,7 @@ jobs:
       run: |
         cd src
         dotnet tool restore
-        dotnet cake --rid=${{ matrix.rid }} --target="CI-Prepare-Native-Libs" --configuration=Release
+        dotnet cake --rid=${{ matrix.rid }} --target="Build-Profiler" --configuration=Release
     - name: Upload
       uses: actions/upload-artifact@v7
       with:
