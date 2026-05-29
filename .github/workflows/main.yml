@@ -1,6 +1,11 @@
 name: CI
 
-on: ["push"]
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
 
 jobs:
   build:
@@ -67,3 +72,41 @@ jobs:
         name: Tests (${{ matrix.rid }})
         path: src/TestResults/**/*.trx
         reporter: dotnet-trx
+    - name: Upload coverage data
+      uses: actions/upload-artifact@v7
+      if: ${{ !cancelled() }}
+      with:
+        name: coverage-data-${{ matrix.rid }}
+        path: src/TestResults/**/coverage.cobertura.xml
+        if-no-files-found: warn
+
+  coverage:
+    needs: tests
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.*
+    - name: Download coverage data
+      uses: actions/download-artifact@v7
+      with:
+        pattern: coverage-data-*
+        path: src/TestResults
+        merge-multiple: true
+    - name: Generate combined coverage report
+      run: |
+        cd src
+        dotnet tool restore
+        dotnet cake --target=Coverage-Report
+    - name: Write coverage to job summary
+      shell: bash
+      run: cat src/TestResults/CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage-report
+        path: src/TestResults/CoverageReport
+        if-no-files-found: warn
