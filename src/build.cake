@@ -162,8 +162,32 @@ Task("Tests")
     {
         Configuration = configuration,
         Loggers = new[] { "trx" },
+        Collectors = new[] { "XPlat Code Coverage" },
         ResultsDirectory = "./TestResults"
     });
+});
+
+Task("Coverage-Report")
+    .Does(() =>
+{
+    var reportDirectory = "./TestResults/CoverageReport";
+    EnsureDirectoryExists(reportDirectory);
+
+    var exitCode = StartProcess("dotnet", new ProcessSettings
+    {
+        Arguments = new ProcessArgumentBuilder()
+            .Append("tool")
+            .Append("run")
+            .Append("reportgenerator")
+            .Append("-reports:./TestResults/**/coverage.cobertura.xml")
+            .Append($"-targetdir:{reportDirectory}")
+            .Append("-reporttypes:Html;MarkdownSummaryGithub")
+    });
+
+    if (exitCode != 0)
+        throw new Exception($"ReportGenerator failed with exit code: {exitCode}");
+
+    Information($"Coverage report generated in: {reportDirectory}");
 });
 
 Task("CI-Prepare-Managed")
