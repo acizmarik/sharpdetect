@@ -443,6 +443,27 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_ValueType_Instance_WriteWriteRace):
                     Test_DataRace_ValueType_Instance_WriteWriteRace();
                     break;
+                case nameof(Test_DataRace_ReferenceType_Instance_SingleWriterWriteReadRace):
+                    Test_DataRace_ReferenceType_Instance_SingleWriterWriteReadRace();
+                    break;
+                case nameof(Test_DataRace_ValueType_Instance_SingleWriterWriteReadRace):
+                    Test_DataRace_ValueType_Instance_SingleWriterWriteReadRace();
+                    break;
+                case nameof(Test_DataRace_AutoProperty_Instance_PostPublicationWriteReadRace):
+                    Test_DataRace_AutoProperty_Instance_PostPublicationWriteReadRace();
+                    break;
+                case nameof(Test_DataRace_Static_WrittenInInstanceCtor_WriteReadRace):
+                    Test_DataRace_Static_WrittenInInstanceCtor_WriteReadRace();
+                    break;
+                case nameof(Test_DataRace_Static_AutoProperty_WriteReadRace):
+                    Test_DataRace_Static_AutoProperty_WriteReadRace();
+                    break;
+                case nameof(Test_NoDataRace_ConstructorWrite_PublishThenRead):
+                    Test_NoDataRace_ConstructorWrite_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead):
+                    Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead();
+                    break;
                 case nameof(Test_NoDataRace_ReferenceType_Static_ReadReadNoRace):
                     Test_NoDataRace_ReferenceType_Static_ReadReadNoRace();
                     break;

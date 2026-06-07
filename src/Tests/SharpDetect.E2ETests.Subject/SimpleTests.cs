@@ -1019,18 +1019,18 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_DataRace_ReferenceType_Instance_ReadWriteRace()
         {
-            var instance = new DataRace { Test_DataRace_ReferenceType_Instance = new object() };
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
             RunConcurrently(
-                () => _ = instance.Test_DataRace_ReferenceType_Instance,
-                () => instance.Test_DataRace_ReferenceType_Instance = new object());
+                () => _ = instance.Test_DataRace_ReferenceType_InstanceField,
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object());
         }
 
         public static void Test_DataRace_ValueType_Instance_ReadWriteRace()
         {
-            var instance = new DataRace { Test_DataRace_ValueType_Instance = 0 };
+            var instance = new DataRace { Test_DataRace_ValueType_InstanceField = 0 };
             RunConcurrently(
-                () => _ = instance.Test_DataRace_ValueType_Instance,
-                () => instance.Test_DataRace_ValueType_Instance = 123);
+                () => _ = instance.Test_DataRace_ValueType_InstanceField,
+                () => instance.Test_DataRace_ValueType_InstanceField = 123);
         }
 
         public static void Test_DataRace_ReferenceType_Static_WriteReadRace()
@@ -1049,20 +1049,34 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = DataRace.Test_DataRace_ValueType_Static);
         }
 
+        public static void Test_DataRace_Static_WrittenInInstanceCtor_WriteReadRace()
+        {
+            RunConcurrently(
+                () => _ = new DataRace(123, new object(), setProperties: false),
+                () => _ = DataRace.Test_DataRace_ValueType_StaticWrittenInCtor);
+        }
+
+        public static void Test_DataRace_Static_AutoProperty_WriteReadRace()
+        {
+            RunConcurrently(
+                () => DataRace.Test_DataRace_ValueType_StaticProperty = 99,
+                () => _ = DataRace.Test_DataRace_ValueType_StaticProperty);
+        }
+
         public static void Test_DataRace_ReferenceType_Instance_WriteReadRace()
         {
-            var instance = new DataRace { Test_DataRace_ReferenceType_Instance = new object() };
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
             RunConcurrently(
-                () => instance.Test_DataRace_ReferenceType_Instance = new object(),
-                () => _ = instance.Test_DataRace_ReferenceType_Instance);
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object(),
+                () => _ = instance.Test_DataRace_ReferenceType_InstanceField);
         }
 
         public static void Test_DataRace_ValueType_Instance_WriteReadRace()
         {
-            var instance = new DataRace { Test_DataRace_ValueType_Instance = 0 };
+            var instance = new DataRace { Test_DataRace_ValueType_InstanceField = 0 };
             RunConcurrently(
-                () => instance.Test_DataRace_ValueType_Instance = 123,
-                () => _ = instance.Test_DataRace_ValueType_Instance);
+                () => instance.Test_DataRace_ValueType_InstanceField = 123,
+                () => _ = instance.Test_DataRace_ValueType_InstanceField);
         }
 
         public static void Test_NoDataRace_ReferenceType_Static_ReadReadNoRace()
@@ -1083,34 +1097,74 @@ namespace SharpDetect.E2ETests.Subject
 
         public static void Test_DataRace_ReferenceType_Instance_WriteWriteRace()
         {
-            var instance = new DataRace { Test_DataRace_ReferenceType_Instance = new object() };
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
             RunConcurrently(
-                () => instance.Test_DataRace_ReferenceType_Instance = new object(),
-                () => instance.Test_DataRace_ReferenceType_Instance = new object());
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object(),
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object());
         }
 
         public static void Test_DataRace_ValueType_Instance_WriteWriteRace()
         {
-            var instance = new DataRace { Test_DataRace_ValueType_Instance = 0 };
+            var instance = new DataRace { Test_DataRace_ValueType_InstanceField = 0 };
             RunConcurrently(
-                () => instance.Test_DataRace_ValueType_Instance = 123,
-                () => instance.Test_DataRace_ValueType_Instance = 456);
+                () => instance.Test_DataRace_ValueType_InstanceField = 123,
+                () => instance.Test_DataRace_ValueType_InstanceField = 456);
+        }
+
+        public static void Test_DataRace_ReferenceType_Instance_SingleWriterWriteReadRace()
+        {
+            var instance = new DataRace();
+            RunConcurrently(
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object(),
+                () => _ = instance.Test_DataRace_ReferenceType_InstanceField);
+        }
+
+        public static void Test_DataRace_ValueType_Instance_SingleWriterWriteReadRace()
+        {
+            var instance = new DataRace();
+            RunConcurrently(
+                () => instance.Test_DataRace_ValueType_InstanceField = 123,
+                () => _ = instance.Test_DataRace_ValueType_InstanceField);
+        }
+
+        public static void Test_DataRace_AutoProperty_Instance_PostPublicationWriteReadRace()
+        {
+            var instance = new DataRace(42, new object(), setProperties: true);
+            RunConcurrently(
+                () => instance.Test_DataRace_ValueType_InstanceProperty = 99,
+                () => _ = instance.Test_DataRace_ValueType_InstanceProperty);
+        }
+
+        public static void Test_NoDataRace_ConstructorWrite_PublishThenRead()
+        {
+            var instance = new DataRace(42, new object(), setProperties: false);
+            RunConcurrently(
+                () => _ = instance.Test_DataRace_ValueType_InstanceField,
+                () => _ = instance.Test_DataRace_ValueType_InstanceField);
+        }
+
+        public static void Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead()
+        {
+            var instance = new DataRace(42, new object(), setProperties: true);
+            RunConcurrently(
+                () => _ = instance.Test_DataRace_ValueType_InstanceProperty,
+                () => _ = instance.Test_DataRace_ValueType_InstanceProperty);
         }
 
         public static void Test_NoDataRace_ReferenceType_Instance_ReadReadNoRace()
         {
-            var instance = new DataRace { Test_DataRace_ReferenceType_Instance = new object() };
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
             RunConcurrently(
-                () => _ = instance.Test_DataRace_ReferenceType_Instance,
-                () => _ = instance.Test_DataRace_ReferenceType_Instance);
+                () => _ = instance.Test_DataRace_ReferenceType_InstanceField,
+                () => _ = instance.Test_DataRace_ReferenceType_InstanceField);
         }
 
         public static void Test_NoDataRace_ValueType_Instance_ReadReadNoRace()
         {
-            var instance = new DataRace { Test_DataRace_ValueType_Instance = 123 };
+            var instance = new DataRace { Test_DataRace_ValueType_InstanceField = 123 };
             RunConcurrently(
-                () => _ = instance.Test_DataRace_ValueType_Instance,
-                () => _ = instance.Test_DataRace_ValueType_Instance);
+                () => _ = instance.Test_DataRace_ValueType_InstanceField,
+                () => _ = instance.Test_DataRace_ValueType_InstanceField);
         }
 
         public static void Test_NoDataRace_ThreadStatic_ReferenceType()
@@ -1165,8 +1219,8 @@ namespace SharpDetect.E2ETests.Subject
         {
             var dataRace = new DataRace();
             RunConcurrently(
-                () => Volatile.Read(ref dataRace.Test_DataRace_ValueType_Instance), 
-                () => Volatile.Write(ref dataRace.Test_DataRace_ValueType_Instance, 123));
+                () => Volatile.Read(ref dataRace.Test_DataRace_ValueType_InstanceField), 
+                () => Volatile.Write(ref dataRace.Test_DataRace_ValueType_InstanceField, 123));
         }
         
         public static void Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin()

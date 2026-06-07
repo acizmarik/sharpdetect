@@ -7,6 +7,8 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
     {
         public static object? Test_DataRace_ReferenceType_Static;
         public static int Test_DataRace_ValueType_Static;
+        public static int Test_DataRace_ValueType_StaticWrittenInCtor;
+        public static int Test_DataRace_ValueType_StaticProperty { get; set; }
         public static volatile int Test_Volatile_ValueType_Static;
         [ThreadStatic]
         public static object? Test_ThreadStatic_ReferenceType;
@@ -14,8 +16,30 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static int Test_ThreadStatic_ValueType;
         public static Action? Test_StaticDelegate;
         
-        public object? Test_DataRace_ReferenceType_Instance;
-        public int Test_DataRace_ValueType_Instance;
+        public object? Test_DataRace_ReferenceType_InstanceField;
+        public object? Test_DataRace_ReferenceType_InstanceProperty { get; set; }
+        public int Test_DataRace_ValueType_InstanceField;
+        public int Test_DataRace_ValueType_InstanceProperty { get; set; }
         public volatile int Test_Volatile_ValueType_Instance;
+
+        public DataRace()
+        {
+            
+        }
+
+        public DataRace(int value, object referenceValue, bool setProperties)
+        {
+            if (setProperties)
+            {
+                Test_DataRace_ValueType_InstanceProperty = value;
+                Test_DataRace_ReferenceType_InstanceProperty = referenceValue;
+            }
+            else
+            {
+                Test_DataRace_ValueType_InstanceField = value;
+                Test_DataRace_ReferenceType_InstanceField = referenceValue;
+                Test_DataRace_ValueType_StaticWrittenInCtor = value;
+            }
+        }
     }
 }

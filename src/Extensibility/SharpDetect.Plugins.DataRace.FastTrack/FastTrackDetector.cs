@@ -15,6 +15,7 @@ internal sealed class FastTrackDetector
     private readonly ShadowMemory _shadowMemory = new();
     private readonly AccessTracker _accessTracker;
     private readonly FieldResolver _fieldResolver;
+    private readonly MethodResolver _methodResolver;
     private readonly TimeProvider _timeProvider;
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
@@ -22,7 +23,9 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
     private readonly Dictionary<(FieldId, ProcessTrackedObjectId?), VectorClock> _volatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _volatileClocksObjectIndex = [];
-
+    private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
+    private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, bool Escaped);
+    
     public FastTrackDetector(
         FastTrackPluginConfiguration configuration,
         IMetadataContext metadataContext,
@@ -34,6 +37,7 @@ internal sealed class FastTrackDetector
         _timeProvider = timeProvider;
         _accessTracker = new AccessTracker(timeProvider, threadNameResolver);
         _fieldResolver = new FieldResolver(metadataContext, logger);
+        _methodResolver = new MethodResolver(metadataContext, logger);
     }
 
     public int GetTrackedFieldCount() => _shadowMemory.Count;
@@ -65,6 +69,7 @@ internal sealed class FastTrackDetector
             _lockClocks.Remove(processObjectId);
             _semaphoreClocks.Remove(processObjectId);
             _taskClocks.Remove(processObjectId);
+            _escapeStates.Remove(processObjectId);
         }
 
         foreach (var objectId in removedObjectIds)
@@ -224,10 +229,12 @@ internal sealed class FastTrackDetector
         var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
-        
-        if (!shadow.WriteEpoch.IsNone && 
-            !shadow.WriteEpoch.HappensBefore(threadVc) && 
-            shadow.ExclusiveWriteThread == null)
+
+        _ = UpdateObjectPublicationState(threadId, objectId);
+
+        if (!shadow.WriteEpoch.IsNone &&
+            !shadow.WriteEpoch.HappensBefore(threadVc) &&
+            shadow.LastWriteKind == WriteKind.Regular)
         {
             // Write-read race detected: last write does not happen-before this read
             var accessType = AccessType.Read;
@@ -274,15 +281,16 @@ internal sealed class FastTrackDetector
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
         var currentEpoch = threadVc.GetEpoch(threadId);
+        var writeKind = ClassifyWrite(threadId, moduleId, methodToken, fieldFlags, objectId);
 
-        if (!shadow.WriteEpoch.IsNone && 
-            shadow.WriteEpoch.ThreadId != threadId && 
+        if (!shadow.WriteEpoch.IsNone &&
+            shadow.WriteEpoch.ThreadId != threadId &&
             !shadow.WriteEpoch.HappensBefore(threadVc))
         {
             var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
             var lastAccess = _accessTracker.GetLastWriteAccess(fieldId, objectId);
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
-            shadow.SetWrite(currentEpoch);
+            shadow.SetWrite(currentEpoch, writeKind);
             shadow.SetRead(Epoch.None);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
@@ -305,7 +313,7 @@ internal sealed class FastTrackDetector
             var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
             var lastAccess = _accessTracker.GetLastAccess(fieldId, objectId);
             _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
-            shadow.SetWrite(currentEpoch);
+            shadow.SetWrite(currentEpoch, writeKind);
             shadow.SetRead(Epoch.None);
 
             if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
@@ -324,11 +332,61 @@ internal sealed class FastTrackDetector
 
         var writeAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
         _accessTracker.RecordAccess(fieldId, objectId, writeAccess);
-        shadow.SetWrite(currentEpoch);
+        shadow.SetWrite(currentEpoch, writeKind);
         shadow.SetRead(Epoch.None);
         return null;
     }
     
+    private WriteKind ClassifyWrite(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        FieldFlags fieldFlags,
+        ProcessTrackedObjectId? objectId)
+    {
+        var isStaticField = objectId == null;
+        var constructorKind = _methodResolver.GetConstructorKind(threadId.ProcessId, moduleId, methodToken);
+        var isInstantiatorExclusive = UpdateObjectPublicationState(threadId, objectId);
+
+        if (isStaticField)
+        {
+            return constructorKind == ConstructorKind.Static
+                ? WriteKind.Instantiation
+                : WriteKind.Regular;
+        }
+
+        if (constructorKind != ConstructorKind.None)
+            return WriteKind.Instantiation;
+
+        // An auto-property is written via its compiler-generated setter
+        // Treat it as initialization if object not escaped instantiation thread yet
+        if (isInstantiatorExclusive && fieldFlags.HasFlag(FieldFlags.IsAutoPropertyBackingField))
+            return WriteKind.MaybeInstantiation;
+
+        return WriteKind.Regular;
+    }
+    
+    private bool UpdateObjectPublicationState(ProcessThreadId threadId, ProcessTrackedObjectId? objectId)
+    {
+        if (objectId is not { } objId)
+            return false;
+
+        if (!_escapeStates.TryGetValue(objId, out var state))
+        {
+            _escapeStates[objId] = new ObjectEscapeState(threadId, Escaped: false);
+            return true;
+        }
+
+        if (state.Escaped)
+            return false;
+
+        if (state.Instantiator == threadId)
+            return true;
+
+        _escapeStates[objId] = state with { Escaped = true };
+        return false;
+    }
+
     private static void UpdateReadState(ProcessThreadId threadId, ShadowVariable shadow, VectorClock threadVc)
     {
         if (shadow.HasReadVectorClock)

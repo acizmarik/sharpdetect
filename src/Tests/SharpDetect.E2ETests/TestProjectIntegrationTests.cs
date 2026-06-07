@@ -21,7 +21,7 @@ public class TestProjectIntegrationTests(ITestOutputHelper testOutput)
     private const string VsTestRelativePath =
         "../../../../../Samples/SimpleDataRaceTestsVSTest/bin/%BUILD_CONFIGURATION%/%SDK%/SimpleDataRaceTestsVSTest.dll";
 
-    private static readonly string[] SkipSystemAssemblies = [ "System.", "Microsoft.", "TUnit.", "xunit." ];
+    private static readonly string[] SkipSystemAssemblies = [ "System.", "Microsoft.", "TUnit.", "xunit.", "Newtonsoft." ];
 
     [Fact]
     public Task Mtp_RaceFact_Detects_Race()

@@ -88,7 +88,31 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
         if (IsFieldDelegateCacheInCompilerGeneratedType(fieldDef))
             flags |= FieldFlags.IsStaticDelegateType;
 
+        if (IsAutoPropertyBackingField(fieldDef))
+            flags |= FieldFlags.IsAutoPropertyBackingField;
+
         return flags;
+    }
+
+    private bool IsAutoPropertyBackingField(FieldDef fieldDef)
+    {
+        const string backingFieldNameSuffix = "k__BackingField";
+
+        var name = fieldDef.Name?.String;
+        if (name is null || !name.EndsWith(backingFieldNameSuffix, StringComparison.Ordinal))
+            return false;
+
+        return HasCompilerGeneratedAttribute(fieldDef, fieldDef.Module);
+    }
+
+    private bool HasCompilerGeneratedAttribute(IHasCustomAttribute member, ModuleDef module)
+    {
+        _compilerGeneratedAttributeTypeRef ??= module.CorLibTypes.GetTypeRef(
+            @namespace: "System.Runtime.CompilerServices",
+            name: "CompilerGeneratedAttribute");
+
+        var comparer = new SigComparer();
+        return member.CustomAttributes.Any(a => comparer.Equals(a.AttributeType, _compilerGeneratedAttributeTypeRef));
     }
 
     private static bool IsFieldReadonly(FieldDef fieldDef)
@@ -148,21 +172,13 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
             return false;
         }
 
-        _compilerGeneratedAttributeTypeRef ??= fieldDef.Module.CorLibTypes
-            .GetTypeRef(
-                @namespace: "System.Runtime.CompilerServices",
-                name: "CompilerGeneratedAttribute");
-
-        var sigComparer = new SigComparer();
-        var hasCompilerGenerated = declaringType.CustomAttributes.Any(a =>
-            sigComparer.Equals(a.AttributeType, _compilerGeneratedAttributeTypeRef));
-
-        if (!hasCompilerGenerated)
+        if (!HasCompilerGeneratedAttribute(declaringType, fieldDef.Module))
             return false;
 
         _multicastDelegateTypeRef ??= fieldDef.Module.CorLibTypes
             .GetTypeRef(@namespace: "System", name: "MulticastDelegate");
 
+        var sigComparer = new SigComparer();
         var fieldType = fieldDef.FieldType.ToTypeDefOrRef();
         while (fieldType != null)
         {
