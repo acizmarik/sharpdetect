@@ -57,6 +57,16 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
         _waiters.Remove(tid);
     }
 
+    public IReadOnlyCollection<ProcessThreadId> DrainWaiters()
+    {
+        if (_waiters.Count == 0)
+            return [];
+
+        var result = _waiters.ToArray();
+        _waiters.Clear();
+        return result;
+    }
+
     public int AbandonPermitsByDestroy(ProcessThreadId tid)
     {
         return _outstandingPermits.Remove(tid, out var held) ? held : 0;

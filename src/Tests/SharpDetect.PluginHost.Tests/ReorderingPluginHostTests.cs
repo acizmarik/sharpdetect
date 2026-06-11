@@ -759,6 +759,89 @@ public class ReorderingPluginHostTests
     }
 
     [Fact]
+    public void ReorderingPluginHost_GarbageCollected_LockWithWaiters_DrainsWaiters()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred behind T2's BlockedOn
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1)); // owner's release was never observed
+
+        // Assert
+        var t2Events = recorder.Dispatched
+            .Where(e => e.Metadata.Tid.Value == T2)
+            .Select(ClassifyDispatched)
+            .ToArray();
+        Assert.Equal(new[]
+        {
+            (T2, RecordedEventType.MonitorLockAcquire),
+            (T2, RecordedEventType.MonitorLockAcquireResult),
+            (T2, RecordedEventType.InstanceFieldRead),
+        }, t2Events);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_SemaphoreWithWaiters_DrainsWaiters()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 0, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred behind T2's BlockedOn
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, S1)); // releaser's exit was never observed
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.InstanceFieldRead));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_TaskWithJoiners_DrainsJoiners()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.TaskJoinFinish, true)); // deferred
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T1)); // also deferred behind T1's BlockedOn
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, Task1)); // task's completion was never observed
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e =>
+            e.Metadata.Tid.Value == T1 &&
+            (e.EventArgs as MethodExitWithArgumentsRecordedEvent)?.Interpretation == (ushort)RecordedEventType.TaskJoinFinish);
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T1, RecordedEventType.InstanceFieldRead));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_LargePendingQueue_LogsWarningWithBlockTargetKind()
+    {
+        // Arrange
+        var host = Build(out _, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [1]
+        for (var i = 0; i < 63; i++)
+            host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // deferred [2..64]
+
+        // Assert
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("(lock)"));
+    }
+
+    [Fact]
     public void ReorderingPluginHost_GarbageCollected_LockWithOwner_LogsWarning()
     {
         // Arrange

@@ -32,8 +32,12 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         
         var topResult = ProcessOne(thread, recordedEvent);
         if (topResult == RecordedEventState.Deferred)
+        {
             thread.EnqueuePendingEvent(recordedEvent);
-        
+            if (thread.PendingQueueCount % 64 == 0)
+                LogLargePendingQueue(thread);
+        }
+
         if (topResult == RecordedEventState.Failed)
             return RecordedEventState.Failed;
 
@@ -239,7 +243,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         if (!TryPeekTarget(thread, out var semaphoreId))
             return inner.ProcessEvent(recordedEvent);
 
-        if (success && !_semaphores[semaphoreId].TryAcquire(tid))
+        if (success && _semaphores.TryGetValue(semaphoreId, out var shadow) && !shadow.TryAcquire(tid))
             return Defer(thread, semaphoreId);
         
         thread.SyncTargetStack.Pop();
@@ -255,8 +259,11 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         thread.PendingReleaseCount = null;
 
         var result = inner.ProcessEvent(recordedEvent);
-        foreach (var waiter in _semaphores[semaphoreId].Release(tid, count))
-            _drainQueue.Enqueue(waiter);
+        if (_semaphores.TryGetValue(semaphoreId, out var shadow))
+        {
+            foreach (var waiter in shadow.Release(tid, count))
+                _drainQueue.Enqueue(waiter);
+        }
         return result;
     }
 
@@ -347,6 +354,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 if (shadowLock.TryDescribeResidualState(out var description))
                     logger.LogWarning("Lock {Lock} garbage collected with residual state: {State}.", key, description);
+                foreach (var waiter in shadowLock.DrainWaiters())
+                    _drainQueue.Enqueue(waiter);
                 _locks.Remove(key);
                 continue;
             }
@@ -355,6 +364,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 if (shadowSemaphore.TryDescribeResidualState(out var description))
                     logger.LogWarning("Semaphore {Semaphore} garbage collected with residual state: {State}.", key, description);
+                foreach (var waiter in shadowSemaphore.DrainWaiters())
+                    _drainQueue.Enqueue(waiter);
                 _semaphores.Remove(key);
                 continue;
             }
@@ -363,6 +374,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 if (shadowTask.TryDescribeResidualState(out var description))
                     logger.LogWarning("Task {Task} garbage collected with residual state: {State}.", key, description);
+                foreach (var waiter in shadowTask.Complete())
+                    _drainQueue.Enqueue(waiter);
                 _tasks.Remove(key);
             }
         }
@@ -407,10 +420,24 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             _drainQueue.Enqueue(waiter.Value);
     }
 
+    private void LogLargePendingQueue(ShadowThread thread)
+    {
+        var targetKind = thread.BlockedOn is not { } target ? "none"
+            : _locks.ContainsKey(target) ? "lock"
+            : _semaphores.ContainsKey(target) ? "semaphore"
+            : _tasks.ContainsKey(target) ? "task"
+            : _pendingThreadStartWaiters.ContainsKey(target) ? "thread-start"
+            : "missing-shadow";
+
+        logger.LogWarning(
+            "Thread {Thread}'s pending queue has {Count} deferred events; blocked on {Target} ({TargetKind}).",
+            thread.Id, thread.PendingQueueCount, thread.BlockedOn, targetKind);
+    }
+
     private ShadowThread GetOrCreateThread(ProcessThreadId tid)
     {
         if (!_threads.TryGetValue(tid, out var thread))
-            _threads[tid] = thread = new ShadowThread(tid, logger);
+            _threads[tid] = thread = new ShadowThread(tid);
         return thread;
     }
 

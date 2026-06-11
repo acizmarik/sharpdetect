@@ -1,13 +1,12 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
 
 namespace SharpDetect.PluginHost.Services.Strategies.Shadows;
 
-internal sealed class ShadowThread(ProcessThreadId id, ILogger logger)
+internal sealed class ShadowThread(ProcessThreadId id)
 {
     public Stack<ProcessTrackedObjectId> SyncTargetStack { get; } = [];
     public int? SuspendedWaitCount { get; set; }
@@ -21,8 +20,6 @@ internal sealed class ShadowThread(ProcessThreadId id, ILogger logger)
     public void EnqueuePendingEvent(RecordedEvent recordedEvent)
     {
         _pendingQueue.Enqueue(recordedEvent);
-        if (_pendingQueue.Count % 64 == 0)
-            logger.LogWarning("Thread {tid}'s queue {size} is getting too large", Id, _pendingQueue.Count);
     }
 
     public RecordedEvent PeekPendingEvent()

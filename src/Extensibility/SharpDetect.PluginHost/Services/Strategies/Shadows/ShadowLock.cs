@@ -92,6 +92,16 @@ internal sealed class ShadowLock
         _waiters.Remove(tid);
     }
 
+    public IReadOnlyCollection<ProcessThreadId> DrainWaiters()
+    {
+        if (_waiters.Count == 0)
+            return [];
+
+        var result = _waiters.ToArray();
+        _waiters.Clear();
+        return result;
+    }
+
     public bool TryDescribeResidualState([NotNullWhen(true)] out string? description)
     {
         if (Owner is null && _waiters.Count == 0)
