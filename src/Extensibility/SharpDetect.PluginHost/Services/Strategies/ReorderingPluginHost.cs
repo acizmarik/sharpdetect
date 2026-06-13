@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
@@ -32,8 +33,15 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         
         var topResult = ProcessOne(thread, recordedEvent);
         if (topResult == RecordedEventState.Deferred)
+        {
             thread.EnqueuePendingEvent(recordedEvent);
-        
+            if (thread.PendingQueueCount >= thread.NextPendingQueueWarningCount)
+            {
+                LogLargePendingQueue(thread);
+                thread.NextPendingQueueWarningCount *= 2;
+            }
+        }
+
         if (topResult == RecordedEventState.Failed)
             return RecordedEventState.Failed;
 
@@ -88,19 +96,37 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             case RecordedEventType.MonitorLockTryAcquire:
             case RecordedEventType.LockAcquire:
             case RecordedEventType.LockTryAcquire:
-            case RecordedEventType.MonitorLockRelease:
-            case RecordedEventType.LockRelease:
             case RecordedEventType.SemaphoreAcquire:
             case RecordedEventType.SemaphoreTryAcquire:
             case RecordedEventType.TaskJoinStart:
                 thread.SyncTargetStack.Push(ReadTargetId(enter.ArgumentValues, tid.ProcessId));
                 return inner.ProcessEvent(recordedEvent);
 
+            case RecordedEventType.MonitorLockRelease:
+            case RecordedEventType.LockRelease:
+            {
+                var lockId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
+                var lockTaken = enter.ArgumentValues.Length <= nint.Size ||
+                    MemoryMarshal.Read<bool>(enter.ArgumentValues.AsSpan()[nint.Size..]);
+
+                var result = inner.ProcessEvent(recordedEvent);
+                if (lockTaken && _locks.TryGetValue(lockId, out var shadow))
+                    EnqueueDrain(shadow.Release(tid));
+                return result;
+            }
+
             case RecordedEventType.SemaphoreRelease:
             {
-                thread.SyncTargetStack.Push(ReadTargetId(enter.ArgumentValues, tid.ProcessId));
-                thread.PendingReleaseCount = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[(byte)nint.Size..]);
-                return inner.ProcessEvent(recordedEvent);
+                var semaphoreId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
+                var count = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[(byte)nint.Size..]);
+
+                var result = inner.ProcessEvent(recordedEvent);
+                if (_semaphores.TryGetValue(semaphoreId, out var shadow))
+                {
+                    foreach (var waiter in shadow.Release(tid, count))
+                        _drainQueue.Enqueue(waiter);
+                }
+                return result;
             }
 
             case RecordedEventType.TaskStart:
@@ -170,7 +196,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
 
             case RecordedEventType.MonitorLockReleaseResult:
             case RecordedEventType.LockReleaseResult:
-                return HandleReleaseResult(recordedEvent, tid, thread);
+                return inner.ProcessEvent(recordedEvent);
 
             case RecordedEventType.MonitorWaitResult:
                 return HandleWaitResult(recordedEvent, tid, thread);
@@ -179,7 +205,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 return HandleSemaphoreAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, byRefArgumentValues, true));
 
             case RecordedEventType.SemaphoreReleaseResult:
-                return HandleSemaphoreReleaseResult(recordedEvent, tid, thread);
+                return inner.ProcessEvent(recordedEvent);
 
             case RecordedEventType.TaskComplete:
                 return HandleTaskComplete(recordedEvent, thread);
@@ -207,18 +233,6 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         return inner.ProcessEvent(recordedEvent);
     }
 
-    private RecordedEventState HandleReleaseResult(RecordedEvent recordedEvent, ProcessThreadId tid, ShadowThread thread)
-    {
-        if (!TryPopTarget(thread, out var lockId))
-            return inner.ProcessEvent(recordedEvent);
-
-        var result = inner.ProcessEvent(recordedEvent);
-        if (_locks.TryGetValue(lockId, out var shadow))
-            EnqueueDrain(shadow.Release(tid));
-        
-        return result;
-    }
-
     private RecordedEventState HandleWaitResult(RecordedEvent recordedEvent, ProcessThreadId tid, ShadowThread thread)
     {
         if (!TryPeekTarget(thread, out var lockId))
@@ -239,25 +253,11 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         if (!TryPeekTarget(thread, out var semaphoreId))
             return inner.ProcessEvent(recordedEvent);
 
-        if (success && !_semaphores[semaphoreId].TryAcquire(tid))
+        if (success && _semaphores.TryGetValue(semaphoreId, out var shadow) && !shadow.TryAcquire(tid))
             return Defer(thread, semaphoreId);
         
         thread.SyncTargetStack.Pop();
         return inner.ProcessEvent(recordedEvent);
-    }
-
-    private RecordedEventState HandleSemaphoreReleaseResult(RecordedEvent recordedEvent, ProcessThreadId tid, ShadowThread thread)
-    {
-        if (!TryPopTarget(thread, out var semaphoreId))
-            return inner.ProcessEvent(recordedEvent);
-
-        var count = thread.PendingReleaseCount!.Value;
-        thread.PendingReleaseCount = null;
-
-        var result = inner.ProcessEvent(recordedEvent);
-        foreach (var waiter in _semaphores[semaphoreId].Release(tid, count))
-            _drainQueue.Enqueue(waiter);
-        return result;
     }
 
     private RecordedEventState HandleTaskComplete(RecordedEvent recordedEvent, ShadowThread thread)
@@ -330,8 +330,44 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 _drainQueue.Enqueue(waiter);
         }
 
+        if (_threads.TryGetValue(destroyedTid, out var destroyedThread) && destroyedThread.PendingQueueCount > 0)
+            HandleDestroyedThreadPendingQueue(pid, destroyedTid, destroyedThread);
+
         _threads.Remove(destroyedTid);
         return inner.ProcessEvent(recordedEvent);
+    }
+
+    private void HandleDestroyedThreadPendingQueue(uint pid, ProcessThreadId destroyedTid, ShadowThread destroyedThread)
+    {
+        var (targetKind, residualState) = DescribeBlockingShadow(destroyedThread.BlockedOn);
+        logger.LogError(
+            "Thread {Thread} destroyed with {Count} undelivered deferred events; blocked on {Target} ({TargetKind}) for {BlockedFor}; shadow state: {State}.",
+            destroyedTid,
+            destroyedThread.PendingQueueCount,
+            destroyedThread.BlockedOn,
+            targetKind,
+            Stopwatch.GetElapsedTime(destroyedThread.BlockedSinceTimestamp),
+            residualState);
+
+        // The dropped queue may carry a deferred ThreadStartCore for a child
+        foreach (var pending in destroyedThread.PendingEvents)
+        {
+            if (pending.EventArgs is not MethodEnterWithArgumentsRecordedEvent enter ||
+                (RecordedEventType)enter.Interpretation != RecordedEventType.ThreadStartCore)
+                continue;
+
+            var startedObjectId = ReadTargetId(enter.ArgumentValues, pid);
+            _pendingThreadStarts.Remove(startedObjectId);
+            if (_pendingThreadStartWaiters.Remove(startedObjectId, out var childThread))
+            {
+                logger.LogWarning(
+                    "Thread {Parent} destroyed before its deferred ThreadStartCore for tracked object {Object} was processed; waking blocked child {Child}.",
+                    destroyedTid,
+                    startedObjectId,
+                    childThread.Id);
+                _drainQueue.Enqueue(childThread.Id);
+            }
+        }
     }
 
     private RecordedEventState HandleGarbageCollectedTrackedObjects(
@@ -347,6 +383,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 if (shadowLock.TryDescribeResidualState(out var description))
                     logger.LogWarning("Lock {Lock} garbage collected with residual state: {State}.", key, description);
+                foreach (var waiter in shadowLock.DrainWaiters())
+                    _drainQueue.Enqueue(waiter);
                 _locks.Remove(key);
                 continue;
             }
@@ -355,6 +393,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 if (shadowSemaphore.TryDescribeResidualState(out var description))
                     logger.LogWarning("Semaphore {Semaphore} garbage collected with residual state: {State}.", key, description);
+                foreach (var waiter in shadowSemaphore.DrainWaiters())
+                    _drainQueue.Enqueue(waiter);
                 _semaphores.Remove(key);
                 continue;
             }
@@ -363,6 +403,8 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             {
                 if (shadowTask.TryDescribeResidualState(out var description))
                     logger.LogWarning("Task {Task} garbage collected with residual state: {State}.", key, description);
+                foreach (var waiter in shadowTask.Complete())
+                    _drainQueue.Enqueue(waiter);
                 _tasks.Remove(key);
             }
         }
@@ -391,6 +433,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 
                 thread.DequeuePendingEvent();
             }
+
+            if (thread.PendingQueueCount == 0)
+                thread.NextPendingQueueWarningCount = ShadowThread.InitialPendingQueueWarningThreshold;
         }
         return RecordedEventState.Executed;
     }
@@ -407,10 +452,34 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             _drainQueue.Enqueue(waiter.Value);
     }
 
+    private void LogLargePendingQueue(ShadowThread thread)
+    {
+        var (targetKind, residualState) = DescribeBlockingShadow(thread.BlockedOn);
+        logger.LogWarning(
+            "Thread {Thread}'s pending queue has {Count} deferred events; blocked on {Target} ({TargetKind}) for {BlockedFor}; shadow state: {State}.",
+            thread.Id, thread.PendingQueueCount, thread.BlockedOn, targetKind,
+            Stopwatch.GetElapsedTime(thread.BlockedSinceTimestamp), residualState);
+    }
+
+    private (string Kind, string ResidualState) DescribeBlockingShadow(ProcessTrackedObjectId? blockedOn)
+    {
+        if (blockedOn is not { } target)
+            return ("none", "none");
+        if (_locks.TryGetValue(target, out var shadowLock))
+            return ("lock", shadowLock.TryDescribeResidualState(out var state) ? state : "clean");
+        if (_semaphores.TryGetValue(target, out var shadowSemaphore))
+            return ("semaphore", shadowSemaphore.TryDescribeResidualState(out var state) ? state : "clean");
+        if (_tasks.TryGetValue(target, out var shadowTask))
+            return ("task", shadowTask.TryDescribeResidualState(out var state) ? state : "clean");
+        if (_pendingThreadStartWaiters.ContainsKey(target))
+            return ("thread-start", "waiting for parent's ThreadStartCore");
+        return ("missing-shadow", "none");
+    }
+
     private ShadowThread GetOrCreateThread(ProcessThreadId tid)
     {
         if (!_threads.TryGetValue(tid, out var thread))
-            _threads[tid] = thread = new ShadowThread(tid, logger);
+            _threads[tid] = thread = new ShadowThread(tid);
         return thread;
     }
 
@@ -477,6 +546,20 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         if (_isDisposed)
             return;
         _isDisposed = true;
+
+        foreach (var thread in _threads.Values.Where(thread => thread.PendingQueueCount != 0))
+        {
+            var (targetKind, residualState) = DescribeBlockingShadow(thread.BlockedOn);
+            logger.LogError(
+                "Thread {Thread} has {Count} undelivered deferred events at shutdown; blocked on {Target} ({TargetKind}) for {BlockedFor}; shadow state: {State}.",
+                thread.Id,
+                thread.PendingQueueCount,
+                thread.BlockedOn,
+                targetKind,
+                Stopwatch.GetElapsedTime(thread.BlockedSinceTimestamp),
+                residualState);
+        }
+
         if (inner is IDisposable disposable)
             disposable.Dispose();
     }

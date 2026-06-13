@@ -28,7 +28,6 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
 
     public IReadOnlyList<ProcessThreadId> Release(ProcessThreadId tid, int count)
     {
-        Count += count;
         if (_outstandingPermits.TryGetValue(tid, out var held) && held > 0)
         {
             var decrement = Math.Min(held, count);
@@ -39,7 +38,12 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
                 _outstandingPermits[tid] = remaining;
         }
 
-        var wakeCount = Math.Min(count, _waiters.Count);
+        var effectiveCount = Math.Min(count, Capacity - Count);
+        if (effectiveCount <= 0)
+            return [];
+
+        Count += effectiveCount;
+        var wakeCount = Math.Min(effectiveCount, _waiters.Count);
         if (wakeCount == 0)
             return [];
 
@@ -55,6 +59,16 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
     public void RemoveWaiter(ProcessThreadId tid)
     {
         _waiters.Remove(tid);
+    }
+
+    public IReadOnlyCollection<ProcessThreadId> DrainWaiters()
+    {
+        if (_waiters.Count == 0)
+            return [];
+
+        var result = _waiters.ToArray();
+        _waiters.Clear();
+        return result;
     }
 
     public int AbandonPermitsByDestroy(ProcessThreadId tid)
