@@ -1,4 +1,5 @@
 set(SOURCES
+    "ArgumentCapture.cpp"
     "CorProfiler.cpp"
     "MetadataStore.cpp"
     "MethodDescriptorRegistry.cpp"

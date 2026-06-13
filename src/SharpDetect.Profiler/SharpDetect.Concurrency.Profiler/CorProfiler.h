@@ -24,6 +24,7 @@
 #include "../LibDescriptors/MethodDescriptor.h"
 #include "../LibDescriptors/TypeInjectionDescriptor.h"
 
+#include "ArgumentCapture.h"
 #include "MetadataStore.h"
 #include "MethodDescriptorRegistry.h"
 #include "RewriteRegistry.h"
@@ -71,37 +72,6 @@ namespace Profiler
 
 		HRESULT InitializeProfilingFeatures() const;
 
-		HRESULT GetArguments(
-			const MethodDescriptor& methodDescriptor,
-			std::vector<UINT_PTR>& indirects,
-			const COR_PRF_FUNCTION_ARGUMENT_INFO& argumentInfos,
-			std::vector<BYTE>& argumentValues,
-			std::vector<BYTE>& argumentOffsets);
-
-		static HRESULT GetByRefArguments(
-			const MethodDescriptor& methodDescriptor,
-			const std::vector<UINT_PTR>& indirects,
-			std::span<BYTE> indirectValues,
-			std::span<BYTE> indirectOffsets);
-
-		HRESULT GetArgument(
-			const CapturedArgumentDescriptor& argument,
-			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
-			std::vector<UINT_PTR>& indirects,
-			std::vector<BYTE>& argValues,
-			std::vector<BYTE>& argOffsets);
-
-		HRESULT GetReferenceArrayArgument(
-			const CapturedArgumentDescriptor& argument,
-			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
-			std::vector<BYTE>& argValues,
-			std::vector<BYTE>& argOffsets);
-
-		HRESULT GetReturnValue(
-			const CapturedValueDescriptor& value,
-			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
-			const std::span<BYTE>& returnValue);
-
 		std::atomic_bool _terminating;
 		Configuration _configuration;
 		LibIPC::Client _client;
@@ -111,5 +81,6 @@ namespace Profiler
 		LibProfiler::ObjectsTracker _objectsTracker;
 		MethodDescriptorRegistry _methodDescriptorRegistry;
 		RewriteRegistry _rewriteRegistry;
+		ArgumentCapture _argumentCapture;
 	};
 }
