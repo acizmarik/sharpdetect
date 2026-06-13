@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Diagnostics;
 using CliFx;
 using SharpDetect.Worker.Configuration;
 
@@ -16,20 +15,12 @@ public static class Program
     public static async Task<int> Main()
     {
         EnvironmentUtils.Initialize();
-        var builder = new CliApplicationBuilder()
+        var builder = new CommandLineApplicationBuilder()
             .AddCommandsFromThisAssembly()
             .SetTitle(ProgramTitle)
             .SetDescription(ProgramDescription)
             .SetExecutableName(ExecutableName);
-        DisableDebugModeInRelease(builder);
-        
+
         return await builder.Build().RunAsync();
-    }
-    
-    [Conditional("RELEASE")]
-    private static void DisableDebugModeInRelease(CliApplicationBuilder builder)
-    {
-        builder.AllowDebugMode(isAllowed: false);
-        builder.AllowPreviewMode(isAllowed: false);
     }
 }
