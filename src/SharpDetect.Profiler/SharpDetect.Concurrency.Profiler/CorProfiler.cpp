@@ -419,9 +419,8 @@ static std::vector<COR_SIGNATURE> SerializeMethodSignatureDescriptor(
 HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef)
 {
     std::unordered_map<mdToken, mdToken> rewritingsBuilder;
-    
+
     {
-        auto guard = std::unique_lock(_rewritingsMutex);
         for (auto&& methodPtr : _methodDescriptorRegistry.Descriptors())
         {
             auto&[
@@ -472,10 +471,7 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
             }
 
             rewritingsBuilder.emplace(methodDef, wrapperMethodDef);
-            {
-                auto guard = std::unique_lock(_methodStubsMutex);
-                _methodStubs.emplace(std::make_pair(moduleDef.GetModuleId(), wrapperMethodDef), true);
-            }
+            _rewriteRegistry.AddStub(moduleDef.GetModuleId(), wrapperMethodDef);
 
             _client.Send(LibIPC::Helpers::CreateMethodWrapperInjectionMsg(CreateMetadataMsg(), moduleDef.GetModuleId(), typeDef, methodDef, wrapperMethodDef, wrapperMethodName));
 
@@ -487,8 +483,7 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
         }
     }
     
-    auto guard = std::unique_lock(_rewritingsMutex);
-    _rewritings.emplace(moduleDef.GetModuleId(), rewritingsBuilder);
+    _rewriteRegistry.AddModuleRewritings(moduleDef.GetModuleId(), rewritingsBuilder);
     return S_OK;
 }
 
@@ -547,12 +542,7 @@ HRESULT Profiler::CorProfiler::ImportMethodWrapper(
         LOG_F(ERROR, "Could not import wrapper for %s. Error: 0x%x.", method.declaringTypeFullName.c_str(), hr);
         return E_FAIL;
     }
-    
-    // Store mapping
-    {
-        auto guard = std::unique_lock(_rewritingsMutex);
-        _rewritings.at(moduleDef.GetModuleId()).emplace(methodRef, wrapperMethodRef);
-    }
+    _rewriteRegistry.AddRewriting(moduleDef.GetModuleId(), methodRef, wrapperMethodRef);
 
     _client.Send(LibIPC::Helpers::CreateMethodReferenceInjectionMsg(
         CreateMetadataMsg(),
@@ -567,24 +557,9 @@ HRESULT Profiler::CorProfiler::ImportMethodWrapper(
     return S_OK;
 }
 
-void Profiler::CorProfiler::AddCustomEventMapping(
-    CustomEventsLookup& lookup,
-    ModuleID moduleId,
-    mdMethodDef methodDef,
-    USHORT original,
-    USHORT mapping)
-{
-    if (static_cast<LibIPC::RecordedEventType>(mapping) == LibIPC::RecordedEventType::NotSpecified)
-        return;
-
-    auto guard = std::unique_lock(_customEventLookupsMutex);
-    lookup.emplace(std::make_tuple(moduleId, methodDef, original), mapping);
-}
-
 HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef)
 {
-    auto guard = std::unique_lock(_rewritingsMutex);
-    auto& moduleRewritings = _rewritings.find(moduleDef.GetModuleId())->second;
+    const auto moduleRewritings = _rewriteRegistry.GetModuleRewritings(moduleDef.GetModuleId());
 
     for (auto&& methodPointer : _methodDescriptorRegistry.Descriptors())
     {
@@ -624,15 +599,13 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(const LibProfiler:
         if (rewritingDescriptor.methodEnterInterpretation.has_value())
         {
             auto const mapping = rewritingDescriptor.methodEnterInterpretation.value();
-            AddCustomEventMapping(
-                _customEventOnMethodEntryLookup, 
+            _rewriteRegistry.AddMethodEnterMapping(
                 moduleId,
                 sourceToken, 
                 static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnter),
                 mapping);
 
-            AddCustomEventMapping(
-                _customEventOnMethodEntryLookup, 
+            _rewriteRegistry.AddMethodEnterMapping(
                 moduleId,
                 sourceToken,
                 static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments),
@@ -641,15 +614,13 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(const LibProfiler:
         if (rewritingDescriptor.methodExitInterpretation.has_value())
         {
             auto const mapping = rewritingDescriptor.methodExitInterpretation.value();
-            AddCustomEventMapping(
-                _customEventOnMethodExitLookup,
-                moduleId, 
+            _rewriteRegistry.AddMethodExitMapping(
+                moduleId,
                 sourceToken,
                 static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit),
                 mapping);
 
-            AddCustomEventMapping(
-                _customEventOnMethodExitLookup,
+            _rewriteRegistry.AddMethodExitMapping(
                 moduleId,
                 sourceToken,
                 static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments),
@@ -763,12 +734,10 @@ HRESULT Profiler::CorProfiler::InjectTypesForProfilingFeatures(LibProfiler::Modu
                 moduleDef.GetName().c_str());
 
             injectedMethods.emplace(eventType, injectedMethodDef);
-            auto guard = std::unique_lock(_methodStubsMutex);
-            _methodStubs.emplace(std::make_pair(moduleDef.GetModuleId(), injectedMethodDef), true);
+            _rewriteRegistry.AddStub(moduleDef.GetModuleId(), injectedMethodDef);
         }
 
-        auto guard = std::unique_lock(_injectedMethodsMutex);
-        _injectedMethods.emplace(moduleDef.GetModuleId(), injectedMethods);
+        _rewriteRegistry.AddModuleInjectedMethods(moduleDef.GetModuleId(), injectedMethods);
     }
 
     return S_OK;
@@ -850,78 +819,26 @@ HRESULT Profiler::CorProfiler::ImportInjectedTypes(
             injectedMethods.emplace(eventType, methodRef);
         }
 
-        auto guard = std::unique_lock(_injectedMethodsMutex);
-        _injectedMethods.emplace(moduleDef.GetModuleId(), injectedMethods);
+        _rewriteRegistry.AddModuleInjectedMethods(moduleDef.GetModuleId(), injectedMethods);
     }
 
     return S_OK;
 }
 
-BOOL Profiler::CorProfiler::FindCustomEventMapping(
-    const CustomEventsLookup& lookup,
-    ModuleID moduleId,
-    mdMethodDef methodDef,
-    USHORT original,
-    USHORT& mapping)
-{
-    auto guard = std::shared_lock(_customEventLookupsMutex);
-    const auto mappingIt = lookup.find(std::make_tuple(moduleId, methodDef, original));
-    if (mappingIt == lookup.cend())
-        return false;
-
-    mapping = mappingIt->second;
-    return true;
-}
-
-Profiler::CorProfiler::CustomEventMappingResult Profiler::CorProfiler::FindCustomEventMappings(
-    const CustomEventsLookup& lookup,
-    ModuleID moduleId,
-    mdMethodDef methodDef,
-    USHORT originalEvent,
-    USHORT originalWithArgsEvent)
-{
-    CustomEventMappingResult result { };
-    auto guard = std::shared_lock(_customEventLookupsMutex);
-
-    auto it = lookup.find(std::make_tuple(moduleId, methodDef, originalEvent));
-    result.hasEvent = (it != lookup.cend());
-    if (result.hasEvent)
-        result.eventMapping = it->second;
-
-    it = lookup.find(std::make_tuple(moduleId, methodDef, originalWithArgsEvent));
-    result.hasWithArgsEvent = (it != lookup.cend());
-    if (result.hasWithArgsEvent)
-        result.withArgsEventMapping = it->second;
-
-    return result;
-}
-
 HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef)
 {
-    {
-        // If we are compiling injected method, skip it
-        auto guard = std::unique_lock<std::mutex>(_methodStubsMutex);
-        if (_methodStubs.contains(std::make_pair(moduleDef.GetModuleId(), mdMethodDef)))
-            return E_FAIL;
-    }
-
-    // If there are no rewritings registered for current module, skip it
-    auto guardRewritings = std::unique_lock<std::mutex>(_rewritingsMutex);
-    auto guardInjections = std::unique_lock<std::mutex>(_injectedMethodsMutex);
-    const auto tokensToRewriteIterator = _rewritings.find(moduleDef.GetModuleId());
-    const auto injectedMethodsIterator = _injectedMethods.find(moduleDef.GetModuleId());
-    if (tokensToRewriteIterator == _rewritings.cend() && injectedMethodsIterator == _injectedMethods.cend())
+    // If we are compiling injected method, skip it
+    if (_rewriteRegistry.IsStub(moduleDef.GetModuleId(), mdMethodDef))
         return E_FAIL;
 
-    static const std::unordered_map<mdToken, mdToken> emptyTokensMap;
-    static const std::unordered_map<LibIPC::RecordedEventType, mdToken> emptyInjectedMethodsMap;
-    const auto& tokensToRewrite = tokensToRewriteIterator != _rewritings.cend() 
-        ? tokensToRewriteIterator->second 
-        : emptyTokensMap;
-    const auto& injectedMethods = injectedMethodsIterator != _injectedMethods.cend() 
-        ? injectedMethodsIterator->second 
-        : emptyInjectedMethodsMap;
-    
+    // If there are no rewritings registered for current module, skip it
+    const auto patchData = _rewriteRegistry.GetModulePatchData(moduleDef.GetModuleId());
+    if (!patchData.hasAny)
+        return E_FAIL;
+
+    const auto& tokensToRewrite = patchData.tokensToRewrite;
+    const auto& injectedMethods = patchData.injectedMethods;
+
     if (SUCCEEDED(LibProfiler::PatchMethodBody(
         *_corProfilerInfo,
         _client,
@@ -977,8 +894,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     constexpr auto originalMethodEnterWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments);
     auto const [hasCustomMethodEnterEvent, customMethodEnterEvent,
                 hasCustomMethodEnterWithArgumentsEvent, customMethodEnterWithArgumentsEvent] =
-        FindCustomEventMappings(
-            _customEventOnMethodEntryLookup,
+        _rewriteRegistry.FindMethodEnterMappings(
             moduleId,
             methodDef,
             originalMethodEnterEvent,
@@ -1089,8 +1005,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     constexpr auto originalMethodExitWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
     auto const [hasCustomMethodExitEvent, customMethodExitEvent,
                 hasCustomMethodExitWithArgumentsEvent, customMethodExitWithArgumentsEvent] =
-        FindCustomEventMappings(
-            _customEventOnMethodExitLookup,
+        _rewriteRegistry.FindMethodExitMappings(
             moduleId,
             methodDef,
             originalMethodExitEvent,

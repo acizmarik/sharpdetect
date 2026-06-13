@@ -2,6 +2,7 @@ set(SOURCES
     "CorProfiler.cpp"
     "MetadataStore.cpp"
     "MethodDescriptorRegistry.cpp"
+    "RewriteRegistry.cpp"
     "dllmain.cpp")
 
 add_library (SharpDetect.Concurrency.Profiler SHARED ${SOURCES} "Profiler.def")

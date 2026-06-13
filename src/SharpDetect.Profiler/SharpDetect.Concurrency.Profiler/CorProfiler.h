@@ -26,6 +26,7 @@
 
 #include "MetadataStore.h"
 #include "MethodDescriptorRegistry.h"
+#include "RewriteRegistry.h"
 
 namespace Profiler
 {
@@ -107,54 +108,8 @@ namespace Profiler
 		ModuleID _coreModule;
 
 		MetadataStore _metadataStore;
-
-		std::unordered_map<ModuleID, std::unordered_map<mdToken, mdToken>> _rewritings;
-		std::mutex _rewritingsMutex;
-
-		std::unordered_map<ModuleID, std::unordered_map<LibIPC::RecordedEventType, mdToken>> _injectedMethods;
-		std::mutex _injectedMethodsMutex;
-
-		using MethodId = std::pair<ModuleID, mdMethodDef>;
-		using MethodIdHasher = pair_hash<ModuleID, mdMethodDef>;
-		std::unordered_map<MethodId, BOOL, MethodIdHasher> _methodStubs;
-		std::mutex _methodStubsMutex;
-
 		LibProfiler::ObjectsTracker _objectsTracker;
 		MethodDescriptorRegistry _methodDescriptorRegistry;
-
-		using MethodInvocationId = std::tuple<ModuleID, mdMethodDef, USHORT>;
-		using MethodInvocationIdHasher = tuple_hash<ModuleID, mdMethodDef, USHORT>;
-		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodEntryLookup;
-		std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher> _customEventOnMethodExitLookup;
-		std::shared_mutex _customEventLookupsMutex;
-
-		using CustomEventsLookup = std::unordered_map<MethodInvocationId, USHORT, MethodInvocationIdHasher>;
-		void AddCustomEventMapping(
-			CustomEventsLookup& lookup,
-			ModuleID moduleId,
-			mdMethodDef methodDef,
-			USHORT original,
-			USHORT mapping);
-		BOOL FindCustomEventMapping(
-			const CustomEventsLookup& lookup,
-			ModuleID moduleId,
-			mdMethodDef methodDef,
-			USHORT original,
-			USHORT& mapping);
-
-		struct CustomEventMappingResult
-		{
-			BOOL hasEvent;
-			USHORT eventMapping;
-			BOOL hasWithArgsEvent;
-			USHORT withArgsEventMapping;
-		};
-		
-		CustomEventMappingResult FindCustomEventMappings(
-			const CustomEventsLookup& lookup,
-			ModuleID moduleId,
-			mdMethodDef methodDef,
-			USHORT originalEvent,
-			USHORT originalWithArgsEvent);
+		RewriteRegistry _rewriteRegistry;
 	};
 }
