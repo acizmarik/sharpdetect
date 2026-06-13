@@ -13,13 +13,13 @@ internal sealed class ShadowThread(ProcessThreadId id)
 
     public Stack<ProcessTrackedObjectId> SyncTargetStack { get; } = [];
     public int? SuspendedWaitCount { get; set; }
-    public int? PendingReleaseCount { get; set; }
     public int NextPendingQueueWarningCount { get; set; } = InitialPendingQueueWarningThreshold;
 
     public ProcessThreadId Id { get; } = id;
     public ProcessTrackedObjectId? BlockedOn { get; private set; }
     public long BlockedSinceTimestamp { get; private set; }
     public int PendingQueueCount => _pendingQueue.Count;
+    public IEnumerable<RecordedEvent> PendingEvents => _pendingQueue;
     private readonly Queue<RecordedEvent> _pendingQueue = [];
 
     public void EnqueuePendingEvent(RecordedEvent recordedEvent)

@@ -117,9 +117,16 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
 
             case RecordedEventType.SemaphoreRelease:
             {
-                thread.SyncTargetStack.Push(ReadTargetId(enter.ArgumentValues, tid.ProcessId));
-                thread.PendingReleaseCount = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[(byte)nint.Size..]);
-                return inner.ProcessEvent(recordedEvent);
+                var semaphoreId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
+                var count = MemoryMarshal.Read<int>(enter.ArgumentValues.AsSpan()[(byte)nint.Size..]);
+
+                var result = inner.ProcessEvent(recordedEvent);
+                if (_semaphores.TryGetValue(semaphoreId, out var shadow))
+                {
+                    foreach (var waiter in shadow.Release(tid, count))
+                        _drainQueue.Enqueue(waiter);
+                }
+                return result;
             }
 
             case RecordedEventType.TaskStart:
@@ -198,7 +205,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 return HandleSemaphoreAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, byRefArgumentValues, true));
 
             case RecordedEventType.SemaphoreReleaseResult:
-                return HandleSemaphoreReleaseResult(recordedEvent, tid, thread);
+                return inner.ProcessEvent(recordedEvent);
 
             case RecordedEventType.TaskComplete:
                 return HandleTaskComplete(recordedEvent, thread);
@@ -251,23 +258,6 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         
         thread.SyncTargetStack.Pop();
         return inner.ProcessEvent(recordedEvent);
-    }
-
-    private RecordedEventState HandleSemaphoreReleaseResult(RecordedEvent recordedEvent, ProcessThreadId tid, ShadowThread thread)
-    {
-        if (!TryPopTarget(thread, out var semaphoreId))
-            return inner.ProcessEvent(recordedEvent);
-
-        var count = thread.PendingReleaseCount!.Value;
-        thread.PendingReleaseCount = null;
-
-        var result = inner.ProcessEvent(recordedEvent);
-        if (_semaphores.TryGetValue(semaphoreId, out var shadow))
-        {
-            foreach (var waiter in shadow.Release(tid, count))
-                _drainQueue.Enqueue(waiter);
-        }
-        return result;
     }
 
     private RecordedEventState HandleTaskComplete(RecordedEvent recordedEvent, ShadowThread thread)
@@ -340,8 +330,44 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 _drainQueue.Enqueue(waiter);
         }
 
+        if (_threads.TryGetValue(destroyedTid, out var destroyedThread) && destroyedThread.PendingQueueCount > 0)
+            HandleDestroyedThreadPendingQueue(pid, destroyedTid, destroyedThread);
+
         _threads.Remove(destroyedTid);
         return inner.ProcessEvent(recordedEvent);
+    }
+
+    private void HandleDestroyedThreadPendingQueue(uint pid, ProcessThreadId destroyedTid, ShadowThread destroyedThread)
+    {
+        var (targetKind, residualState) = DescribeBlockingShadow(destroyedThread.BlockedOn);
+        logger.LogError(
+            "Thread {Thread} destroyed with {Count} undelivered deferred events; blocked on {Target} ({TargetKind}) for {BlockedFor}; shadow state: {State}.",
+            destroyedTid,
+            destroyedThread.PendingQueueCount,
+            destroyedThread.BlockedOn,
+            targetKind,
+            Stopwatch.GetElapsedTime(destroyedThread.BlockedSinceTimestamp),
+            residualState);
+
+        // The dropped queue may carry a deferred ThreadStartCore for a child
+        foreach (var pending in destroyedThread.PendingEvents)
+        {
+            if (pending.EventArgs is not MethodEnterWithArgumentsRecordedEvent enter ||
+                (RecordedEventType)enter.Interpretation != RecordedEventType.ThreadStartCore)
+                continue;
+
+            var startedObjectId = ReadTargetId(enter.ArgumentValues, pid);
+            _pendingThreadStarts.Remove(startedObjectId);
+            if (_pendingThreadStartWaiters.Remove(startedObjectId, out var childThread))
+            {
+                logger.LogWarning(
+                    "Thread {Parent} destroyed before its deferred ThreadStartCore for tracked object {Object} was processed; waking blocked child {Child}.",
+                    destroyedTid,
+                    startedObjectId,
+                    childThread.Id);
+                _drainQueue.Enqueue(childThread.Id);
+            }
+        }
     }
 
     private RecordedEventState HandleGarbageCollectedTrackedObjects(

@@ -340,8 +340,8 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [no permits]
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred
-        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult)); // wakes T2
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1)); // wakes T2
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
 
         // Assert
         var kinds = recorder.Dispatched.Select(ClassifyDispatched).ToArray();
@@ -352,9 +352,9 @@ public class ReorderingPluginHostTests
             (T1, RecordedEventType.SemaphoreAcquireResult),
             (T2, RecordedEventType.SemaphoreAcquire),
             (T1, RecordedEventType.SemaphoreRelease),
-            (T1, RecordedEventType.SemaphoreReleaseResult),
             (T2, RecordedEventType.SemaphoreAcquireResult),
             (T2, RecordedEventType.InstanceFieldRead),
+            (T1, RecordedEventType.SemaphoreReleaseResult),
         }, kinds);
     }
 
@@ -403,6 +403,66 @@ public class ReorderingPluginHostTests
         // Assert
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsSemaphoreAcquireResult(e));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_SemaphoreReleaseEnter_WakesWaiter_WithoutReleaseResult()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [no permits]
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred
+        Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1)); // wakes T2; ReleaseResult never arrives
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.InstanceFieldRead));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_SemaphoreReleaseBeyondCapacity_DoesNotMintPermits()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 0, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [no permits, 1st waiter]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [2nd waiter]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T3, RecordedEventType.SemaphoreRelease, S1, 5)); // real Release would throw; clamps to 1 permit
+
+        // Assert: only one waiter freed (clamped to capacity), the rest stay deferred
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T1 && IsSemaphoreAcquireResult(e));
+        Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_SemaphoreReleaseCountPartiallyBeyondCapacity_ClampsToHeadroom()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 0, 2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [1st waiter]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [2nd waiter]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T3, RecordedEventType.SemaphoreAcquireResult, true)); // deferred [3rd waiter]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(TReaper, RecordedEventType.SemaphoreRelease, S1, 5)); // clamps to headroom of 2
+
+        // Assert: exactly the two available permits wake the two FIFO waiters, the third stays deferred
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T1 && IsSemaphoreAcquireResult(e));
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
+        Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsSemaphoreAcquireResult(e));
     }
 
     [Fact]
@@ -676,6 +736,46 @@ public class ReorderingPluginHostTests
             (T2, RecordedEventType.MonitorLockAcquireResult),
             (T2, RecordedEventType.InstanceFieldRead),
         }, t2Events);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_ThreadDestroy_WithNonEmptyPendingQueue_LogsError()
+    {
+        // Arrange
+        var host = Build(out _, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred behind T2's BlockedOn
+        host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T2, TReaper)); // destroyed while still blocked with a pending queue
+
+        // Assert
+        Assert.Contains(logger.Entries, e =>
+            e.Level == LogLevel.Error && e.Message.Contains("destroyed with") && e.Message.Contains("(lock)"));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_ThreadDestroy_ParentWithDeferredThreadStartCore_DrainsBlockedChild()
+    {
+        // Arrange
+        var host = Build(out var recorder, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // T2 blocked on L1
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.ThreadStartCore, T3)); // deferred in T2's pending queue
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.ThreadStartCallback, T3)); // child defers awaiting parent's core
+        Assert.DoesNotContain(recorder.Dispatched, e => ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
+        host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T2, TReaper)); // parent dies; its dropped queue takes ThreadStartCore with it
+
+        // Assert: the child is rescued and drains instead of blocking forever
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("waking blocked child"));
     }
 
     [Fact]

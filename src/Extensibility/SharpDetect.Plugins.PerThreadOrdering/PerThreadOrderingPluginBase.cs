@@ -199,18 +199,16 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
 
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreRelease)]
     public void OnSemaphoreReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
-        => PushArgumentsOnCallStack(metadata, args);
+    {
+        var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var releaseCount = (int)arguments[1].Value.AsT0;
+        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
+    }
 
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreReleaseResult)]
     public void OnSemaphoreReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
-    {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
-        var releaseCount = (int)frame.Arguments!.Value[1].Value.AsT0;
-        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
-    }
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
     
     [RecordedEventBind((ushort)RecordedEventType.ThreadStartCore)]
     public void OnThreadStartCore(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
