@@ -5,7 +5,7 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CliFx.Exceptions;
+using CliFx;
 using CliFx.Infrastructure;
 using SharpDetect.Plugins.DataRace.Common;
 using SharpDetect.Worker.Commands.Run;

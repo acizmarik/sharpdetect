@@ -1,7 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using CliFx.Exceptions;
+using CliFx;
 using SharpDetect.Cli.Commands;
 using SharpDetect.Worker.Commands.Run;
 using Xunit;

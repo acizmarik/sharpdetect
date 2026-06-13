@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using CliFx;
-using CliFx.Attributes;
-using CliFx.Exceptions;
+using CliFx.Binding;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Handlers;
 using SharpDetect.Worker.Commands.Run;
@@ -11,28 +10,28 @@ using SharpDetect.Worker.Commands.Run;
 namespace SharpDetect.Cli.Commands;
 
 [Command("run", Description = "Executes analysis using inline options, or based on a provided configuration file")]
-public sealed class RunCommand : ICommand
+public sealed partial class RunCommand : ICommand
 {
-    [CommandParameter(0, IsRequired = false, Description = "Configuration file (omit to use inline options)")]
-    public string? ArgumentsFile { get; init; }
+    [CommandParameter(0, Description = "Configuration file (omit to use inline options)")]
+    private string? ArgumentsFile { get; set; }
 
     [CommandOption("plugin", 'p', Description = "Plugin type full name")]
-    public string? PluginType { get; init; }
+    private string? PluginType { get; set; }
 
     [CommandOption("target", 't', Description = "Target application path")]
-    public string? TargetPath { get; init; }
+    private string? TargetPath { get; set; }
 
     [CommandOption("test", Description = "Treat the target as a test assembly")]
-    public bool IsTest { get; init; }
+    private bool IsTest { get; set; }
 
     [CommandOption("filter", 'f', Description = "Test filter expression (requires --test)")]
-    public string? TestFilter { get; init; }
+    private string? TestFilter { get; set; }
 
     [CommandOption("runner", Description = "Test runner: Mtp (default) | VSTest (requires --test)")]
-    public TestRunner TestRunner { get; init; } = TestTargetConfigurationArgs.DefaultRunner;
+    private TestRunner TestRunner { get; set; } = TestTargetConfigurationArgs.DefaultRunner;
 
     [CommandOption("instrument-system-libraries", Description = "Instrument system assemblies (System, Microsoft, test frameworks..)")]
-    public bool InstrumentSystemLibraries { get; init; }
+    private bool InstrumentSystemLibraries { get; set; }
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
