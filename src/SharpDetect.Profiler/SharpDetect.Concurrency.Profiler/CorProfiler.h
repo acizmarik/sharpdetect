@@ -25,6 +25,7 @@
 #include "../LibDescriptors/TypeInjectionDescriptor.h"
 
 #include "MetadataStore.h"
+#include "MethodDescriptorRegistry.h"
 
 namespace Profiler
 {
@@ -57,9 +58,6 @@ namespace Profiler
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
-		[[nodiscard]] BOOL HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
-		[[nodiscard]] std::shared_ptr<MethodDescriptor> TryGetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
-		[[nodiscard]] std::shared_ptr<MethodDescriptor> GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
 		HRESULT PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
 
 		HRESULT WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef);
@@ -71,7 +69,6 @@ namespace Profiler
 		HRESULT ImportInjectedTypes(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
 
 		HRESULT InitializeProfilingFeatures() const;
-		HRESULT ImportMethodDescriptors(INT32 versionMajor, INT32 versionMinor, INT32 versionBuild);
 
 		HRESULT GetArguments(
 			const MethodDescriptor& methodDescriptor,
@@ -123,9 +120,7 @@ namespace Profiler
 		std::mutex _methodStubsMutex;
 
 		LibProfiler::ObjectsTracker _objectsTracker;
-		std::vector< std::shared_ptr<MethodDescriptor>> _methodDescriptors;
-		std::unordered_map<MethodId, std::shared_ptr<MethodDescriptor>, MethodIdHasher> _methodDescriptorsLookup;
-		std::shared_mutex _methodDescriptorsMutex;
+		MethodDescriptorRegistry _methodDescriptorRegistry;
 
 		using MethodInvocationId = std::tuple<ModuleID, mdMethodDef, USHORT>;
 		using MethodInvocationIdHasher = tuple_hash<ModuleID, mdMethodDef, USHORT>;

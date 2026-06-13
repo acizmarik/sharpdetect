@@ -88,7 +88,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
         return AbortAttach("Could not determine .NET runtime information.");
     }
 
-    ImportMethodDescriptors(majorVersion, minorVersion, buildVersion);
+    _methodDescriptorRegistry.Import(_configuration.methodDescriptors, majorVersion, minorVersion, buildVersion);
 
     _client.Send(LibIPC::Helpers::CreateProfilerLoadMsg(
         CreateMetadataMsg(), 
@@ -147,44 +147,6 @@ HRESULT Profiler::CorProfiler::InitializeProfilingFeatures() const
         {
             LOG_F(ERROR, "Could not register function ID mapper. Error: 0x%x.", hr);
             return E_FAIL;
-        }
-    }
-
-    return S_OK;
-}
-
-HRESULT Profiler::CorProfiler::ImportMethodDescriptors(
-    const INT32 versionMajor,
-    const INT32 versionMinor,
-    const INT32 versionBuild)
-{
-    for (auto&& item : _configuration.methodDescriptors)
-    {
-        if (!item.versionDescriptor.has_value())
-        {
-            _methodDescriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
-        }
-        else
-        {
-            const auto& methodVersion = item.versionDescriptor.value();
-            const auto fromVersion = std::make_tuple(
-                methodVersion.fromMajorVersion,
-                methodVersion.fromMinorVersion,
-                methodVersion.fromBuildVersion);
-            const auto toVersion = std::make_tuple(
-                methodVersion.toMajorVersion,
-                methodVersion.toMinorVersion,
-                methodVersion.toBuildVersion);
-            const auto currentVersion = std::make_tuple(
-                versionMajor,
-                versionMinor,
-                versionBuild);
-            
-            // Check if currentVersion is within [fromVersion, toVersion] range
-            if (currentVersion >= fromVersion && currentVersion <= toVersion)
-            {
-                _methodDescriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
-            }
         }
     }
 
@@ -460,7 +422,7 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
     
     {
         auto guard = std::unique_lock(_rewritingsMutex);
-        for (auto&& methodPtr : _methodDescriptors)
+        for (auto&& methodPtr : _methodDescriptorRegistry.Descriptors())
         {
             auto&[
                 methodName,
@@ -532,8 +494,7 @@ HRESULT Profiler::CorProfiler::WrapAnalyzedExternMethods(LibProfiler::ModuleDef&
 
 HRESULT Profiler::CorProfiler::ImportMethodWrappers(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef)
 {
-    auto guard = std::unique_lock(_methodDescriptorsMutex);
-    for (auto&& methodPointer : _methodDescriptors)
+    for (auto&& methodPointer : _methodDescriptorRegistry.Descriptors())
     {
         auto& method = *methodPointer.get();
         if (!method.rewritingDescriptor.injectManagedWrapper)
@@ -625,7 +586,7 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(const LibProfiler:
     auto guard = std::unique_lock(_rewritingsMutex);
     auto& moduleRewritings = _rewritings.find(moduleDef.GetModuleId())->second;
 
-    for (auto&& methodPointer : _methodDescriptors)
+    for (auto&& methodPointer : _methodDescriptorRegistry.Descriptors())
     {
         auto&[
             methodName,
@@ -695,8 +656,7 @@ HRESULT Profiler::CorProfiler::ImportCustomRecordedEventTypes(const LibProfiler:
                 mapping);
         }
 
-        auto _ = std::unique_lock(_methodDescriptorsMutex);
-        _methodDescriptorsLookup.emplace(std::make_pair(moduleDef.GetModuleId(), sourceToken), methodPointer);
+        _methodDescriptorRegistry.AddLookup(moduleDef.GetModuleId(), sourceToken, methodPointer);
         LOG_F(INFO, "Imported custom event on method %s::%s (%d) in module %s.", declaringTypeFullName.c_str(), methodName.c_str(), sourceToken, moduleDef.GetName().c_str());
     }
 
@@ -1024,7 +984,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
             originalMethodEnterEvent,
             originalMethodEnterWithArgumentsEvent);
 
-    const auto descriptorPointer = TryGetMethodDescriptor(moduleId, methodDef);
+    const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
     if (!descriptorPointer)
     {
         // Notify about method enter without arguments
@@ -1136,7 +1096,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
             originalMethodExitEvent,
             originalMethodExitWithArgumentsEvent);
 
-    const auto descriptorPointer = TryGetMethodDescriptor(moduleId, methodDef);
+    const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
     if (!descriptorPointer)
     {
         // Notify about method leave without arguments
@@ -1450,25 +1410,6 @@ HRESULT Profiler::CorProfiler::GetReturnValue(
     return S_OK;
 }
 
-std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
-{
-    auto guard = std::shared_lock(_methodDescriptorsMutex);
-    return _methodDescriptorsLookup.find(std::make_pair(moduleId, methodDef))->second;
-}
-
-std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::TryGetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
-{
-    auto guard = std::shared_lock(_methodDescriptorsMutex);
-    const auto it = _methodDescriptorsLookup.find(std::make_pair(moduleId, methodDef));
-    return (it != _methodDescriptorsLookup.cend()) ? it->second : nullptr;
-}
-
-BOOL Profiler::CorProfiler::HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
-{
-    auto guard = std::shared_lock(_methodDescriptorsMutex);
-    return _methodDescriptorsLookup.contains(std::make_pair(moduleId, methodDef));
-}
-
 std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::FindMethodDescriptor(const FunctionID functionId)
 {
     ModuleID moduleId;
@@ -1480,9 +1421,7 @@ std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::FindMethodDes
         return { };
     }
 
-    auto guard = std::shared_lock(_methodDescriptorsMutex);
-    const auto it = _methodDescriptorsLookup.find(std::make_pair(moduleId, mdMethodDef));
-    return (it != _methodDescriptorsLookup.cend()) ? it->second : nullptr;
+    return _methodDescriptorRegistry.TryGet(moduleId, mdMethodDef);
 }
 
 HRESULT Profiler::CorProfiler::AbortAttach(const std::string& reason)
