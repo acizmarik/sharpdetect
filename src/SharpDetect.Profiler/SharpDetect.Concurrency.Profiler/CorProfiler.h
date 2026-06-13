@@ -15,10 +15,10 @@
 
 #include "../LibIPC/Client.h"
 #include "../LibIPC/Messages.h"
-#include "../LibProfiler/AssemblyDef.h"
-#include "../LibProfiler/CorProfilerBase.h"
-#include "../LibProfiler/ModuleDef.h"
-#include "../LibProfiler/ObjectsTracker.h"
+#include "../LibMetadata/AssemblyDef.h"
+#include "../LibProfilerCore/CorProfilerBase.h"
+#include "../LibMetadata/ModuleDef.h"
+#include "../LibProfilerCore/ObjectsTracker.h"
 
 #include "Configuration.h"
 #include "HashingUtils.h"

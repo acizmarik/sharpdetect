@@ -1,7 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-#include "../LibProfiler/PAL.h"
+#include "../LibProfilerCore/PAL.h"
 #include "Configuration.h"
 
 void Profiler::to_json(nlohmann::json& json, const Configuration& descriptor)

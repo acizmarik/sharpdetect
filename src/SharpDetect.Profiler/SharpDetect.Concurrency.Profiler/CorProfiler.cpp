@@ -18,12 +18,12 @@
 
 #include "../LibIPC/Client.h"
 #include "../LibIPC/Messages.h"
-#include "../LibProfiler/AssemblyDef.h"
-#include "../LibProfiler/ModuleDef.h"
-#include "../LibProfiler/Instrumentation.h"
-#include "../LibProfiler/PAL.h"
-#include "../LibProfiler/StackWalker.h"
-#include "../LibProfiler/WString.h"
+#include "../LibMetadata/AssemblyDef.h"
+#include "../LibMetadata/ModuleDef.h"
+#include "../LibIL/Instrumentation.h"
+#include "../LibProfilerCore/PAL.h"
+#include "../LibProfilerCore/StackWalker.h"
+#include "../LibMetadata/WString.h"
 #include "CorProfiler.h"
 
 using json = nlohmann::json;

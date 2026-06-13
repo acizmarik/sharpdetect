@@ -10,5 +10,7 @@ include(${PROFILER_ROOT_DIR}/cmake/msgpack.cmake)
 include(${PROFILER_ROOT_DIR}/cmake/loguru.cmake)
 
 add_subdirectory("LibIPC")
-add_subdirectory("LibProfiler")
+add_subdirectory("LibProfilerCore")
+add_subdirectory("LibMetadata")
+add_subdirectory("LibIL")
 add_subdirectory("SharpDetect.Concurrency.Profiler")

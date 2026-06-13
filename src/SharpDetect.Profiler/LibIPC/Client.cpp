@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "../lib/loguru/loguru.hpp"
-#include "../LibProfiler/PAL.h"
+#include "../LibProfilerCore/PAL.h"
 
 #include "Client.h"
 
