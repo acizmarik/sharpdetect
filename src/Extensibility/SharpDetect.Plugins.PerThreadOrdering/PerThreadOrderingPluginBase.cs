@@ -109,24 +109,23 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.LockRelease)]
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockRelease)]
     public void OnLockReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
-        => PushArgumentsOnCallStack(metadata, args);
+    {
+        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var lockTaken = arguments.Count == 1 || (bool)arguments[1].Value.AsT0;
+        if (lockTaken)
+            ProcessLockRelease(id, args.ModuleId, args.MethodToken, lockId);
+    }
 
     [RecordedEventBind((ushort)RecordedEventType.LockReleaseResult)]
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockReleaseResult)]
     public void OnLockReleaseResultExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
-    {
-        var (id, lockId) = PopLockContext(metadata, args);
-        ProcessLockRelease(id, args.ModuleId, args.MethodToken, lockId);
-    }
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
 
     [RecordedEventBind((ushort)RecordedEventType.LockReleaseResult)]
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockReleaseResult)]
     public void OnLockReleaseResultExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
-    {
-        var (id, lockId, lockTaken) = PopLockContextWithFlag(metadata, args);
-        if (lockTaken)
-            ProcessLockRelease(id, args.ModuleId, args.MethodToken, lockId);
-    }
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
 
     [RecordedEventBind((ushort)RecordedEventType.MonitorPulseOneAttempt)]
     public void OnMonitorPulseOneAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
@@ -555,16 +554,11 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         return (id, ExtractSynchronizationObjectIdFromFrame(id, frame));
     }
 
-    private (ProcessThreadId Id, ProcessTrackedObjectId LockId, bool LockTaken) PopLockContextWithFlag(
-        RecordedEventMetadata metadata,
-        MethodExitWithArgumentsRecordedEvent args)
+    private void PopFrame(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef methodToken)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var lockId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
-        var lockTaken = frame.Arguments!.Value.Count == 1 || (bool)frame.Arguments!.Value[1].Value.AsT0;
-        return (id, lockId, lockTaken);
+        EnsureCallStackIntegrity(frame, moduleId, methodToken);
     }
 
     private bool DetermineLockTakenFromExitEvent(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)

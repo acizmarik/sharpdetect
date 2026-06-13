@@ -46,6 +46,23 @@ internal static class SyncEventBuilder
             ArgumentInfos: []));
     }
 
+    public static RecordedEvent EnterWithTargetAndFlag(
+        uint tid,
+        RecordedEventType type,
+        nuint targetObjectId,
+        bool flag)
+    {
+        var args = new byte[Unsafe.SizeOf<nuint>() + sizeof(bool)];
+        MemoryMarshal.Write(args, in targetObjectId);
+        MemoryMarshal.Write(args.AsSpan()[Unsafe.SizeOf<nuint>()..], in flag);
+        return new RecordedEvent(Meta(tid), new MethodEnterWithArgumentsRecordedEvent(
+            ModuleId: Module,
+            MethodToken: Method,
+            Interpretation: (ushort)type,
+            ArgumentValues: args,
+            ArgumentInfos: []));
+    }
+
     public static RecordedEvent EnterWithTargetCountAndCapacity(
         uint tid,
         RecordedEventType type,
