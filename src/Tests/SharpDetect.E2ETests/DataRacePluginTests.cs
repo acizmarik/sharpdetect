@@ -65,6 +65,41 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDetectsDataRace("Test_DataRace_ValueType_Instance_WriteWriteRace", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ReferenceType_Instance_SingleWriterWriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ReferenceType_Instance_SingleWriterWriteReadRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ValueType_Instance_SingleWriterWriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ValueType_Instance_SingleWriterWriteReadRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_AutoProperty_Instance_PostPublicationWriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_AutoProperty_Instance_PostPublicationWriteReadRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_Static_WrittenInInstanceCtor_WriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_Static_WrittenInInstanceCtor_WriteReadRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_Static_AutoProperty_WriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_Static_AutoProperty_WriteReadRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConstructorWrite_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConstructorWrite_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ReferenceType_Static_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ReferenceType_Static_ReadReadNoRace", sdk, plugin);
