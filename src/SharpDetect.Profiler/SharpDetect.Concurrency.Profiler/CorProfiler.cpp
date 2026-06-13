@@ -327,12 +327,12 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::JITCompilationStarted(const Fun
         return E_FAIL;
     }
 
-    if (!HasModuleDef(moduleId))
+    if (!_metadataStore.HasModuleDef(moduleId))
     {
         LOG_F(ERROR, "Could not resolve Module ID = %" UINT_PTR_FORMAT " for method TOK = %d.", moduleId, mdMethodDef);
         return E_FAIL;
     }
-    const auto moduleDefPtr = GetModuleDef(moduleId);
+    const auto moduleDefPtr = _metadataStore.GetModuleDef(moduleId);
     auto& moduleDef = *moduleDefPtr.get();
 
     mdTypeDef mdTypeDef;
@@ -363,13 +363,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
     moduleDef.Initialize(moduleId);
     assemblyDef.Initialize(moduleId);
 
-    {
-        auto const assemblyId = assemblyDef.GetAssemblyId();
-        auto guard = std::unique_lock(_assembliesAndModulesMutex);
-        // FIXME: modules and assemblies are not always 1:1 mapped (assembly can contain multiple modules)
-        _modules.emplace(moduleId, moduleDefPtr);
-        _assemblies.emplace(assemblyId, assemblyDefPtr);
-    }
+    _metadataStore.Add(moduleId, moduleDefPtr, assemblyDef.GetAssemblyId(), assemblyDefPtr);
 
     if (_coreModule == 0)
     {
@@ -827,8 +821,8 @@ HRESULT Profiler::CorProfiler::ImportInjectedTypes(
     if (_configuration.typeInjectionDescriptors.empty())
         return S_OK;
 
-    const auto& coreModuleDef = *GetModuleDef(_coreModule).get();
-    const auto& coreAssemblyDef = *GetAssemblyDef(coreModuleDef.GetAssemblyId()).get();
+    const auto& coreModuleDef = *_metadataStore.GetModuleDef(_coreModule).get();
+    const auto& coreAssemblyDef = *_metadataStore.GetAssemblyDef(coreModuleDef.GetAssemblyId()).get();
     const void* coreAssemblyPublicKeyData;
     ULONG coreAssemblyPublicKeyDataSize;
     ASSEMBLYMETADATA coreAssemblyMetadata{};
@@ -1456,18 +1450,6 @@ HRESULT Profiler::CorProfiler::GetReturnValue(
     return S_OK;
 }
 
-std::shared_ptr<LibProfiler::ModuleDef> Profiler::CorProfiler::GetModuleDef(const ModuleID moduleId)
-{
-    auto guard = std::unique_lock(_assembliesAndModulesMutex);
-    return _modules.find(moduleId)->second;
-}
-
-std::shared_ptr<LibProfiler::AssemblyDef> Profiler::CorProfiler::GetAssemblyDef(const AssemblyID assemblyID)
-{
-    auto guard = std::unique_lock(_assembliesAndModulesMutex);
-    return _assemblies.find(assemblyID)->second;
-}
-
 std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)
 {
     auto guard = std::shared_lock(_methodDescriptorsMutex);
@@ -1479,18 +1461,6 @@ std::shared_ptr<Profiler::MethodDescriptor> Profiler::CorProfiler::TryGetMethodD
     auto guard = std::shared_lock(_methodDescriptorsMutex);
     const auto it = _methodDescriptorsLookup.find(std::make_pair(moduleId, methodDef));
     return (it != _methodDescriptorsLookup.cend()) ? it->second : nullptr;
-}
-
-BOOL Profiler::CorProfiler::HasModuleDef(const ModuleID moduleId)
-{
-    auto guard = std::unique_lock(_assembliesAndModulesMutex);
-    return _modules.contains(moduleId);
-}
-
-BOOL Profiler::CorProfiler::HasAssemblyDef(const AssemblyID assemblyId)
-{
-    auto guard = std::unique_lock(_assembliesAndModulesMutex);
-    return _assemblies.contains(assemblyId);
 }
 
 BOOL Profiler::CorProfiler::HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef)

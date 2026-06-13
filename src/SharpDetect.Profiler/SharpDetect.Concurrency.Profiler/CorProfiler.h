@@ -24,6 +24,8 @@
 #include "../LibDescriptors/MethodDescriptor.h"
 #include "../LibDescriptors/TypeInjectionDescriptor.h"
 
+#include "MetadataStore.h"
+
 namespace Profiler
 {
 	class CorProfiler final : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler
@@ -55,12 +57,8 @@ namespace Profiler
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
-		[[nodiscard]] BOOL HasModuleDef(ModuleID moduleId);
-		[[nodiscard]] BOOL HasAssemblyDef(AssemblyID assemblyId);
 		[[nodiscard]] BOOL HasMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> TryGetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
-		[[nodiscard]] std::shared_ptr<LibProfiler::ModuleDef> GetModuleDef(ModuleID moduleId);
-		[[nodiscard]] std::shared_ptr<LibProfiler::AssemblyDef> GetAssemblyDef(AssemblyID assemblyID);
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> GetMethodDescriptor(ModuleID moduleId, mdMethodDef methodDef);
 		HRESULT PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
 
@@ -111,10 +109,8 @@ namespace Profiler
 		LibIPC::Client _client;
 		ModuleID _coreModule;
 
-		std::unordered_map<AssemblyID, std::shared_ptr<LibProfiler::AssemblyDef>> _assemblies;
-		std::unordered_map<ModuleID, std::shared_ptr<LibProfiler::ModuleDef>> _modules;
-		std::mutex _assembliesAndModulesMutex;
-		
+		MetadataStore _metadataStore;
+
 		std::unordered_map<ModuleID, std::unordered_map<mdToken, mdToken>> _rewritings;
 		std::mutex _rewritingsMutex;
 
