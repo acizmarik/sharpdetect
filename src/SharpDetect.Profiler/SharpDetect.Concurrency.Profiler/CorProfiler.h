@@ -19,11 +19,10 @@
 #include "../LibProfilerCore/CorProfilerBase.h"
 #include "../LibMetadata/ModuleDef.h"
 #include "../LibProfilerCore/ObjectsTracker.h"
-
-#include "Configuration.h"
-#include "HashingUtils.h"
-#include "MethodDescriptor.h"
-#include "TypeInjectionDescriptor.h"
+#include "../LibDescriptors/Configuration.h"
+#include "../LibDescriptors/HashingUtils.h"
+#include "../LibDescriptors/MethodDescriptor.h"
+#include "../LibDescriptors/TypeInjectionDescriptor.h"
 
 namespace Profiler
 {
