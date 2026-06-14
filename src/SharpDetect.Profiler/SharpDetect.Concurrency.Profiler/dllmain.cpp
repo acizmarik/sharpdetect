@@ -4,7 +4,7 @@
 
 #include "../lib/json/single_include/nlohmann/json.hpp"
 #include "../lib/loguru/loguru.hpp"
-#include "../LibProfiler/ClassFactory.h"
+#include "../LibProfilerCore/ClassFactory.h"
 
 #include "CorProfiler.h"
 

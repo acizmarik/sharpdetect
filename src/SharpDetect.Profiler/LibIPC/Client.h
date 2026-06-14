@@ -15,7 +15,7 @@
 #include "cor.h"
 #include "Messages.h"
 
-#include "../LibProfiler/PAL.h"
+#include "../LibProfilerCore/PAL.h"
 
 namespace LibIPC
 {
