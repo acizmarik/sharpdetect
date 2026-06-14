@@ -28,6 +28,7 @@
 #include "MetadataStore.h"
 #include "MethodDescriptorRegistry.h"
 #include "RewriteRegistry.h"
+#include "TypeInjector.h"
 
 namespace Profiler
 {
@@ -62,14 +63,6 @@ namespace Profiler
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
 		HRESULT PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
 
-		HRESULT WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef);
-		HRESULT ImportMethodWrappers(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
-		HRESULT ImportMethodWrapper(const LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
-		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef);
-
-		HRESULT InjectTypesForProfilingFeatures(LibProfiler::ModuleDef& moduleDef);
-		HRESULT ImportInjectedTypes(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
-
 		HRESULT InitializeProfilingFeatures() const;
 
 		std::atomic_bool _terminating;
@@ -82,5 +75,6 @@ namespace Profiler
 		MethodDescriptorRegistry _methodDescriptorRegistry;
 		RewriteRegistry _rewriteRegistry;
 		ArgumentCapture _argumentCapture;
+		TypeInjector _typeInjector;
 	};
 }
