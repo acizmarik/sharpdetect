@@ -9,7 +9,6 @@
 #include <numeric>
 #include <stack>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -25,8 +24,6 @@
 #include "../LibProfilerCore/StackWalker.h"
 #include "../LibMetadata/WString.h"
 #include "CorProfiler.h"
-
-using json = nlohmann::json;
 
 Profiler::CorProfiler* ProfilerInstance;
 thread_local std::stack<std::vector<UINT_PTR>> ArgsCallStack;
@@ -44,7 +41,14 @@ Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
         configuration.sharedMemorySemaphoreName),
     _coreModule(0),
     _argumentCapture(_corProfilerInfo, _objectsTracker),
-    _typeInjector(_corProfilerInfo, _client, _configuration, _coreModule, _metadataStore, _methodDescriptorRegistry, _rewriteRegistry)
+    _typeInjector(
+        _corProfilerInfo,
+        _client,
+        _configuration,
+        _coreModule,
+        _metadataStore,
+        _methodDescriptorRegistry,
+        _rewriteRegistry)
 {
     _terminating = false;
     ProfilerInstance = this;
@@ -617,7 +621,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
             auto const argumentOffsetsLength = indirects.size() * sizeof(UINT);
             argumentValues.resize(argumentValuesLength);
             argumentOffsets.resize(argumentOffsetsLength);
-            hr = _argumentCapture.GetByRefArguments(
+            hr = Profiler::ArgumentCapture::GetByRefArguments(
                 descriptor,
                 indirects,
                 std::span(argumentValues.data(), argumentValues.size()),

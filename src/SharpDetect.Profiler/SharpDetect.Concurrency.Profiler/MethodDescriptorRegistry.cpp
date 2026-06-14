@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+#include <mutex>
 #include <tuple>
 #include <utility>
 
@@ -20,15 +21,22 @@ void Profiler::MethodDescriptorRegistry::Import(
 		}
 		else
 		{
-			const auto& methodVersion = item.versionDescriptor.value();
+			const auto& [
+				fromMajorVersion,
+				fromMinorVersion,
+				fromBuildVersion,
+				toMajorVersion,
+				toMinorVersion,
+				toBuildVersion] = item.versionDescriptor.value();
+
 			const auto fromVersion = std::make_tuple(
-				methodVersion.fromMajorVersion,
-				methodVersion.fromMinorVersion,
-				methodVersion.fromBuildVersion);
+				fromMajorVersion,
+				fromMinorVersion,
+				fromBuildVersion);
 			const auto toVersion = std::make_tuple(
-				methodVersion.toMajorVersion,
-				methodVersion.toMinorVersion,
-				methodVersion.toBuildVersion);
+				toMajorVersion,
+				toMinorVersion,
+				toBuildVersion);
 			const auto currentVersion = std::make_tuple(
 				versionMajor,
 				versionMinor,

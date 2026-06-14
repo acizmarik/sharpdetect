@@ -90,7 +90,7 @@ HRESULT Profiler::ArgumentCapture::GetArgument(
         auto const prevSize = argValues.size();
         argValues.resize(prevSize + argument.value.size);
         std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(pointer), argument.value.size);
-        UINT argInfo = (argument.index << 16) | argument.value.size;
+        const UINT argInfo = (argument.index << 16) | argument.value.size;
         auto const prevOffsetSize = argOffsets.size();
         argOffsets.resize(prevOffsetSize + sizeof(UINT));
         std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
@@ -134,11 +134,11 @@ HRESULT Profiler::ArgumentCapture::GetReferenceArrayArgument(
         // Null array: write count = 0
         auto const prevSize = argValues.size();
         argValues.resize(prevSize + sizeof(UINT));
-        UINT count = 0;
+        constexpr UINT count = 0;
         std::memcpy(argValues.data() + prevSize, &count, sizeof(UINT));
 
-        UINT totalSize = sizeof(UINT);
-        UINT argInfo = (argument.index << 16) | totalSize;
+        constexpr UINT totalSize = sizeof(UINT);
+        const UINT argInfo = (argument.index << 16) | totalSize;
         auto const prevOffsetSize = argOffsets.size();
         argOffsets.resize(prevOffsetSize + sizeof(UINT));
         std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
@@ -157,7 +157,7 @@ HRESULT Profiler::ArgumentCapture::GetReferenceArrayArgument(
     }
 
     UINT const elementCount = dimensionSize;
-    UINT const elementSize = sizeof(LibProfiler::TrackedObjectId);
+    constexpr UINT elementSize = sizeof(LibProfiler::TrackedObjectId);
     UINT const totalSize = sizeof(UINT) + elementCount * elementSize;
 
     // Write: [4-byte count][N × tracked object IDs]
@@ -184,7 +184,7 @@ HRESULT Profiler::ArgumentCapture::GetReferenceArrayArgument(
     }
 
     // Write offset info
-    UINT argInfo = (argument.index << 16) | totalSize;
+    const UINT argInfo = (argument.index << 16) | totalSize;
     auto const prevOffsetSize = argOffsets.size();
     argOffsets.resize(prevOffsetSize + sizeof(UINT));
     std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));

@@ -4,25 +4,18 @@
 #pragma once
 
 #include <atomic>
-#include <unordered_map>
-#include <stack>
-#include <utility>
 #include <vector>
-#include <mutex>
 #include <shared_mutex>
 
 #include "cor.h"
 
 #include "../LibIPC/Client.h"
 #include "../LibIPC/Messages.h"
-#include "../LibMetadata/AssemblyDef.h"
 #include "../LibProfilerCore/CorProfilerBase.h"
 #include "../LibMetadata/ModuleDef.h"
 #include "../LibProfilerCore/ObjectsTracker.h"
 #include "../LibDescriptors/Configuration.h"
-#include "../LibDescriptors/HashingUtils.h"
 #include "../LibDescriptors/MethodDescriptor.h"
-#include "../LibDescriptors/TypeInjectionDescriptor.h"
 
 #include "ArgumentCapture.h"
 #include "MetadataStore.h"

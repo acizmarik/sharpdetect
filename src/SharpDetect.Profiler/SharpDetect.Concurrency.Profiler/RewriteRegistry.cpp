@@ -107,12 +107,20 @@ Profiler::RewriteRegistry::CustomEventMappingResult Profiler::RewriteRegistry::F
 	return result;
 }
 
-Profiler::RewriteRegistry::CustomEventMappingResult Profiler::RewriteRegistry::FindMethodEnterMappings(const ModuleID moduleId, const mdMethodDef methodDef, const USHORT originalEvent, const USHORT originalWithArgsEvent)
+Profiler::RewriteRegistry::CustomEventMappingResult Profiler::RewriteRegistry::FindMethodEnterMappings(
+	const ModuleID moduleId,
+	const mdMethodDef methodDef,
+	const USHORT originalEvent,
+	const USHORT originalWithArgsEvent)
 {
 	return FindCustomEventMappings(_customEventOnMethodEntryLookup, moduleId, methodDef, originalEvent, originalWithArgsEvent);
 }
 
-Profiler::RewriteRegistry::CustomEventMappingResult Profiler::RewriteRegistry::FindMethodExitMappings(const ModuleID moduleId, const mdMethodDef methodDef, const USHORT originalEvent, const USHORT originalWithArgsEvent)
+Profiler::RewriteRegistry::CustomEventMappingResult Profiler::RewriteRegistry::FindMethodExitMappings(
+	const ModuleID moduleId,
+	const mdMethodDef methodDef,
+	const USHORT originalEvent,
+	const USHORT originalWithArgsEvent)
 {
 	return FindCustomEventMappings(_customEventOnMethodExitLookup, moduleId, methodDef, originalEvent, originalWithArgsEvent);
 }
