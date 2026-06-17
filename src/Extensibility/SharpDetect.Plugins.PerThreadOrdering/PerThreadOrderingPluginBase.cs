@@ -233,7 +233,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
                 ProcessThreadJoinAttempt(joiningThread, threadObjectId, moduleId, methodToken);
         }
         ProcessThreadStartCallback(id, threadObjectId);
-        Logger.LogInformation("Thread started {Name}.", Threads[id]);
+        Logger.LogInformation("Thread started {Name}.", Threads.GetValueOrDefault(id, id.ToString()));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.ThreadJoinAttempt)]

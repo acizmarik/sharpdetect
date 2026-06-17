@@ -259,7 +259,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         var childThreadId = obj.ProcessThreadId;
         var parentThreadId = _startingThreads[obj.ThreadObjectId];
         _startingThreads.Remove(obj.ThreadObjectId);
-        Logger.LogInformation("Thread {Parent} is parent of thread {Child}.", Threads[parentThreadId], Threads[childThreadId]);
+        Logger.LogInformation(
+            "Thread {Parent} is parent of thread {Child}.",
+            Threads.GetValueOrDefault(parentThreadId, parentThreadId.ToString()),
+            Threads.GetValueOrDefault(childThreadId, childThreadId.ToString()));
         
         _detector.RecordThreadCreated(childThreadId);
         _detector.RecordThreadFork(parentThreadId, childThreadId);
