@@ -374,6 +374,63 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         base.Visit(metadata, args);
     }
 
+    protected override void Visit(RecordedEventMetadata metadata, MethodUnwoundRecordedEvent args)
+    {
+        // The instrumented method exited via an exception, so no method-exit event was produced
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+
+        switch ((RecordedEventType)args.Interpretation)
+        {
+            case RecordedEventType.MonitorLockAcquireResult:
+            case RecordedEventType.LockAcquireResult:
+            {
+                var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                LockAcquireReturned?.Invoke(new(id, args.ModuleId, args.MethodToken, lockId, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.SemaphoreAcquireResult:
+            {
+                var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                SemaphoreAcquireReturned?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.MonitorWaitResult:
+            {
+                var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                OnAfterWaitReturn(id, lockId);
+                ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, args.ModuleId, args.MethodToken, lockId, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.ThreadJoinResult:
+            {
+                var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+                if (_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joinedThreadId))
+                    ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.TaskComplete:
+            {
+                // A task whose body faulted completes and release its waiters.
+                var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+                ProcessTaskComplete(id, taskObjectId);
+                break;
+            }
+
+            case RecordedEventType.TaskJoinFinish:
+            {
+                var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+                ProcessTaskJoinFinish(id, taskObjectId, isSuccess: false);
+                break;
+            }
+        }
+    }
+
     protected virtual void HandleLockAcquireExit(
         RecordedEventMetadata metadata,
         ModuleId moduleId,

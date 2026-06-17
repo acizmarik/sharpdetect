@@ -84,6 +84,12 @@ public sealed record MethodExitRecordedEvent(
     [property: Key(2)] ushort Interpretation) : IRecordedEventArgs, ICustomizableEventType;
 
 [MessagePackObject]
+public sealed record MethodUnwoundRecordedEvent(
+    [property: Key(0)] ModuleId ModuleId,
+    [property: Key(1)] MdMethodDef MethodToken,
+    [property: Key(2)] ushort Interpretation) : IRecordedEventArgs, ICustomizableEventType;
+
+[MessagePackObject]
 public sealed record TailcallRecordedEvent(
     [property: Key(0)] ModuleId ModuleId,
     [property: Key(1)] MdMethodDef MethodToken) : IRecordedEventArgs;

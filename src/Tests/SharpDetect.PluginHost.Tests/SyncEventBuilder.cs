@@ -88,6 +88,12 @@ internal static class SyncEventBuilder
             MethodToken: Method,
             Interpretation: (ushort)type));
 
+    public static RecordedEvent Unwound(uint tid, RecordedEventType type)
+        => new(Meta(tid), new MethodUnwoundRecordedEvent(
+            ModuleId: Module,
+            MethodToken: Method,
+            Interpretation: (ushort)type));
+
     public static RecordedEvent ExitWithSuccess(uint tid, RecordedEventType type, bool success)
     {
         var ret = new byte[1];

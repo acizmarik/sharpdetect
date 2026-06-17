@@ -651,6 +651,51 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionEnter(const FunctionID functionId)
+{
+    if (_terminating)
+        return S_OK;
+
+    ModuleID moduleId;
+    mdMethodDef methodDef;
+    HRESULT hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef);
+    if (FAILED(hr))
+        return S_OK;
+
+    constexpr auto originalMethodExitEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit);
+    constexpr auto originalMethodExitWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
+    auto const [
+        hasCustomMethodExitEvent,
+        customMethodExitEvent,
+        hasCustomMethodExitWithArgumentsEvent,
+        customMethodExitWithArgumentsEvent] =
+        _rewriteRegistry.FindMethodExitMappings(
+            moduleId,
+            methodDef,
+            originalMethodExitEvent,
+            originalMethodExitWithArgumentsEvent);
+
+    if (!hasCustomMethodExitEvent && !hasCustomMethodExitWithArgumentsEvent)
+        return S_OK;
+
+    // Balance the per-thread by-ref/return-value argument stack that EnterMethod pushed
+    const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
+    if (descriptorPointer)
+    {
+        const auto& descriptor = *descriptorPointer.get();
+        if ((descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor)) && !ArgsCallStack.empty())
+            ArgsCallStack.pop();
+    }
+
+    auto const interpretation = hasCustomMethodExitEvent ? customMethodExitEvent : customMethodExitWithArgumentsEvent;
+    _client.Send(LibIPC::Helpers::CreateMethodUnwoundMsg(
+        CreateMetadataMsg(),
+        moduleId,
+        methodDef,
+        interpretation));
+    return S_OK;
+}
+
 HRESULT Profiler::CorProfiler::TailcallMethod(FunctionIDOrClientID functionOrClientId, COR_PRF_ELT_INFO eltInfo)
 {
     if (_terminating)

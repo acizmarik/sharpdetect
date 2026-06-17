@@ -25,6 +25,12 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ShadowCallstack_MonitorPulseAll):
                     Test_ShadowCallstack_MonitorPulseAll();
                     break;
+                case nameof(Test_ShadowCallstack_SyncMethodThrowsInsideTaskBody):
+                    Test_ShadowCallstack_SyncMethodThrowsInsideTaskBody();
+                    break;
+                case nameof(Test_ShadowCallstack_FaultedTaskJoinThrows):
+                    Test_ShadowCallstack_FaultedTaskJoinThrows();
+                    break;
 #if NET10_0_OR_GREATER
                 case nameof(Test_ShadowCallstack_MonitorExitIfLockTaken):
                     Test_ShadowCallstack_MonitorExitIfLockTaken();

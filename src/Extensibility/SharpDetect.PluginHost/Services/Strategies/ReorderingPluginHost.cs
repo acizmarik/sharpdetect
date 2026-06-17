@@ -68,6 +68,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             MethodEnterWithArgumentsRecordedEvent enter => HandleEnter(recordedEvent, enter, thread.Id, thread),
             MethodExitRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, returnValue: null, byRefArgumentValues: null),
             MethodExitWithArgumentsRecordedEvent exit => HandleExit(recordedEvent, exit.Interpretation, thread.Id, thread, exit.ReturnValue, exit.ByRefArgumentValues),
+            MethodUnwoundRecordedEvent unwound => HandleUnwind(recordedEvent, unwound.Interpretation, thread.Id, thread),
             ThreadDestroyRecordedEvent destroy => HandleThreadDestroy(recordedEvent, destroy),
             GarbageCollectedTrackedObjectsRecordedEvent gc => HandleGarbageCollectedTrackedObjects(recordedEvent, gc),
             _ => inner.ProcessEvent(recordedEvent)
@@ -216,6 +217,30 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             case RecordedEventType.MonitorPulseOneResult:
             case RecordedEventType.MonitorPulseAllResult:
             case RecordedEventType.ThreadJoinResult:
+            default:
+                return inner.ProcessEvent(recordedEvent);
+        }
+    }
+
+    private RecordedEventState HandleUnwind(
+        RecordedEvent recordedEvent,
+        ushort interpretation,
+        ProcessThreadId tid,
+        ShadowThread thread)
+    {
+        // The instrumented method exited via an exception
+        switch ((RecordedEventType)interpretation)
+        {
+            case RecordedEventType.MonitorLockAcquireResult:
+            case RecordedEventType.LockAcquireResult:
+            case RecordedEventType.SemaphoreAcquireResult:
+            case RecordedEventType.TaskJoinFinish:
+                TryPopTarget(thread, out _);
+                return inner.ProcessEvent(recordedEvent);
+            case RecordedEventType.MonitorWaitResult:
+                return HandleWaitResult(recordedEvent, tid, thread);
+            case RecordedEventType.TaskComplete:
+                return HandleTaskComplete(recordedEvent, thread);
             default:
                 return inner.ProcessEvent(recordedEvent);
         }

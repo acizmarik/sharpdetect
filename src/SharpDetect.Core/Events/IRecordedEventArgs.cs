@@ -24,6 +24,7 @@ namespace SharpDetect.Core.Events;
 [Union((int)RecordedEventType.Tailcall, typeof(TailcallRecordedEvent))]
 [Union((int)RecordedEventType.MethodEnterWithArguments, typeof(MethodEnterWithArgumentsRecordedEvent))]
 [Union((int)RecordedEventType.MethodExitWithArguments, typeof(MethodExitWithArgumentsRecordedEvent))]
+[Union((int)RecordedEventType.MethodUnwound, typeof(MethodUnwoundRecordedEvent))]
 [Union((int)RecordedEventType.TailcallWithArguments, typeof(TailcallWithArgumentsRecordedEvent))]
 [Union((int)RecordedEventType.AssemblyReferenceInjection, typeof(AssemblyReferenceInjectionRecordedEvent))]
 [Union((int)RecordedEventType.TypeDefinitionInjection, typeof(TypeDefinitionInjectionRecordedEvent))]
