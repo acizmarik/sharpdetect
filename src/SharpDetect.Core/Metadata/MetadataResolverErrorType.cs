@@ -9,4 +9,5 @@ public enum MetadataResolverErrorType
     TypeNotFound = 2,
     MethodNotFound = 3,
     FieldNotFound = 4,
+    ModuleDynamicallyGenerated = 5,
 }

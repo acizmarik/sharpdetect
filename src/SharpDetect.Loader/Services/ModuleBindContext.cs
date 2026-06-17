@@ -16,6 +16,7 @@ internal class ModuleBindContext : IModuleBindContext
     private readonly IAssemblyLoadContext _assemblyLoadContext;
     private readonly Dictionary<ModuleEntry, ModuleDef> _modules;
     private readonly Dictionary<uint, ModuleDef> _coreLibraries;
+    private readonly HashSet<ModuleEntry> _dynamicModules;
     private readonly ILogger<ModuleBindContext> _logger;
 
     public ModuleBindContext(
@@ -26,6 +27,7 @@ internal class ModuleBindContext : IModuleBindContext
         _logger = logger;
         _modules = new();
         _coreLibraries = new();
+        _dynamicModules = new();
     }
 
     public Result<ModuleDef, ModuleLoadErrorType> TryGetModule(RecordedEventMetadata metadata, ModuleId moduleId)
@@ -36,6 +38,9 @@ internal class ModuleBindContext : IModuleBindContext
         var moduleEntry = new ModuleEntry(pid, moduleId);
         if (_modules.TryGetValue(moduleEntry, out var module))
             return Ok(module);
+
+        if (_dynamicModules.Contains(moduleEntry))
+            return Error(ModuleLoadErrorType.DynamicallyGenerated);
 
         return Error(ModuleLoadErrorType.ModuleNotLoaded);
     }
@@ -55,6 +60,7 @@ internal class ModuleBindContext : IModuleBindContext
             {
                 // Dynamically generated assembly (this is not supported)
                 // There is not an easy way to obtain a dynamically emitted assembly
+                _dynamicModules.Add(new ModuleEntry(metadata.Pid, moduleId));
                 _logger.LogWarning("[PID={Pid}] Could not load assembly \"{Path}\" for module with identifier={Id}. It was probably generated during runtime.",
                     metadata.Pid, path, moduleId.Value);
             }

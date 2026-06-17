@@ -39,6 +39,9 @@ internal class MetadataResolver : IMetadataResolver
         var moduleGetResult = _moduleBindContext.TryGetModule(pid, moduleId);
         if (moduleGetResult.IsError)
         {
+            if (moduleGetResult.Error == ModuleLoadErrorType.DynamicallyGenerated)
+                return Error(MetadataResolverErrorType.ModuleDynamicallyGenerated);
+
             _logger.LogError("Could not resolve module with identifier={Id}", moduleId.Value);
             return Error(MetadataResolverErrorType.ModuleNotFound);
         }
@@ -55,7 +58,8 @@ internal class MetadataResolver : IMetadataResolver
         var moduleResolveResult = ResolveModule(pid, moduleId);
         if (moduleResolveResult.IsError)
         {
-            _logger.LogError("Could not resolve type with token={Tok} because module was not resolved", typeToken.Value);
+            if (moduleResolveResult.Error != MetadataResolverErrorType.ModuleDynamicallyGenerated)
+                _logger.LogError("Could not resolve type with token={Tok} because module was not resolved", typeToken.Value);
             return Error(moduleResolveResult.Error);
         }
 
@@ -83,7 +87,8 @@ internal class MetadataResolver : IMetadataResolver
         var moduleResolveResult = ResolveModule(pid, moduleId);
         if (moduleResolveResult.IsError)
         {
-            _logger.LogError("Could not resolve method with token={Tok} because module was not resolved", methodToken.Value);
+            if (moduleResolveResult.Error != MetadataResolverErrorType.ModuleDynamicallyGenerated)
+                _logger.LogError("Could not resolve method with token={Tok} because module was not resolved", methodToken.Value);
             return Error(moduleResolveResult.Error);
         }
 
@@ -107,7 +112,8 @@ internal class MetadataResolver : IMetadataResolver
         var moduleResolveResult = ResolveModule(pid, moduleId);
         if (moduleResolveResult.IsError)
         {
-            _logger.LogError("Could not resolve field with token={Tok} because module was not resolved", fieldToken.Value);
+            if (moduleResolveResult.Error != MetadataResolverErrorType.ModuleDynamicallyGenerated)
+                _logger.LogError("Could not resolve field with token={Tok} because module was not resolved", fieldToken.Value);
             return Error(moduleResolveResult.Error);
         }
 
