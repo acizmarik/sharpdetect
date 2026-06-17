@@ -43,6 +43,8 @@ internal static class TestMethodDescriptors
             "Test_ShadowCallstack_MonitorTryEnter_LockNotTaken",
             "Test_ShadowCallstack_MonitorPulse",
             "Test_ShadowCallstack_MonitorPulseAll",
+            "Test_ShadowCallstack_SyncMethodThrowsInsideTaskBody",
+            "Test_ShadowCallstack_FaultedTaskJoinThrows",
             "Test_ThreadMethods_StartCallback1",
             "Test_ThreadMethods_StartCallback2",
             "Test_ThreadMethods_get_CurrentThread",

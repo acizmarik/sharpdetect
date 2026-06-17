@@ -186,6 +186,34 @@ namespace SharpDetect.E2ETests.Subject
             thread1.Join();
         }
 
+        public static void Test_ShadowCallstack_SyncMethodThrowsInsideTaskBody()
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    Monitor.Exit(new object());
+                }
+                catch (SynchronizationLockException)
+                {
+                    // Swallow so that Task.InnerInvoke returns normally and triggers TaskComplete.
+                }
+            }).Wait();
+        }
+
+        public static void Test_ShadowCallstack_FaultedTaskJoinThrows()
+        {
+            var task = Task.Run(() => throw new InvalidOperationException("TEST"));
+            try
+            {
+                task.Wait();
+            }
+            catch (AggregateException)
+            {
+                // Swallow so the entrypoint returns normally.
+            }
+        }
+
 #if NET10_0_OR_GREATER
         public static void Test_ShadowCallstack_MonitorExitIfLockTaken()
         {

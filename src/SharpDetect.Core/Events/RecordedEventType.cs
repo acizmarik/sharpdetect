@@ -63,6 +63,9 @@ public enum RecordedEventType : ushort
     InstanceFieldRead = 43,
     InstanceFieldWrite = 44,
 
+    /* Exceptions */
+    MethodUnwound = 90,
+
     /* Synchronization */
     MonitorLockAcquire = 100,
     MonitorLockTryAcquire = 101,

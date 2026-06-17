@@ -60,6 +60,7 @@ public partial class DeadlockPlugin : PerThreadOrderingPluginBase, IPlugin
                        COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_THREADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_ENTERLEAVE |
+                       COR_PRF_MONITOR.COR_PRF_MONITOR_EXCEPTIONS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_GC |
                        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_ARGS |
                        COR_PRF_MONITOR.COR_PRF_ENABLE_FUNCTION_RETVAL |

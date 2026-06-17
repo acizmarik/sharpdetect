@@ -43,7 +43,8 @@ namespace Profiler
 		HRESULT STDMETHODCALLTYPE ThreadCreated(ThreadID threadId) override;
 		HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
 		HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
-		
+		HRESULT STDMETHODCALLTYPE ExceptionUnwindFunctionEnter(FunctionID functionId) override;
+
 		HRESULT EnterMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT TailcallMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);

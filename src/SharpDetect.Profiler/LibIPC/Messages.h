@@ -77,6 +77,9 @@ namespace LibIPC
 		StaticFieldWrite = 42,
 		InstanceFieldRead = 43,
 		InstanceFieldWrite = 44,
+
+		/* Exceptions */
+		MethodUnwound = 90,
 	};
 
 	enum class ProfilerCommandType
@@ -164,6 +167,10 @@ namespace LibIPC
 	using MethodExitMsgArgsInstance = msgpack::type::tuple<INT32, MethodExitMsgArgs>;
 	using MethodExitMsg = msgpack::type::tuple<MetadataMsg, MethodExitMsgArgsInstance>;
 
+	using MethodUnwoundMsgArgs = msgpack::type::tuple<UINT64, UINT32, USHORT>;
+	using MethodUnwoundMsgArgsInstance = msgpack::type::tuple<INT32, MethodUnwoundMsgArgs>;
+	using MethodUnwoundMsg = msgpack::type::tuple<MetadataMsg, MethodUnwoundMsgArgsInstance>;
+
 	using TailcallMsgArgs = msgpack::type::tuple<UINT64, UINT32>;
 	using TailcallMsgArgsInstance = msgpack::type::tuple<INT32, TailcallMsgArgs>;
 	using TailcallMsg = msgpack::type::tuple<MetadataMsg, TailcallMsgArgsInstance>;
@@ -243,6 +250,7 @@ namespace LibIPC
 		
 		MethodEnterMsg CreateMethodEnterMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation);
 		MethodExitMsg CreateMethodExitMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation);
+		MethodUnwoundMsg CreateMethodUnwoundMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation);
 		TailcallMsg CreateTailcallrMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef);
 		MethodEnterWithArgumentsMsg CreateMethodEnterWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos);
 		MethodExitWithArgumentsMsg CreateMethodExitWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT, std::vector<BYTE>&& returnValue, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos);

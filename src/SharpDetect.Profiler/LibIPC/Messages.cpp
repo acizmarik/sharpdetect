@@ -112,6 +112,12 @@ MethodExitMsg Helpers::CreateMethodExitMsg(MetadataMsg&& metadataMsg, UINT64 mod
     return { std::move(metadataMsg), MethodExitMsgArgsInstance(discriminator, MethodExitMsgArgs(moduleId, mdMethodDef, interpretation)) };
 }
 
+MethodUnwoundMsg Helpers::CreateMethodUnwoundMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation)
+{
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::MethodUnwound);
+    return { std::move(metadataMsg), MethodUnwoundMsgArgsInstance(discriminator, MethodUnwoundMsgArgs(moduleId, mdMethodDef, interpretation)) };
+}
+
 TailcallMsg Helpers::CreateTailcallrMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef)
 {
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::Tailcall);

@@ -175,6 +175,123 @@ public class ReorderingPluginHostTests
     }
 
     [Fact]
+    public void ReorderingPluginHost_TaskComplete_Unwound_ReleasesJoinWaiters()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.TaskJoinFinish)); // deferred [wait on task complete]
+        Assert.DoesNotContain(recorder.Dispatched, e =>
+            e.Metadata.Tid.Value == T1 &&
+            (e.EventArgs as MethodExitRecordedEvent)?.Interpretation == (ushort)RecordedEventType.TaskJoinFinish);
+        host.ProcessEvent(SyncEventBuilder.Unwound(T2, RecordedEventType.TaskComplete)); // faulted body completes
+        Assert.Contains(recorder.Dispatched, e =>
+            e.Metadata.Tid.Value == T1 &&
+            (e.EventArgs as MethodExitRecordedEvent)?.Interpretation == (ushort)RecordedEventType.TaskJoinFinish);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_AcquireUnwound_PopsTarget_SoLaterTaskCompletePopsCorrectTarget()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskJoinFinish)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorLockAcquireResult)); // must drop L1 target
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.TaskComplete));
+        Assert.Contains(recorder.Dispatched, e =>
+            e.Metadata.Tid.Value == T2 &&
+            (e.EventArgs as MethodExitRecordedEvent)?.Interpretation == (ushort)RecordedEventType.TaskJoinFinish);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_AcquireUnwound_DoesNotHoldLock()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.MonitorLockAcquireResult));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_MonitorWaitUnwound_PopsTarget_SoLaterTaskCompletePopsCorrectTarget()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskJoinFinish)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
+        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorWaitResult)); // must drop L1 target
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.TaskComplete));
+        Assert.Contains(recorder.Dispatched, e =>
+            e.Metadata.Tid.Value == T2 &&
+            (e.EventArgs as MethodExitRecordedEvent)?.Interpretation == (ushort)RecordedEventType.TaskJoinFinish);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_MonitorWaitUnwound_ReacquiresShadowLockForOwner()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorWaitResult)); // reacquires for T1, then throws
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
+        Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_MonitorWaitUnwound_AfterReleaseEnter_NotDeferred()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act & Assert
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1)); // releases shadow
+        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorWaitResult)); // reacquires immediately
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        Assert.Equal(8, recorder.Dispatched.Count);
+        var releaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.MonitorLockRelease));
+        var waitResult = recorder.Dispatched.FindIndex(e =>
+            e.Metadata.Tid.Value == T1 &&
+            (e.EventArgs as MethodUnwoundRecordedEvent)?.Interpretation == (ushort)RecordedEventType.MonitorWaitResult);
+        Assert.True(waitResult > releaseEnter, "T1's unwound wait result should dispatch after T2's release enter");
+    }
+
+    [Fact]
     public void ReorderingPluginHost_TaskJoin_QueuesSubsequentPlainMethodExitOnSameThread()
     {
         // Arrange
@@ -1242,6 +1359,7 @@ public class ReorderingPluginHostTests
             MethodEnterWithArgumentsRecordedEvent enter => (RecordedEventType)enter.Interpretation,
             MethodExitRecordedEvent exit => (RecordedEventType)exit.Interpretation,
             MethodExitWithArgumentsRecordedEvent exit => (RecordedEventType)exit.Interpretation,
+            MethodUnwoundRecordedEvent unwound => (RecordedEventType)unwound.Interpretation,
             ProfilerDestroyRecordedEvent => RecordedEventType.ProfilerDestroy,
             ThreadDestroyRecordedEvent => RecordedEventType.ThreadDestroy,
             _ => RecordedEventType.NotSpecified
