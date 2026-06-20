@@ -12,7 +12,7 @@ namespace SharpDetect.Plugins.DataRace.Common;
 public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logger)
 {
     private readonly record struct ResolvedFieldInfo(FieldDef FieldDef, FieldFlags Flags);
-    private readonly Dictionary<FieldDefOrRef, ResolvedFieldInfo> _resolvedFields = [];
+    private readonly Dictionary<FieldDefOrRef, ResolvedFieldInfo?> _resolvedFields = [];
     private TypeRef? _threadStaticAttributeTypeRef;
     private TypeRef? _compilerGeneratedAttributeTypeRef;
     private TypeRef? _multicastDelegateTypeRef;
@@ -31,8 +31,15 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
 
         if (_resolvedFields.TryGetValue(fieldDefOrRef, out var cached))
         {
-            fieldDef = cached.FieldDef;
-            fieldFlags = cached.Flags;
+            if (cached is not { } cachedInfo)
+            {
+                fieldDef = null;
+                fieldFlags = FieldFlags.None;
+                return false;
+            }
+
+            fieldDef = cachedInfo.FieldDef;
+            fieldFlags = cachedInfo.Flags;
             return true;
         }
 
@@ -41,11 +48,15 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
 
         if (resolveResult.IsError)
         {
-            logger.LogWarning(
-                "Skipping analysis of field with token={FieldToken} in module {ModuleId} because it could not be resolved",
-                fieldToken.Value,
-                moduleId);
+            if (resolveResult.Error != MetadataResolverErrorType.ModuleDynamicallyGenerated)
+            {
+                logger.LogWarning(
+                    "Skipping analysis of field with token={FieldToken} in module {ModuleId} because it could not be resolved",
+                    fieldToken.Value,
+                    moduleId);
+            }
 
+            _resolvedFields.Add(fieldDefOrRef, null);
             fieldDef = null;
             fieldFlags = FieldFlags.None;
             return false;

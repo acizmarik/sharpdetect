@@ -55,6 +55,13 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     {
         if (thread.BlockedOn is not null)
         {
+            // A destroyed thread cannot progress further - do not defer past thread destroy event
+            if (recordedEvent.EventArgs is ThreadDestroyRecordedEvent destroy &&
+                new ProcessThreadId(recordedEvent.Metadata.Pid, destroy.ThreadId) == thread.Id)
+            {
+                return HandleThreadDestroy(recordedEvent, destroy);
+            }
+
             if (recordedEvent.EventArgs is MethodEnterWithArgumentsRecordedEvent deferredEnter &&
                 (RecordedEventType)deferredEnter.Interpretation == RecordedEventType.ThreadStartCore)
             {

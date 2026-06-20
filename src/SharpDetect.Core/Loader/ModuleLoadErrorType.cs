@@ -6,5 +6,6 @@ namespace SharpDetect.Core.Loader;
 public enum ModuleLoadErrorType
 {
     ModuleNotLoaded = 1,
-    ErrorDuringLoading = 2
+    ErrorDuringLoading = 2,
+    DynamicallyGenerated = 3
 }

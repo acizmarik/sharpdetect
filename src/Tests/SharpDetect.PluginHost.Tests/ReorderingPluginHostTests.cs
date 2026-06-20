@@ -875,6 +875,28 @@ public class ReorderingPluginHostTests
     }
 
     [Fact]
+    public void ReorderingPluginHost_ThreadDestroy_SelfEmittedWhileBlocked_AbandonsOwnedLock_NoResidualGcWarning()
+    {
+        // Arrange
+        var host = Build(out var recorder, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // T2 blocked on L1
+        host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T2));
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L2)); // L2 collected once T2 is gone
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => e.EventArgs is ThreadDestroyRecordedEvent);
+        Assert.DoesNotContain(logger.Entries, e =>
+            e.Level == LogLevel.Warning && e.Message.Contains("garbage collected with residual state"));
+    }
+
+    [Fact]
     public void ReorderingPluginHost_ThreadDestroy_ParentWithDeferredThreadStartCore_DrainsBlockedChild()
     {
         // Arrange
