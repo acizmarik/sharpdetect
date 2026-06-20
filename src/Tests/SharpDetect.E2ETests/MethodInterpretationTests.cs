@@ -62,6 +62,20 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_EnterExitLoop_AcquireReleaseBalanced(string sdk)
+    {
+        await MonitorAcquireReleaseBalanced("Test_MonitorMethods_EnterExitLoop", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_TryEnterExitLoop_AcquireReleaseBalanced(string sdk)
+    {
+        await MonitorAcquireReleaseBalanced("Test_MonitorMethods_TryEnterExitLoop", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Monitor_Wait1(string sdk)
     {
         await MonitorWait("Test_MonitorMethods_Wait1", sdk);
@@ -309,6 +323,28 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_SemaphoreSlim_TryWaitRelease4(string sdk)
     {
         await SemaphoreSlimWaitRelease("Test_SemaphoreSlimMethods_TryWaitRelease4", sdk);
+    }
+
+    private async Task MonitorAcquireReleaseBalanced(string subjectArgs, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var acquireResults = events.Count(e => e.Type == RecordedEventType.LockAcquireResult);
+        var releaseResults = events.Count(e => e.Type == RecordedEventType.LockReleaseResult);
+
+        Assert.True(
+            acquireResults >= Subject.Program.MonitorBalanceLoopIterations,
+            $"Expected at least {Subject.Program.MonitorBalanceLoopIterations} acquire results, observed {acquireResults}.");
+        Assert.Equal(releaseResults, acquireResults);
     }
 
     private async Task MonitorEnterExit(string subjectArgs, string sdk)
