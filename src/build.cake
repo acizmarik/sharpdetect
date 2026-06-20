@@ -163,7 +163,8 @@ Task("Tests")
         Configuration = configuration,
         Loggers = new[] { "trx" },
         Collectors = new[] { "XPlat Code Coverage" },
-        ResultsDirectory = "./TestResults"
+        ResultsDirectory = "./TestResults",
+        Settings = File("./CodeCoverage.runsettings")
     });
 });
 
