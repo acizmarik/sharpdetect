@@ -52,6 +52,25 @@ namespace SharpDetect.E2ETests.Subject
                 Monitor.Exit(obj);
         }
 
+        public const int MonitorBalanceLoopIterations = 16;
+
+        public static void Test_MonitorMethods_EnterExitLoop()
+        {
+            var obj = new object();
+            for (var i = 0; i < MonitorBalanceLoopIterations; i++)
+                lock (obj) { }
+        }
+
+        public static void Test_MonitorMethods_TryEnterExitLoop()
+        {
+            var obj = new object();
+            for (var i = 0; i < MonitorBalanceLoopIterations; i++)
+            {
+                if (Monitor.TryEnter(obj))
+                    Monitor.Exit(obj);
+            }
+        }
+
         public static void Test_MonitorMethods_Wait1()
         {
             var obj = new object();

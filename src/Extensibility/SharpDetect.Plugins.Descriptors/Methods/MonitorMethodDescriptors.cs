@@ -24,12 +24,12 @@ public static class MonitorMethodDescriptors
     
     // Enter methods
     private static readonly MethodDescriptor MonitorEnterObjectV8;
+    private static readonly MethodDescriptor MonitorEnterObjectLockTakenV8;
     private static readonly MethodDescriptor MonitorEnterObjectV10;
     private static readonly MethodDescriptor MonitorEnterObjectLockTakenV10;
-    private static readonly MethodDescriptor MonitorReliableEnterV8;
-    private static readonly MethodDescriptor MonitorReliableEnterTimeoutV8;
-    
+
     // TryEnter methods
+    private static readonly MethodDescriptor MonitorReliableEnterTimeoutV8;
     private static readonly MethodDescriptor MonitorTryEnterObjectV10;
     private static readonly MethodDescriptor MonitorTryEnterTimeoutObjectV10;
     private static readonly MethodDescriptor MonitorTryReliableEnterObjectV10;
@@ -51,12 +51,12 @@ public static class MonitorMethodDescriptors
     {
         // Initialize Enter methods
         MonitorEnterObjectV8 = CreateEnterDescriptor_v8();
+        MonitorEnterObjectLockTakenV8 = CreateEnterWithLockTakenDescriptor_v8();
         MonitorEnterObjectV10 = CreateEnterDescriptor_v10();
         MonitorEnterObjectLockTakenV10 = CreateEnterWithLockTakenDescriptor_v10();
-        MonitorReliableEnterV8 = CreateReliableEnterDescriptor_v8();
-        MonitorReliableEnterTimeoutV8 = CreateReliableEnterTimeoutDescriptor_v8();
-        
+
         // Initialize TryEnter methods
+        MonitorReliableEnterTimeoutV8 = CreateReliableEnterTimeoutDescriptor_v8();
         MonitorTryEnterObjectV10 = CreateTryEnterDescriptor_v10();
         MonitorTryEnterTimeoutObjectV10 = CreateTryEnterTimeoutDescriptor_v10();
         MonitorTryReliableEnterObjectV10 = CreateTryReliableEnterDescriptor_v10();
@@ -121,8 +121,8 @@ public static class MonitorMethodDescriptors
             RecordedEventType.MonitorLockAcquire,
             RecordedEventType.MonitorLockAcquireResult));
 
-    private static MethodDescriptor CreateReliableEnterDescriptor_v8() => new(
-        "ReliableEnter",
+    private static MethodDescriptor CreateEnterWithLockTakenDescriptor_v8() => new(
+        "Enter",
         MonitorTypeName,
         MethodVersionDescriptor.Create(Version8, Version9Max),
         CreateSignature(
@@ -135,7 +135,7 @@ public static class MonitorMethodDescriptors
             returnValue: null,
             RecordedEventType.MonitorLockAcquire,
             RecordedEventType.MonitorLockAcquireResult));
-
+    
     private static MethodDescriptor CreateReliableEnterTimeoutDescriptor_v8() => new(
         "ReliableEnterTimeout",
         MonitorTypeName,
@@ -337,11 +337,11 @@ public static class MonitorMethodDescriptors
     {
         // Common public API
         yield return MonitorEnterObjectV8;
-        yield return MonitorExitV8;
-        
-        // Internal API (usable only by BCL)
-        yield return MonitorReliableEnterV8;
+        yield return MonitorEnterObjectLockTakenV8;
+
+        // Internal API (usable only by BCL) — single instrumentation point for all TryEnter overloads.
         yield return MonitorReliableEnterTimeoutV8;
+        yield return MonitorExitV8;
     }
 
     private static IEnumerable<MethodDescriptor> GetAllMethodsV10()
