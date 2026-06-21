@@ -19,6 +19,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     private readonly ThreadCallStackTracker _callStackTracker = new();
     private readonly ThreadObjectRegistry _threadObjectRegistry = new();
     private readonly Dictionary<ProcessTrackedObjectId, List<(ProcessThreadId JoiningThread, ModuleId ModuleId, MdMethodDef MethodToken)>> _pendingJoinAttempts = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ProcessTrackedObjectId> _waitAsyncTaskToSemaphore = [];
     private readonly IArgumentsParser _argumentsParser;
 
     public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
@@ -44,6 +45,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public event Action<SemaphoreAcquireAttemptArgs>? SemaphoreAcquireAttempted;
     public event Action<SemaphoreAcquireResultArgs>? SemaphoreAcquireReturned;
     public event Action<SemaphoreReleaseArgs>? SemaphoreReleased;
+    public event Action<SemaphoreWaitAsyncArgs>? SemaphoreWaitAsyncReturned;
 
     protected PerThreadOrderingPluginBase(
         IModuleBindContext moduleBindContext,
@@ -81,6 +83,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected void RaiseSemaphoreAcquireAttempted(SemaphoreAcquireAttemptArgs args) => SemaphoreAcquireAttempted?.Invoke(args);
     protected void RaiseSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args) => SemaphoreAcquireReturned?.Invoke(args);
     protected void RaiseSemaphoreReleased(SemaphoreReleaseArgs args) => SemaphoreReleased?.Invoke(args);
+    protected void RaiseSemaphoreWaitAsyncReturned(SemaphoreWaitAsyncArgs args) => SemaphoreWaitAsyncReturned?.Invoke(args);
 
     [RecordedEventBind((ushort)RecordedEventType.LockAcquire)]
     [RecordedEventBind((ushort)RecordedEventType.LockTryAcquire)]
@@ -209,7 +212,29 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreReleaseResult)]
     public void OnSemaphoreReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
         => PopFrame(metadata, args.ModuleId, args.MethodToken);
-    
+
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreWaitAsync)]
+    public void OnSemaphoreWaitAsyncEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, _) = ExtractSynchronizationContext(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreWaitAsyncResult)]
+    public void OnSemaphoreWaitAsyncExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
+
+    [RecordedEventBind((ushort)RecordedEventType.SemaphoreWaitAsyncResult)]
+    public void OnSemaphoreWaitAsyncExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        var semaphoreId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        var waiterTaskId = new ProcessTrackedObjectId(id.ProcessId, new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ReturnValue)));
+        _waitAsyncTaskToSemaphore[waiterTaskId] = semaphoreId;
+    }
+
     [RecordedEventBind((ushort)RecordedEventType.ThreadStartCore)]
     public void OnThreadStartCore(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
@@ -374,6 +399,17 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         base.Visit(metadata, args);
     }
 
+    protected override void Visit(RecordedEventMetadata metadata, GarbageCollectedTrackedObjectsRecordedEvent args)
+    {
+        if (_waitAsyncTaskToSemaphore.Count > 0)
+        {
+            foreach (var objectId in args.RemovedTrackedObjectIds)
+                _waitAsyncTaskToSemaphore.Remove(new ProcessTrackedObjectId(metadata.Pid, objectId));
+        }
+
+        base.Visit(metadata, args);
+    }
+
     protected override void Visit(RecordedEventMetadata metadata, MethodUnwoundRecordedEvent args)
     {
         // The instrumented method exited via an exception, so no method-exit event was produced
@@ -425,6 +461,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
             case RecordedEventType.TaskJoinFinish:
             {
                 var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+                if (_waitAsyncTaskToSemaphore.Remove(taskObjectId))
+                    break;
+                
                 ProcessTaskJoinFinish(id, taskObjectId, isSuccess: false);
                 break;
             }
@@ -462,7 +501,15 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var frame = _callStackTracker.Pop(id);
         EnsureCallStackIntegrity(frame, moduleId, methodToken);
         var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
-        ProcessTaskJoinFinish(id, taskObjectId, isSuccess);
+        
+        if (_waitAsyncTaskToSemaphore.Remove(taskObjectId, out var semaphoreId) && isSuccess)
+        {
+            SemaphoreWaitAsyncReturned?.Invoke(new(id, moduleId, methodToken, semaphoreId, taskObjectId));
+        }
+        else
+        {
+            ProcessTaskJoinFinish(id, taskObjectId, isSuccess);
+        }
     }
 
     protected virtual void ProcessLockAcquire(

@@ -29,3 +29,4 @@ public readonly record struct SemaphoreAcquireAttemptArgs(ProcessThreadId Proces
 public readonly record struct SemaphoreAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, bool IsSuccess);
 public readonly record struct SemaphoreReleaseArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, int ReleaseCount);
 public readonly record struct SemaphoreCreatedArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, int InitialCount);
+public readonly record struct SemaphoreWaitAsyncArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, ProcessTrackedObjectId WaiterTaskId);

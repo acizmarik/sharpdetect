@@ -16,6 +16,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     private readonly Dictionary<ProcessTrackedObjectId, ShadowLock> _locks = [];
     private readonly Dictionary<ProcessTrackedObjectId, ShadowSemaphore> _semaphores = [];
     private readonly Dictionary<ProcessTrackedObjectId, ShadowTask> _tasks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ProcessTrackedObjectId> _waitAsyncTaskToSemaphore = [];
     private readonly Dictionary<ProcessThreadId, ShadowThread> _threads = [];
     private readonly Queue<ProcessThreadId> _drainQueue = [];
     private readonly HashSet<ProcessTrackedObjectId> _pendingThreadStarts = [];
@@ -106,6 +107,7 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             case RecordedEventType.LockTryAcquire:
             case RecordedEventType.SemaphoreAcquire:
             case RecordedEventType.SemaphoreTryAcquire:
+            case RecordedEventType.SemaphoreWaitAsync:
             case RecordedEventType.TaskJoinStart:
                 thread.SyncTargetStack.Push(ReadTargetId(enter.ArgumentValues, tid.ProcessId));
                 return inner.ProcessEvent(recordedEvent);
@@ -212,6 +214,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             case RecordedEventType.SemaphoreAcquireResult:
                 return HandleSemaphoreAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, byRefArgumentValues, true));
 
+            case RecordedEventType.SemaphoreWaitAsyncResult:
+                return HandleSemaphoreWaitAsyncResult(recordedEvent, tid, thread, returnValue);
+
             case RecordedEventType.SemaphoreReleaseResult:
                 return inner.ProcessEvent(recordedEvent);
 
@@ -241,8 +246,12 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             case RecordedEventType.MonitorLockAcquireResult:
             case RecordedEventType.LockAcquireResult:
             case RecordedEventType.SemaphoreAcquireResult:
-            case RecordedEventType.TaskJoinFinish:
+            case RecordedEventType.SemaphoreWaitAsyncResult:
                 TryPopTarget(thread, out _);
+                return inner.ProcessEvent(recordedEvent);
+            case RecordedEventType.TaskJoinFinish:
+                if (TryPopTarget(thread, out var unwoundTask))
+                    _waitAsyncTaskToSemaphore.Remove(unwoundTask);
                 return inner.ProcessEvent(recordedEvent);
             case RecordedEventType.MonitorWaitResult:
                 return HandleWaitResult(recordedEvent, tid, thread);
@@ -292,6 +301,47 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         return inner.ProcessEvent(recordedEvent);
     }
 
+    private RecordedEventState HandleSemaphoreWaitAsyncResult(
+        RecordedEvent recordedEvent,
+        ProcessThreadId tid,
+        ShadowThread thread,
+        byte[]? returnValue)
+    {
+        if (!TryPopTarget(thread, out var semaphoreId))
+            return inner.ProcessEvent(recordedEvent);
+
+        if (TryReadTrackedObjectId(returnValue, tid.ProcessId, out var awaitedTaskId) &&
+            _semaphores.ContainsKey(semaphoreId))
+        {
+            _waitAsyncTaskToSemaphore[awaitedTaskId] = semaphoreId;
+        }
+
+        return inner.ProcessEvent(recordedEvent);
+    }
+
+    private RecordedEventState HandleWaitAsyncContinuation(
+        RecordedEvent recordedEvent,
+        ProcessThreadId tid,
+        ShadowThread thread,
+        ProcessTrackedObjectId awaitedTaskId,
+        ProcessTrackedObjectId semaphoreId,
+        bool success)
+    {
+        if (!success)
+        {
+            _waitAsyncTaskToSemaphore.Remove(awaitedTaskId);
+            thread.SyncTargetStack.Pop();
+            return inner.ProcessEvent(recordedEvent);
+        }
+
+        if (_semaphores.TryGetValue(semaphoreId, out var shadow) && !shadow.TryAcquire(tid))
+            return Defer(thread, semaphoreId);
+
+        _waitAsyncTaskToSemaphore.Remove(awaitedTaskId);
+        thread.SyncTargetStack.Pop();
+        return inner.ProcessEvent(recordedEvent);
+    }
+
     private RecordedEventState HandleTaskComplete(RecordedEvent recordedEvent, ShadowThread thread)
     {
         if (!TryPopTarget(thread, out var taskId))
@@ -308,6 +358,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     {
         if (!TryPeekTarget(thread, out var taskId))
             return inner.ProcessEvent(recordedEvent);
+
+        if (_waitAsyncTaskToSemaphore.TryGetValue(taskId, out var semaphoreId))
+            return HandleWaitAsyncContinuation(recordedEvent, tid, thread, taskId, semaphoreId, success);
 
         if (!success)
         {
@@ -339,16 +392,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
             _drainQueue.Enqueue(next.Value);
         }
 
-        foreach (var (semaphoreId, shadow) in _semaphores)
+        foreach (var (_, shadow) in _semaphores)
         {
             shadow.RemoveWaiter(destroyedTid);
-            var abandonedPermits = shadow.AbandonPermitsByDestroy(destroyedTid);
-            if (abandonedPermits > 0)
-            {
-                logger.LogWarning(
-                    "Thread {Thread} destroyed while holding {Permits} outstanding permit(s) on semaphore {Semaphore}; permits will not be released.",
-                    destroyedTid, abandonedPermits, semaphoreId);
-            }
         }
 
         foreach (var (taskId, shadow) in _tasks)
@@ -430,6 +476,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 _semaphores.Remove(key);
                 continue;
             }
+
+            // A WaitAsync task collected before its continuation ran (could happen with fire-and-forget invocations)
+            _waitAsyncTaskToSemaphore.Remove(key);
 
             if (_tasks.TryGetValue(key, out var shadowTask))
             {
@@ -538,6 +587,18 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
     {
         var raw = MemoryMarshal.Read<nuint>(argumentValues);
         return new ProcessTrackedObjectId(pid, new TrackedObjectId(raw));
+    }
+
+    private static bool TryReadTrackedObjectId(byte[]? rawValue, uint pid, out ProcessTrackedObjectId objectId)
+    {
+        if (rawValue is { Length: > 0 })
+        {
+            objectId = new ProcessTrackedObjectId(pid, new TrackedObjectId(MemoryMarshal.Read<nuint>(rawValue)));
+            return true;
+        }
+
+        objectId = default;
+        return false;
     }
 
     private static bool ReadBoolOrDefault(byte[]? returnValue, byte[]? byRefArgumentValues, bool defaultValue)

@@ -11,14 +11,14 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
     public int Capacity { get; } = capacity;
     public int Count { get; private set; } = initialCount;
     private readonly LinkedList<ProcessThreadId> _waiters = [];
-    private readonly Dictionary<ProcessThreadId, int> _outstandingPermits = [];
+    private int _outstandingPermits;
 
     public bool TryAcquire(ProcessThreadId tid)
     {
         if (Count > 0)
         {
             Count--;
-            _outstandingPermits[tid] = _outstandingPermits.GetValueOrDefault(tid) + 1;
+            _outstandingPermits++;
             return true;
         }
         
@@ -28,15 +28,7 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
 
     public IReadOnlyList<ProcessThreadId> Release(ProcessThreadId tid, int count)
     {
-        if (_outstandingPermits.TryGetValue(tid, out var held) && held > 0)
-        {
-            var decrement = Math.Min(held, count);
-            var remaining = held - decrement;
-            if (remaining == 0)
-                _outstandingPermits.Remove(tid);
-            else
-                _outstandingPermits[tid] = remaining;
-        }
+        _outstandingPermits -= Math.Min(_outstandingPermits, count);
 
         var effectiveCount = Math.Min(count, Capacity - Count);
         if (effectiveCount <= 0)
@@ -71,24 +63,15 @@ internal sealed class ShadowSemaphore(int initialCount, int capacity)
         return result;
     }
 
-    public int AbandonPermitsByDestroy(ProcessThreadId tid)
-    {
-        return _outstandingPermits.Remove(tid, out var held) ? held : 0;
-    }
-
     public bool TryDescribeResidualState([NotNullWhen(true)] out string? description)
     {
-        if (_waiters.Count == 0 && _outstandingPermits.Count == 0)
+        if (_waiters.Count == 0)
         {
             description = null;
             return false;
         }
 
-        var totalPermits = 0;
-        foreach (var kvp in _outstandingPermits)
-            totalPermits += kvp.Value;
-
-        description = $"waiters={_waiters.Count}, outstandingPermits={totalPermits} across {_outstandingPermits.Count} thread(s)";
+        description = $"waiters={_waiters.Count}, outstandingPermits={_outstandingPermits}";
         return true;
     }
 }

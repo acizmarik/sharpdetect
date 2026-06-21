@@ -10,6 +10,7 @@ public static class SemaphoreSlimMethodDescriptors
 {
     private const string SemaphoreSlimTypeName = "System.Threading.SemaphoreSlim";
     private const string CancellationTokenTypeName = "System.Threading.CancellationToken";
+    private const string TaskTResultTypeName = "System.Threading.Tasks.Task`1";
 
     private static readonly Version Version8 = new(8, 0, 0);
     private static readonly Version Version10 = new(10, 0, 0);
@@ -30,6 +31,8 @@ public static class SemaphoreSlimMethodDescriptors
     private static readonly MethodDescriptor CtorWithMaxCount;
     private static readonly MethodDescriptor WaitV8;
     private static readonly MethodDescriptor WaitCoreV10;
+    private static readonly MethodDescriptor WaitAsyncV8;
+    private static readonly MethodDescriptor WaitAsyncCoreV10;
     private static readonly MethodDescriptor ReleaseWithCount;
 
     static SemaphoreSlimMethodDescriptors()
@@ -97,6 +100,52 @@ public static class SemaphoreSlimMethodDescriptors
                 MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreTryAcquire,
                 MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreAcquireResult));
 
+        WaitAsyncV8 = new MethodDescriptor(
+            MethodName: "WaitAsync",
+            DeclaringTypeFullName: SemaphoreSlimTypeName,
+            VersionDescriptor: MethodVersionDescriptor.Create(Version8, Version10),
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 2,
+                ReturnType: ArgumentTypeDescriptor.CreateGenericInst(
+                    TaskTResultTypeName,
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN)),
+                ArgumentTypeElements:
+                [
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
+                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
+                ]),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ObjectRefArg],
+                ReturnValue: new CapturedValueDescriptor((byte)nint.Size, CapturedValue.CaptureAsReference),
+                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsync,
+                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsyncResult));
+
+        WaitAsyncCoreV10 = new MethodDescriptor(
+            MethodName: "WaitAsyncCore",
+            DeclaringTypeFullName: SemaphoreSlimTypeName,
+            VersionDescriptor: MethodVersionDescriptor.Create(Version10, Version10Max),
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 2,
+                ReturnType: ArgumentTypeDescriptor.CreateGenericInst(
+                    TaskTResultTypeName,
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN)),
+                ArgumentTypeElements:
+                [
+                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
+                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
+                ]),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ObjectRefArg],
+                ReturnValue: new CapturedValueDescriptor((byte)nint.Size, CapturedValue.CaptureAsReference),
+                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsync,
+                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsyncResult));
+
         ReleaseWithCount = new MethodDescriptor(
             MethodName: "Release",
             DeclaringTypeFullName: SemaphoreSlimTypeName,
@@ -124,6 +173,8 @@ public static class SemaphoreSlimMethodDescriptors
         // Internal API
         yield return WaitV8;
         yield return WaitCoreV10;
+        yield return WaitAsyncV8;
+        yield return WaitAsyncCoreV10;
     }
 }
 

@@ -33,7 +33,11 @@ public record ArgumentTypeDescriptor
     public static ArgumentTypeDescriptor CreateSZArray(ArgumentTypeDescriptor elementType) 
         => new([CorElementType.ELEMENT_TYPE_SZARRAY, .. elementType.ElementTypes], elementType.TypeName);
     
-    public static ArgumentTypeDescriptor CreateGenericTypeParam(int index) 
+
+    public static ArgumentTypeDescriptor CreateGenericInst(string genericTypeName, ArgumentTypeDescriptor typeArgument)
+        => new([CorElementType.ELEMENT_TYPE_GENERICINST, CorElementType.ELEMENT_TYPE_CLASS, .. typeArgument.ElementTypes], genericTypeName);
+
+    public static ArgumentTypeDescriptor CreateGenericTypeParam(int index)
         => CreateGenericParam(CorElementType.ELEMENT_TYPE_VAR, index);
     
     public static ArgumentTypeDescriptor CreateGenericMethodTypeParam(int index) 

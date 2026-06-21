@@ -104,6 +104,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         SemaphoreCreated += OnSemaphoreCreated;
         SemaphoreAcquireReturned += OnSemaphoreAcquireReturned;
         SemaphoreReleased += OnSemaphoreReleased;
+        SemaphoreWaitAsyncReturned += OnSemaphoreWaitAsyncReturned;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -303,6 +304,12 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     private void OnSemaphoreReleased(SemaphoreReleaseArgs args)
     {
         _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.SemaphoreId, args.ReleaseCount);
+    }
+
+    private void OnSemaphoreWaitAsyncReturned(SemaphoreWaitAsyncArgs args)
+    {
+        // Raised on the continuation's thread once the WaitAsync await completed successfully
+        _detector.RecordSemaphoreAcquired(args.ProcessThreadId, args.SemaphoreId);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

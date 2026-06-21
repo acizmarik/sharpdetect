@@ -1357,6 +1357,117 @@ namespace SharpDetect.E2ETests.Subject
             Task.WaitAll(task1, task2);
         }
 
+        public static void Test_NoDataRace_SemaphoreSlimAsync_ProtectedWriteRead()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            var task1 = Task.Run(async () =>
+            {
+                await sem.WaitAsync();
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                sem.Release();
+            });
+            var task2 = Task.Run(async () =>
+            {
+                await sem.WaitAsync();
+                _ = DataRace.Test_DataRace_ValueType_Static;
+                sem.Release();
+            });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_NoDataRace_SemaphoreSlimAsync_HighContention_WriteRead()
+        {
+            const int iterations = 5000;
+            var semaphore = new SemaphoreSlim(1, 1);
+            RunConcurrently(
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        semaphore.WaitAsync().GetAwaiter().GetResult();
+                        DataRace.Test_DataRace_ValueType_Static = i;
+                        semaphore.Release();
+                    }
+                },
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        semaphore.WaitAsync().GetAwaiter().GetResult();
+                        _ = DataRace.Test_DataRace_ValueType_Static;
+                        semaphore.Release();
+                    }
+                });
+        }
+
+        public static void Test_NoDataRace_SemaphoreSlimAsync_WithCancellationToken_ProtectedWriteRead()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            using var cts = new CancellationTokenSource();
+            var task1 = Task.Run(async () =>
+            {
+                await sem.WaitAsync(cts.Token);
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                sem.Release();
+            });
+            var task2 = Task.Run(async () =>
+            {
+                await sem.WaitAsync(cts.Token);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+                sem.Release();
+            });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_NoDataRace_SemaphoreSlimAsync_WithTimeout_ProtectedWriteRead()
+        {
+            var sem = new SemaphoreSlim(1, 1);
+            var task1 = Task.Run(async () =>
+            {
+                if (await sem.WaitAsync(Timeout.Infinite))
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    sem.Release();
+                }
+            });
+            var task2 = Task.Run(async () =>
+            {
+                if (await sem.WaitAsync(Timeout.Infinite))
+                {
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                    sem.Release();
+                }
+            });
+            Task.WaitAll(task1, task2);
+        }
+
+        public static void Test_NoDataRace_SemaphoreSlimAsync_CanceledWait_NoSharedAccess()
+        {
+            var sem = new SemaphoreSlim(0, 1);
+            using var cts = new CancellationTokenSource();
+            var task = Task.Run(async () =>
+            {
+                try
+                {
+                    await sem.WaitAsync(cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // expected
+                }
+            });
+            cts.Cancel();
+            task.Wait();
+        }
+
+        public static void Test_NoDataRace_SemaphoreSlimAsync_TimeoutExpires_NoSharedAccess()
+        {
+            var sem = new SemaphoreSlim(0, 1);
+            var acquired = sem.WaitAsync(millisecondsTimeout: 50).GetAwaiter().GetResult();
+            if (acquired)
+                sem.Release();
+        }
+
         public static void Test_NoDataRace_Monitor_HighContention_WriteRead()
         {
             const int iterations = 5000;
