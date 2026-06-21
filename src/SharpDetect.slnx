@@ -13,6 +13,7 @@
   <Folder Name="/Docs/Guides/">
     <File Path="../docs/guides/running-analysis-against-executables.md" />
     <File Path="../docs/guides/running-analysis-against-tests.md" />
+    <File Path="../docs/guides/running-analysis-with-configuration-file.md" />
   </Folder>
   <Folder Name="/Extensibility/">
     <Project Path="Extensibility/SharpDetect.PluginHost/SharpDetect.PluginHost.csproj" />
