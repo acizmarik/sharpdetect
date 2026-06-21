@@ -79,6 +79,13 @@ Reports are self-contained HTML files. Each report includes:
 - The participating threads
 - Stack frames at the point of the conflicting accesses
 
+## Documentation
+
+More details for running and configuring analysis is described in `docs` folder.
+- [Running analysis against regular .NET assembly](docs/guides/running-analysis-against-executables.md)
+- [Running analysis against .NET test assembly](docs/guides/running-analysis-against-tests.md)
+- [Advanced analysis configuration](docs/guides/running-analysis-with-configuration-file.md)
+
 ## Analysis Plugins
 
 ### Data Race Detection — FastTrack
