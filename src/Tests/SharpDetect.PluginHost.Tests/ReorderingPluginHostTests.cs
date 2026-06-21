@@ -21,6 +21,7 @@ public class ReorderingPluginHostTests
     private const nuint S1 = 0x1800;
     private const nuint Task1 = 0x2000;
     private const nuint Task2 = 0x2001;
+    private const nuint Task3 = 0x2002;
 
     private static ReorderingPluginHost Build(out RecordingPluginHost recorder)
     {
@@ -520,6 +521,149 @@ public class ReorderingPluginHostTests
         // Assert
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsSemaphoreAcquireResult(e));
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsSemaphoreAcquireResult(e));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_WaitAsyncImmediateAcquire_ContinuationNotDeferred()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T1, RecordedEventType.SemaphoreWaitAsyncResult, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.TaskJoinFinish, true));
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T1));
+
+        // Assert
+        var kinds = recorder.Dispatched.Select(ClassifyDispatched).ToArray();
+        Assert.Equal(new[]
+        {
+            (T1, RecordedEventType.SemaphoreCreate),
+            (T1, RecordedEventType.SemaphoreWaitAsync),
+            (T1, RecordedEventType.SemaphoreWaitAsyncResult),
+            (T1, RecordedEventType.TaskJoinStart),
+            (T1, RecordedEventType.TaskJoinFinish),
+            (T1, RecordedEventType.InstanceFieldRead),
+        }, kinds);
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_WaitAsyncContended_ContinuationDeferredUntilRelease_AndReordered()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T1, RecordedEventType.SemaphoreWaitAsyncResult, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.TaskJoinFinish, true)); // T1 consumes the permit
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T2, RecordedEventType.SemaphoreWaitAsyncResult, Task2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.TaskJoinStart, Task2));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T3, RecordedEventType.TaskJoinFinish, true)); // deferred [no permit]
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T3)); // deferred
+
+        Assert.DoesNotContain(recorder.Dispatched, e => ClassifyDispatched(e) == (T3, RecordedEventType.TaskJoinFinish));
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1)); // wakes T3
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
+
+        // Assert
+        var releaseIdx = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T1, RecordedEventType.SemaphoreRelease));
+        var joinIdx = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T3, RecordedEventType.TaskJoinFinish));
+        var readIdx = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T3, RecordedEventType.InstanceFieldRead));
+        Assert.True(releaseIdx >= 0);
+        Assert.True(joinIdx > releaseIdx, "continuation must be ordered after the release");
+        Assert.True(readIdx > joinIdx, "protected read must follow the continuation");
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_WaitAsyncTimedOut_NoAcquire_NoDeadlock()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T1, RecordedEventType.SemaphoreWaitAsyncResult, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.TaskJoinFinish, true)); // T1 consumes the permit
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T2, RecordedEventType.SemaphoreWaitAsyncResult, Task2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task2));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.TaskJoinFinish, false)); // timed out, not deferred
+
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.TaskJoinFinish));
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T3, RecordedEventType.SemaphoreWaitAsyncResult, Task3));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.TaskJoinStart, Task3));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T3, RecordedEventType.TaskJoinFinish, true));
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T3, RecordedEventType.TaskJoinFinish));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_WaitAsyncCanceled_NoAcquire_NoDeadlock()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T1, RecordedEventType.SemaphoreWaitAsyncResult, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.TaskJoinFinish, true)); // T1 consumes the permit
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T2, RecordedEventType.SemaphoreWaitAsyncResult, Task2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task2));
+        host.ProcessEvent(SyncEventBuilder.Unwound(T2, RecordedEventType.TaskJoinFinish)); // canceled, not deferred
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T1, RecordedEventType.SemaphoreRelease, S1, 1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.SemaphoreReleaseResult));
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T3, RecordedEventType.SemaphoreWaitAsyncResult, Task3));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.TaskJoinStart, Task3));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T3, RecordedEventType.TaskJoinFinish, true));
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T3, RecordedEventType.TaskJoinFinish));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_WaitAsyncAcquireAndReleaseOnDifferentThreads_NoResidualPermits()
+    {
+        // Arrange
+        var host = Build(out _, out var logger);
+
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T2, RecordedEventType.SemaphoreWaitAsyncResult, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.TaskJoinFinish, true)); // T2 acquires
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T3, RecordedEventType.SemaphoreRelease, S1, 1)); // T3 releases
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.SemaphoreReleaseResult));
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(T1, S1));
+
+        // Assert
+        Assert.DoesNotContain(logger.Entries, e => e.Message.Contains("residual state"));
     }
 
     [Fact]
@@ -1101,7 +1245,7 @@ public class ReorderingPluginHostTests
     }
 
     [Fact]
-    public void ReorderingPluginHost_GarbageCollected_SemaphoreWithOutstandingPermits_LogsWarning()
+    public void ReorderingPluginHost_GarbageCollected_SemaphoreWithOutstandingPermits_NoWarning()
     {
         // Arrange
         var host = Build(out _, out var logger);
@@ -1114,7 +1258,29 @@ public class ReorderingPluginHostTests
 
         // Assert
         Assert.Equal(0, host.ShadowSemaphoreCount);
-        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("Semaphore"));
+        Assert.DoesNotContain(logger.Entries, e => e.Message.Contains("garbage collected with residual state"));
+    }
+
+    [Fact]
+    public void ReorderingPluginHost_GarbageCollected_SemaphoreWithBlockedWaiter_LogsWarning()
+    {
+        // Arrange
+        var host = Build(out _, out var logger);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.SemaphoreAcquireResult, true));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true)); // T2 blocks
+        host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, S1));
+
+        // Assert
+        Assert.Equal(0, host.ShadowSemaphoreCount);
+        Assert.Contains(logger.Entries, e =>
+            e.Level == LogLevel.Warning &&
+            e.Message.Contains("garbage collected with residual state") &&
+            e.Message.Contains("waiters=1"));
     }
 
     [Fact]

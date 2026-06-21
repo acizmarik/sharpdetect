@@ -107,6 +107,19 @@ internal static class SyncEventBuilder
             ByRefArgumentInfos: []));
     }
 
+    public static RecordedEvent ExitWithReturnedTarget(uint tid, RecordedEventType type, nuint returnedObjectId)
+    {
+        var ret = new byte[Unsafe.SizeOf<nuint>()];
+        MemoryMarshal.Write(ret, in returnedObjectId);
+        return new RecordedEvent(Meta(tid), new MethodExitWithArgumentsRecordedEvent(
+            ModuleId: Module,
+            MethodToken: Method,
+            Interpretation: (ushort)type,
+            ReturnValue: ret,
+            ByRefArgumentValues: [],
+            ByRefArgumentInfos: []));
+    }
+
     public static RecordedEvent ExitWithByRefSuccess(uint tid, RecordedEventType type, bool success)
     {
         var byRef = new byte[1];

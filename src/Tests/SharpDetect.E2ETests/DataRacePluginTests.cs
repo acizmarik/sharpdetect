@@ -170,6 +170,36 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_HighContention_WriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_HighContention_WriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_WithCancellationToken_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_WithCancellationToken_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_WithTimeout_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_WithTimeout_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_CanceledWait_NoSharedAccess(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_CanceledWait_NoSharedAccess", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_TimeoutExpires_NoSharedAccess(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_TimeoutExpires_NoSharedAccess", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_Monitor_HighContention_WriteRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Monitor_HighContention_WriteRead", sdk, plugin);

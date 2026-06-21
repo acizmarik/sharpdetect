@@ -38,37 +38,70 @@ LibIPC::MetadataMsg Profiler::TypeInjector::CreateMetadataMsg() const
     return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId);
 }
 
+static void AppendCompressedToken(mdToken token, std::vector<COR_SIGNATURE>& result)
+{
+    BYTE bytes[4];
+    const ULONG length = CorSigCompressToken(token, bytes);
+    result.insert(result.end(), bytes, bytes + length);
+}
+
+static void AppendCompressedData(ULONG value, std::vector<COR_SIGNATURE>& result)
+{
+    BYTE bytes[4];
+    const ULONG length = CorSigCompressData(value, bytes);
+    result.insert(result.end(), bytes, bytes + length);
+}
+
 static HRESULT SerializeArgumentTypeDescriptor(
     const Profiler::ArgumentTypeDescriptor& descriptor,
     const LibProfiler::ModuleDef& moduleDef,
     std::vector<COR_SIGNATURE>& result)
 {
-    for (size_t i = 0; i < descriptor.elementTypes.size(); i++)
+    const auto& elementTypes = descriptor.elementTypes;
+
+    for (size_t i = 0; i < elementTypes.size(); )
     {
-        const auto elementType = descriptor.elementTypes[i];
+        const auto elementType = elementTypes[i];
         result.push_back(elementType);
+
+        if (elementType == CorElementType::ELEMENT_TYPE_GENERICINST)
+        {
+            if (i + 1 >= elementTypes.size())
+            {
+                LOG_F(ERROR, "GENERICINST is missing its generic type definition kind.");
+                return E_FAIL;
+            }
+
+            result.push_back(elementTypes[i + 1]);
+
+            mdTypeDef typeDef;
+            if (FAILED(moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef)))
+            {
+                LOG_F(ERROR, "Generic type %s not found in module", descriptor.typeName.value().c_str());
+                return E_FAIL;
+            }
+            AppendCompressedToken(typeDef, result);
+
+            const ULONG genericArgumentCount = static_cast<ULONG>(elementTypes.size() - (i + 2));
+            AppendCompressedData(genericArgumentCount, result);
+
+            i += 2;
+            continue;
+        }
 
         if (elementType == CorElementType::ELEMENT_TYPE_CLASS || elementType == CorElementType::ELEMENT_TYPE_VALUETYPE)
         {
             mdTypeDef typeDef;
-            auto hr = moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef);
-
-            if (SUCCEEDED(hr))
-            {
-                // Compress the token into the signature
-                BYTE tokenBytes[4];
-                const ULONG tokenLength = CorSigCompressToken(typeDef, tokenBytes);
-
-                for (ULONG j = 0; j < tokenLength; j++)
-                    result.push_back(tokenBytes[j]);
-            }
-            else
+            if (FAILED(moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef)))
             {
                 // FIXME: add support for type references
                 LOG_F(ERROR, "Type %s not found in module", descriptor.typeName.value().c_str());
                 return E_FAIL;
             }
+            AppendCompressedToken(typeDef, result);
         }
+
+        ++i;
     }
 
     return S_OK;

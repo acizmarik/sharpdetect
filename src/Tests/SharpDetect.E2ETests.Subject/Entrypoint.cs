@@ -521,6 +521,24 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead):
                     Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead();
                     break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_ProtectedWriteRead):
+                    Test_NoDataRace_SemaphoreSlimAsync_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_HighContention_WriteRead):
+                    Test_NoDataRace_SemaphoreSlimAsync_HighContention_WriteRead();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_WithCancellationToken_ProtectedWriteRead):
+                    Test_NoDataRace_SemaphoreSlimAsync_WithCancellationToken_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_WithTimeout_ProtectedWriteRead):
+                    Test_NoDataRace_SemaphoreSlimAsync_WithTimeout_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_CanceledWait_NoSharedAccess):
+                    Test_NoDataRace_SemaphoreSlimAsync_CanceledWait_NoSharedAccess();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_TimeoutExpires_NoSharedAccess):
+                    Test_NoDataRace_SemaphoreSlimAsync_TimeoutExpires_NoSharedAccess();
+                    break;
                 case nameof(Test_NoDataRace_Monitor_HighContention_WriteRead):
                     Test_NoDataRace_Monitor_HighContention_WriteRead();
                     break;
