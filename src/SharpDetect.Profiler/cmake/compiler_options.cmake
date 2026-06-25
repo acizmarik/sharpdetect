@@ -6,15 +6,22 @@ if (NOT (CMAKE_SIZEOF_VOID_P EQUAL 8))
     message(FATAL_ERROR "Unsupported architecture. Expected 64 bit.")
 endif()
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(PROFILER_HOST_ARCH_DEFINE HOST_ARM64)
+else()
+    set(PROFILER_HOST_ARCH_DEFINE HOST_AMD64)
+endif()
+
 function(apply_profiler_compile_options target_name)
     if (UNIX AND NOT APPLE)
         target_compile_options(${target_name} PRIVATE
             $<$<NOT:$<CONFIG:Release>>:-g>
             -fPIC
             -fms-extensions
-            -Wno-pragma-pack)
+            -Wno-pragma-pack
+            $<$<STREQUAL:${PROFILER_HOST_ARCH_DEFINE},HOST_ARM64>:-Wno-attributes>)
         target_compile_definitions(${target_name} PRIVATE
-            HOST_AMD64
+            ${PROFILER_HOST_ARCH_DEFINE}
             HOST_64BIT
             PLATFORM_UNIX
             PAL_STDCPP_COMPAT)
@@ -26,7 +33,7 @@ if (WIN32)
     message("Windows x64 ${CMAKE_BUILD_TYPE} build")
     enable_language(ASM_MASM)
 elseif (UNIX AND NOT APPLE)
-    message("Linux x64 ${CMAKE_BUILD_TYPE} build")
+    message("Linux ${CMAKE_SYSTEM_PROCESSOR} ${CMAKE_BUILD_TYPE} build")
     enable_language(ASM)
     set(CMAKE_STATIC_LIBRARY_PREFIX "")
     set(CMAKE_SHARED_LIBRARY_PREFIX "")

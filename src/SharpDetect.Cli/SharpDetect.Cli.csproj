@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <None Include="../artifacts/Profilers/linux-x64/*.so" Pack="true" PackagePath="tools/$(TargetFramework)/any/Profilers/linux-x64/" Visible="false" />
+    <None Include="../artifacts/Profilers/linux-arm64/*.so" Pack="true" PackagePath="tools/$(TargetFramework)/any/Profilers/linux-arm64/" Visible="false" />
     <None Include="../artifacts/Profilers/win-x64/*.dll" Pack="true" PackagePath="tools/$(TargetFramework)/any/Profilers/win-x64/" Visible="false" />
     <None Include="../../LICENSE" Pack="true" PackagePath="" Visible="false" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="" Visible="false" />

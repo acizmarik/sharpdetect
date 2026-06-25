@@ -202,7 +202,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
         var path = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? _arguments.Runtime.Profiler.PathWindowsX64
             : RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
-                ? _arguments.Runtime.Profiler.PathLinuxX64
+                ? RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                    ? _arguments.Runtime.Profiler.PathLinuxArm64
+                    : _arguments.Runtime.Profiler.PathLinuxX64
                 : throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
         
         if (path is null)

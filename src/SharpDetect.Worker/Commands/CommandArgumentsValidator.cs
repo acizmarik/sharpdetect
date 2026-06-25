@@ -23,8 +23,8 @@ public static class CommandArgumentsValidator
         if (!File.Exists(target))
             throw new ArgumentException($"Could not find target assembly: \"{target}\".");
 
-        if (!IsX64CompatibleAssembly(target))
-            throw new ArgumentException("Unsupported target architecture. Only x64 and AnyCPU assemblies are supported.");
+        if (!IsSupportedTargetAssembly(target))
+            throw new ArgumentException("Unsupported target architecture. Only x64, Arm64 and AnyCPU assemblies are supported.");
 
         switch (configArgs.Kind)
         {
@@ -36,7 +36,7 @@ public static class CommandArgumentsValidator
         }
     }
 
-    private static bool IsX64CompatibleAssembly(string assemblyPath)
+    private static bool IsSupportedTargetAssembly(string assemblyPath)
     {
         using var fileStream = new FileStream(assemblyPath, FileMode.Open, FileAccess.Read);
         using var peReader = new PEReader(fileStream);
@@ -45,7 +45,9 @@ public static class CommandArgumentsValidator
         switch (machine)
         {
             case Machine.Amd64:
-                return true;
+                return RuntimeInformation.ProcessArchitecture == Architecture.X64;
+            case Machine.Arm64:
+                return RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
             case Machine.I386:
             {
                 // AnyCPU is compiled into I386
@@ -75,11 +77,13 @@ public static class CommandArgumentsValidator
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            var linuxProfilerPath = configArgs.Profiler.PathLinuxX64;
+            var isArm64 = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
+            var platformName = isArm64 ? "Linux arm64" : "Linux x64";
+            var linuxProfilerPath = isArm64 ? configArgs.Profiler.PathLinuxArm64 : configArgs.Profiler.PathLinuxX64;
             if (string.IsNullOrEmpty(linuxProfilerPath))
-                throw new ArgumentException($"No profiler path specified for Linux x64 platform.");
+                throw new ArgumentException($"No profiler path specified for {platformName} platform.");
             if (!File.Exists(linuxProfilerPath))
-                throw new ArgumentException($"Could not find Linux x64 profiler library: \"{linuxProfilerPath}\".");
+                throw new ArgumentException($"Could not find {platformName} profiler library: \"{linuxProfilerPath}\".");
         }
 
         if (configArgs.Host is { } host)

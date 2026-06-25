@@ -13,13 +13,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
-        rid: [win-x64, linux-x64]
+        os: [windows-latest, ubuntu-latest, ubuntu-24.04-arm]
+        rid: [win-x64, linux-x64, linux-arm64]
         exclude:
           # Cross-compilation is not supported 
           - os: ubuntu-latest
             rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
           - os: windows-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: linux-arm64
+          - os: ubuntu-24.04-arm
+            rid: win-x64
+          - os: ubuntu-24.04-arm
             rid: linux-x64
     steps:
     - uses: actions/checkout@v6
@@ -44,13 +52,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
-        rid: [win-x64, linux-x64]
+        os: [windows-latest, ubuntu-latest, ubuntu-24.04-arm]
+        rid: [win-x64, linux-x64, linux-arm64]
         exclude:
-          # Cross-compilation is not supported 
+          # Cross-compilation is not supported
           - os: ubuntu-latest
             rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
           - os: windows-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: linux-arm64
+          - os: ubuntu-24.04-arm
+            rid: win-x64
+          - os: ubuntu-24.04-arm
             rid: linux-x64
     steps:
     - uses: actions/checkout@v6

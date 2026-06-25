@@ -21,8 +21,10 @@ string GetDefaultRuntimeIdentifier()
     if (IsRunningOnWindows())
         return "win-x64";
     if (IsRunningOnLinux())
-        return "linux-x64";
-    
+        return System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64
+            ? "linux-arm64"
+            : "linux-x64";
+
     throw new Exception("Unknown or unsupported platform. Please specify the runtime identifier using --rid parameter.");
 }
 

@@ -1,7 +1,11 @@
 if (WIN32)
     set(ASM_SRC asmHelpers.asm)
 elseif (UNIX AND NOT APPLE)
-    set(ASM_SRC asmHelpers.S)
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(ASM_SRC asmHelpers.arm64.S)
+    else()
+        set(ASM_SRC asmHelpers.amd64.S)
+    endif()
 endif()
 
 set(SOURCES
@@ -13,20 +17,22 @@ set(SOURCES
     "PAL.cpp")
 
 set(INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
+set(SYSTEM_INCLUDE_DIRECTORIES "")
 
 if (UNIX AND NOT APPLE)
-    list(APPEND INCLUDE_DIRECTORIES
+    list(APPEND SYSTEM_INCLUDE_DIRECTORIES
         "${PROFILER_LIB_DIR}/coreclr/inc"
         "${PROFILER_LIB_DIR}/coreclr/pal/inc"
         "${PROFILER_LIB_DIR}/coreclr/pal/inc/rt"
         "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
     list(APPEND SOURCES "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/idl/corprof_i.cpp")
 elseif (WIN32)
-    list(APPEND INCLUDE_DIRECTORIES "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
+    list(APPEND SYSTEM_INCLUDE_DIRECTORIES "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
 endif()
 
 add_library (LibProfilerCore STATIC ${SOURCES})
 target_include_directories(LibProfilerCore PUBLIC ${INCLUDE_DIRECTORIES})
+target_include_directories(LibProfilerCore SYSTEM PUBLIC ${SYSTEM_INCLUDE_DIRECTORIES})
 apply_profiler_compile_options(LibProfilerCore)
 
 if (WIN32)
