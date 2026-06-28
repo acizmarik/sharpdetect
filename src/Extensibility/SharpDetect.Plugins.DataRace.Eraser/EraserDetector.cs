@@ -31,7 +31,7 @@ internal sealed class EraserDetector
         _timeProvider = timeProvider;
 
         _threadLockSetTracker = new ThreadLockSetTracker(_lockSetTable);
-        _accessTracker = new AccessTracker(timeProvider, threadNameResolver);
+        _accessTracker = new AccessTracker(threadNameResolver);
         _fieldResolver = new FieldResolver(metadataContext, logger);
         _stateMachine = new EraserStateMachine(_lockSetTable);
     }
@@ -123,22 +123,21 @@ internal sealed class EraserDetector
         var transitionResult = _stateMachine.ComputeTransition(threadId, shadow, threadLockSet, isWrite);
         _shadowMemory.Update(fieldId, objectId, transitionResult.NewShadow);
         var accessType = isWrite ? AccessType.Write : AccessType.Read;
-        var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, accessType);
-        var lastRelevantAccess = isWrite 
-            ? _accessTracker.GetLastAccess(fieldId, objectId) 
-            : _accessTracker.GetLastWriteAccess(fieldId, objectId);
-        _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
-        if (!transitionResult.IsRaceDetected || 
-            lastRelevantAccess == null || 
+        var hasLastRelevant = isWrite
+            ? _accessTracker.TryGetLastAccess(fieldId, objectId, out var lastRelevantAccess)
+            : _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out lastRelevantAccess);
+        var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, moduleId, methodToken, methodOffset, accessType);
+        if (!transitionResult.IsRaceDetected ||
+            !hasLastRelevant ||
             lastRelevantAccess.ProcessThreadId == threadId)
             return null;
-        
+
         return new DataRaceInfo(
             threadId.ProcessId,
             fieldId,
             objectId,
-            currentAccess,
-            lastRelevantAccess,
+            _accessTracker.Materialize(currentAccess),
+            _accessTracker.Materialize(lastRelevantAccess),
             Timestamp: _timeProvider.GetUtcNow().DateTime);
     }
 }

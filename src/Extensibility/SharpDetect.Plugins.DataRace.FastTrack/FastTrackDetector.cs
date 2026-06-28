@@ -21,8 +21,8 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
-    private readonly Dictionary<(FieldId, ProcessTrackedObjectId?), VectorClock> _volatileClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _volatileClocksObjectIndex = [];
+    private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
     private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, bool Escaped);
     
@@ -35,7 +35,7 @@ internal sealed class FastTrackDetector
     {
         _configuration = configuration;
         _timeProvider = timeProvider;
-        _accessTracker = new AccessTracker(timeProvider, threadNameResolver);
+        _accessTracker = new AccessTracker(threadNameResolver);
         _fieldResolver = new FieldResolver(metadataContext, logger);
         _methodResolver = new MethodResolver(metadataContext, logger);
     }
@@ -70,16 +70,7 @@ internal sealed class FastTrackDetector
             _semaphoreClocks.Remove(processObjectId);
             _taskClocks.Remove(processObjectId);
             _escapeStates.Remove(processObjectId);
-        }
-
-        foreach (var objectId in removedObjectIds)
-        {
-            var processObjectId = new ProcessTrackedObjectId(processId, objectId);
-            if (!_volatileClocksObjectIndex.Remove(processObjectId, out var fieldIds))
-                continue;
-
-            foreach (var fieldId in fieldIds)
-                _volatileClocks.Remove((fieldId, processObjectId));
+            _instanceVolatileClocks.Remove(processObjectId);
         }
     }
     
@@ -208,11 +199,10 @@ internal sealed class FastTrackDetector
             return;
 
         var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
-        var key = (fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
         var volatileVc = GetOrCreateVolatileClock(fieldId, objectId);
         volatileVc.Join(threadVc);
-        _volatileClocks[key] = threadVc.Clone();
+        GetVolatileClockMap(objectId)[fieldId] = threadVc.Clone();
         threadVc.Increment(threadId);
     }
 
@@ -241,28 +231,25 @@ internal sealed class FastTrackDetector
             shadow.LastWriteKind == WriteKind.Regular)
         {
             // Write-read race detected: last write does not happen-before this read
-            var accessType = AccessType.Read;
-            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, accessType);
-            var lastAccess = _accessTracker.GetLastWriteAccess(fieldId, objectId);
-            _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
+            var hasLastWrite = _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var lastWrite);
+            var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, moduleId, methodToken, methodOffset, AccessType.Read);
             UpdateReadState(threadId, shadow, threadVc);
 
-            if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
+            if (hasLastWrite && lastWrite.ProcessThreadId != threadId)
             {
                 return new DataRaceInfo(
                     threadId.ProcessId,
                     fieldId,
                     objectId,
-                    currentAccess,
-                    lastAccess,
+                    _accessTracker.Materialize(currentAccess),
+                    _accessTracker.Materialize(lastWrite),
                     _timeProvider.GetUtcNow().DateTime);
             }
 
             return null;
         }
 
-        var readAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Read);
-        _accessTracker.RecordAccess(fieldId, objectId, readAccess);
+        _accessTracker.RecordAccess(fieldId, objectId, threadId, moduleId, methodToken, methodOffset, AccessType.Read);
         UpdateReadState(threadId, shadow, threadVc);
         return null;
     }
@@ -291,20 +278,19 @@ internal sealed class FastTrackDetector
             shadow.WriteEpoch.ThreadId != threadId &&
             !shadow.WriteEpoch.HappensBefore(threadVc))
         {
-            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
-            var lastAccess = _accessTracker.GetLastWriteAccess(fieldId, objectId);
-            _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
+            var hasLastWrite = _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var lastWrite);
+            var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, moduleId, methodToken, methodOffset, AccessType.Write);
             shadow.SetWrite(currentEpoch, writeKind);
             shadow.SetRead(Epoch.None);
 
-            if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
+            if (hasLastWrite && lastWrite.ProcessThreadId != threadId)
             {
                 return new DataRaceInfo(
                     threadId.ProcessId,
                     fieldId,
                     objectId,
-                    currentAccess,
-                    lastAccess,
+                    _accessTracker.Materialize(currentAccess),
+                    _accessTracker.Materialize(lastWrite),
                     _timeProvider.GetUtcNow().DateTime);
             }
 
@@ -314,28 +300,26 @@ internal sealed class FastTrackDetector
         var readWriteRace = CheckReadWriteRace(threadId, shadow, threadVc);
         if (readWriteRace != null)
         {
-            var currentAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
-            var lastAccess = _accessTracker.GetLastAccess(fieldId, objectId);
-            _accessTracker.RecordAccess(fieldId, objectId, currentAccess);
+            var hasLastAccess = _accessTracker.TryGetLastAccess(fieldId, objectId, out var lastAccess);
+            var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, moduleId, methodToken, methodOffset, AccessType.Write);
             shadow.SetWrite(currentEpoch, writeKind);
             shadow.SetRead(Epoch.None);
 
-            if (lastAccess != null && lastAccess.ProcessThreadId != threadId)
+            if (hasLastAccess && lastAccess.ProcessThreadId != threadId)
             {
                 return new DataRaceInfo(
                     threadId.ProcessId,
                     fieldId,
                     objectId,
-                    currentAccess,
-                    lastAccess,
+                    _accessTracker.Materialize(currentAccess),
+                    _accessTracker.Materialize(lastAccess),
                     _timeProvider.GetUtcNow().DateTime);
             }
 
             return null;
         }
 
-        var writeAccess = _accessTracker.CreateAccessInfo(threadId, moduleId, methodToken, methodOffset, AccessType.Write);
-        _accessTracker.RecordAccess(fieldId, objectId, writeAccess);
+        _accessTracker.RecordAccess(fieldId, objectId, threadId, moduleId, methodToken, methodOffset, AccessType.Write);
         shadow.SetWrite(currentEpoch, writeKind);
         shadow.SetRead(Epoch.None);
         return null;
@@ -467,25 +451,28 @@ internal sealed class FastTrackDetector
 
     private VectorClock GetOrCreateVolatileClock(FieldId fieldId, ProcessTrackedObjectId? objectId)
     {
-        var key = (fieldId, objectId);
-        if (!_volatileClocks.TryGetValue(key, out var vc))
+        var clocks = GetVolatileClockMap(objectId);
+        if (!clocks.TryGetValue(fieldId, out var vc))
         {
             vc = new VectorClock();
-            _volatileClocks[key] = vc;
-
-            if (objectId is { } objId)
-            {
-                if (!_volatileClocksObjectIndex.TryGetValue(objId, out var fieldIds))
-                {
-                    fieldIds = [];
-                    _volatileClocksObjectIndex[objId] = fieldIds;
-                }
-
-                fieldIds.Add(fieldId);
-            }
+            clocks[fieldId] = vc;
         }
 
         return vc;
+    }
+
+    private Dictionary<FieldId, VectorClock> GetVolatileClockMap(ProcessTrackedObjectId? objectId)
+    {
+        if (objectId is not { } objId)
+            return _staticVolatileClocks;
+
+        if (!_instanceVolatileClocks.TryGetValue(objId, out var clocks))
+        {
+            clocks = [];
+            _instanceVolatileClocks[objId] = clocks;
+        }
+
+        return clocks;
     }
 }
 

@@ -18,8 +18,14 @@ public sealed record AccessInfo(
     ModuleId ModuleId,
     MdMethodDef MethodToken,
     uint MethodOffset,
-    AccessType AccessType,
-    DateTime Timestamp);
+    AccessType AccessType);
+
+public readonly record struct AccessRecord(
+    ProcessThreadId ProcessThreadId,
+    ModuleId ModuleId,
+    MdMethodDef MethodToken,
+    uint MethodOffset,
+    AccessType AccessType);
 
 public sealed record DataRaceInfo(
     uint ProcessId,

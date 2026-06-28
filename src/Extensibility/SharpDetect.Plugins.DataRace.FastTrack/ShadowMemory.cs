@@ -10,8 +10,8 @@ namespace SharpDetect.Plugins.DataRace.FastTrack;
 internal sealed class ShadowMemory
 {
     private readonly Dictionary<FieldId, ShadowVariable> _staticShadowWords = [];
-    private readonly Dictionary<(FieldId, ProcessTrackedObjectId), ShadowVariable> _instanceShadowWords = [];
-    private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _objectFieldIndex = [];
+    private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, ShadowVariable>> _instanceShadowWords = [];
+    private int _instanceCount;
 
     public ShadowVariable GetOrCreateVirgin(FieldId fieldId, ProcessTrackedObjectId? objectId)
     {
@@ -32,13 +32,18 @@ internal sealed class ShadowMemory
 
     private ShadowVariable GetOrCreateInstance(FieldId fieldId, ProcessTrackedObjectId objectId)
     {
-        var key = (fieldId, objectId);
-        if (_instanceShadowWords.TryGetValue(key, out var shadow))
+        if (!_instanceShadowWords.TryGetValue(objectId, out var fields))
+        {
+            fields = [];
+            _instanceShadowWords[objectId] = fields;
+        }
+
+        if (fields.TryGetValue(fieldId, out var shadow))
             return shadow;
 
         shadow = ShadowVariable.CreateVirgin();
-        _instanceShadowWords[key] = shadow;
-        TrackObjectField(objectId, fieldId);
+        fields[fieldId] = shadow;
+        _instanceCount++;
         return shadow;
     }
 
@@ -47,26 +52,10 @@ internal sealed class ShadowMemory
         foreach (var objectId in removedObjectIds)
         {
             var processObjectId = new ProcessTrackedObjectId(processId, objectId);
-            if (!_objectFieldIndex.Remove(processObjectId, out var fieldIds))
-                continue;
-
-            foreach (var fieldId in fieldIds)
-                _instanceShadowWords.Remove((fieldId, processObjectId));
+            if (_instanceShadowWords.Remove(processObjectId, out var fields))
+                _instanceCount -= fields.Count;
         }
     }
 
-    public int Count => _staticShadowWords.Count + _instanceShadowWords.Count;
-
-    private void TrackObjectField(ProcessTrackedObjectId objectId, FieldId fieldId)
-    {
-        if (!_objectFieldIndex.TryGetValue(objectId, out var fieldIds))
-        {
-            fieldIds = [];
-            _objectFieldIndex[objectId] = fieldIds;
-        }
-
-        fieldIds.Add(fieldId);
-    }
+    public int Count => _staticShadowWords.Count + _instanceCount;
 }
-
-
