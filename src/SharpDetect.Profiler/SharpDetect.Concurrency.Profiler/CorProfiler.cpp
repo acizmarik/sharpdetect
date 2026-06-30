@@ -60,12 +60,13 @@ EXTERN_C void TailcallNaked(FunctionIDOrClientID functionIDOrClientID, COR_PRF_E
 
 UINT_PTR STDMETHODCALLTYPE FunctionMapper(const FunctionID funcId, void* clientData, BOOL* pbHookFunction)
 {
-    // Inject hooks only for methods where we explicitly requested them
-    auto const descriptor = ProfilerInstance->FindMethodDescriptor(funcId);
-    auto const shouldInjectHooks = descriptor != nullptr && descriptor->rewritingDescriptor.injectHooks;
-    *pbHookFunction = shouldInjectHooks;
+    // Resolve the per-function ELT decision once during JIT compilation
+    // Enter/Exit hooks use precomputed decision
+    auto const decision = ProfilerInstance->GetEltDecision(funcId, pbHookFunction);
+    if (decision == nullptr)
+        return funcId;
 
-    return funcId;
+    return reinterpret_cast<UINT_PTR>(decision);
 }
 
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfilerInfoUnk)
@@ -410,61 +411,87 @@ static BOOL HasIndirects(const Profiler::MethodDescriptor& descriptor)
     return indirectIt != descriptor.rewritingDescriptor.arguments.cend();
 }
 
+const Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID functionId, BOOL* pbHookFunction)
+{
+    *pbHookFunction = FALSE;
+
+    ModuleID moduleId;
+    mdMethodDef methodDef;
+    if (FAILED(_corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef)))
+        return nullptr;
+
+    // Inject hooks only for methods where we explicitly requested them
+    const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
+    const auto shouldInjectHooks = descriptorPointer != nullptr && descriptorPointer->rewritingDescriptor.injectHooks;
+    if (!shouldInjectHooks)
+        return nullptr;
+
+    *pbHookFunction = TRUE;
+
+    auto guard = std::lock_guard(_eltDecisionMutex);
+    if (const auto it = _eltDecisionLookup.find(functionId); it != _eltDecisionLookup.cend())
+        return it->second;
+
+    constexpr auto originalMethodEnterEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnter);
+    constexpr auto originalMethodEnterWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments);
+    constexpr auto originalMethodExitEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit);
+    constexpr auto originalMethodExitWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
+
+    const auto enterMappings = _rewriteRegistry.FindMethodEnterMappings(
+        moduleId, methodDef, originalMethodEnterEvent, originalMethodEnterWithArgumentsEvent);
+    const auto exitMappings = _rewriteRegistry.FindMethodExitMappings(
+        moduleId, methodDef, originalMethodExitEvent, originalMethodExitWithArgumentsEvent);
+
+    const auto& descriptor = *descriptorPointer.get();
+    EltDecision decision{};
+    decision.functionId = functionId;
+    decision.moduleId = moduleId;
+    decision.methodDef = methodDef;
+    decision.descriptor = descriptorPointer.get();
+    decision.enterEventId = enterMappings.hasEvent ? enterMappings.eventMapping : originalMethodEnterEvent;
+    decision.enterWithArgsEventId = enterMappings.hasWithArgsEvent ? enterMappings.withArgsEventMapping : originalMethodEnterWithArgumentsEvent;
+    decision.exitEventId = exitMappings.hasEvent ? exitMappings.eventMapping : originalMethodExitEvent;
+    decision.exitWithArgsEventId = exitMappings.hasWithArgsEvent ? exitMappings.withArgsEventMapping : originalMethodExitWithArgumentsEvent;
+    decision.hasArguments = !descriptor.rewritingDescriptor.arguments.empty();
+    decision.hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
+    decision.hasIndirects = HasIndirects(descriptor);
+
+    _eltDecisions.push_back(decision);
+    const auto* stored = &_eltDecisions.back();
+    _eltDecisionLookup.emplace(functionId, stored);
+    return stored;
+}
+
 HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOrClientId, const COR_PRF_ELT_INFO eltInfo)
 {
     if (_terminating)
         return S_OK;
 
-    ModuleID moduleId;
-    mdMethodDef methodDef;
-    auto const functionId = functionOrClientId.functionID;
-    HRESULT hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef);
-    if (FAILED(hr))
-    {
-        LOG_F(ERROR, "Could not resolve functionId %" UINT_PTR_FORMAT " to a method. Error: 0x%x", functionId, hr);
-        return E_FAIL;
-    }
+    const auto* decision = reinterpret_cast<const EltDecision*>(functionOrClientId.clientID);
+    if (decision == nullptr)
+        return S_OK;
 
-    // Check if event mapping is available
-    constexpr auto originalMethodEnterEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnter);
-    constexpr auto originalMethodEnterWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments);
-    auto const [hasCustomMethodEnterEvent, customMethodEnterEvent,
-                hasCustomMethodEnterWithArgumentsEvent, customMethodEnterWithArgumentsEvent] =
-        _rewriteRegistry.FindMethodEnterMappings(
-            moduleId,
-            methodDef,
-            originalMethodEnterEvent,
-            originalMethodEnterWithArgumentsEvent);
+    const auto moduleId = decision->moduleId;
+    const auto methodDef = decision->methodDef;
 
-    const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
-    if (!descriptorPointer)
+    if (decision->descriptor == nullptr || !decision->hasArguments)
     {
         // Notify about method enter without arguments
         _client.Send(LibIPC::Helpers::CreateMethodEnterMsg(
             CreateMetadataMsg(),
             moduleId,
             methodDef,
-            hasCustomMethodEnterEvent ? customMethodEnterEvent : originalMethodEnterEvent));
+            decision->enterEventId));
         return S_OK;
     }
 
     // Retrieve information about arguments
-    const auto& descriptor = *descriptorPointer.get();
-    if (descriptor.rewritingDescriptor.arguments.empty())
-    {
-        // Notify about method enter without arguments
-        _client.Send(LibIPC::Helpers::CreateMethodEnterMsg(
-            CreateMetadataMsg(),
-            moduleId,
-            methodDef,
-            hasCustomMethodEnterEvent ? customMethodEnterEvent : originalMethodEnterEvent));
-        return S_OK;
-    }
+    const auto& descriptor = *decision->descriptor;
 
     // Retrieve arguments data
     COR_PRF_FRAME_INFO frameInfo { };
     ULONG argumentsLength = 0;
-    hr = _corProfilerInfo->GetFunctionEnter3Info(functionId, eltInfo, &frameInfo, &argumentsLength, nullptr);
+    HRESULT hr = _corProfilerInfo->GetFunctionEnter3Info(decision->functionId, eltInfo, &frameInfo, &argumentsLength, nullptr);
     if (hr != HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER))
     {
         LOG_F(ERROR, "Could not retrieve arguments info for method %d. Error: 0x%x", methodDef, hr);
@@ -472,15 +499,16 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     std::vector<UINT_PTR> indirects;
-    const auto rawArgumentInfos = std::unique_ptr<BYTE[]>(new BYTE[argumentsLength]);
-    hr = _corProfilerInfo->GetFunctionEnter3Info(functionId, eltInfo, &frameInfo, &argumentsLength, reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.get()));
+    thread_local std::vector<BYTE> rawArgumentInfos;
+    rawArgumentInfos.resize(argumentsLength);
+    hr = _corProfilerInfo->GetFunctionEnter3Info(decision->functionId, eltInfo, &frameInfo, &argumentsLength, reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not retrieve arguments data for method %d. Error: 0x%x.", methodDef, hr);
         return E_FAIL;
     }
 
-    const auto& argumentInfos = *reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.get());
+    const auto& argumentInfos = *reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data());
     std::vector<BYTE> argumentValues;
     std::vector<BYTE> argumentOffsets;
 
@@ -513,9 +541,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         CreateMetadataMsg(),
         moduleId,
         methodDef,
-        hasCustomMethodEnterWithArgumentsEvent
-            ? customMethodEnterWithArgumentsEvent
-            : originalMethodEnterWithArgumentsEvent,
+        decision->enterWithArgsEventId,
         std::move(argumentValues),
         std::move(argumentOffsets)));
     return S_OK;
@@ -526,58 +552,33 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     if (_terminating)
         return S_OK;
 
-    ModuleID moduleId;
-    mdMethodDef methodDef;
-    auto const functionId = functionOrClientId.functionID;
-    HRESULT hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef);
-    if (FAILED(hr))
-    {
-        LOG_F(ERROR, "Could not resolve functionId %" UINT_PTR_FORMAT " to a method. Error: 0x%x", functionId, hr);
-        return E_FAIL;
-    }
+    const auto* decision = reinterpret_cast<const EltDecision*>(functionOrClientId.clientID);
+    if (decision == nullptr)
+        return S_OK;
 
-    // Check if event mapping is available
-    constexpr auto originalMethodExitEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit);
-    constexpr auto originalMethodExitWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
-    auto const [hasCustomMethodExitEvent, customMethodExitEvent,
-                hasCustomMethodExitWithArgumentsEvent, customMethodExitWithArgumentsEvent] =
-        _rewriteRegistry.FindMethodExitMappings(
-            moduleId,
-            methodDef,
-            originalMethodExitEvent,
-            originalMethodExitWithArgumentsEvent);
+    const auto moduleId = decision->moduleId;
+    const auto methodDef = decision->methodDef;
 
-    const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
-    if (!descriptorPointer)
+    if (decision->descriptor == nullptr || (!decision->hasReturnValue && !decision->hasIndirects))
     {
         // Notify about method leave without arguments
         _client.Send(LibIPC::Helpers::CreateMethodExitMsg(
             CreateMetadataMsg(),
             moduleId,
             methodDef,
-            hasCustomMethodExitEvent ? customMethodExitEvent : originalMethodExitEvent));
+            decision->exitEventId));
         return S_OK;
     }
 
     // Retrieve information about arguments
-    const auto& descriptor = *descriptorPointer.get();
-    auto const hasIndirects = HasIndirects(descriptor);
-    auto const hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
-    if (!hasReturnValue && !hasIndirects)
-    {
-        // Notify about method leave without arguments
-        _client.Send(LibIPC::Helpers::CreateMethodExitMsg(
-            CreateMetadataMsg(),
-            moduleId,
-            methodDef,
-            hasCustomMethodExitEvent ? customMethodExitEvent : originalMethodExitEvent));
-        return S_OK;
-    }
+    const auto& descriptor = *decision->descriptor;
+    auto const hasIndirects = decision->hasIndirects;
+    auto const hasReturnValue = decision->hasReturnValue;
 
     // Retrieve return value data
     COR_PRF_FRAME_INFO frameInfo;
     COR_PRF_FUNCTION_ARGUMENT_RANGE returnValueInfo;
-    hr = _corProfilerInfo->GetFunctionLeave3Info(functionId, eltInfo, &frameInfo, &returnValueInfo);
+    HRESULT hr = _corProfilerInfo->GetFunctionLeave3Info(decision->functionId, eltInfo, &frameInfo, &returnValueInfo);
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not retrieve return value info for method %d. Error: 0x%x", methodDef, hr);
@@ -641,9 +642,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         CreateMetadataMsg(),
         moduleId,
         methodDef,
-        hasCustomMethodExitWithArgumentsEvent
-            ? customMethodExitWithArgumentsEvent
-            : originalMethodExitWithArgumentsEvent,
+        decision->exitWithArgsEventId,
         std::move(returnValue),
         std::move(argumentValues),
         std::move(argumentOffsets)));

@@ -67,7 +67,7 @@ namespace Profiler
 		std::mutex _injectedMethodsMutex;
 
 		std::unordered_map<MethodId, BOOL, MethodIdHasher> _methodStubs;
-		std::mutex _methodStubsMutex;
+		std::shared_mutex _methodStubsMutex;
 
 		CustomEventsLookup _customEventOnMethodEntryLookup;
 		CustomEventsLookup _customEventOnMethodExitLookup;
