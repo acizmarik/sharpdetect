@@ -159,7 +159,8 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        _callstacks[id].Push(args.ModuleId, args.MethodToken);
+        if (TracksCallstackFrame(args.Interpretation))
+            _callstacks[id].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterExitCounter();
         base.Visit(metadata, args);
     }
@@ -167,7 +168,8 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        _callstacks[id].Push(args.ModuleId, args.MethodToken);
+        if (TracksCallstackFrame(args.Interpretation))
+            _callstacks[id].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterExitCounter();
         base.Visit(metadata, args);
     }
@@ -175,16 +177,27 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void Visit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        _callstacks[id].Pop();
+        if (TracksCallstackFrame(args.Interpretation))
+            _callstacks[id].Pop();
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        _callstacks[id].Pop();
+        if (TracksCallstackFrame(args.Interpretation))
+            _callstacks[id].Pop();
         base.Visit(metadata, args);
     }
+
+    private static bool TracksCallstackFrame(ushort interpretation) => (RecordedEventType)interpretation switch
+    {
+        RecordedEventType.StaticFieldRead
+            or RecordedEventType.StaticFieldWrite
+            or RecordedEventType.InstanceFieldRead
+            or RecordedEventType.InstanceFieldWrite => false,
+        _ => true
+    };
     
     protected override void Visit(RecordedEventMetadata metadata, FieldAccessInstrumentationRecordedEvent args)
     {

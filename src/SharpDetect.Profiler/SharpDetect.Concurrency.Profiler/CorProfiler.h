@@ -41,6 +41,7 @@ namespace Profiler
 		bool hasArguments;
 		bool hasReturnValue;
 		bool hasIndirects;
+		bool emitExitEvent;
 	};
 
 	class CorProfiler final : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler

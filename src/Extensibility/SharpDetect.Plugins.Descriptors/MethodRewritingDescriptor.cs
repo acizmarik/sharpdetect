@@ -9,4 +9,5 @@ public record MethodRewritingDescriptor(
     CapturedArgumentDescriptor[]? Arguments,
     CapturedValueDescriptor? ReturnValue,
     ushort? MethodEnterInterpretation,
-    ushort? MethodExitInterpretation);
+    ushort? MethodExitInterpretation,
+    bool EmitExitEvent = true);

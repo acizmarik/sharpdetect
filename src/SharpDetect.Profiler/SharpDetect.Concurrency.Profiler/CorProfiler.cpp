@@ -455,6 +455,7 @@ const Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const Functio
     decision.hasArguments = !descriptor.rewritingDescriptor.arguments.empty();
     decision.hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
     decision.hasIndirects = HasIndirects(descriptor);
+    decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
 
     _eltDecisions.push_back(decision);
     const auto* stored = &_eltDecisions.back();
@@ -553,7 +554,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         return S_OK;
 
     const auto* decision = reinterpret_cast<const EltDecision*>(functionOrClientId.clientID);
-    if (decision == nullptr)
+    if (decision == nullptr || !decision->emitExitEvent)
         return S_OK;
 
     const auto moduleId = decision->moduleId;
