@@ -14,9 +14,13 @@ public static class TemporalAssertionBuilders
         return new(EventMatchers.EventType(type));
     }
 
-    public static EventuallyOperator<ulong, RecordedEventType> EventuallyVolatileFieldAccess(RecordedEventType type)
+    public static EventuallyOperator<ulong, RecordedEventType> EventuallyFieldAccessInAssembly(
+        string assemblyName,
+        RecordedEventType type,
+        IMetadataResolver plugin,
+        bool? requireVolatile = null)
     {
-        return new(EventMatchers.VolatileFieldAccess(type));
+        return new(EventMatchers.FieldAccessInAssembly(assemblyName, type, plugin, requireVolatile));
     }
 
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodEnter(

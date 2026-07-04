@@ -18,6 +18,7 @@ namespace SharpDetect.E2ETests;
 public class FieldAccessTests(ITestOutputHelper testOutput)
 {
     public const string CollectionName = "E2E_FieldAccessTests";
+    private const string SubjectAssemblyName = "SharpDetect.E2ETests.Subject";
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task StaticField_ValueType_Read(string sdk)
@@ -251,7 +252,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyEventType(eventType))
+            .Then(EventuallyFieldAccessInAssembly(SubjectAssemblyName, eventType, plugin))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute
@@ -298,7 +299,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyVolatileFieldAccess(eventType))
+            .Then(EventuallyFieldAccessInAssembly(SubjectAssemblyName, eventType, plugin, requireVolatile: true))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute

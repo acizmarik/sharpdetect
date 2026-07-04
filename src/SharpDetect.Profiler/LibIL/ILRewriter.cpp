@@ -650,6 +650,12 @@ HRESULT ILRewriter::ComputeStackTypes()
                 pInstr->m_objOperandIsObjRef = stack[stack.size() - 2] == SlotObjRef;
         }
 
+        if (opcode == CEE_DUP)
+        {
+            stack.push_back(stack.empty() ? SlotOther : stack.back());
+            continue;
+        }
+
         // --- Pop ---
         int popCount = k_rgnStackPops[opcode];
         if (popCount == -1) // VarPop
@@ -719,21 +725,6 @@ HRESULT ILRewriter::ComputeStackTypes()
 
         // --- Push ---
         int pushCount = k_rgnStackPushes[opcode];
-
-        // Handle DUP specially: it duplicates the top, preserving type
-        if (opcode == CEE_DUP)
-        {
-            if (!stack.empty())
-            {
-                StackSlotKind top = stack.back();
-                stack.push_back(top);
-            }
-            else
-            {
-                stack.push_back(SlotOther);
-            }
-            continue;
-        }
 
         if (pushCount > 0)
         {
