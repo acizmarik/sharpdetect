@@ -4,6 +4,9 @@
 #pragma once
 
 #include <atomic>
+#include <deque>
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 #include <shared_mutex>
 
@@ -25,6 +28,22 @@
 
 namespace Profiler
 {
+	struct EltDecision
+	{
+		FunctionID functionId;
+		ModuleID moduleId;
+		mdMethodDef methodDef;
+		const MethodDescriptor* descriptor;
+		USHORT enterEventId;
+		USHORT enterWithArgsEventId;
+		USHORT exitEventId;
+		USHORT exitWithArgsEventId;
+		bool hasArguments;
+		bool hasReturnValue;
+		bool hasIndirects;
+		bool emitExitEvent;
+	};
+
 	class CorProfiler final : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler
 	{
 	public:
@@ -49,6 +68,7 @@ namespace Profiler
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT TailcallMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> FindMethodDescriptor(FunctionID functionId);
+		[[nodiscard]] const EltDecision* GetEltDecision(FunctionID functionId, BOOL* pbHookFunction);
 
 	private:
 		HRESULT AbortAttach(const std::string& reason);
@@ -70,5 +90,9 @@ namespace Profiler
 		RewriteRegistry _rewriteRegistry;
 		ArgumentCapture _argumentCapture;
 		TypeInjector _typeInjector;
+
+		std::deque<EltDecision> _eltDecisions;
+		std::unordered_map<FunctionID, const EltDecision*> _eltDecisionLookup;
+		std::mutex _eltDecisionMutex;
 	};
 }

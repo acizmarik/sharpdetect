@@ -11,7 +11,7 @@ void Profiler::RewriteRegistry::AddStub(const ModuleID moduleId, const mdMethodD
 
 BOOL Profiler::RewriteRegistry::IsStub(const ModuleID moduleId, const mdMethodDef methodDef)
 {
-	auto guard = std::unique_lock(_methodStubsMutex);
+	auto guard = std::shared_lock(_methodStubsMutex);
 	return _methodStubs.contains(std::make_pair(moduleId, methodDef));
 }
 

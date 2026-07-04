@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using CliWrap;
@@ -15,6 +16,7 @@ namespace SharpDetect.Worker.Services;
 public sealed class AnalysisWorker : IAnalysisWorker
 {
     private static readonly TimeSpan ProfilerEventReceiveTimeout = TimeSpan.FromMilliseconds(50);
+    private const int EventBufferCapacity = 1000;
     private readonly RunCommandArgs _arguments;
     private readonly IPlugin _plugin;
     private readonly IPluginHost _pluginHost;
@@ -139,9 +141,51 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
     private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
     {
+        using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var events = new BlockingCollection<RecordedEvent>(EventBufferCapacity);
+        var producer = new Thread(() => ProduceEvents(events, targetProcessTask, rootPid, receiveCts.Token))
+        {
+            IsBackground = true,
+            Name = "SharpDetect.EventReceiver"
+        };
+        producer.Start();
+
+        try
+        {
+            ProcessEvents(events, rootPid, cancellationToken);
+        }
+        finally
+        {
+            receiveCts.Cancel();
+            producer.Join();
+
+            if (_pluginHost is IDisposable disposable)
+                disposable.Dispose();
+        }
+    }
+
+    private void ProduceEvents(BlockingCollection<RecordedEvent> events, Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
+    {
         try
         {
             foreach (var currentEvent in ReceiveEvents(targetProcessTask, rootPid, cancellationToken))
+                events.Add(currentEvent, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when the consumer finishes (or analysis is cancelled) while we wait for buffer capacity.
+        }
+        finally
+        {
+            events.CompleteAdding();
+        }
+    }
+
+    private void ProcessEvents(BlockingCollection<RecordedEvent> events, uint rootPid, CancellationToken cancellationToken)
+    {
+        try
+        {
+            foreach (var currentEvent in events.GetConsumingEnumerable(cancellationToken))
             {
                 if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
                     return;
@@ -153,10 +197,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 }
             }
         }
-        finally
+        catch (OperationCanceledException)
         {
-            if (_pluginHost is IDisposable disposable)
-                disposable.Dispose();
+            // Analysis cancelled while waiting for the next event.
         }
     }
 

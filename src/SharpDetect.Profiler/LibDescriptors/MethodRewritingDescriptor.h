@@ -23,6 +23,7 @@ namespace Profiler
 		std::optional<CapturedValueDescriptor> returnValue;
 		std::optional<USHORT> methodEnterInterpretation;
 		std::optional<USHORT> methodExitInterpretation;
+		BOOL emitExitEvent;
 	};
 
     void to_json(nlohmann::json& json, const MethodRewritingDescriptor& descriptor);

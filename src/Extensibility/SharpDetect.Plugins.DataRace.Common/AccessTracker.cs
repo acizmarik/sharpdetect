@@ -1,93 +1,120 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Runtime.InteropServices;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 
 namespace SharpDetect.Plugins.DataRace.Common;
 
-public sealed class AccessTracker(TimeProvider timeProvider, Func<ProcessThreadId, string?> threadNameResolver)
+public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResolver)
 {
-    private readonly Dictionary<FieldId, AccessInfo> _staticLastAccessInfo = [];
-    private readonly Dictionary<FieldId, AccessInfo> _staticLastWriteAccessInfo = [];
-    private readonly Dictionary<(FieldId, ProcessTrackedObjectId), AccessInfo> _instanceLastAccessInfo = [];
-    private readonly Dictionary<(FieldId, ProcessTrackedObjectId), AccessInfo> _instanceLastWriteAccessInfo = [];
-    private readonly Dictionary<ProcessTrackedObjectId, HashSet<FieldId>> _objectFieldIndex = [];
+    private readonly Dictionary<FieldId, AccessSlots> _staticFieldSlots = [];
+    private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, AccessSlots>> _instanceFieldSlots = [];
 
-    public AccessInfo? GetLastAccess(FieldId fieldId, ProcessTrackedObjectId? objectId)
+    private struct AccessSlots
     {
-        return objectId != null
-            ? _instanceLastAccessInfo.GetValueOrDefault((fieldId, objectId.Value))
-            : _staticLastAccessInfo.GetValueOrDefault(fieldId);
+        public AccessRecord Last;
+        public AccessRecord LastWrite;
+        public bool HasWrite;
     }
 
-    public AccessInfo? GetLastWriteAccess(FieldId fieldId, ProcessTrackedObjectId? objectId)
-    {
-        return objectId != null
-            ? _instanceLastWriteAccessInfo.GetValueOrDefault((fieldId, objectId.Value))
-            : _staticLastWriteAccessInfo.GetValueOrDefault(fieldId);
-    }
-
-    public void RecordAccess(FieldId fieldId, ProcessTrackedObjectId? objectId, AccessInfo accessInfo)
+    public bool TryGetLastAccess(FieldId fieldId, ProcessTrackedObjectId? objectId, out AccessRecord record)
     {
         if (objectId != null)
         {
-            var key = (fieldId, objectId.Value);
-            _instanceLastAccessInfo[key] = accessInfo;
-            if (accessInfo.AccessType == AccessType.Write)
-                _instanceLastWriteAccessInfo[key] = accessInfo;
-            TrackObjectField(objectId.Value, fieldId);
+            if (_instanceFieldSlots.TryGetValue(objectId.Value, out var fields) && fields.TryGetValue(fieldId, out var slots))
+            {
+                record = slots.Last;
+                return true;
+            }
         }
-        else
+        else if (_staticFieldSlots.TryGetValue(fieldId, out var slots))
         {
-            _staticLastAccessInfo[fieldId] = accessInfo;
-            if (accessInfo.AccessType == AccessType.Write)
-                _staticLastWriteAccessInfo[fieldId] = accessInfo;
+            record = slots.Last;
+            return true;
         }
+
+        record = default;
+        return false;
     }
 
-    public AccessInfo CreateAccessInfo(
+    public bool TryGetLastWriteAccess(FieldId fieldId, ProcessTrackedObjectId? objectId, out AccessRecord record)
+    {
+        if (objectId != null)
+        {
+            if (_instanceFieldSlots.TryGetValue(objectId.Value, out var fields) && fields.TryGetValue(fieldId, out var slots) && slots.HasWrite)
+            {
+                record = slots.LastWrite;
+                return true;
+            }
+        }
+        else if (_staticFieldSlots.TryGetValue(fieldId, out var slots) && slots.HasWrite)
+        {
+            record = slots.LastWrite;
+            return true;
+        }
+
+        record = default;
+        return false;
+    }
+
+    public AccessRecord RecordAccess(
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdMethodDef methodToken,
         uint methodOffset,
         AccessType accessType)
     {
+        var record = new AccessRecord(threadId, moduleId, methodToken, methodOffset, accessType);
+        var isWrite = accessType == AccessType.Write;
+
+        if (objectId != null)
+        {
+            if (!_instanceFieldSlots.TryGetValue(objectId.Value, out var fields))
+            {
+                fields = [];
+                _instanceFieldSlots[objectId.Value] = fields;
+            }
+
+            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(fields, fieldId, out _);
+            slots.Last = record;
+            if (isWrite)
+            {
+                slots.LastWrite = record;
+                slots.HasWrite = true;
+            }
+        }
+        else
+        {
+            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(_staticFieldSlots, fieldId, out _);
+            slots.Last = record;
+            if (isWrite)
+            {
+                slots.LastWrite = record;
+                slots.HasWrite = true;
+            }
+        }
+
+        return record;
+    }
+    
+    public AccessInfo Materialize(in AccessRecord record)
+    {
         return new AccessInfo(
-            threadId,
-            threadNameResolver(threadId),
-            moduleId,
-            methodToken,
-            methodOffset,
-            accessType,
-            timeProvider.GetUtcNow().DateTime);
+            record.ProcessThreadId,
+            threadNameResolver(record.ProcessThreadId),
+            record.ModuleId,
+            record.MethodToken,
+            record.MethodOffset,
+            record.AccessType);
     }
 
     public void RemoveTrackedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
     {
         foreach (var objectId in removedObjectIds)
-        {
-            var processObjectId = new ProcessTrackedObjectId(processId, objectId);
-            if (!_objectFieldIndex.Remove(processObjectId, out var fieldIds))
-                continue;
-
-            foreach (var fieldId in fieldIds)
-            {
-                _instanceLastAccessInfo.Remove((fieldId, processObjectId));
-                _instanceLastWriteAccessInfo.Remove((fieldId, processObjectId));
-            }
-        }
-    }
-
-    private void TrackObjectField(ProcessTrackedObjectId objectId, FieldId fieldId)
-    {
-        if (!_objectFieldIndex.TryGetValue(objectId, out var fieldIds))
-        {
-            fieldIds = [];
-            _objectFieldIndex[objectId] = fieldIds;
-        }
-
-        fieldIds.Add(fieldId);
+            _instanceFieldSlots.Remove(new ProcessTrackedObjectId(processId, objectId));
     }
 }
-

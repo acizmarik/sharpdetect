@@ -7,6 +7,7 @@ void Profiler::to_json(nlohmann::json& json, const MethodRewritingDescriptor& de
 {
     json["injectHooks"] = descriptor.injectHooks;
     json["injectManagedWrapper"] = descriptor.injectManagedWrapper;
+    json["emitExitEvent"] = descriptor.emitExitEvent;
     json["arguments"] = descriptor.arguments;
     if (descriptor.returnValue.has_value())
         json["returnValue"] = descriptor.returnValue.value();
@@ -21,6 +22,13 @@ void Profiler::from_json(const nlohmann::json& json, MethodRewritingDescriptor& 
     descriptor.injectHooks = json.at("injectHooks");
     descriptor.injectManagedWrapper = json.at("injectManagedWrapper");
     descriptor.arguments = json.at("arguments");
+
+    auto const emitExitEventIt = json.find("emitExitEvent");
+    if (emitExitEventIt != json.cend() && !emitExitEventIt->is_null())
+        descriptor.emitExitEvent = *emitExitEventIt;
+    else
+        descriptor.emitExitEvent = TRUE;
+        
     auto const returnValueIt = json.find("returnValue");
 
     if (returnValueIt != json.cend() && !returnValueIt->is_null())
