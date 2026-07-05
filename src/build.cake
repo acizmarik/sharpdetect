@@ -108,7 +108,8 @@ Task("Build-Profiler")
             .Append("--build")
             .Append(".")
             .Append("--config")
-            .Append(configuration),
+            .Append(configuration)
+            .Append("--parallel"),
         WorkingDirectory = profilerArtifactsDirectory
     });
 
