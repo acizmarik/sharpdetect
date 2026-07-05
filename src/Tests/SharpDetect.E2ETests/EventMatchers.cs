@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Events;
+using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.TemporalAsserts;
@@ -13,22 +14,52 @@ public static class EventMatchers
     public static AtomicPredicate<ulong, RecordedEventType> EventType(RecordedEventType type) =>
         new(evt => evt.Type == type, description: $"EventType({type})");
 
-    public static AtomicPredicate<ulong, RecordedEventType> VolatileFieldAccess(RecordedEventType type)
+    public static AtomicPredicate<ulong, RecordedEventType> FieldAccessInAssembly(
+        string assemblyName,
+        RecordedEventType type,
+        IMetadataResolver plugin,
+        bool? requireVolatile = null)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(evt =>
         {
             if (evt.Type != type)
                 return false;
-        
-            return type switch
+
+            RecordedEventMetadata metadata;
+            ModuleId moduleId;
+            MdMethodDef methodToken;
+            bool isVolatile;
+            switch (type)
             {
-                RecordedEventType.StaticFieldRead => evt.Get<(RecordedEventMetadata, StaticFieldReadArgs)>().Item2.IsVolatile,
-                RecordedEventType.StaticFieldWrite => evt.Get<(RecordedEventMetadata, StaticFieldWriteArgs)>().Item2.IsVolatile,
-                RecordedEventType.InstanceFieldRead => evt.Get<(RecordedEventMetadata, InstanceFieldReadArgs)>().Item2.IsVolatile,
-                RecordedEventType.InstanceFieldWrite => evt.Get<(RecordedEventMetadata, InstanceFieldWriteArgs)>().Item2.IsVolatile,
-                _ => false
-            };
-        }, description: $"VolatileFieldAccess({type})");
+                case RecordedEventType.StaticFieldRead:
+                    (metadata, var sr) = evt.Get<(RecordedEventMetadata, StaticFieldReadArgs)>();
+                    (moduleId, methodToken, isVolatile) = (sr.ModuleId, sr.MethodToken, sr.IsVolatile);
+                    break;
+                case RecordedEventType.StaticFieldWrite:
+                    (metadata, var sw) = evt.Get<(RecordedEventMetadata, StaticFieldWriteArgs)>();
+                    (moduleId, methodToken, isVolatile) = (sw.ModuleId, sw.MethodToken, sw.IsVolatile);
+                    break;
+                case RecordedEventType.InstanceFieldRead:
+                    (metadata, var ir) = evt.Get<(RecordedEventMetadata, InstanceFieldReadArgs)>();
+                    (moduleId, methodToken, isVolatile) = (ir.ModuleId, ir.MethodToken, ir.IsVolatile);
+                    break;
+                case RecordedEventType.InstanceFieldWrite:
+                    (metadata, var iw) = evt.Get<(RecordedEventMetadata, InstanceFieldWriteArgs)>();
+                    (moduleId, methodToken, isVolatile) = (iw.ModuleId, iw.MethodToken, iw.IsVolatile);
+                    break;
+                default:
+                    return false;
+            }
+
+            if (requireVolatile is { } wantVolatile && isVolatile != wantVolatile)
+                return false;
+
+            var resolveResult = plugin.Resolve(metadata, moduleId, methodToken);
+            if (resolveResult.IsError)
+                return false;
+
+            return resolveResult.Value.Module?.Assembly?.Name?.String == assemblyName;
+        }, description: $"FieldAccessInAssembly({type} in {assemblyName}, volatile={requireVolatile?.ToString() ?? "any"})");
     }
 
     public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, IMetadataResolver plugin)
