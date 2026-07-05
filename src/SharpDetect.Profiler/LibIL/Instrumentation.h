@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <deque>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -14,6 +15,7 @@
 
 #include "../LibIPC/Client.h"
 #include "ILRewriter.h"
+#include "InjectedMethods.h"
 #include "ModuleDef.h"
 
 namespace LibProfiler
@@ -26,9 +28,11 @@ namespace LibProfiler
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
-		IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
+		IN const InjectedMethodsMap& injectedMethods,
 		IN BOOL enableFieldsAccessInstrumentation,
-		IN const std::vector<std::string>& skipInstrumentationForAssemblies);
+		IN const std::vector<std::string>& skipInstrumentationForAssemblies,
+		IN BOOL enableFieldAccessStackTraces,
+		IN const std::vector<std::string>& stackTraceFieldPatterns);
 
 	HRESULT CreateManagedWrapperMethod(
 		IN ICorProfilerInfo& corProfilerInfo,
@@ -46,7 +50,9 @@ namespace LibProfiler
 		IN UINT64 instrumentationMark,
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
-		IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
+		IN const InjectedMethodsMap& injectedMethods,
+		IN BOOL enableFieldAccessStackTraces,
+		IN const std::vector<std::string>& stackTraceFieldPatterns,
 		OUT ILInstr** nextInstruction);
 
 	HRESULT InstrumentInstanceFieldAccess(
@@ -60,7 +66,9 @@ namespace LibProfiler
 		IN UINT64 instrumentationMark,
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
-		IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
+		IN const InjectedMethodsMap& injectedMethods,
+		IN BOOL enableFieldAccessStackTraces,
+		IN const std::vector<std::string>& stackTraceFieldPatterns,
 		OUT ILInstr** nextInstruction);
 
 	HRESULT AddLocalVariables(

@@ -100,7 +100,8 @@ public sealed record MethodEnterWithArgumentsRecordedEvent(
     [property: Key(1)] MdMethodDef MethodToken,
     [property: Key(2)] ushort Interpretation,
     [property: Key(3)] byte[] ArgumentValues,
-    [property: Key(4)] byte[] ArgumentInfos) : IRecordedEventArgs, ICustomizableEventType;
+    [property: Key(4)] byte[] ArgumentInfos,
+    [property: Key(5)] byte[]? StackFrames = null) : IRecordedEventArgs, ICustomizableEventType;
 
 [MessagePackObject]
 public sealed record MethodExitWithArgumentsRecordedEvent(

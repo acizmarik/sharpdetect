@@ -77,35 +77,34 @@ internal sealed class EraserDetector
 
     public DataRaceInfo? RecordRead(
         ProcessThreadId threadId,
-        ModuleId moduleId,
-        MdMethodDef methodToken,
         uint methodOffset,
         MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
+        ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack)
     {
-        return RecordFieldAccess(threadId, moduleId, methodToken, methodOffset, fieldToken, objectId, isWrite: false);
+        return RecordFieldAccess(threadId, methodOffset, fieldToken, objectId, isWrite: false, stack);
     }
 
     public DataRaceInfo? RecordWrite(
         ProcessThreadId threadId,
-        ModuleId moduleId,
-        MdMethodDef methodToken,
         uint methodOffset,
         MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
+        ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack)
     {
-        return RecordFieldAccess(threadId, moduleId, methodToken, methodOffset, fieldToken, objectId, isWrite: true);
+        return RecordFieldAccess(threadId, methodOffset, fieldToken, objectId, isWrite: true, stack);
     }
 
     private DataRaceInfo? RecordFieldAccess(
         ProcessThreadId threadId,
-        ModuleId moduleId,
-        MdMethodDef methodToken,
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
-        bool isWrite)
+        bool isWrite,
+        CapturedStackTrace stack)
     {
+        var moduleId = stack.Top.ModuleId;
+
         // Resolve the field
         if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out var fieldFlags))
             return null;
@@ -126,7 +125,7 @@ internal sealed class EraserDetector
         var hasLastRelevant = isWrite
             ? _accessTracker.TryGetLastAccess(fieldId, objectId, out var lastRelevantAccess)
             : _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out lastRelevantAccess);
-        var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, moduleId, methodToken, methodOffset, accessType);
+        var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, accessType, stack);
         if (!transitionResult.IsRaceDetected ||
             !hasLastRelevant ||
             lastRelevantAccess.ProcessThreadId == threadId)

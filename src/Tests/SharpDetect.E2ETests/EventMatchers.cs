@@ -33,19 +33,19 @@ public static class EventMatchers
             {
                 case RecordedEventType.StaticFieldRead:
                     (metadata, var sr) = evt.Get<(RecordedEventMetadata, StaticFieldReadArgs)>();
-                    (moduleId, methodToken, isVolatile) = (sr.ModuleId, sr.MethodToken, sr.IsVolatile);
+                    (moduleId, methodToken, isVolatile) = (sr.Stack.Top.ModuleId, sr.Stack.Top.MethodToken, sr.IsVolatile);
                     break;
                 case RecordedEventType.StaticFieldWrite:
                     (metadata, var sw) = evt.Get<(RecordedEventMetadata, StaticFieldWriteArgs)>();
-                    (moduleId, methodToken, isVolatile) = (sw.ModuleId, sw.MethodToken, sw.IsVolatile);
+                    (moduleId, methodToken, isVolatile) = (sw.Stack.Top.ModuleId, sw.Stack.Top.MethodToken, sw.IsVolatile);
                     break;
                 case RecordedEventType.InstanceFieldRead:
                     (metadata, var ir) = evt.Get<(RecordedEventMetadata, InstanceFieldReadArgs)>();
-                    (moduleId, methodToken, isVolatile) = (ir.ModuleId, ir.MethodToken, ir.IsVolatile);
+                    (moduleId, methodToken, isVolatile) = (ir.Stack.Top.ModuleId, ir.Stack.Top.MethodToken, ir.IsVolatile);
                     break;
                 case RecordedEventType.InstanceFieldWrite:
                     (metadata, var iw) = evt.Get<(RecordedEventMetadata, InstanceFieldWriteArgs)>();
-                    (moduleId, methodToken, isVolatile) = (iw.ModuleId, iw.MethodToken, iw.IsVolatile);
+                    (moduleId, methodToken, isVolatile) = (iw.Stack.Top.ModuleId, iw.Stack.Top.MethodToken, iw.IsVolatile);
                     break;
                 default:
                     return false;

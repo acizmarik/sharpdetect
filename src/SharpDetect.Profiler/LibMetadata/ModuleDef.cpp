@@ -383,6 +383,72 @@ HRESULT LibProfiler::ModuleDef::GetFieldRefProps(
 	return S_OK;
 }
 
+HRESULT LibProfiler::ModuleDef::GetFieldFullName(
+	IN const mdToken fieldToken,
+	OUT std::string& fullName) const
+{
+	auto& metadataImport = GetMetadataImport();
+	std::string fieldName;
+	mdToken declaringType;
+
+	if (TypeFromToken(fieldToken) == mdtFieldDef)
+	{
+		ULONG nameLength = 0;
+		mdTypeDef typeDef;
+		HRESULT hr = metadataImport.GetFieldProps(fieldToken, &typeDef, nullptr, 0, &nameLength, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+		if (FAILED(hr))
+			return E_FAIL;
+
+		const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
+		hr = metadataImport.GetFieldProps(fieldToken, nullptr, nameBuffer.get(), nameLength, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+		if (FAILED(hr))
+			return E_FAIL;
+
+		fieldName = ToString(nameBuffer.get());
+		declaringType = typeDef;
+	}
+	else if (TypeFromToken(fieldToken) == mdtMemberRef)
+	{
+		ULONG nameLength = 0;
+		mdToken parent;
+		HRESULT hr = metadataImport.GetMemberRefProps(fieldToken, &parent, nullptr, 0, &nameLength, nullptr, nullptr);
+		if (FAILED(hr))
+			return E_FAIL;
+
+		const auto nameBuffer = std::unique_ptr<WCHAR[]>(new WCHAR[nameLength]);
+		hr = metadataImport.GetMemberRefProps(fieldToken, nullptr, nameBuffer.get(), nameLength, nullptr, nullptr, nullptr);
+		if (FAILED(hr))
+			return E_FAIL;
+
+		fieldName = ToString(nameBuffer.get());
+		declaringType = parent;
+	}
+	else
+	{
+		return E_FAIL;
+	}
+
+	std::string typeName;
+	HRESULT hr;
+	switch (TypeFromToken(declaringType))
+	{
+		case mdtTypeDef:
+			hr = GetTypeProps(declaringType, nullptr, typeName);
+			break;
+		case mdtTypeRef:
+			hr = GetTypeRefProps(declaringType, nullptr, typeName);
+			break;
+		default:
+			// TypeSpec (generic instantiations) and others are not supported for pattern matching.
+			return E_FAIL;
+	}
+	if (FAILED(hr))
+		return E_FAIL;
+
+	fullName = typeName + "." + fieldName;
+	return S_OK;
+}
+
 HRESULT LibProfiler::ModuleDef::GetTypeSpecProps(
 	IN const mdTypeSpec typeSpec,
 	OUT PCCOR_SIGNATURE* signature,

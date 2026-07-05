@@ -1,11 +1,4 @@
-if (WIN32)
-    set(ASM_SRC asmHelpers.asm)
-elseif (UNIX AND NOT APPLE)
-    set(ASM_SRC asmHelpers.S)
-endif()
-
 set(SOURCES
-    ${ASM_SRC}
     "CorProfilerBase.cpp"
     "StackWalker.cpp"
     "GarbageCollectionContext.cpp"

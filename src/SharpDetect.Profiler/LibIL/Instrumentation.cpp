@@ -26,15 +26,42 @@ static bool ShouldSkipInstrumentation(
 	return false;
 }
 
+static bool ShouldCaptureFieldStack(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN mdToken fieldToken,
+	IN BOOL enableFieldAccessStackTraces,
+	IN const std::vector<std::string>& stackTraceFieldPatterns)
+{
+	if (!enableFieldAccessStackTraces)
+		return false;
+
+	if (stackTraceFieldPatterns.empty())
+		return true;
+
+	std::string fieldFullName;
+	if (FAILED(moduleDef.GetFieldFullName(fieldToken, fieldFullName)))
+		return false;
+
+	for (auto&& pattern : stackTraceFieldPatterns)
+	{
+		if (pattern == fieldFullName)
+			return true;
+	}
+
+	return false;
+}
+
 HRESULT LibProfiler::PatchMethodBody(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
-	IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
+	IN const InjectedMethodsMap& injectedMethods,
 	IN const BOOL enableFieldsAccessInstrumentation,
-	IN const std::vector<std::string>& skipInstrumentationForAssemblies)
+	IN const std::vector<std::string>& skipInstrumentationForAssemblies,
+	IN const BOOL enableFieldAccessStackTraces,
+	IN const std::vector<std::string>& stackTraceFieldPatterns)
 {
 	if (tokensToPatch.empty() && (!enableFieldsAccessInstrumentation || injectedMethods.empty()))
 		return E_FAIL;
@@ -96,6 +123,8 @@ HRESULT LibProfiler::PatchMethodBody(
 					moduleDef,
 					mdMethodDef,
 					injectedMethods,
+					enableFieldAccessStackTraces,
+					stackTraceFieldPatterns,
 					&nextInstruction)))
 					{
 						isRewritten = true;
@@ -137,6 +166,8 @@ HRESULT LibProfiler::PatchMethodBody(
 					moduleDef,
 					mdMethodDef,
 					injectedMethods,
+					enableFieldAccessStackTraces,
+					stackTraceFieldPatterns,
 					&nextInstruction)))
 				{
 					isRewritten = true;
@@ -186,7 +217,9 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	IN const UINT64 instrumentationMark,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
-	IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
+	IN const InjectedMethodsMap& injectedMethods,
+	IN const BOOL enableFieldAccessStackTraces,
+	IN const std::vector<std::string>& stackTraceFieldPatterns,
 	OUT ILInstr** nextInstruction)
 {
 	auto const isStore = currentInstruction->m_opcode == CEE_STSFLD;
@@ -204,14 +237,19 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		return E_FAIL;
 	}
 
-	// Instrument field access
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableFieldAccessStackTraces, stackTraceFieldPatterns);
 	const auto eventType = isStore
 		? LibIPC::RecordedEventType::StaticFieldWrite
 		: LibIPC::RecordedEventType::StaticFieldRead;
 	auto const methodIt = injectedMethods.find(eventType);
-	if (methodIt == injectedMethods.end())
+	const auto helperToken = methodIt != injectedMethods.end()
+		? (captureStack ? methodIt->second.withStackCapture : methodIt->second.plain)
+		: mdTokenNil;
+	if (helperToken == mdTokenNil)
 	{
-		LOG_F(ERROR, "Could not find injected method for event type %d.", static_cast<int>(eventType));
+		LOG_F(ERROR, "Could not find injected %s method for event type %d.",
+			captureStack ? "stack-capturing" : "plain",
+			static_cast<int>(eventType));
 		return E_FAIL;
 	}
 
@@ -223,7 +261,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	// CALL <injected-method-handler>
 	const auto callInstruction = rewriter.NewILInstr();
 	callInstruction->m_opcode = CEE_CALL;
-	callInstruction->m_Arg32 = static_cast<INT32>(methodIt->second);
+	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
 	rewriter.InsertAfter(ldcInstruction, callInstruction);
 	// Skip to next non-injected instruction
 	currentInstruction = callInstruction;
@@ -231,7 +269,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	LOG_F(INFO, "Instrumented static field %s access in method %d with stub %d from module %s.",
 		isStore ? "write" : "read",
 		mdMethodDef,
-		methodIt->second,
+		helperToken,
 		moduleDef.GetName().c_str());
 
 	// Notify analysis of field access instrumentation point
@@ -259,7 +297,9 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	IN const UINT64 instrumentationMark,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
-	IN const std::unordered_map<LibIPC::RecordedEventType, mdToken>& injectedMethods,
+	IN const InjectedMethodsMap& injectedMethods,
+	IN const BOOL enableFieldAccessStackTraces,
+	IN const std::vector<std::string>& stackTraceFieldPatterns,
 	OUT ILInstr** nextInstruction)
 {
 	auto const isStore = currentInstruction->m_opcode == CEE_STFLD;
@@ -310,14 +350,19 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		return E_FAIL;
 	}
 
-	// Prepare method token for instance field access
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableFieldAccessStackTraces, stackTraceFieldPatterns);
 	const auto fieldAccessEventType = isStore
 		? LibIPC::RecordedEventType::InstanceFieldWrite
 		: LibIPC::RecordedEventType::InstanceFieldRead;
 	auto const fieldAccessMethodIt = injectedMethods.find(fieldAccessEventType);
-	if (fieldAccessMethodIt == injectedMethods.end())
+	const auto helperToken = fieldAccessMethodIt != injectedMethods.end()
+		? (captureStack ? fieldAccessMethodIt->second.withStackCapture : fieldAccessMethodIt->second.plain)
+		: mdTokenNil;
+	if (helperToken == mdTokenNil)
 	{
-		LOG_F(ERROR, "Could not find injected method for event type %d.", static_cast<int>(fieldAccessEventType));
+		LOG_F(ERROR, "Could not find injected %s method for event type %d.",
+			captureStack ? "stack-capturing" : "plain",
+			static_cast<int>(fieldAccessEventType));
 		return E_FAIL;
 	}
 
@@ -422,7 +467,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	// CALL <injected-method-handler>
 	const auto callInstruction = rewriter.NewILInstr();
 	callInstruction->m_opcode = CEE_CALL;
-	callInstruction->m_Arg32 = static_cast<INT32>(fieldAccessMethodIt->second);
+	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
 	rewriter.InsertAfter(ldLocInstanceInstruction2, callInstruction);
 	// Skip to next non-injected instruction
 	currentInstruction = callInstruction;
@@ -430,7 +475,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	LOG_F(INFO, "Instrumented instance field %s access in method %d with stub %d from module %s.",
 		isStore ? "write" : "read",
 		mdMethodDef,
-		fieldAccessMethodIt->second,
+		helperToken,
 		moduleDef.GetName().c_str());
 
 	// Notify analysis of field access instrumentation point

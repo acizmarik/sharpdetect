@@ -342,11 +342,10 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
         StaticFieldRead?.Invoke(new StaticFieldReadArgs(
             id,
-            fieldAccess.ModuleId,
-            fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
-            fieldAccess.IsVolatile));
+            fieldAccess.IsVolatile,
+            BuildStack(fieldAccess, args.StackFrames)));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.StaticFieldWrite)]
@@ -356,11 +355,10 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
         StaticFieldWritten?.Invoke(new StaticFieldWriteArgs(
             id,
-            fieldAccess.ModuleId,
-            fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
-            fieldAccess.IsVolatile));
+            fieldAccess.IsVolatile,
+            BuildStack(fieldAccess, args.StackFrames)));
     }
     
     [RecordedEventBind((ushort)RecordedEventType.InstanceFieldRead)]
@@ -370,12 +368,11 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var (fieldAccess, instance) = GetInstrumentedInstanceFieldAccessFromArguments(metadata, args);
         InstanceFieldRead?.Invoke(new InstanceFieldReadArgs(
             id,
-            fieldAccess.ModuleId,
-            fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
             instance,
-            fieldAccess.IsVolatile));
+            fieldAccess.IsVolatile,
+            BuildStack(fieldAccess, args.StackFrames)));
     }
 
     [RecordedEventBind((ushort)RecordedEventType.InstanceFieldWrite)]
@@ -385,12 +382,11 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var (fieldAccess, instance) = GetInstrumentedInstanceFieldAccessFromArguments(metadata, args);
         InstanceFieldWritten?.Invoke(new InstanceFieldWriteArgs(
             id,
-            fieldAccess.ModuleId,
-            fieldAccess.MethodToken,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
             instance,
-            fieldAccess.IsVolatile));
+            fieldAccess.IsVolatile,
+            BuildStack(fieldAccess, args.StackFrames)));
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
@@ -720,6 +716,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         
         return result.Value;
     }
+
+    private static CapturedStackTrace BuildStack(InstrumentedFieldAccess fieldAccess, byte[]? deeperFramesBlob)
+        => new(new CapturedStackFrame(fieldAccess.ModuleId, fieldAccess.MethodToken), deeperFramesBlob);
 
     private InstrumentedFieldAccess GetInstrumentedStaticFieldAccessFromArguments(
         RecordedEventMetadata metadata,

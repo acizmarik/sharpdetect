@@ -51,7 +51,7 @@ public sealed class ThreadAccessCollector
             _byThread[threadId] = bucket;
         }
 
-        var key = new AccessKey(access.MethodToken.Value, access.MethodOffset, access.AccessType);
+        var key = new AccessKey(access.Stack.Top.MethodToken.Value, access.MethodOffset, access.AccessType);
         if (bucket.Seen.Add(key))
             bucket.Entries.Add(new ThreadAccessEntry(race, access, role));
     }

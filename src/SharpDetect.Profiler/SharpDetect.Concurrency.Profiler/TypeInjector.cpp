@@ -400,8 +400,8 @@ HRESULT Profiler::TypeInjector::InjectTypesForProfilingFeatures(LibProfiler::Mod
             injectedTypeDef,
             typeFullName));
 
-        std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods;
-        for (auto& [methodName, eventType, methodSignatureDescriptor] : methods)
+        LibProfiler::InjectedMethodsMap injectedMethods;
+        for (auto& [methodName, eventType, captureStackTrace, methodSignatureDescriptor] : methods)
         {
             mdMethodDef injectedMethodDef;
             auto const methodSignature = SerializeMethodSignatureDescriptor(
@@ -449,7 +449,8 @@ HRESULT Profiler::TypeInjector::InjectTypesForProfilingFeatures(LibProfiler::Mod
                 typeFullName.c_str(),
                 moduleDef.GetName().c_str());
 
-            injectedMethods.emplace(eventType, injectedMethodDef);
+            auto& injectedTokens = injectedMethods[eventType];
+            (captureStackTrace ? injectedTokens.withStackCapture : injectedTokens.plain) = injectedMethodDef;
             _rewriteRegistry.AddStub(moduleDef.GetModuleId(), injectedMethodDef);
         }
 
@@ -510,8 +511,8 @@ HRESULT Profiler::TypeInjector::ImportInjectedTypes(
                 moduleDef.GetName().c_str());
         }
 
-        std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods;
-        for (auto& [methodName, eventType, methodSignatureDescriptor] : methods)
+        LibProfiler::InjectedMethodsMap injectedMethods;
+        for (auto& [methodName, eventType, captureStackTrace, methodSignatureDescriptor] : methods)
         {
             mdMemberRef methodRef;
             auto const methodSignature = SerializeMethodSignatureDescriptor(
@@ -532,7 +533,8 @@ HRESULT Profiler::TypeInjector::ImportInjectedTypes(
                 continue;
             }
 
-            injectedMethods.emplace(eventType, methodRef);
+            auto& injectedTokens = injectedMethods[eventType];
+            (captureStackTrace ? injectedTokens.withStackCapture : injectedTokens.plain) = methodRef;
         }
 
         _rewriteRegistry.AddModuleInjectedMethods(moduleDef.GetModuleId(), injectedMethods);

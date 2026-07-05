@@ -7,6 +7,7 @@ void Profiler::to_json(nlohmann::json& json, const MethodInjectionDescriptor& de
 {
 	json["name"] = descriptor.name;
 	json["eventType"] = descriptor.eventType;
+	json["captureStackTrace"] = descriptor.captureStackTrace;
 	json["signature"] = descriptor.signature;
 }
 
@@ -15,4 +16,10 @@ void Profiler::from_json(const nlohmann::json& json, MethodInjectionDescriptor& 
 	descriptor.name = json.at("name");
 	descriptor.eventType = json.at("eventType");
 	descriptor.signature = json.at("signature");
+
+	auto const captureStackTraceIt = json.find("captureStackTrace");
+	if (captureStackTraceIt != json.cend() && !captureStackTraceIt->is_null())
+		descriptor.captureStackTrace = *captureStackTraceIt;
+	else
+		descriptor.captureStackTrace = FALSE;
 }

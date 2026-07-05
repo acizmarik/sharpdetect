@@ -5,10 +5,10 @@
 
 #include <atomic>
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
-#include <shared_mutex>
 
 #include "cor.h"
 
@@ -42,6 +42,7 @@ namespace Profiler
 		bool hasReturnValue;
 		bool hasIndirects;
 		bool emitExitEvent;
+		bool captureStackTraceOnEnter;
 	};
 
 	class CorProfiler final : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler

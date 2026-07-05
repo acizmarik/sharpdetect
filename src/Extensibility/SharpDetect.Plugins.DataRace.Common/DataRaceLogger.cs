@@ -60,7 +60,7 @@ public static class DataRaceLogger
     {
         var pid = access.ProcessThreadId.ProcessId;
         var resolver = metadataContext.GetResolver(pid);
-        var resolveResult = resolver.ResolveMethod(pid, access.ModuleId, access.MethodToken);
+        var resolveResult = resolver.ResolveMethod(pid, access.Stack.Top.ModuleId, access.Stack.Top.MethodToken);
         return resolveResult.IsSuccess
             ? $"{resolveResult.Value.DeclaringType.FullName}.{resolveResult.Value.Name}:IL_{access.MethodOffset:X4}"
             : $"<unresolved-method>:IL_{access.MethodOffset:X4}";

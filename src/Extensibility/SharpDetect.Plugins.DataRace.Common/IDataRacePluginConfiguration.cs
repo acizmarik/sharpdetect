@@ -9,5 +9,8 @@ public interface IDataRacePluginConfiguration
 {
     bool EnableFieldsAccessInstrumentation { get; }
     ImmutableArray<string> SkipInstrumentationForAssemblies { get; }
+    bool EnableFieldAccessStackTraces { get; }
+    int FieldAccessStackTracesMaxDepth { get; }
+    ImmutableArray<string> FieldAccessStackTracesFields { get; }
 }
 

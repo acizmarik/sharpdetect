@@ -78,7 +78,12 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
                 configuration.EnableFieldsAccessInstrumentation,
-                configuration.SkipInstrumentationForAssemblies
+                configuration.SkipInstrumentationForAssemblies,
+                configuration.EnableFieldAccessStackTraces,
+                configuration.FieldAccessStackTracesMaxDepth,
+                FieldAccessStackTracesFields = configuration.FieldAccessStackTracesFields.IsDefault
+                    ? ImmutableArray<string>.Empty
+                    : configuration.FieldAccessStackTracesFields
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder,
             sessionId: pathsConfiguration.SessionId);
@@ -136,11 +141,10 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
         if (_detector.RecordRead(
                 args.ProcessThreadId,
-                args.ModuleId,
-                args.MethodToken,
                 args.MethodOffset,
                 args.FieldToken,
-                objectId: null) is { } raceInfo)
+                objectId: null,
+                args.Stack) is { } raceInfo)
         {
             RecordDataRace(raceInfo);
         }
@@ -153,11 +157,10 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
         if (_detector.RecordRead(
                 args.ProcessThreadId,
-                args.ModuleId,
-                args.MethodToken,
                 args.MethodOffset,
                 args.FieldToken,
-                args.ObjectId) is { } raceInfo)
+                args.ObjectId,
+                args.Stack) is { } raceInfo)
         {
             RecordDataRace(raceInfo);
         }
@@ -170,11 +173,10 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
         if (_detector.RecordWrite(
                 args.ProcessThreadId,
-                args.ModuleId,
-                args.MethodToken,
                 args.MethodOffset,
                 args.FieldToken,
-                objectId: null) is { } raceInfo)
+                objectId: null,
+                args.Stack) is { } raceInfo)
         {
             RecordDataRace(raceInfo);
         }
@@ -187,11 +189,10 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
 
         if (_detector.RecordWrite(
                 args.ProcessThreadId,
-                args.ModuleId,
-                args.MethodToken,
                 args.MethodOffset,
                 args.FieldToken,
-                args.ObjectId) is { } raceInfo)
+                args.ObjectId,
+                args.Stack) is { } raceInfo)
         {
             RecordDataRace(raceInfo);
         }

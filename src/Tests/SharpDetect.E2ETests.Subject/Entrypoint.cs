@@ -431,6 +431,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_ValueType_Static_ReadWriteRace):
                     Test_DataRace_ValueType_Static_ReadWriteRace();
                     break;
+                case nameof(Test_DataRace_DeepStack_HelperWriteRace):
+                    Test_DataRace_DeepStack_HelperWriteRace();
+                    break;
                 case nameof(Test_DataRace_ReferenceType_Instance_ReadWriteRace):
                     Test_DataRace_ReferenceType_Instance_ReadWriteRace();
                     break;

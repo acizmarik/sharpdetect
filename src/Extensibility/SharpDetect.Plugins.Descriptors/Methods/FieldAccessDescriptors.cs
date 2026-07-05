@@ -8,115 +8,73 @@ namespace SharpDetect.Plugins.Descriptors.Methods;
 
 public static class FieldAccessDescriptors
 {
-    private static readonly MethodDescriptor ReadStaticField;
-    private static readonly MethodDescriptor WriteStaticField;
-    private static readonly MethodDescriptor ReadInstanceField;
-    private static readonly MethodDescriptor WriteInstanceField;
+    private static readonly MethodDescriptor[] AllMethods =
+    [
+        .. CreateVariants("ReadStaticField", isInstance: false, RecordedEventType.StaticFieldRead),
+        .. CreateVariants("WriteStaticField", isInstance: false, RecordedEventType.StaticFieldWrite),
+        .. CreateVariants("ReadInstanceField", isInstance: true, RecordedEventType.InstanceFieldRead),
+        .. CreateVariants("WriteInstanceField", isInstance: true, RecordedEventType.InstanceFieldWrite),
+    ];
 
-    static FieldAccessDescriptors()
+    private static MethodDescriptor[] CreateVariants(
+        string methodName,
+        bool isInstance,
+        RecordedEventType enterInterpretation)
     {
-        const string typeFullName = "SharpDetect";
-        
-        ReadStaticField = new MethodDescriptor(
-            MethodName: "ReadStaticField",
-            DeclaringTypeFullName: typeFullName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: 1,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: [ ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8) ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments:
-                [
-                    new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue))
-                ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.StaticFieldRead,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
-        
-        ReadInstanceField = new MethodDescriptor(
-            MethodName: "ReadInstanceField",
-            DeclaringTypeFullName: typeFullName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements:
-                [ 
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments:
-                [
-                    new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue)),
-                    new(1, new((byte)nint.Size, CapturedValue.CaptureAsReference)),
-                ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.InstanceFieldRead,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
-
-        WriteStaticField = new MethodDescriptor(
-            MethodName: "WriteStaticField",
-            DeclaringTypeFullName: typeFullName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: 1,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: [ ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8) ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments:
-                [
-                    new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue))
-                ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.StaticFieldWrite,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
-        
-        WriteInstanceField = new MethodDescriptor(
-            MethodName: "WriteInstanceField",
-            DeclaringTypeFullName: typeFullName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements:
-                [ 
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT),
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments:
-                [
-                    new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue)),
-                    new(1, new((byte)nint.Size, CapturedValue.CaptureAsReference)),
-                ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.InstanceFieldWrite,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
+        return
+        [
+            Create(methodName, isInstance, enterInterpretation, captureStackTraceOnEnter: false),
+            Create(methodName + "WithStack", isInstance, enterInterpretation, captureStackTraceOnEnter: true),
+        ];
     }
 
-    public static IEnumerable<MethodDescriptor> GetAllMethods()
+    private static MethodDescriptor Create(
+        string methodName,
+        bool isInstance,
+        RecordedEventType enterInterpretation,
+        bool captureStackTraceOnEnter)
     {
-        yield return ReadStaticField;
-        yield return WriteStaticField;
-        yield return ReadInstanceField;
-        yield return WriteInstanceField;
+        ArgumentTypeDescriptor[] argumentTypes = isInstance
+            ?
+            [
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
+            ]
+            :
+            [
+                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
+            ];
+
+        CapturedArgumentDescriptor[] arguments = isInstance
+            ?
+            [
+                new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue)),
+                new(1, new((byte)nint.Size, CapturedValue.CaptureAsReference)),
+            ]
+            :
+            [
+                new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue))
+            ];
+
+        return new MethodDescriptor(
+            MethodName: methodName,
+            DeclaringTypeFullName: "SharpDetect",
+            VersionDescriptor: null,
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                ParametersCount: (byte)argumentTypes.Length,
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                ArgumentTypeElements: argumentTypes),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: arguments,
+                ReturnValue: null,
+                MethodEnterInterpretation: (ushort)enterInterpretation,
+                MethodExitInterpretation: null,
+                EmitExitEvent: false,
+                CaptureStackTraceOnEnter: captureStackTraceOnEnter));
     }
+
+    public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;
 }

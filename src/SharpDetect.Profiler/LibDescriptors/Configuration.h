@@ -33,6 +33,9 @@ namespace Profiler
         std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;
         BOOL enableFieldsAccessInstrumentation;
         std::vector<std::string> skipInstrumentationForAssemblies;
+        BOOL enableFieldAccessStackTraces {FALSE};
+        UINT fieldAccessStackTracesMaxDepth {8};
+        std::vector<std::string> fieldAccessStackTracesFields;
     };
 
 	void to_json(nlohmann::json& json, const Configuration& descriptor);

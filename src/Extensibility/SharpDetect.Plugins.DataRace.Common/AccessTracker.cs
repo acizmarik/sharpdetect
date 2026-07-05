@@ -63,12 +63,11 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         FieldId fieldId,
         ProcessTrackedObjectId? objectId,
         ProcessThreadId threadId,
-        ModuleId moduleId,
-        MdMethodDef methodToken,
         uint methodOffset,
-        AccessType accessType)
+        AccessType accessType,
+        CapturedStackTrace stack)
     {
-        var record = new AccessRecord(threadId, moduleId, methodToken, methodOffset, accessType);
+        var record = new AccessRecord(threadId, methodOffset, accessType, stack);
         var isWrite = accessType == AccessType.Write;
 
         if (objectId != null)
@@ -106,10 +105,9 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         return new AccessInfo(
             record.ProcessThreadId,
             threadNameResolver(record.ProcessThreadId),
-            record.ModuleId,
-            record.MethodToken,
             record.MethodOffset,
-            record.AccessType);
+            record.AccessType,
+            record.Stack);
     }
 
     public void RemoveTrackedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)

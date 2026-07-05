@@ -16,6 +16,7 @@ namespace Profiler
 	{
 		std::string name;
 		LibIPC::RecordedEventType eventType;
+		BOOL captureStackTrace;
 		MethodSignatureDescriptor signature;
 	};
 

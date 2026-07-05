@@ -8,4 +8,5 @@ namespace SharpDetect.Plugins.Descriptors;
 public sealed record MethodInjectionDescriptor(
     string Name,
     RecordedEventType EventType,
-    MethodSignatureDescriptor Signature);
+    MethodSignatureDescriptor Signature,
+    bool CaptureStackTrace = false);

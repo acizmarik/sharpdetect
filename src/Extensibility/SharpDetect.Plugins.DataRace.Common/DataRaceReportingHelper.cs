@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
@@ -249,7 +250,8 @@ public abstract class DataRaceReportingHelper
                 reportBuilder.AddReportReason(threadInfo, reason);
 
                 var frame = CreateStackFrame(threadId.ProcessId, access);
-                var stackTrace = new StackTrace(threadInfo, [frame]);
+                var deepFrames = DecodeDeepFrames(threadId.ProcessId, access);
+                var stackTrace = new StackTrace(threadInfo, [frame, .. deepFrames]);
                 reportBuilder.AddStackTrace(stackTrace);
             }
         }
@@ -257,32 +259,63 @@ public abstract class DataRaceReportingHelper
 
     private StackFrame CreateStackFrame(uint processId, AccessInfo access)
     {
+        var top = access.Stack.Top;
         var resolver = _metadataContext.GetResolver(processId);
-        var moduleResolveResult = resolver.ResolveModule(processId, access.ModuleId);
-        var methodResolveResult = resolver.ResolveMethod(processId, access.ModuleId, access.MethodToken);
+        var moduleResolveResult = resolver.ResolveModule(processId, top.ModuleId);
+        var methodResolveResult = resolver.ResolveMethod(processId, top.ModuleId, top.MethodToken);
         var moduleName = moduleResolveResult.IsSuccess
             ? moduleResolveResult.Value.Location
             : "<unresolved-module>";
         var methodName = methodResolveResult.IsSuccess
             ? methodResolveResult.Value.FullName
-            : $"<unresolved-method>({access.MethodToken.Value})";
+            : $"<unresolved-method>({top.MethodToken.Value})";
         var instruction = methodResolveResult.IsSuccess
             ? methodResolveResult.Value.Body.Instructions.SingleOrDefault(instr => instr.Offset == access.MethodOffset)?.ToString()
             : null;
         instruction ??= $"<unresolved-instruction>(IL_{access.MethodOffset:X4})";
         var symbolInfo = _symbolResolver.ResolveSequencePoint(
-            processId, access.ModuleId, access.MethodToken.Value, access.MethodOffset);
+            processId, top.ModuleId, top.MethodToken.Value, access.MethodOffset);
         var sourceCode = TryReadSourceLine(symbolInfo?.DocumentUrl, symbolInfo?.StartLine);
 
         return new StackFrame(
             MethodName: methodName,
             SourceMapping: moduleName,
-            MethodToken: access.MethodToken.Value,
+            MethodToken: top.MethodToken.Value,
             MethodOffset: access.MethodOffset,
             Instruction: instruction,
             SourceFileName: symbolInfo?.DocumentUrl,
             SourceLine: symbolInfo?.StartLine,
             SourceCode: sourceCode);
+    }
+
+    private List<StackFrame> DecodeDeepFrames(uint processId, AccessInfo access)
+    {
+        var deeperFrames = access.Stack.GetDeeperFrames();
+        if (deeperFrames.Count == 0)
+            return [];
+
+        var resolver = _metadataContext.GetResolver(processId);
+        var frames = new List<StackFrame>(deeperFrames.Count);
+
+        foreach (var frame in deeperFrames)
+        {
+            var methodResolveResult = resolver.ResolveMethod(processId, frame.ModuleId, frame.MethodToken);
+            var methodDef = methodResolveResult.Value;
+            var methodName = methodDef?.FullName ?? "<unable-to-resolve-method>";
+            var modulePath = methodDef?.Module?.Location ?? "<unable-to-resolve-module>";
+
+            frames.Add(new StackFrame(
+                MethodName: methodName,
+                SourceMapping: modulePath,
+                MethodToken: frame.MethodToken.Value,
+                MethodOffset: null,
+                Instruction: null,
+                SourceFileName: null,
+                SourceLine: null,
+                SourceCode: null));
+        }
+
+        return frames;
     }
 
     private static string? TryReadSourceLine(string? documentUrl, int? line)
