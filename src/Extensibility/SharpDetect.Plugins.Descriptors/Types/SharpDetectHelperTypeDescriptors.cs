@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Events;
-using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.Descriptors.Types;
 
@@ -23,22 +22,7 @@ public static class SharpDetectHelperTypeDescriptors
         RecordedEventType eventType,
         bool isInstance)
     {
-        ArgumentTypeDescriptor[] argumentTypes = isInstance
-            ?
-            [
-                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
-            ]
-            :
-            [
-                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
-            ];
-
-        var signature = new MethodSignatureDescriptor(
-            CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-            ParametersCount: (byte)argumentTypes.Length,
-            ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-            ArgumentTypeElements: argumentTypes);
+        var signature = FieldAccessHelperSignature.Create(isInstance);
 
         return
         [

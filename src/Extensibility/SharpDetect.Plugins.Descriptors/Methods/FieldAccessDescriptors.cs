@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Events;
-using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.Descriptors.Methods;
 
@@ -34,17 +33,6 @@ public static class FieldAccessDescriptors
         RecordedEventType enterInterpretation,
         bool captureStackTraceOnEnter)
     {
-        ArgumentTypeDescriptor[] argumentTypes = isInstance
-            ?
-            [
-                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
-            ]
-            :
-            [
-                ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
-            ];
-
         CapturedArgumentDescriptor[] arguments = isInstance
             ?
             [
@@ -60,11 +48,7 @@ public static class FieldAccessDescriptors
             MethodName: methodName,
             DeclaringTypeFullName: "SharpDetect",
             VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: (byte)argumentTypes.Length,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: argumentTypes),
+            SignatureDescriptor: FieldAccessHelperSignature.Create(isInstance),
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
