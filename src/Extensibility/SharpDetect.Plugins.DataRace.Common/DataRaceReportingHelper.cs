@@ -162,40 +162,37 @@ public abstract class DataRaceReportingHelper
         if (stackTrace is null || stackTrace.Frames.IsDefaultOrEmpty)
             return [];
 
-        var frames = stackTrace.Frames
-            .Select((frame, index) => new
-            {
-                metadataName = frame.MethodName,
-                metadataToken = $"0x{frame.MethodToken:X8}",
-                methodOffset = frame.MethodOffset is { } offset ? $"IL_{offset:X4}" : null,
-                instruction = frame.Instruction,
-                assemblyPath = frame.SourceMapping,
-                assemblyFileName = Path.GetFileName(frame.SourceMapping),
-                sourceFileName = frame.SourceFileName,
-                sourceLine = frame.SourceLine,
-                sourceCode = frame.SourceCode,
-                isTopFrame = index == 0,
-                isSystemFrame = DataRaceStackTraceResolver.IsSystemModule(frame.SourceMapping)
-            })
-            .ToArray();
-
         var segments = new List<object>();
-        var index = 0;
-        while (index < frames.Length)
+        var globalIndex = 0;
+        foreach (var run in StackFrameGrouping.GroupSystemFrameRuns(stackTrace.Frames))
         {
-            var isCollapsible = frames[index].isSystemFrame && !frames[index].isTopFrame;
-            var end = index + 1;
-            while (isCollapsible && end < frames.Length && frames[end].isSystemFrame)
-                end++;
+            var projected = new object[run.Frames.Count];
+            for (var i = 0; i < run.Frames.Count; i++)
+            {
+                var frame = run.Frames[i];
+                projected[i] = new
+                {
+                    metadataName = frame.MethodName,
+                    metadataToken = $"0x{frame.MethodToken:X8}",
+                    methodOffset = frame.MethodOffset is { } offset ? $"IL_{offset:X4}" : null,
+                    instruction = frame.Instruction,
+                    assemblyPath = frame.SourceMapping,
+                    assemblyFileName = Path.GetFileName(frame.SourceMapping),
+                    sourceFileName = frame.SourceFileName,
+                    sourceLine = frame.SourceLine,
+                    sourceCode = frame.SourceCode,
+                    isTopFrame = globalIndex == 0,
+                    isSystemFrame = WellKnownModules.IsSystemModule(frame.SourceMapping)
+                };
+                globalIndex++;
+            }
 
-            var run = frames[index..end];
             segments.Add(new
             {
-                isCollapsed = run.Length > 1,
-                count = run.Length,
-                frames = run
+                isCollapsed = run.Frames.Count > 1,
+                count = run.Frames.Count,
+                frames = projected
             });
-            index = end;
         }
 
         return segments;

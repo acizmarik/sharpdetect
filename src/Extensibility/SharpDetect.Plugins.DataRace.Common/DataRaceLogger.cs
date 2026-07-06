@@ -56,26 +56,18 @@ public static class DataRaceLogger
     public static IReadOnlyList<string> FormatStackTraceLines(IReadOnlyList<StackFrame> frames)
     {
         var lines = new List<string>();
-        var index = 0;
-        while (index < frames.Count)
+        foreach (var run in StackFrameGrouping.GroupSystemFrameRuns(frames))
         {
-            var frame = frames[index];
-            if (index > 0 && DataRaceStackTraceResolver.IsSystemModule(frame.SourceMapping))
+            if (run.IsSystemRun)
             {
-                var end = index + 1;
-                while (end < frames.Count && DataRaceStackTraceResolver.IsSystemModule(frames[end].SourceMapping))
-                    end++;
-
-                var skipped = end - index - 1;
+                var skipped = run.Frames.Count - 1;
                 lines.Add(skipped > 0
-                    ? $"at {frame.MethodName} (+{skipped} more)"
-                    : $"at {frame.MethodName}");
-                index = end;
+                    ? $"at {run.Frames[0].MethodName} (+{skipped} more)"
+                    : $"at {run.Frames[0].MethodName}");
             }
             else
             {
-                lines.Add($"at {FormatFrameLocation(frame)}");
-                index++;
+                lines.Add($"at {FormatFrameLocation(run.Frames[0])}");
             }
         }
 

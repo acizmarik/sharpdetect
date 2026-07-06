@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Metadata;
+using SharpDetect.Core.Reporting;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Plugins.DataRace.Common;
@@ -31,13 +32,7 @@ public static class DataRaceStackTraceResolver
     }
 
     public static bool IsSystemModule(string modulePath)
-    {
-        var fileName = Path.GetFileName(modulePath);
-        return fileName.StartsWith("System.", StringComparison.OrdinalIgnoreCase) ||
-               fileName.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase) ||
-               fileName.StartsWith("mscorlib.", StringComparison.OrdinalIgnoreCase) ||
-               fileName.StartsWith("netstandard.", StringComparison.OrdinalIgnoreCase);
-    }
+        => WellKnownModules.IsSystemModule(modulePath);
 
     private static StackFrame ResolveTopFrame(
         uint processId,
@@ -90,26 +85,12 @@ public static class DataRaceStackTraceResolver
 
         var resolver = metadataContext.GetResolver(processId);
         var frames = new List<StackFrame>(deeperFrames.Count);
-
-        foreach (var frame in deeperFrames)
-        {
-            var methodResolveResult = resolver.ResolveMethod(processId, frame.ModuleId, frame.MethodToken);
-            var methodDef = methodResolveResult.Value;
-            var methodName = methodDef is not null
-                ? GetDisplayMethodName(methodDef.FullName)
-                : "<unable-to-resolve-method>";
-            var modulePath = methodDef?.Module?.Location ?? "<unable-to-resolve-module>";
-
-            frames.Add(new StackFrame(
-                MethodName: methodName,
-                SourceMapping: modulePath,
-                MethodToken: frame.MethodToken.Value,
-                MethodOffset: null,
-                Instruction: null,
-                SourceFileName: null,
-                SourceLine: null,
-                SourceCode: null));
-        }
+        frames.AddRange(deeperFrames.Select(frame => StackFrameResolver.ResolveMinimalFrame(
+            resolver,
+            processId,
+            frame.ModuleId,
+            frame.MethodToken,
+            GetDisplayMethodName)));
 
         return frames;
     }
