@@ -242,8 +242,10 @@ HRESULT StackWalker::CaptureCurrentStackTrace(
 	context.Appended = 0;
 
 	HRESULT hr = E_FAIL;
+	bool attemptedSeedless = false;
 	if (!s_seedlessSelfWalkBroken.load(std::memory_order_relaxed))
 	{
+		attemptedSeedless = true;
 		hr = corProfilerInfo->DoStackSnapshot(
 			NULL,
 			CurrentStackSnapshotCallback,
@@ -272,6 +274,9 @@ HRESULT StackWalker::CaptureCurrentStackTrace(
 				sizeof(seed));
 			if (hr == CORPROF_E_STACKSNAPSHOT_ABORTED)
 				hr = S_OK;
+				
+			if (attemptedSeedless && SUCCEEDED(hr))
+				s_seedlessSelfWalkBroken.store(true, std::memory_order_relaxed);
 		}
 	}
 
