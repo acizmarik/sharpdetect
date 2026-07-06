@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting.Model;
@@ -151,23 +150,57 @@ public abstract class DataRaceReportingHelper
                         {
                             name = threadInfo.Name,
                             reason = reason ?? "Unknown",
-                            stacktrace = st?.Frames.Select(frame => new
-                            {
-                                metadataName = frame.MethodName,
-                                metadataToken = frame.MethodToken,
-                                methodOffset = $"IL_{frame.MethodOffset:X4}",
-                                instruction = frame.Instruction,
-                                sourceFile = frame.SourceMapping,
-                                sourceFileName = frame.SourceFileName,
-                                sourceLine = frame.SourceLine,
-                                sourceCode = frame.SourceCode,
-                            }).ToArray() ?? []
+                            stacktrace = BuildStackTraceSegments(st)
                         };
                     }).ToArray()
                 };
             });
     }
     
+    public static IReadOnlyList<object> BuildStackTraceSegments(StackTrace? stackTrace)
+    {
+        if (stackTrace is null || stackTrace.Frames.IsDefaultOrEmpty)
+            return [];
+
+        var frames = stackTrace.Frames
+            .Select((frame, index) => new
+            {
+                metadataName = frame.MethodName,
+                metadataToken = $"0x{frame.MethodToken:X8}",
+                methodOffset = frame.MethodOffset is { } offset ? $"IL_{offset:X4}" : null,
+                instruction = frame.Instruction,
+                assemblyPath = frame.SourceMapping,
+                assemblyFileName = Path.GetFileName(frame.SourceMapping),
+                sourceFileName = frame.SourceFileName,
+                sourceLine = frame.SourceLine,
+                sourceCode = frame.SourceCode,
+                isTopFrame = index == 0,
+                isSystemFrame = DataRaceStackTraceResolver.IsSystemModule(frame.SourceMapping)
+            })
+            .ToArray();
+
+        var segments = new List<object>();
+        var index = 0;
+        while (index < frames.Length)
+        {
+            var isCollapsible = frames[index].isSystemFrame && !frames[index].isTopFrame;
+            var end = index + 1;
+            while (isCollapsible && end < frames.Length && frames[end].isSystemFrame)
+                end++;
+
+            var run = frames[index..end];
+            segments.Add(new
+            {
+                isCollapsed = run.Length > 1,
+                count = run.Length,
+                frames = run
+            });
+            index = end;
+        }
+
+        return segments;
+    }
+
     private void PrepareNoViolationDiagnostics()
     {
         _reporter.SetTitle("No data races detected");
@@ -242,101 +275,24 @@ public abstract class DataRaceReportingHelper
         {
             foreach (var (race, access, role) in accessCollector.GetDistinctAccesses(threadId))
             {
-                var displayName = access.ThreadName ?? $"Thread-{threadId.ThreadId.Value}";
+                var displayName = DataRaceLogger.GetThreadDisplayName(access);
                 var threadInfo = new ThreadInfo(threadId.ThreadId.Value, displayName, accessIndex++);
                 reportBuilder.AddThread(threadInfo);
 
                 var reason = FormatAccessReason(race, access, role);
                 reportBuilder.AddReportReason(threadInfo, reason);
 
-                var frame = CreateStackFrame(threadId.ProcessId, access);
-                var deepFrames = DecodeDeepFrames(threadId.ProcessId, access);
-                var stackTrace = new StackTrace(threadInfo, [frame, .. deepFrames]);
+                var frames = DataRaceStackTraceResolver.ResolveFrames(
+                    threadId.ProcessId,
+                    access,
+                    _metadataContext,
+                    _symbolResolver);
+                var stackTrace = new StackTrace(threadInfo, [.. frames]);
                 reportBuilder.AddStackTrace(stackTrace);
             }
         }
     }
 
-    private StackFrame CreateStackFrame(uint processId, AccessInfo access)
-    {
-        var top = access.Stack.Top;
-        var resolver = _metadataContext.GetResolver(processId);
-        var moduleResolveResult = resolver.ResolveModule(processId, top.ModuleId);
-        var methodResolveResult = resolver.ResolveMethod(processId, top.ModuleId, top.MethodToken);
-        var moduleName = moduleResolveResult.IsSuccess
-            ? moduleResolveResult.Value.Location
-            : "<unresolved-module>";
-        var methodName = methodResolveResult.IsSuccess
-            ? methodResolveResult.Value.FullName
-            : $"<unresolved-method>({top.MethodToken.Value})";
-        var instruction = methodResolveResult.IsSuccess
-            ? methodResolveResult.Value.Body.Instructions.SingleOrDefault(instr => instr.Offset == access.MethodOffset)?.ToString()
-            : null;
-        instruction ??= $"<unresolved-instruction>(IL_{access.MethodOffset:X4})";
-        var symbolInfo = _symbolResolver.ResolveSequencePoint(
-            processId, top.ModuleId, top.MethodToken.Value, access.MethodOffset);
-        var sourceCode = TryReadSourceLine(symbolInfo?.DocumentUrl, symbolInfo?.StartLine);
-
-        return new StackFrame(
-            MethodName: methodName,
-            SourceMapping: moduleName,
-            MethodToken: top.MethodToken.Value,
-            MethodOffset: access.MethodOffset,
-            Instruction: instruction,
-            SourceFileName: symbolInfo?.DocumentUrl,
-            SourceLine: symbolInfo?.StartLine,
-            SourceCode: sourceCode);
-    }
-
-    private List<StackFrame> DecodeDeepFrames(uint processId, AccessInfo access)
-    {
-        var deeperFrames = access.Stack.GetDeeperFrames();
-        if (deeperFrames.Count == 0)
-            return [];
-
-        var resolver = _metadataContext.GetResolver(processId);
-        var frames = new List<StackFrame>(deeperFrames.Count);
-
-        foreach (var frame in deeperFrames)
-        {
-            var methodResolveResult = resolver.ResolveMethod(processId, frame.ModuleId, frame.MethodToken);
-            var methodDef = methodResolveResult.Value;
-            var methodName = methodDef?.FullName ?? "<unable-to-resolve-method>";
-            var modulePath = methodDef?.Module?.Location ?? "<unable-to-resolve-module>";
-
-            frames.Add(new StackFrame(
-                MethodName: methodName,
-                SourceMapping: modulePath,
-                MethodToken: frame.MethodToken.Value,
-                MethodOffset: null,
-                Instruction: null,
-                SourceFileName: null,
-                SourceLine: null,
-                SourceCode: null));
-        }
-
-        return frames;
-    }
-
-    private static string? TryReadSourceLine(string? documentUrl, int? line)
-    {
-        if (documentUrl is null || line is null || line.Value < 1)
-            return null;
-
-        try
-        {
-            if (!File.Exists(documentUrl))
-                return null;
-
-            return File.ReadLines(documentUrl)
-                .Skip(line.Value - 1)
-                .FirstOrDefault();
-        }
-        catch
-        {
-            return null;
-        }
-    }
 }
 
 

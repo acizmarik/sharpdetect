@@ -49,13 +49,13 @@ public partial class FastTrackPlugin
         {
             if (role == RaceRole.Triggering)
             {
-                var lastThreadName = race.LastAccess.ThreadName ?? "unknown";
+                var lastThreadName = DataRaceLogger.GetThreadDisplayName(race.LastAccess);
                 var lastAccess = race.LastAccess.AccessType;
                 return $"{access.AccessType} unordered after previous {lastAccess} by {lastThreadName}";
             }
             else
             {
-                var otherThreadName = race.CurrentAccess.ThreadName ?? "unknown";
+                var otherThreadName = DataRaceLogger.GetThreadDisplayName(race.CurrentAccess);
                 return $"{access.AccessType} conflicts with later {race.CurrentAccess.AccessType} by {otherThreadName}";
             }
         }

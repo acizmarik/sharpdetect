@@ -49,13 +49,13 @@ public partial class EraserPlugin
         {
             if (role == RaceRole.Triggering)
             {
-                var lastThreadName = race.LastAccess.ThreadName ?? "unknown";
+                var lastThreadName = DataRaceLogger.GetThreadDisplayName(race.LastAccess);
                 var lastAccess = race.LastAccess.AccessType;
                 return $"{access.AccessType} with empty lock set, unordered after {lastAccess} by {lastThreadName}";
             }
             else
             {
-                var otherThreadName = race.CurrentAccess.ThreadName ?? "unknown";
+                var otherThreadName = DataRaceLogger.GetThreadDisplayName(race.CurrentAccess);
                 return $"{access.AccessType} conflicts with {race.CurrentAccess.AccessType} by {otherThreadName}";
             }
         }

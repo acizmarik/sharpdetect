@@ -341,7 +341,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         _detectedRaces.Add(raceInfo);
         if (_reportedRacyFields.Add(raceInfo.FieldId))
-            DataRaceLogger.LogDataRace(Logger, raceInfo, MetadataContext);
+            DataRaceLogger.LogDataRace(Logger, raceInfo, MetadataContext, SymbolResolver);
     }
 }
 

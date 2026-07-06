@@ -543,6 +543,33 @@ body {
     white-space: pre;
     overflow-x: auto;
 }
+.stacktrace-line-top {
+    box-shadow: inset 3px 0 0 var(--color-danger);
+}
+.stacktrace-line-system .frame-method,
+.stacktrace-line-system .frame-detail,
+.stacktrace-line-system .frame-detail-label {
+    color: var(--color-code-text-muted);
+}
+.stacktrace-collapse > summary {
+    padding: 0.375rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-code-text-muted);
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--color-code-line-border);
+    transition: background 0.1s ease;
+}
+.stacktrace-collapse > summary:hover {
+    background: var(--color-code-line-hover);
+}
+.stacktrace-collapse:last-child > summary {
+    border-bottom: none;
+}
+.stacktrace-collapse[open]:last-child > summary {
+    border-bottom: 1px solid var(--color-code-line-border);
+}
 
 .no-violations-message {
     display: flex;
