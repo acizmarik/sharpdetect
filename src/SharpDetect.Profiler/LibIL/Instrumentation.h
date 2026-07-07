@@ -31,7 +31,7 @@ namespace LibProfiler
 		IN const InjectedMethodsMap& injectedMethods,
 		IN BOOL enableFieldsAccessInstrumentation,
 		IN const std::vector<std::string>& skipInstrumentationForAssemblies,
-		IN BOOL enableFieldAccessStackTraces,
+		IN BOOL enableStackTraceCollection,
 		IN const std::vector<std::string>& stackTraceFieldPatterns);
 
 	HRESULT CreateManagedWrapperMethod(
@@ -51,7 +51,7 @@ namespace LibProfiler
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
 		IN const InjectedMethodsMap& injectedMethods,
-		IN BOOL enableFieldAccessStackTraces,
+		IN BOOL enableStackTraceCollection,
 		IN const std::vector<std::string>& stackTraceFieldPatterns,
 		OUT ILInstr** nextInstruction);
 
@@ -67,7 +67,7 @@ namespace LibProfiler
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
 		IN const InjectedMethodsMap& injectedMethods,
-		IN BOOL enableFieldAccessStackTraces,
+		IN BOOL enableStackTraceCollection,
 		IN const std::vector<std::string>& stackTraceFieldPatterns,
 		OUT ILInstr** nextInstruction);
 

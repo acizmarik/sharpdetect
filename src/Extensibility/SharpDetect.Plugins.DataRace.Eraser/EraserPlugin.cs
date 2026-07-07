@@ -79,11 +79,11 @@ public partial class EraserPlugin : PerThreadOrderingPluginBase, IPlugin
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
                 configuration.EnableFieldsAccessInstrumentation,
                 configuration.SkipInstrumentationForAssemblies,
-                configuration.EnableFieldAccessStackTraces,
-                configuration.FieldAccessStackTracesMaxDepth,
-                FieldAccessStackTracesFields = configuration.FieldAccessStackTracesFields.IsDefault
+                configuration.EnableStackTraceCollection,
+                configuration.StackTraceCollectionMaxDepth,
+                StackTraceCollectionForFields = configuration.StackTraceCollectionForFields.IsDefault
                     ? ImmutableArray<string>.Empty
-                    : configuration.FieldAccessStackTracesFields
+                    : configuration.StackTraceCollectionForFields
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder,
             sessionId: pathsConfiguration.SessionId);

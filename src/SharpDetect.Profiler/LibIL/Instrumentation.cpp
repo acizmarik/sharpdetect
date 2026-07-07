@@ -29,10 +29,10 @@ static bool ShouldSkipInstrumentation(
 static bool ShouldCaptureFieldStack(
 	IN const LibProfiler::ModuleDef& moduleDef,
 	IN mdToken fieldToken,
-	IN BOOL enableFieldAccessStackTraces,
+	IN BOOL enableStackTraceCollection,
 	IN const std::vector<std::string>& stackTraceFieldPatterns)
 {
-	if (!enableFieldAccessStackTraces)
+	if (!enableStackTraceCollection)
 		return false;
 
 	if (stackTraceFieldPatterns.empty())
@@ -44,7 +44,7 @@ static bool ShouldCaptureFieldStack(
 
 	for (auto&& pattern : stackTraceFieldPatterns)
 	{
-		if (pattern == fieldFullName)
+		if (fieldFullName.starts_with(pattern))
 			return true;
 	}
 
@@ -60,7 +60,7 @@ HRESULT LibProfiler::PatchMethodBody(
 	IN const InjectedMethodsMap& injectedMethods,
 	IN const BOOL enableFieldsAccessInstrumentation,
 	IN const std::vector<std::string>& skipInstrumentationForAssemblies,
-	IN const BOOL enableFieldAccessStackTraces,
+	IN const BOOL enableStackTraceCollection,
 	IN const std::vector<std::string>& stackTraceFieldPatterns)
 {
 	if (tokensToPatch.empty() && (!enableFieldsAccessInstrumentation || injectedMethods.empty()))
@@ -123,7 +123,7 @@ HRESULT LibProfiler::PatchMethodBody(
 					moduleDef,
 					mdMethodDef,
 					injectedMethods,
-					enableFieldAccessStackTraces,
+					enableStackTraceCollection,
 					stackTraceFieldPatterns,
 					&nextInstruction)))
 					{
@@ -166,7 +166,7 @@ HRESULT LibProfiler::PatchMethodBody(
 					moduleDef,
 					mdMethodDef,
 					injectedMethods,
-					enableFieldAccessStackTraces,
+					enableStackTraceCollection,
 					stackTraceFieldPatterns,
 					&nextInstruction)))
 				{
@@ -218,7 +218,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
 	IN const InjectedMethodsMap& injectedMethods,
-	IN const BOOL enableFieldAccessStackTraces,
+	IN const BOOL enableStackTraceCollection,
 	IN const std::vector<std::string>& stackTraceFieldPatterns,
 	OUT ILInstr** nextInstruction)
 {
@@ -237,7 +237,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		return E_FAIL;
 	}
 
-	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableFieldAccessStackTraces, stackTraceFieldPatterns);
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
 	const auto eventType = isStore
 		? LibIPC::RecordedEventType::StaticFieldWrite
 		: LibIPC::RecordedEventType::StaticFieldRead;
@@ -298,7 +298,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
 	IN const InjectedMethodsMap& injectedMethods,
-	IN const BOOL enableFieldAccessStackTraces,
+	IN const BOOL enableStackTraceCollection,
 	IN const std::vector<std::string>& stackTraceFieldPatterns,
 	OUT ILInstr** nextInstruction)
 {
@@ -350,7 +350,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		return E_FAIL;
 	}
 
-	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableFieldAccessStackTraces, stackTraceFieldPatterns);
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
 	const auto fieldAccessEventType = isStore
 		? LibIPC::RecordedEventType::InstanceFieldWrite
 		: LibIPC::RecordedEventType::InstanceFieldRead;

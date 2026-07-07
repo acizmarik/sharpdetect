@@ -386,8 +386,8 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
         injectedMethods,
         _configuration.enableFieldsAccessInstrumentation,
         _configuration.skipInstrumentationForAssemblies,
-        _configuration.enableFieldAccessStackTraces,
-        _configuration.fieldAccessStackTracesFields)))
+        _configuration.enableStackTraceCollection,
+        _configuration.stackTraceCollectionForFields)))
     {
         _client.Send(LibIPC::Helpers::CreateMethodBodyRewriteMsg(
             CreateMetadataMsg(),
@@ -549,7 +549,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         if (SUCCEEDED(LibProfiler::StackWalker::CaptureCurrentStackTrace(
                 _corProfilerInfo,
                 1,
-                _configuration.fieldAccessStackTracesMaxDepth,
+                _configuration.stackTraceCollectionMaxDepth,
                 blob))
             && !blob.empty())
         {

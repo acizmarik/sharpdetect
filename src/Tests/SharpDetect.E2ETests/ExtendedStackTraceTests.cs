@@ -17,6 +17,8 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     private const string DeepStackCallerName = "DeepStackCaller";
     private const string RacyFieldPattern =
         "SharpDetect.E2ETests.Subject.Helpers.DataRaces.DataRace.Test_DataRace_ReferenceType_Static";
+    private const string RacyFieldPrefix =
+        "SharpDetect.E2ETests.Subject.Helpers.DataRaces.DataRace.";
 
     private static readonly string[] SkipSystemAssemblies = [ "System.", "Microsoft." ];
 
@@ -26,9 +28,9 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
         {
-            EnableFieldAccessStackTraces = true,
-            FieldAccessStackTracesMaxDepth = 8,
-            FieldAccessStackTracesFields = Array.Empty<string>(),
+            EnableStackTraceCollection = true,
+            StackTraceCollectionMaxDepth = 8,
+            StackTraceCollectionForFields = Array.Empty<string>(),
             SkipInstrumentationForAssemblies = SkipSystemAssemblies
         });
 
@@ -59,9 +61,26 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
         {
-            EnableFieldAccessStackTraces = true,
-            FieldAccessStackTracesMaxDepth = 8,
-            FieldAccessStackTracesFields = new[] { RacyFieldPattern },
+            EnableStackTraceCollection = true,
+            StackTraceCollectionMaxDepth = 8,
+            StackTraceCollectionForFields = new[] { RacyFieldPattern },
+            SkipInstrumentationForAssemblies = SkipSystemAssemblies
+        });
+
+        Assert.Contains(
+            GetStackTraces(reports).SelectMany(st => st.Frames),
+            frame => frame.MethodName.Contains(DeepStackCallerName));
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10WithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    public async Task DeepStack_WithMatchingFieldPrefix_ReportsMultipleFrames(string sdk, string plugin)
+    {
+        var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
+        {
+            EnableStackTraceCollection = true,
+            StackTraceCollectionMaxDepth = 8,
+            StackTraceCollectionForFields = new[] { RacyFieldPrefix },
             SkipInstrumentationForAssemblies = SkipSystemAssemblies
         });
 
@@ -76,9 +95,9 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
         {
-            EnableFieldAccessStackTraces = true,
-            FieldAccessStackTracesMaxDepth = 8,
-            FieldAccessStackTracesFields = new[] { "NoSuch.Type.NoSuchField" },
+            EnableStackTraceCollection = true,
+            StackTraceCollectionMaxDepth = 8,
+            StackTraceCollectionForFields = new[] { "NoSuch.Type.NoSuchField" },
             SkipInstrumentationForAssemblies = SkipSystemAssemblies
         });
 
