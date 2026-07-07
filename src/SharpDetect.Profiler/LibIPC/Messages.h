@@ -175,7 +175,7 @@ namespace LibIPC
 	using TailcallMsgArgsInstance = msgpack::type::tuple<INT32, TailcallMsgArgs>;
 	using TailcallMsg = msgpack::type::tuple<MetadataMsg, TailcallMsgArgsInstance>;
 
-	using MethodEnterWithArgumentsMsgArgs = msgpack::type::tuple<UINT64, UINT32, USHORT, std::vector<BYTE>, std::vector<BYTE>>;
+	using MethodEnterWithArgumentsMsgArgs = msgpack::type::tuple<UINT64, UINT32, USHORT, std::vector<BYTE>, std::vector<BYTE>, std::optional<std::vector<BYTE>>>;
 	using MethodEnterWithArgumentsMsgArgsInstance = msgpack::type::tuple<INT32, MethodEnterWithArgumentsMsgArgs>;
 	using MethodEnterWithArgumentsMsg = msgpack::type::tuple<MetadataMsg, MethodEnterWithArgumentsMsgArgsInstance>;
 
@@ -252,7 +252,7 @@ namespace LibIPC
 		MethodExitMsg CreateMethodExitMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation);
 		MethodUnwoundMsg CreateMethodUnwoundMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation);
 		TailcallMsg CreateTailcallrMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef);
-		MethodEnterWithArgumentsMsg CreateMethodEnterWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos);
+		MethodEnterWithArgumentsMsg CreateMethodEnterWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos, std::optional<std::vector<BYTE>>&& stackFrames);
 		MethodExitWithArgumentsMsg CreateMethodExitWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT, std::vector<BYTE>&& returnValue, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos);
 		TailcallWithArgumentsMsg CreateTailcallArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos);
 

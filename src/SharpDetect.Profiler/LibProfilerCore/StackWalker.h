@@ -28,6 +28,12 @@ namespace LibProfiler
 			const std::vector<UINT64>& threadIds,
 			std::vector<std::vector<StackFrame>>& frames);
 
+		static HRESULT CaptureCurrentStackTrace(
+			ICorProfilerInfo10* corProfilerInfo,
+			ULONG skipFrames,
+			ULONG maxFrames,
+			std::vector<BYTE>& framesBlob);
+
 	private:
 		struct StackWalkContext
 		{
@@ -36,7 +42,25 @@ namespace LibProfiler
 			std::vector<UINT32>* MethodTokens;
 		};
 
+		struct CurrentStackWalkContext
+		{
+			ICorProfilerInfo10* CorProfilerInfo;
+			std::vector<BYTE>* FramesBlob;
+			ULONG SkipFrames;
+			ULONG MaxFrames;
+			ULONG Seen;
+			ULONG Appended;
+		};
+
 		static HRESULT STDMETHODCALLTYPE StackSnapshotCallback(
+			FunctionID funcId,
+			UINT_PTR ip,
+			COR_PRF_FRAME_INFO frameInfo,
+			ULONG32 contextSize,
+			BYTE context[],
+			void* clientData);
+
+		static HRESULT STDMETHODCALLTYPE CurrentStackSnapshotCallback(
 			FunctionID funcId,
 			UINT_PTR ip,
 			COR_PRF_FRAME_INFO frameInfo,

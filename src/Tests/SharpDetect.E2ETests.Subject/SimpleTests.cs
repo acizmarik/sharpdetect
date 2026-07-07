@@ -1064,6 +1064,26 @@ namespace SharpDetect.E2ETests.Subject
                 () => DataRace.Test_DataRace_ValueType_Static = 123);
         }
 
+        public static void Test_DataRace_DeepStack_HelperWriteRace()
+        {
+            DataRace.Test_DataRace_ReferenceType_Static = new object();
+            RunConcurrently(
+                () => _ = DataRace.Test_DataRace_ReferenceType_Static,
+                () => DeepStackCaller());
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void DeepStackCaller()
+        {
+            DeepStackWriteHelper();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void DeepStackWriteHelper()
+        {
+            DataRace.Test_DataRace_ReferenceType_Static = new object();
+        }
+
         public static void Test_DataRace_ReferenceType_Instance_ReadWriteRace()
         {
             var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };

@@ -34,7 +34,7 @@ std::unordered_map<mdToken, mdToken> Profiler::RewriteRegistry::GetModuleRewriti
 	return (it != _rewritings.cend()) ? it->second : std::unordered_map<mdToken, mdToken>{};
 }
 
-void Profiler::RewriteRegistry::AddModuleInjectedMethods(const ModuleID moduleId, std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods)
+void Profiler::RewriteRegistry::AddModuleInjectedMethods(const ModuleID moduleId, LibProfiler::InjectedMethodsMap injectedMethods)
 {
 	auto guard = std::unique_lock(_injectedMethodsMutex);
 	_injectedMethods.emplace(moduleId, std::move(injectedMethods));

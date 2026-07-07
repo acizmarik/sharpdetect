@@ -9,9 +9,16 @@ namespace SharpDetect.Plugins.DataRace.FastTrack;
 
 public sealed class FastTrackPluginConfiguration : PluginOptionsConfiguration, IPluginOptionsConfig<FastTrackPluginConfiguration>, IDataRacePluginConfiguration
 {
+    public static FastTrackPluginConfiguration Default => new();
+    
+    // Instrumentation
     public bool EnableFieldsAccessInstrumentation { get; init; } = true;
     public ImmutableArray<string> SkipInstrumentationForAssemblies { get; init; } = WellKnownModules.SystemModulePrefixes;
-    public static FastTrackPluginConfiguration Default => new();
+    
+    // Stack trace collection
+    public bool EnableStackTraceCollection { get; init; } = false;
+    public int StackTraceCollectionMaxDepth { get; init; } = DataRaceStackTraceOptions.DefaultMaxDepth;
+    public ImmutableArray<string> StackTraceCollectionForFields { get; init; } = [];
 }
 
 

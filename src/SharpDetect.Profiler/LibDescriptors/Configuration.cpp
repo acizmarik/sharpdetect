@@ -24,6 +24,9 @@ void Profiler::to_json(nlohmann::json& json, const Configuration& descriptor)
     json["additionalData"]["typeInjectionDescriptors"] = descriptor.typeInjectionDescriptors;
     json["additionalData"]["enableFieldsAccessInstrumentation"] = descriptor.enableFieldsAccessInstrumentation;
     json["additionalData"]["skipInstrumentationForAssemblies"] = descriptor.skipInstrumentationForAssemblies;
+    json["additionalData"]["enableStackTraceCollection"] = descriptor.enableStackTraceCollection;
+    json["additionalData"]["stackTraceCollectionMaxDepth"] = descriptor.stackTraceCollectionMaxDepth;
+    json["additionalData"]["stackTraceCollectionForFields"] = descriptor.stackTraceCollectionForFields;
 }
 
 void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
@@ -61,4 +64,10 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
     descriptor.enableFieldsAccessInstrumentation = additionalData.at("enableFieldsAccessInstrumentation");
     if (additionalData.contains("skipInstrumentationForAssemblies"))
         descriptor.skipInstrumentationForAssemblies = additionalData.at("skipInstrumentationForAssemblies").get<std::vector<std::string>>();
+    if (additionalData.contains("enableStackTraceCollection"))
+        descriptor.enableStackTraceCollection = additionalData.at("enableStackTraceCollection");
+    if (additionalData.contains("stackTraceCollectionMaxDepth"))
+        descriptor.stackTraceCollectionMaxDepth = additionalData.at("stackTraceCollectionMaxDepth");
+    if (additionalData.contains("stackTraceCollectionForFields"))
+        descriptor.stackTraceCollectionForFields = additionalData.at("stackTraceCollectionForFields").get<std::vector<std::string>>();
 }

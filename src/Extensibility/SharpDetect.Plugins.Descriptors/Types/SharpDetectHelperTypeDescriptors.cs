@@ -1,7 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using SharpDetect.Core.Events.Profiler;
+using SharpDetect.Core.Events;
 
 namespace SharpDetect.Plugins.Descriptors.Types;
 
@@ -11,54 +11,26 @@ public static class SharpDetectHelperTypeDescriptors
         TypeFullName: "SharpDetect",
         Methods:
         [
-            new MethodInjectionDescriptor(
-                Name: "ReadStaticField",
-                EventType: Core.Events.RecordedEventType.StaticFieldRead,
-                Signature: new MethodSignatureDescriptor(
-                    CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                    ParametersCount: 1,
-                    ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                    ArgumentTypeElements:
-                    [
-                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
-                    ])),
-            new MethodInjectionDescriptor(
-                Name: "ReadInstanceField",
-                EventType: Core.Events.RecordedEventType.InstanceFieldRead,
-                Signature: new MethodSignatureDescriptor(
-                    CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                    ParametersCount: 2,
-                    ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                    ArgumentTypeElements:
-                    [
-                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
-                    ])),
-            new MethodInjectionDescriptor(
-                Name: "WriteStaticField",
-                EventType: Core.Events.RecordedEventType.StaticFieldWrite,
-                Signature: new MethodSignatureDescriptor(
-                    CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                    ParametersCount: 1,
-                    ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                    ArgumentTypeElements:
-                    [
-                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
-                    ])),
-            new MethodInjectionDescriptor(
-                Name: "WriteInstanceField",
-                EventType: Core.Events.RecordedEventType.InstanceFieldWrite,
-                Signature: new MethodSignatureDescriptor(
-                    CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                    ParametersCount: 2,
-                    ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                    ArgumentTypeElements:
-                    [
-                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                        ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
-                    ])),
+            .. CreateFieldAccessHelperPair("ReadStaticField", RecordedEventType.StaticFieldRead, isInstance: false),
+            .. CreateFieldAccessHelperPair("ReadInstanceField", RecordedEventType.InstanceFieldRead, isInstance: true),
+            .. CreateFieldAccessHelperPair("WriteStaticField", RecordedEventType.StaticFieldWrite, isInstance: false),
+            .. CreateFieldAccessHelperPair("WriteInstanceField", RecordedEventType.InstanceFieldWrite, isInstance: true),
         ]);
     
+    private static MethodInjectionDescriptor[] CreateFieldAccessHelperPair(
+        string name,
+        RecordedEventType eventType,
+        bool isInstance)
+    {
+        var signature = FieldAccessHelperSignature.Create(isInstance);
+
+        return
+        [
+            new MethodInjectionDescriptor(name, eventType, signature),
+            new MethodInjectionDescriptor(name + "WithStack", eventType, signature, CaptureStackTrace: true),
+        ];
+    }
+
     public static IEnumerable<TypeInjectionDescriptor> GetAllTypes()
     {
         yield return CoreTypeDescriptor;

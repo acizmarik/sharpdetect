@@ -1,0 +1,23 @@
+<div class="stacktrace-line{{#if isTopFrame}} stacktrace-line-top{{/if}}{{#if isSystemFrame}} stacktrace-line-system{{/if}}">
+    <span class="frame-method">{{metadataName}}</span>
+    {{#if sourceCode}}
+    <div class="frame-source">
+        <span class="frame-source-line">{{sourceLine}}</span>
+        <code class="frame-source-code">{{sourceCode}}</code>
+    </div>
+    {{else}}
+    {{#if instruction}}
+    <div class="frame-source">
+        <span class="frame-source-line">{{methodOffset}}</span>
+        <code class="frame-source-code">{{instruction}}</code>
+    </div>
+    {{/if}}
+    {{/if}}
+    <div class="frame-details">
+        {{#if sourceFileName}}
+        <span class="frame-detail"><span class="frame-detail-label">File</span> {{sourceFileName}}:{{sourceLine}}</span>
+        {{/if}}
+        <span class="frame-detail"><span class="frame-detail-label">Assembly</span> <span title="{{assemblyPath}}">{{assemblyFileName}}</span></span>
+        <span class="frame-detail"><span class="frame-detail-label">Token</span> {{metadataToken}}</span>
+    </div>
+</div>

@@ -9,7 +9,14 @@ namespace SharpDetect.Plugins.DataRace.Eraser;
 
 public sealed class EraserPluginConfiguration : PluginOptionsConfiguration, IPluginOptionsConfig<EraserPluginConfiguration>, IDataRacePluginConfiguration
 {
+    public static EraserPluginConfiguration Default => new();
+    
+    // Instrumentation
     public bool EnableFieldsAccessInstrumentation { get; init; } = true;
     public ImmutableArray<string> SkipInstrumentationForAssemblies { get; init; } = WellKnownModules.SystemModulePrefixes;
-    public static EraserPluginConfiguration Default => new();
+    
+    // Stack trace collection
+    public bool EnableStackTraceCollection { get; init; } = false;
+    public int StackTraceCollectionMaxDepth { get; init; } = DataRaceStackTraceOptions.DefaultMaxDepth;
+    public ImmutableArray<string> StackTraceCollectionForFields { get; init; } = [];
 }

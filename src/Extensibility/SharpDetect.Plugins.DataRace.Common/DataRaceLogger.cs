@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Metadata;
+using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Plugins.DataRace.Common;
 
@@ -11,7 +12,8 @@ public static class DataRaceLogger
     public static void LogDataRace(
         ILogger logger,
         DataRaceInfo raceInfo,
-        IMetadataContext metadataContext)
+        IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver)
     {
         var fieldName = GetFieldDisplayName(raceInfo.FieldId);
         var field = raceInfo.ObjectId is { } instance
@@ -22,18 +24,18 @@ public static class DataRaceLogger
             """
             [PID={ProcessId}] Data race on {Field}
                 Current {CurrentAccessType} by thread {CurrentThread}:
-                    at {CurrentAccessLocation}
+            {CurrentAccessStackTrace}
                 Previous {PreviousAccessType} by thread {PreviousThread}:
-                    at {PreviousAccessLocation}
+            {PreviousAccessStackTrace}
             """,
             raceInfo.ProcessId,
             field,
             GetAccessTypeDisplayString(raceInfo.CurrentAccess),
-            raceInfo.CurrentAccess.ThreadName,
-            GetAccessDisplayString(raceInfo.CurrentAccess, metadataContext),
+            GetThreadDisplayName(raceInfo.CurrentAccess),
+            FormatAccessStackTrace(raceInfo.CurrentAccess, metadataContext, symbolResolver),
             GetAccessTypeDisplayString(raceInfo.LastAccess),
-            raceInfo.LastAccess.ThreadName,
-            GetAccessDisplayString(raceInfo.LastAccess, metadataContext));
+            GetThreadDisplayName(raceInfo.LastAccess),
+            FormatAccessStackTrace(raceInfo.LastAccess, metadataContext, symbolResolver));
     }
     
     public static string GetFieldDisplayName(FieldId fieldId)
@@ -45,7 +47,33 @@ public static class DataRaceLogger
     {
         return $"{fieldId.FieldDef.DeclaringType.Name}.{fieldId.FieldDef.Name}";
     }
-    
+
+    public static string GetThreadDisplayName(AccessInfo access)
+    {
+        return access.ThreadName ?? $"Thread-0x{access.ProcessThreadId.ThreadId.Value:X}";
+    }
+
+    public static IReadOnlyList<string> FormatStackTraceLines(IReadOnlyList<StackFrame> frames)
+    {
+        var lines = new List<string>();
+        foreach (var run in StackFrameGrouping.GroupSystemFrameRuns(frames))
+        {
+            if (run.IsSystemRun)
+            {
+                var skipped = run.Frames.Count - 1;
+                lines.Add(skipped > 0
+                    ? $"at {run.Frames[0].MethodName} (+{skipped} more)"
+                    : $"at {run.Frames[0].MethodName}");
+            }
+            else
+            {
+                lines.Add($"at {FormatFrameLocation(run.Frames[0])}");
+            }
+        }
+
+        return lines;
+    }
+
     private static string GetAccessTypeDisplayString(AccessInfo access)
     {
         return access.AccessType switch
@@ -55,15 +83,26 @@ public static class DataRaceLogger
             _ => "<unresolved-access-type>"
         };
     }
-    
-    private static string GetAccessDisplayString(AccessInfo access, IMetadataContext metadataContext)
+
+    private static string FormatAccessStackTrace(
+        AccessInfo access,
+        IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver)
     {
-        var pid = access.ProcessThreadId.ProcessId;
-        var resolver = metadataContext.GetResolver(pid);
-        var resolveResult = resolver.ResolveMethod(pid, access.ModuleId, access.MethodToken);
-        return resolveResult.IsSuccess
-            ? $"{resolveResult.Value.DeclaringType.FullName}.{resolveResult.Value.Name}:IL_{access.MethodOffset:X4}"
-            : $"<unresolved-method>:IL_{access.MethodOffset:X4}";
+        var frames = DataRaceStackTraceResolver.ResolveFrames(
+            access.ProcessThreadId.ProcessId, access, metadataContext, symbolResolver);
+        return string.Join(Environment.NewLine, FormatStackTraceLines(frames).Select(line => $"        {line}"));
+    }
+
+    private static string FormatFrameLocation(StackFrame frame)
+    {
+        if (frame.SourceFileName is null || frame.SourceLine is null)
+        {
+            return frame.MethodOffset is { } offset
+                ? $"{frame.MethodName}:IL_{offset:X4}"
+                : frame.MethodName;
+        }
+        
+        return $"{frame.MethodName} in {frame.SourceFileName}:{frame.SourceLine}";
     }
 }
-

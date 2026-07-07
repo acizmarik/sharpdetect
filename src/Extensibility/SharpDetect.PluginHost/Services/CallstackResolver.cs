@@ -6,6 +6,7 @@ using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
 using System.Collections.Immutable;
+using SharpDetect.Core.Reporting;
 using StackFrame = SharpDetect.Core.Reporting.Model.StackFrame;
 
 namespace SharpDetect.PluginHost.Services;
@@ -25,23 +26,7 @@ internal class CallstackResolver : ICallstackResolver
         var resolver = _metadataContext.GetResolver(pid);
         var resolvedFrames = ImmutableArray.CreateBuilder<StackFrame>();
         foreach (var frame in callstack)
-        {
-            var moduleId = frame.ModuleId;
-            var methodToken = frame.MethodToken;
-            var methodResolveResult = resolver.ResolveMethod(pid, moduleId, methodToken);
-            var methodDef = methodResolveResult.Value;
-            var methodName = methodDef?.FullName ?? "<unable-to-resolve-method>";
-            var modulePath = methodDef?.Module?.Location ?? "<unable-to-resolve-module>";
-            resolvedFrames.Add(new StackFrame(
-                MethodName: methodName,
-                SourceMapping: modulePath,
-                MethodToken: methodToken.Value,
-                MethodOffset: null,
-                Instruction: null,
-                SourceFileName: null,
-                SourceLine: null,
-                SourceCode: null));
-        }
+            resolvedFrames.Add(StackFrameResolver.ResolveMinimalFrame(resolver, pid, frame.ModuleId, frame.MethodToken));
 
         return new StackTrace(threadInfo, resolvedFrames.ToImmutableArray());
     }

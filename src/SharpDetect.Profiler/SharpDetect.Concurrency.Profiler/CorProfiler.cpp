@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -54,9 +55,9 @@ Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
     ProfilerInstance = this;
 }
 
-EXTERN_C void EnterNaked(FunctionIDOrClientID functionIDOrClientID, COR_PRF_ELT_INFO eltInfo);
-EXTERN_C void LeaveNaked(FunctionIDOrClientID functionIDOrClientID, COR_PRF_ELT_INFO eltInfo);
-EXTERN_C void TailcallNaked(FunctionIDOrClientID functionIDOrClientID, COR_PRF_ELT_INFO eltInfo);
+PROFILER_STUB EnterStub(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
+PROFILER_STUB LeaveStub(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
+PROFILER_STUB TailcallStub(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 
 UINT_PTR STDMETHODCALLTYPE FunctionMapper(const FunctionID funcId, void* clientData, BOOL* pbHookFunction)
 {
@@ -142,7 +143,7 @@ HRESULT Profiler::CorProfiler::InitializeProfilingFeatures() const
 
     if ((_configuration.eventMask & COR_PRF_MONITOR::COR_PRF_MONITOR_ENTERLEAVE) != 0)
     {
-        hr = _corProfilerInfo->SetEnterLeaveFunctionHooks3WithInfo(EnterNaked, LeaveNaked, TailcallNaked);
+        hr = _corProfilerInfo->SetEnterLeaveFunctionHooks3WithInfo(EnterStub, LeaveStub, TailcallStub);
         if (FAILED(hr))
         {
             LOG_F(ERROR, "Could not register enter/leave hooks. Error: 0x%x.", hr);
@@ -384,7 +385,9 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
         tokensToRewrite,
         injectedMethods,
         _configuration.enableFieldsAccessInstrumentation,
-        _configuration.skipInstrumentationForAssemblies)))
+        _configuration.skipInstrumentationForAssemblies,
+        _configuration.enableStackTraceCollection,
+        _configuration.stackTraceCollectionForFields)))
     {
         _client.Send(LibIPC::Helpers::CreateMethodBodyRewriteMsg(
             CreateMetadataMsg(),
@@ -456,6 +459,7 @@ const Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const Functio
     decision.hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
     decision.hasIndirects = HasIndirects(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
+    decision.captureStackTraceOnEnter = descriptor.rewritingDescriptor.captureStackTraceOnEnter;
 
     _eltDecisions.push_back(decision);
     const auto* stored = &_eltDecisions.back();
@@ -537,6 +541,22 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     if (descriptor.rewritingDescriptor.returnValue.has_value() || !indirects.empty())
         ArgsCallStack.push(indirects);
 
+    // Capture stack trace if required
+    std::optional<std::vector<BYTE>> stackFrames;
+    if (decision->captureStackTraceOnEnter)
+    {
+        std::vector<BYTE> blob;
+        if (SUCCEEDED(LibProfiler::StackWalker::CaptureCurrentStackTrace(
+                _corProfilerInfo,
+                1,
+                _configuration.stackTraceCollectionMaxDepth,
+                blob))
+            && !blob.empty())
+        {
+            stackFrames = std::move(blob);
+        }
+    }
+
     // Notify about method enter with arguments
     _client.Send(LibIPC::Helpers::CreateMethodEnterWithArgumentsMsg(
         CreateMetadataMsg(),
@@ -544,7 +564,8 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         methodDef,
         decision->enterWithArgsEventId,
         std::move(argumentValues),
-        std::move(argumentOffsets)));
+        std::move(argumentOffsets),
+        std::move(stackFrames)));
     return S_OK;
 }
 

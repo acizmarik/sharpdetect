@@ -9,6 +9,10 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>DataRace\Templates\Partials\violations.html</TargetPath>
         </None>
+        <None Update="Templates\Partials\stacktrace-frame.html">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>DataRace\Templates\Partials\stacktrace-frame.html</TargetPath>
+        </None>
     </ItemGroup>
 
 </Project>

@@ -7,7 +7,13 @@ namespace SharpDetect.Plugins.DataRace.Common;
 
 public interface IDataRacePluginConfiguration
 {
+    // Instrumentation
     bool EnableFieldsAccessInstrumentation { get; }
     ImmutableArray<string> SkipInstrumentationForAssemblies { get; }
+    
+    // Stack trace collection
+    bool EnableStackTraceCollection { get; }
+    int StackTraceCollectionMaxDepth { get; }
+    ImmutableArray<string> StackTraceCollectionForFields { get; }
 }
 

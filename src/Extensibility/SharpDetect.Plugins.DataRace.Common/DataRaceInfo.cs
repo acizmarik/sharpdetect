@@ -15,17 +15,15 @@ public enum AccessType
 public sealed record AccessInfo(
     ProcessThreadId ProcessThreadId,
     string? ThreadName,
-    ModuleId ModuleId,
-    MdMethodDef MethodToken,
     uint MethodOffset,
-    AccessType AccessType);
+    AccessType AccessType,
+    CapturedStackTrace Stack);
 
 public readonly record struct AccessRecord(
     ProcessThreadId ProcessThreadId,
-    ModuleId ModuleId,
-    MdMethodDef MethodToken,
     uint MethodOffset,
-    AccessType AccessType);
+    AccessType AccessType,
+    CapturedStackTrace Stack);
 
 public sealed record DataRaceInfo(
     uint ProcessId,

@@ -12,6 +12,7 @@
 #include "cor.h"
 #include "corprof.h"
 
+#include "../LibIL/InjectedMethods.h"
 #include "../LibIPC/Messages.h"
 #include "../LibDescriptors/HashingUtils.h"
 
@@ -27,13 +28,13 @@ namespace Profiler
 		void AddRewriting(ModuleID moduleId, mdToken fromToken, mdToken toToken);
 		[[nodiscard]] std::unordered_map<mdToken, mdToken> GetModuleRewritings(ModuleID moduleId);
 
-		void AddModuleInjectedMethods(ModuleID moduleId, std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods);
-		
+		void AddModuleInjectedMethods(ModuleID moduleId, LibProfiler::InjectedMethodsMap injectedMethods);
+
 		struct ModulePatchData
 		{
 			BOOL hasAny;
 			std::unordered_map<mdToken, mdToken> tokensToRewrite;
-			std::unordered_map<LibIPC::RecordedEventType, mdToken> injectedMethods;
+			LibProfiler::InjectedMethodsMap injectedMethods;
 		};
 		[[nodiscard]] ModulePatchData GetModulePatchData(ModuleID moduleId);
 
@@ -63,7 +64,7 @@ namespace Profiler
 		std::unordered_map<ModuleID, std::unordered_map<mdToken, mdToken>> _rewritings;
 		std::mutex _rewritingsMutex;
 
-		std::unordered_map<ModuleID, std::unordered_map<LibIPC::RecordedEventType, mdToken>> _injectedMethods;
+		std::unordered_map<ModuleID, LibProfiler::InjectedMethodsMap> _injectedMethods;
 		std::mutex _injectedMethodsMutex;
 
 		std::unordered_map<MethodId, BOOL, MethodIdHasher> _methodStubs;
