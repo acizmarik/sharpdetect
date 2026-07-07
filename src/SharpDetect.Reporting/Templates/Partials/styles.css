@@ -546,7 +546,6 @@ body {
 .stacktrace-line-top {
     box-shadow: inset 3px 0 0 var(--color-danger);
 }
-.stacktrace-line-system .frame-method,
 .stacktrace-line-system .frame-detail,
 .stacktrace-line-system .frame-detail-label {
     color: var(--color-code-text-muted);
