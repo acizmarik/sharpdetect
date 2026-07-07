@@ -77,7 +77,7 @@ Report stored to file: /home/user/Workspace/SharpDetect_Report_20251223_095828.h
 Reports are self-contained HTML files. Each report includes:
 - The affected field
 - The participating threads
-- Stack frames at the point of the conflicting accesses
+- Stack frames at the point of the conflicting accesses (a single frame by default, or a multi-frame stack trace when [stack-trace collection](docs/guides/running-analysis-with-configuration-file.md#data-race-plugin-options) is enabled)
 
 ## Documentation
 
