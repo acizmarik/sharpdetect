@@ -96,6 +96,9 @@ The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanaga
 - `System.Threading.Monitor`
 - `System.Threading.Lock`
 - `System.Threading.SemaphoreSlim`
+- `System.Threading.Mutex` (unnamed)
+- `System.Threading.Semaphore` (unnamed)
+- `System.Threading.EventWaitHandle` (`AutoResetEvent`, `ManualResetEvent`)
 - `System.Threading.Volatile` (including `volatile` field modifier)
 
 #### Supported Threading Primitives

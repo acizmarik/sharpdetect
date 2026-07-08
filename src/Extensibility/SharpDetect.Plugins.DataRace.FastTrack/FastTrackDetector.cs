@@ -20,6 +20,7 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _eventClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
     private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
@@ -68,6 +69,7 @@ internal sealed class FastTrackDetector
             var processObjectId = new ProcessTrackedObjectId(processId, objectId);
             _lockClocks.Remove(processObjectId);
             _semaphoreClocks.Remove(processObjectId);
+            _eventClocks.Remove(processObjectId);
             _taskClocks.Remove(processObjectId);
             _escapeStates.Remove(processObjectId);
             _instanceVolatileClocks.Remove(processObjectId);
@@ -162,6 +164,46 @@ internal sealed class FastTrackDetector
         for (var i = 0; i < releaseCount; i++)
             pool.Enqueue(threadVc.Clone());
         threadVc.Increment(threadId);
+    }
+
+    public void RecordEventCreated(ProcessTrackedObjectId eventId, bool initialState)
+    {
+        if (initialState)
+            _eventClocks[eventId] = new VectorClock();
+        else
+            _eventClocks.Remove(eventId);
+    }
+
+    public void RecordEventSignaled(ProcessThreadId threadId, ProcessTrackedObjectId eventId)
+    {
+        var threadVc = GetOrCreateThreadClock(threadId);
+        if (_eventClocks.TryGetValue(eventId, out var eventVc))
+        {
+            eventVc.Join(threadVc);
+        }
+        else
+        {
+            _eventClocks[eventId] = threadVc.Clone();
+        }
+
+        threadVc.Increment(threadId);
+    }
+
+    public void RecordEventReset(ProcessTrackedObjectId eventId)
+    {
+        _eventClocks.Remove(eventId);
+    }
+
+    public void RecordEventWaitReturned(ProcessThreadId threadId, ProcessTrackedObjectId eventId, bool isAutoReset)
+    {
+        if (!_eventClocks.TryGetValue(eventId, out var eventVc))
+            return;
+
+        var threadVc = GetOrCreateThreadClock(threadId);
+        threadVc.Join(eventVc);
+
+        if (isAutoReset)
+            _eventClocks.Remove(eventId);
     }
 
     public void RecordObjectWaitCalled(ProcessThreadId threadId, ProcessTrackedObjectId lockId)

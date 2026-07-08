@@ -77,6 +77,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     ThreadMethodDescriptors.GetAllMethods()).Concat(
                     TaskMethodDescriptors.GetAllMethods()).Concat(
                     SemaphoreSlimMethodDescriptors.GetAllMethods()).Concat(
+                    WaitHandleMethodDescriptors.GetAllMethods()).Concat(
                     FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
@@ -110,6 +111,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         SemaphoreAcquireReturned += OnSemaphoreAcquireReturned;
         SemaphoreReleased += OnSemaphoreReleased;
         SemaphoreWaitAsyncReturned += OnSemaphoreWaitAsyncReturned;
+        EventWaitHandleCreated += OnEventWaitHandleCreated;
+        EventWaitHandleSignaled += OnEventWaitHandleSignaled;
+        EventWaitHandleWasReset += OnEventWaitHandleWasReset;
+        EventWaitHandleWaitReturned += OnEventWaitHandleWaitReturned;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -311,6 +316,27 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         // Raised on the continuation's thread once the WaitAsync await completed successfully
         _detector.RecordSemaphoreAcquired(args.ProcessThreadId, args.SemaphoreId);
+    }
+
+    private void OnEventWaitHandleCreated(EventWaitHandleCreatedArgs args)
+    {
+        _detector.RecordEventCreated(args.EventId, args.InitialState);
+    }
+
+    private void OnEventWaitHandleSignaled(EventWaitHandleSetArgs args)
+    {
+        _detector.RecordEventSignaled(args.ProcessThreadId, args.EventId);
+    }
+
+    private void OnEventWaitHandleWasReset(EventWaitHandleResetArgs args)
+    {
+        _detector.RecordEventReset(args.EventId);
+    }
+
+    private void OnEventWaitHandleWaitReturned(EventWaitHandleWaitResultArgs args)
+    {
+        if (args.IsSuccess)
+            _detector.RecordEventWaitReturned(args.ProcessThreadId, args.EventId, args.IsAutoReset);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

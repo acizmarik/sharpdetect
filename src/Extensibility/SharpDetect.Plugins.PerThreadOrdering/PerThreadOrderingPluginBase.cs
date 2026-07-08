@@ -16,10 +16,21 @@ namespace SharpDetect.Plugins.PerThreadOrdering;
 
 public abstract class PerThreadOrderingPluginBase : PluginBase
 {
+    private enum WaitHandleKind
+    {
+        Mutex,
+        Semaphore,
+        AutoResetEvent,
+        ManualResetEvent
+    }
+
     private readonly ThreadCallStackTracker _callStackTracker = new();
     private readonly ThreadObjectRegistry _threadObjectRegistry = new();
     private readonly Dictionary<ProcessTrackedObjectId, List<(ProcessThreadId JoiningThread, ModuleId ModuleId, MdMethodDef MethodToken)>> _pendingJoinAttempts = [];
     private readonly Dictionary<ProcessTrackedObjectId, ProcessTrackedObjectId> _waitAsyncTaskToSemaphore = [];
+    private readonly Dictionary<ProcessTrackedObjectId, WaitHandleKind> _waitHandleKinds = [];
+    private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _lastMutexAcquirers = [];
+    private readonly Dictionary<ProcessThreadId, ProcessTrackedObjectId?> _pendingAbandonedMutexes = [];
     private readonly IArgumentsParser _argumentsParser;
 
     public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
@@ -46,6 +57,10 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public event Action<SemaphoreAcquireResultArgs>? SemaphoreAcquireReturned;
     public event Action<SemaphoreReleaseArgs>? SemaphoreReleased;
     public event Action<SemaphoreWaitAsyncArgs>? SemaphoreWaitAsyncReturned;
+    public event Action<EventWaitHandleCreatedArgs>? EventWaitHandleCreated;
+    public event Action<EventWaitHandleSetArgs>? EventWaitHandleSignaled;
+    public event Action<EventWaitHandleResetArgs>? EventWaitHandleWasReset;
+    public event Action<EventWaitHandleWaitResultArgs>? EventWaitHandleWaitReturned;
 
     protected PerThreadOrderingPluginBase(
         IModuleBindContext moduleBindContext,
@@ -84,6 +99,10 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     protected void RaiseSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args) => SemaphoreAcquireReturned?.Invoke(args);
     protected void RaiseSemaphoreReleased(SemaphoreReleaseArgs args) => SemaphoreReleased?.Invoke(args);
     protected void RaiseSemaphoreWaitAsyncReturned(SemaphoreWaitAsyncArgs args) => SemaphoreWaitAsyncReturned?.Invoke(args);
+    protected void RaiseEventWaitHandleCreated(EventWaitHandleCreatedArgs args) => EventWaitHandleCreated?.Invoke(args);
+    protected void RaiseEventWaitHandleSignaled(EventWaitHandleSetArgs args) => EventWaitHandleSignaled?.Invoke(args);
+    protected void RaiseEventWaitHandleWasReset(EventWaitHandleResetArgs args) => EventWaitHandleWasReset?.Invoke(args);
+    protected void RaiseEventWaitHandleWaitReturned(EventWaitHandleWaitResultArgs args) => EventWaitHandleWaitReturned?.Invoke(args);
 
     [RecordedEventBind((ushort)RecordedEventType.LockAcquire)]
     [RecordedEventBind((ushort)RecordedEventType.LockTryAcquire)]
@@ -177,6 +196,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
         var initialCount = (int)arguments[1].Value.AsT0;
+        _waitHandleKinds[semaphoreId] = WaitHandleKind.Semaphore;
         SemaphoreCreated?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, initialCount));
     }
 
@@ -233,6 +253,190 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var semaphoreId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
         var waiterTaskId = new ProcessTrackedObjectId(id.ProcessId, new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ReturnValue)));
         _waitAsyncTaskToSemaphore[waiterTaskId] = semaphoreId;
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.MutexCreate)]
+    public void OnMutexCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (_, _, mutexId) = ExtractSynchronizationContext(metadata, args);
+        _waitHandleKinds[mutexId] = WaitHandleKind.Mutex;
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.MutexRelease)]
+    public void OnMutexReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, mutexId) = ExtractSynchronizationContext(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        // ReleaseMutex proves the kind even when the constructor was not observed (for example, OpenExisting)
+        _waitHandleKinds[mutexId] = WaitHandleKind.Mutex;
+        LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, mutexId));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.MutexReleaseResult)]
+    public void OnMutexReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
+
+    [RecordedEventBind((ushort)RecordedEventType.AutoResetEventCreate)]
+    public void OnAutoResetEventCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+        => HandleEventWaitHandleCreate(metadata, args, isAutoReset: true, isBaseConstructor: false);
+
+    [RecordedEventBind((ushort)RecordedEventType.ManualResetEventCreate)]
+    public void OnManualResetEventCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+        => HandleEventWaitHandleCreate(metadata, args, isAutoReset: false, isBaseConstructor: false);
+
+    [RecordedEventBind((ushort)RecordedEventType.EventWaitHandleCreate)]
+    public void OnEventWaitHandleCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+        => HandleEventWaitHandleCreate(metadata, args, isAutoReset: false, isBaseConstructor: true);
+
+    [RecordedEventBind((ushort)RecordedEventType.EventWaitHandleSet)]
+    public void OnEventWaitHandleSetEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, eventId) = ExtractSynchronizationContext(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        if (!_waitHandleKinds.TryGetValue(eventId, out var kind))
+        {
+            // Unknown kind (for example, OpenExisting)
+            // Manual-reset should over-approximate happens-before
+            _waitHandleKinds[eventId] = kind = WaitHandleKind.ManualResetEvent;
+        }
+
+        EventWaitHandleSignaled?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId, kind == WaitHandleKind.AutoResetEvent));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.EventWaitHandleSetResult)]
+    public void OnEventWaitHandleSetExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
+
+    [RecordedEventBind((ushort)RecordedEventType.EventWaitHandleReset)]
+    public void OnEventWaitHandleResetEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, eventId) = ExtractSynchronizationContext(metadata, args);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        EventWaitHandleWasReset?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.EventWaitHandleResetResult)]
+    public void OnEventWaitHandleResetExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleWait)]
+    public void OnWaitHandleWaitEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, handleId) = ExtractSynchronizationContext(metadata, args);
+        _pendingAbandonedMutexes.Remove(id);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        if (!_waitHandleKinds.TryGetValue(handleId, out var kind))
+            return;
+
+        switch (kind)
+        {
+            case WaitHandleKind.Mutex:
+                LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, handleId));
+                break;
+
+            case WaitHandleKind.Semaphore:
+                SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, handleId));
+                break;
+        }
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleWaitResult)]
+    public void OnWaitHandleWaitExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => HandleWaitHandleWaitExit(metadata, args.ModuleId, args.MethodToken, isSuccess: true);
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleWaitResult)]
+    public void OnWaitHandleWaitExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var isSuccess = MemoryMarshal.Read<bool>(args.ReturnValue);
+        HandleWaitHandleWaitExit(metadata, args.ModuleId, args.MethodToken, isSuccess);
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleSignalAndWait)]
+    public void OnWaitHandleSignalAndWaitEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, arguments, toSignalId) = ExtractSynchronizationContext(metadata, args);
+        var toWaitOnId = new ProcessTrackedObjectId(id.ProcessId, arguments[1].Value.AsT1);
+        _pendingAbandonedMutexes.Remove(id);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+
+        if (_waitHandleKinds.TryGetValue(toSignalId, out var signalKind))
+        {
+            switch (signalKind)
+            {
+                case WaitHandleKind.Mutex:
+                    LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, toSignalId));
+                    break;
+
+                case WaitHandleKind.Semaphore:
+                    SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, toSignalId, ReleaseCount: 1));
+                    break;
+
+                case WaitHandleKind.AutoResetEvent:
+                case WaitHandleKind.ManualResetEvent:
+                    EventWaitHandleSignaled?.Invoke(new(id, args.ModuleId, args.MethodToken, toSignalId, signalKind == WaitHandleKind.AutoResetEvent));
+                    break;
+            }
+        }
+
+        if (_waitHandleKinds.TryGetValue(toWaitOnId, out var waitKind))
+        {
+            switch (waitKind)
+            {
+                case WaitHandleKind.Mutex:
+                    LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, toWaitOnId));
+                    break;
+
+                case WaitHandleKind.Semaphore:
+                    SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, toWaitOnId));
+                    break;
+            }
+        }
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleSignalAndWaitResult)]
+    public void OnWaitHandleSignalAndWaitExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => HandleWaitHandleSignalAndWaitExit(metadata, args.ModuleId, args.MethodToken, isSuccess: true);
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleSignalAndWaitResult)]
+    public void OnWaitHandleSignalAndWaitExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var isSuccess = MemoryMarshal.Read<bool>(args.ReturnValue);
+        HandleWaitHandleSignalAndWaitExit(metadata, args.ModuleId, args.MethodToken, isSuccess);
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.AbandonedMutexExceptionCreate)]
+    public void OnAbandonedMutexExceptionCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = ParseArguments(metadata, args);
+        _pendingAbandonedMutexes[id] = arguments.Count > 1
+            ? new ProcessTrackedObjectId(id.ProcessId, arguments[1].Value.AsT1)
+            : null;
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleWaitMultiple)]
+    public void OnWaitHandleWaitMultipleEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = ParseArguments(metadata, args);
+        _pendingAbandonedMutexes.Remove(id);
+        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+    }
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleWaitMultipleResult)]
+    public void OnWaitHandleWaitMultipleExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => PopFrame(metadata, args.ModuleId, args.MethodToken);
+
+    [RecordedEventBind((ushort)RecordedEventType.WaitHandleWaitMultipleResult)]
+    public void OnWaitHandleWaitMultipleExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        var handles = frame.Arguments!.Value[0].Value.AsT2;
+        var waitAll = (bool)frame.Arguments!.Value[1].Value.AsT0;
+        var result = MemoryMarshal.Read<int>(args.ReturnValue);
+        DispatchWaitMultipleResult(id, args.ModuleId, args.MethodToken, handles, waitAll, result);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.ThreadStartCore)]
@@ -403,6 +607,18 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
                 _waitAsyncTaskToSemaphore.Remove(new ProcessTrackedObjectId(metadata.Pid, objectId));
         }
 
+        if (_waitHandleKinds.Count > 0)
+        {
+            foreach (var objectId in args.RemovedTrackedObjectIds)
+                _waitHandleKinds.Remove(new ProcessTrackedObjectId(metadata.Pid, objectId));
+        }
+
+        if (_lastMutexAcquirers.Count > 0)
+        {
+            foreach (var objectId in args.RemovedTrackedObjectIds)
+                _lastMutexAcquirers.Remove(new ProcessTrackedObjectId(metadata.Pid, objectId));
+        }
+
         base.Visit(metadata, args);
     }
 
@@ -427,6 +643,46 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
             {
                 var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
                 SemaphoreAcquireReturned?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.WaitHandleWaitResult:
+            {
+                var handleId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                if (_pendingAbandonedMutexes.Remove(id))
+                    ProcessAbandonedMutexAcquireReturn(id, args.ModuleId, args.MethodToken, handleId);
+                else
+                    DispatchWaitHandleWaitResult(id, args.ModuleId, args.MethodToken, handleId, isSuccess: false);
+                break;
+            }
+
+            case RecordedEventType.WaitHandleSignalAndWaitResult:
+            {
+                var awaitedHandleId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[1].Value.AsT1);
+                if (_pendingAbandonedMutexes.Remove(id))
+                    ProcessAbandonedMutexAcquireReturn(id, args.ModuleId, args.MethodToken, awaitedHandleId);
+                else
+                    DispatchWaitHandleWaitResult(id, args.ModuleId, args.MethodToken, awaitedHandleId, isSuccess: false);
+                break;
+            }
+
+            case RecordedEventType.WaitHandleWaitMultipleResult:
+            {
+                if (!_pendingAbandonedMutexes.Remove(id, out var abandonedHandle))
+                    break;
+
+                var waitAll = (bool)frame.Arguments!.Value[1].Value.AsT0;
+                if (waitAll)
+                {
+                    var handles = frame.Arguments!.Value[0].Value.AsT2;
+                    foreach (var handle in handles)
+                        DispatchWaitHandleWaitResult(id, args.ModuleId, args.MethodToken, new ProcessTrackedObjectId(id.ProcessId, handle), isSuccess: true);
+                }
+                else if (abandonedHandle is { } mutexId)
+                {
+                    ProcessAbandonedMutexAcquireReturn(id, args.ModuleId, args.MethodToken, mutexId);
+                }
+
                 break;
             }
 
@@ -675,6 +931,116 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
 
     private static ProcessTrackedObjectId ExtractSynchronizationObjectIdFromFrame(ProcessThreadId id, StackFrame frame)
         => new(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+
+    private void HandleEventWaitHandleCreate(
+        RecordedEventMetadata metadata,
+        MethodEnterWithArgumentsRecordedEvent args,
+        bool isAutoReset,
+        bool isBaseConstructor)
+    {
+        var (id, arguments, eventId) = ExtractSynchronizationContext(metadata, args);
+        if (isBaseConstructor && _waitHandleKinds.ContainsKey(eventId))
+            return;
+
+        var initialState = (bool)arguments[1].Value.AsT0;
+        _waitHandleKinds[eventId] = isAutoReset ? WaitHandleKind.AutoResetEvent : WaitHandleKind.ManualResetEvent;
+        EventWaitHandleCreated?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId, initialState, isAutoReset));
+    }
+
+    private void HandleWaitHandleWaitExit(
+        RecordedEventMetadata metadata,
+        ModuleId moduleId,
+        MdMethodDef functionToken,
+        bool isSuccess)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, moduleId, functionToken);
+        var handleId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+        DispatchWaitHandleWaitResult(id, moduleId, functionToken, handleId, isSuccess);
+    }
+
+    private void HandleWaitHandleSignalAndWaitExit(
+        RecordedEventMetadata metadata,
+        ModuleId moduleId,
+        MdMethodDef functionToken,
+        bool isSuccess)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var frame = _callStackTracker.Pop(id);
+        EnsureCallStackIntegrity(frame, moduleId, functionToken);
+        var awaitedHandleId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[1].Value.AsT1);
+        DispatchWaitHandleWaitResult(id, moduleId, functionToken, awaitedHandleId, isSuccess);
+    }
+
+    private void ProcessAbandonedMutexAcquireReturn(
+        ProcessThreadId id,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        ProcessTrackedObjectId mutexId)
+    {
+        _waitHandleKinds[mutexId] = WaitHandleKind.Mutex;
+        if (_lastMutexAcquirers.TryGetValue(mutexId, out var abandonerId) && abandonerId != id)
+            LockReleased?.Invoke(new(abandonerId, moduleId, methodToken, mutexId));
+
+        _lastMutexAcquirers[mutexId] = id;
+        LockAcquireReturned?.Invoke(new(id, moduleId, methodToken, mutexId, IsSuccess: true));
+    }
+
+    private void DispatchWaitMultipleResult(
+        ProcessThreadId id,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        TrackedObjectId[] handles,
+        bool waitAll,
+        int result)
+    {
+        if (waitAll)
+        {
+            if (result == WaitHandle.WaitTimeout)
+                return;
+
+            foreach (var handle in handles)
+                DispatchWaitHandleWaitResult(id, moduleId, methodToken, new ProcessTrackedObjectId(id.ProcessId, handle), isSuccess: true);
+        }
+        else
+        {
+            if ((uint)result >= (uint)handles.Length)
+                return;
+
+            DispatchWaitHandleWaitResult(id, moduleId, methodToken, new ProcessTrackedObjectId(id.ProcessId, handles[result]), isSuccess: true);
+        }
+    }
+
+    private void DispatchWaitHandleWaitResult(
+        ProcessThreadId id,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        ProcessTrackedObjectId handleId,
+        bool isSuccess)
+    {
+        // Handles without a tracked constructor (process waits, thread-pool internals, ...) are ignored
+        if (!_waitHandleKinds.TryGetValue(handleId, out var kind))
+            return;
+
+        switch (kind)
+        {
+            case WaitHandleKind.Mutex:
+                if (isSuccess)
+                    _lastMutexAcquirers[handleId] = id;
+                LockAcquireReturned?.Invoke(new(id, moduleId, methodToken, handleId, isSuccess));
+                break;
+
+            case WaitHandleKind.Semaphore:
+                SemaphoreAcquireReturned?.Invoke(new(id, moduleId, methodToken, handleId, isSuccess));
+                break;
+
+            case WaitHandleKind.AutoResetEvent:
+            case WaitHandleKind.ManualResetEvent:
+                EventWaitHandleWaitReturned?.Invoke(new(id, moduleId, methodToken, handleId, kind == WaitHandleKind.AutoResetEvent, isSuccess));
+                break;
+        }
+    }
 
     private void HandleSemaphoreAcquireExit(
         RecordedEventMetadata metadata,

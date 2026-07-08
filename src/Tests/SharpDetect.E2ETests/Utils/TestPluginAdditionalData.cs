@@ -22,6 +22,7 @@ public record TestPluginAdditionalData(
                     .Concat(ThreadMethodDescriptors.GetAllMethods())
                     .Concat(TaskMethodDescriptors.GetAllMethods())
                     .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
+                    .Concat(WaitHandleMethodDescriptors.GetAllMethods())
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
@@ -37,10 +38,11 @@ public record TestPluginAdditionalData(
                     .Concat(ThreadMethodDescriptors.GetAllMethods())
                     .Concat(TaskMethodDescriptors.GetAllMethods())
                     .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
+                    .Concat(WaitHandleMethodDescriptors.GetAllMethods())
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
-            TypeInjectionDescriptors: 
+            TypeInjectionDescriptors:
             [
                 ..SharpDetectHelperTypeDescriptors.GetAllTypes()
             ],
