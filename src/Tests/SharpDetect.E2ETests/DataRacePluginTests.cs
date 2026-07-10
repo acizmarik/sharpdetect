@@ -220,6 +220,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_GenericType_StaticInitializer_DifferentInstantiations_WriteWrite_NoRace(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_GenericType_StaticInitializer_DifferentInstantiations_WriteWrite_NoRace", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net10WithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
     public async Task CanRenderReport(string sdk, string pluginFullTypeName)
     {

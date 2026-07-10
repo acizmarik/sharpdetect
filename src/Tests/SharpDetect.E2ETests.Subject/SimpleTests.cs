@@ -1359,6 +1359,13 @@ namespace SharpDetect.E2ETests.Subject
             Task.WaitAll(task1, task2);
         }
 
+        public static void Test_NoDataRace_GenericType_StaticInitializer_DifferentInstantiations_WriteWrite_NoRace()
+        {
+            var task1 = Task.Run(() => { _ = GenericTypeWithStaticInitializer<int>.Values.Count; });
+            var task2 = Task.Run(() => { _ = GenericTypeWithStaticInitializer<string>.Values.Count; });
+            Task.WaitAll(task1, task2);
+        }
+
         public static void Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead()
         {
             var sem = new SemaphoreSlim(1, 1);

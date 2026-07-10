@@ -275,7 +275,9 @@ internal sealed class FastTrackDetector
         var currentEpoch = threadVc.GetEpoch(threadId);
         var writeKind = ClassifyWrite(threadId, moduleId, methodToken, fieldFlags, objectId);
 
-        if (!shadow.WriteEpoch.IsNone &&
+        var isInstantiationWrite = writeKind == WriteKind.Instantiation;
+        if (!isInstantiationWrite &&
+            !shadow.WriteEpoch.IsNone &&
             shadow.WriteEpoch.ThreadId != threadId &&
             !shadow.WriteEpoch.HappensBefore(threadVc))
         {
@@ -298,7 +300,7 @@ internal sealed class FastTrackDetector
             return null;
         }
 
-        var readWriteRace = CheckReadWriteRace(threadId, shadow, threadVc);
+        var readWriteRace = isInstantiationWrite ? null : CheckReadWriteRace(threadId, shadow, threadVc);
         if (readWriteRace != null)
         {
             var hasLastAccess = _accessTracker.TryGetLastAccess(fieldId, objectId, out var lastAccess);
