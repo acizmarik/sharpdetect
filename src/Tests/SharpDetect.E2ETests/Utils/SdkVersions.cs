@@ -27,20 +27,6 @@ internal static class SdkVersions
         "net10.0",
     ];
 
-    public static TheoryData<string, string> AllWithBothDataRacePlugins
-    {
-        get
-        {
-            var data = new TheoryData<string, string>();
-            foreach (var sdk in AllSdks)
-            {
-                data.Add(sdk, typeof(TestEraserPlugin).FullName!);
-                data.Add(sdk, typeof(TestFastTrackPlugin).FullName!);
-            }
-            return data;
-        }
-    }
-
     public static TheoryData<string, string> AllWithFastTrackOnly
     {
         get
@@ -52,12 +38,11 @@ internal static class SdkVersions
         }
     }
 
-    public static TheoryData<string, string> Net10WithBothDataRacePlugins
+    public static TheoryData<string, string> Net10WithFastTrackOnly
     {
         get
         {
             var data = new TheoryData<string, string>();
-            data.Add("net10.0", typeof(TestEraserPlugin).FullName!);
             data.Add("net10.0", typeof(TestFastTrackPlugin).FullName!);
             return data;
         }

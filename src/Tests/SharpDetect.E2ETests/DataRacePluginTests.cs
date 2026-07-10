@@ -15,52 +15,52 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 {
     public const string CollectionName = "E2E_DataRacePluginTests";
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Static_ReadWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ReferenceType_Static_ReadWriteRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ValueType_Static_ReadWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ValueType_Static_ReadWriteRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Static_WriteReadRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ReferenceType_Static_WriteReadRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ValueType_Static_WriteReadRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ValueType_Static_WriteReadRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Instance_ReadWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ReferenceType_Instance_ReadWriteRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ValueType_Instance_ReadWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ValueType_Instance_ReadWriteRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Instance_WriteReadRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ReferenceType_Instance_WriteReadRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ValueType_Instance_WriteReadRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ValueType_Instance_WriteReadRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Instance_WriteWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ReferenceType_Instance_WriteWriteRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ValueType_Instance_WriteWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ValueType_Instance_WriteWriteRace", sdk, plugin);
 
@@ -100,37 +100,37 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ReferenceType_Static_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ReferenceType_Static_ReadReadNoRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ValueType_Static_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ValueType_Static_ReadReadNoRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ReferenceType_Instance_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ReferenceType_Instance_ReadReadNoRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ValueType_Instance_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ValueType_Instance_ReadReadNoRace", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ThreadStatic_ReferenceType(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ThreadStatic_ReferenceType", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ThreadStatic_ValueType(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ThreadStatic_ValueType", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ThreadStatic_ReadWrite(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ThreadStatic_ReadWrite", sdk, plugin);
 
@@ -200,7 +200,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_TimeoutExpires_NoSharedAccess", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_Monitor_HighContention_WriteRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Monitor_HighContention_WriteRead", sdk, plugin);
     
@@ -215,7 +215,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Semaphore_BatchRelease_WriteRead", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace", sdk, plugin);
 
@@ -285,7 +285,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_WaitAny_AbandonedMutex_WaiterStillOrdered", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.Net10WithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public async Task CanRenderReport(string sdk, string pluginFullTypeName)
     {
         // Arrange
@@ -358,8 +358,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     private ITestPlugin GetTestPlugin(IServiceProvider serviceProvider)
     {
-        return serviceProvider.GetService<TestEraserPlugin>() as ITestPlugin
-            ?? serviceProvider.GetService<TestFastTrackPlugin>()
-            ?? throw new InvalidOperationException($"Plugin must be either {nameof(TestEraserPlugin)} or {nameof(TestFastTrackPlugin)}.");
+        return serviceProvider.GetService<TestFastTrackPlugin>()
+            ?? throw new InvalidOperationException($"Plugin must be a {nameof(TestFastTrackPlugin)}.");
     }
 }

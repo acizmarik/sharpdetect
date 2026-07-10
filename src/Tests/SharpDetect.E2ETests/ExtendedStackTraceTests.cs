@@ -23,7 +23,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     private static readonly string[] SkipSystemAssemblies = [ "System.", "Microsoft." ];
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public async Task DeepStack_WhenEnabled_ReportsMultipleFrames(string sdk, string plugin)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
@@ -42,7 +42,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-    [MemberData(nameof(SdkVersions.AllWithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public async Task DeepStack_WhenDisabledByDefault_ReportsSingleFrame(string sdk, string plugin)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
@@ -56,7 +56,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-    [MemberData(nameof(SdkVersions.Net10WithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public async Task DeepStack_WithMatchingFieldFilter_ReportsMultipleFrames(string sdk, string plugin)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
@@ -73,7 +73,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-    [MemberData(nameof(SdkVersions.Net10WithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public async Task DeepStack_WithMatchingFieldPrefix_ReportsMultipleFrames(string sdk, string plugin)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
@@ -90,7 +90,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
-    [MemberData(nameof(SdkVersions.Net10WithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public async Task DeepStack_WithNonMatchingFieldFilter_ReportsSingleFrame(string sdk, string plugin)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
@@ -137,8 +137,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
 
     private static ITestPlugin GetTestPlugin(IServiceProvider serviceProvider)
     {
-        return serviceProvider.GetService<TestEraserPlugin>() as ITestPlugin
-            ?? serviceProvider.GetService<TestFastTrackPlugin>()
-            ?? throw new InvalidOperationException($"Plugin must be either {nameof(TestEraserPlugin)} or {nameof(TestFastTrackPlugin)}.");
+        return serviceProvider.GetService<TestFastTrackPlugin>()
+            ?? throw new InvalidOperationException($"Plugin must be a {nameof(TestFastTrackPlugin)}.");
     }
 }

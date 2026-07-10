@@ -168,23 +168,4 @@ public class SharpDetectInitCommandHandlerTests
         Assert.DoesNotContain("\"System.\"", actualTemplate);
         Assert.DoesNotContain("\"Microsoft.\"", actualTemplate);
     }
-
-    [Fact]
-    public void Init_EraserPlugin_EmitsBaseSkipList()
-    {
-        var actualTemplate =
-            new InitCommandHandler(
-                outputFile: "TestConfig.json",
-                pluginNameOrTypeFullName: "Eraser",
-                targetAssemblyPath: "TestTarget.dll",
-                instrumentSystemLibraries: false,
-                isTest: false,
-                testRunner: null,
-                testFilter: null)
-            .CreateTemplateConfigurationJson();
-
-        Assert.Contains("\"Configuration\": {", actualTemplate);
-        Assert.Contains("\"System.\"", actualTemplate);
-        Assert.Contains("\"Microsoft.\"", actualTemplate);
-    }
 }
