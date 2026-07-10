@@ -225,6 +225,66 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_GenericType_StaticInitializer_DifferentInstantiations_WriteWrite_NoRace", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Mutex_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Mutex_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Mutex_HighContention_WriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Mutex_HighContention_WriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_KernelSemaphore_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_KernelSemaphore_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_AutoResetEvent_WriteThenSet_WaitThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_AutoResetEvent_WriteThenSet_WaitThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ManualResetEvent_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ManualResetEvent_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ManualResetEvent_SetBeforeWrite_WriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ManualResetEvent_SetBeforeWrite_WriteReadRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SignalAndWait_PingPong(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SignalAndWait_PingPong", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_AbandonedMutex_WaiterStillOrdered(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_AbandonedMutex_WaiterStillOrdered", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_WaitAll_TwoEvents_JoinsBothPublishers(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_WaitAll_TwoEvents_JoinsBothPublishers", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_WaitAny_WinnerOrdersAccess(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_WaitAny_WinnerOrdersAccess", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_WaitAny_LoserNotOrdered(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_WaitAny_LoserNotOrdered", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_WaitAny_AbandonedMutex_WaiterStillOrdered(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_WaitAny_AbandonedMutex_WaiterStillOrdered", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net10WithBothDataRacePlugins), MemberType = typeof(SdkVersions))]
     public async Task CanRenderReport(string sdk, string pluginFullTypeName)
     {

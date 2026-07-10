@@ -325,6 +325,118 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         await SemaphoreSlimWaitRelease("Test_SemaphoreSlimMethods_TryWaitRelease4", sdk);
     }
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Mutex_WaitOneRelease1(string sdk)
+    {
+        await MutexWaitOneRelease("Test_MutexMethods_WaitOneRelease1", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Mutex_WaitOneRelease2(string sdk)
+    {
+        await MutexWaitOneRelease("Test_MutexMethods_WaitOneRelease2", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Semaphore_WaitOneRelease1(string sdk)
+    {
+        // A kernel semaphore raises the same semantic events as SemaphoreSlim
+        await SemaphoreSlimWaitRelease("Test_SemaphoreMethods_WaitOneRelease1", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Semaphore_WaitOneRelease2(string sdk)
+    {
+        // A kernel semaphore raises the same semantic events as SemaphoreSlim
+        await SemaphoreSlimWaitRelease("Test_SemaphoreMethods_WaitOneRelease2", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_EventWaitHandle_AutoReset_SetWaitOne(string sdk)
+    {
+        await EventWaitHandleSetWaitOne("Test_EventWaitHandleMethods_AutoReset_SetWaitOne", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_EventWaitHandle_ManualReset_SetWaitOne(string sdk)
+    {
+        await EventWaitHandleSetWaitOne("Test_EventWaitHandleMethods_ManualReset_SetWaitOne", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_SignalAndWait_Events(string sdk)
+    {
+        await SignalAndWait(
+            "Test_SignalAndWaitMethods_Events",
+            RecordedEventType.EventWaitHandleSet,
+            sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_SignalAndWait_MutexSignal(string sdk)
+    {
+        await SignalAndWait(
+            "Test_SignalAndWaitMethods_MutexSignal",
+            RecordedEventType.LockReleaseResult,
+            sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_AbandonedMutexException_Construct(string sdk)
+    {
+        await MutexWaitOneRelease("Test_AbandonedMutexExceptionMethods_Construct", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_WaitMultiple_WaitAll(string sdk)
+    {
+        await WaitMultiple("Test_WaitMultipleMethods_WaitAll", expectedWaitResults: 2, sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_WaitMultiple_WaitAny(string sdk)
+    {
+        await WaitMultiple("Test_WaitMultipleMethods_WaitAny", expectedWaitResults: 1, sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_EventWaitHandle_ManualReset_SetResetSet(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_EventWaitHandleMethods_ManualReset_SetResetSet")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.EventWaitHandleSet))
+            .Then(EventuallyEventType(RecordedEventType.EventWaitHandleReset))
+            .Then(EventuallyEventType(RecordedEventType.EventWaitHandleSet))
+            .Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
     private async Task MonitorAcquireReleaseBalanced(string subjectArgs, string sdk)
     {
         // Arrange
@@ -530,6 +642,102 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
             .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquire))
             .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquireResult))
             .Then(EventuallyEventType(RecordedEventType.SemaphoreReleaseResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    private async Task MutexWaitOneRelease(string subjectArgs, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.LockAcquire))
+            .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
+            .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    private async Task EventWaitHandleSetWaitOne(string subjectArgs, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.EventWaitHandleCreate))
+            .Then(EventuallyEventType(RecordedEventType.EventWaitHandleSet))
+            .Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    private async Task WaitMultiple(string subjectArgs, int expectedWaitResults, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.EventWaitHandleCreate))
+            .Then(EventuallyEventType(RecordedEventType.EventWaitHandleCreate));
+        for (var i = 0; i < expectedWaitResults; i++)
+            assert = assert.Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult));
+        assert = assert.Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    private async Task SignalAndWait(string subjectArgs, RecordedEventType signalHalfEventType, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(signalHalfEventType))
+            .Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute

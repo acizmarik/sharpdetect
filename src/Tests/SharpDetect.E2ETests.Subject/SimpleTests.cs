@@ -1352,6 +1352,95 @@ namespace SharpDetect.E2ETests.Subject
                 sem.Release();
         }
 
+        public static void Test_MutexMethods_WaitOneRelease1()
+        {
+            using var mutex = new Mutex();
+            mutex.WaitOne();
+            mutex.ReleaseMutex();
+        }
+
+        public static void Test_MutexMethods_WaitOneRelease2()
+        {
+            using var mutex = new Mutex(initiallyOwned: false);
+            if (mutex.WaitOne(millisecondsTimeout: Timeout.Infinite))
+                mutex.ReleaseMutex();
+        }
+
+        public static void Test_SemaphoreMethods_WaitOneRelease1()
+        {
+            using var semaphore = new Semaphore(1, 1);
+            semaphore.WaitOne();
+            semaphore.Release();
+        }
+
+        public static void Test_SemaphoreMethods_WaitOneRelease2()
+        {
+            using var semaphore = new Semaphore(1, 1);
+            if (semaphore.WaitOne(timeout: TimeSpan.FromMilliseconds(Timeout.Infinite)))
+                semaphore.Release(releaseCount: 1);
+        }
+
+        public static void Test_EventWaitHandleMethods_AutoReset_SetWaitOne()
+        {
+            using var autoResetEvent = new AutoResetEvent(initialState: false);
+            autoResetEvent.Set();
+            autoResetEvent.WaitOne();
+        }
+
+        public static void Test_EventWaitHandleMethods_ManualReset_SetWaitOne()
+        {
+            using var manualResetEvent = new ManualResetEvent(initialState: false);
+            manualResetEvent.Set();
+            manualResetEvent.WaitOne();
+        }
+
+        public static void Test_SignalAndWaitMethods_Events()
+        {
+            using var toSignal = new ManualResetEvent(initialState: false);
+            using var toWaitOn = new ManualResetEvent(initialState: true);
+            WaitHandle.SignalAndWait(toSignal, toWaitOn);
+        }
+
+        public static void Test_SignalAndWaitMethods_MutexSignal()
+        {
+            using var mutex = new Mutex();
+            using var toWaitOn = new ManualResetEvent(initialState: true);
+            mutex.WaitOne();
+            WaitHandle.SignalAndWait(mutex, toWaitOn);
+        }
+
+        public static void Test_AbandonedMutexExceptionMethods_Construct()
+        {
+            using var mutex = new Mutex();
+            _ = new AbandonedMutexException();
+            _ = new AbandonedMutexException(location: 0, handle: mutex);
+            mutex.WaitOne();
+            mutex.ReleaseMutex();
+        }
+
+        public static void Test_WaitMultipleMethods_WaitAll()
+        {
+            using var first = new ManualResetEvent(initialState: true);
+            using var second = new ManualResetEvent(initialState: true);
+            WaitHandle.WaitAll([first, second]);
+        }
+
+        public static void Test_WaitMultipleMethods_WaitAny()
+        {
+            using var neverSignaled = new ManualResetEvent(initialState: false);
+            using var signaled = new ManualResetEvent(initialState: true);
+            WaitHandle.WaitAny([neverSignaled, signaled]);
+        }
+
+        public static void Test_EventWaitHandleMethods_ManualReset_SetResetSet()
+        {
+            using var manualResetEvent = new ManualResetEvent(initialState: false);
+            manualResetEvent.Set();
+            manualResetEvent.Reset();
+            manualResetEvent.Set();
+            manualResetEvent.WaitOne();
+        }
+
         public static void Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace()
         {
             var task1 = Task.Run(() => { GenericStaticField<int>.Value = 42; });
@@ -1550,6 +1639,257 @@ namespace SharpDetect.E2ETests.Subject
             semaphore.Release(permits);
             for (var i = 0; i < permits; i++)
                 semaphore.Wait();
+        }
+
+        public static void Test_NoDataRace_Mutex_ProtectedWriteRead()
+        {
+            using var mutex = new Mutex();
+            RunConcurrently(
+                () =>
+                {
+                    mutex.WaitOne();
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    mutex.ReleaseMutex();
+                },
+                () =>
+                {
+                    mutex.WaitOne();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                    mutex.ReleaseMutex();
+                });
+        }
+
+        public static void Test_NoDataRace_Mutex_HighContention_WriteRead()
+        {
+            const int iterations = 1000;
+            using var mutex = new Mutex();
+            RunConcurrently(
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        mutex.WaitOne();
+                        DataRace.Test_DataRace_ValueType_Static = i;
+                        mutex.ReleaseMutex();
+                    }
+                },
+                () =>
+                {
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        mutex.WaitOne();
+                        _ = DataRace.Test_DataRace_ValueType_Static;
+                        mutex.ReleaseMutex();
+                    }
+                });
+        }
+
+        public static void Test_NoDataRace_KernelSemaphore_ProtectedWriteRead()
+        {
+            using var semaphore = new Semaphore(initialCount: 1, maximumCount: 1);
+            RunConcurrently(
+                () =>
+                {
+                    semaphore.WaitOne();
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    semaphore.Release();
+                },
+                () =>
+                {
+                    semaphore.WaitOne();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                    semaphore.Release();
+                });
+        }
+
+        public static void Test_NoDataRace_AutoResetEvent_WriteThenSet_WaitThenRead()
+        {
+            using var autoResetEvent = new AutoResetEvent(initialState: false);
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    autoResetEvent.Set();
+                },
+                () =>
+                {
+                    autoResetEvent.WaitOne();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
+        }
+
+        public static void Test_NoDataRace_ManualResetEvent_PublishThenRead()
+        {
+            using var manualResetEvent = new ManualResetEvent(initialState: false);
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    manualResetEvent.Set();
+                },
+                () =>
+                {
+                    manualResetEvent.WaitOne();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
+        }
+
+        public static void Test_DataRace_ManualResetEvent_SetBeforeWrite_WriteReadRace()
+        {
+            // The signal is published before the write, so the wait provides no ordering for it
+            using var manualResetEvent = new ManualResetEvent(initialState: false);
+            RunConcurrently(
+                () =>
+                {
+                    manualResetEvent.Set();
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                },
+                () =>
+                {
+                    manualResetEvent.WaitOne();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
+        }
+
+        public static void Test_NoDataRace_SignalAndWait_PingPong()
+        {
+            using var requestReady = new AutoResetEvent(initialState: false);
+            using var responseReady = new AutoResetEvent(initialState: false);
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    WaitHandle.SignalAndWait(requestReady, responseReady);
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                },
+                () =>
+                {
+                    requestReady.WaitOne();
+                    DataRace.Test_DataRace_ValueType_Static = 43;
+                    responseReady.Set();
+                });
+        }
+
+        public static void Test_NoDataRace_WaitAll_TwoEvents_JoinsBothPublishers()
+        {
+            using var firstPublished = new ManualResetEvent(initialState: false);
+            using var secondPublished = new ManualResetEvent(initialState: false);
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    firstPublished.Set();
+                },
+                () =>
+                {
+                    DataRace.Test_DataRace_ReferenceType_Static = new object();
+                    secondPublished.Set();
+                },
+                () =>
+                {
+                    WaitHandle.WaitAll([firstPublished, secondPublished]);
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                    _ = DataRace.Test_DataRace_ReferenceType_Static;
+                });
+        }
+
+        public static void Test_NoDataRace_WaitAny_WinnerOrdersAccess()
+        {
+            using var neverSignaled = new ManualResetEvent(initialState: false);
+            using var published = new AutoResetEvent(initialState: false);
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    published.Set();
+                },
+                () =>
+                {
+                    WaitHandle.WaitAny([neverSignaled, published]);
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
+        }
+
+        public static void Test_DataRace_WaitAny_LoserNotOrdered()
+        {
+            using var alreadySignaled = new ManualResetEvent(initialState: true);
+            using var loser = new ManualResetEvent(initialState: false);
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    loser.Set();
+                },
+                () =>
+                {
+                    WaitHandle.WaitAny([alreadySignaled, loser]);
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
+        }
+
+        public static void Test_NoDataRace_WaitAny_AbandonedMutex_WaiterStillOrdered()
+        {
+            using var mutex = new Mutex();
+            using var ownerAcquired = new ManualResetEvent(initialState: false);
+            using var neverSignaled = new ManualResetEvent(initialState: false);
+            var owner = new Thread(() =>
+            {
+                mutex.WaitOne();
+                ownerAcquired.Set();
+                DataRace.Test_DataRace_ValueType_Static = 42;
+            });
+            var waiter = new Thread(() =>
+            {
+                ownerAcquired.WaitOne();
+                try
+                {
+                    WaitHandle.WaitAny([neverSignaled, mutex]);
+                }
+                catch (AbandonedMutexException)
+                {
+                    // The abandoned mutex is acquired despite the exception
+                }
+
+                _ = DataRace.Test_DataRace_ValueType_Static;
+                mutex.ReleaseMutex();
+            });
+
+            owner.Start();
+            waiter.Start();
+            owner.Join();
+            waiter.Join();
+        }
+
+        public static void Test_NoDataRace_AbandonedMutex_WaiterStillOrdered()
+        {
+            using var mutex = new Mutex();
+            using var ownerAcquired = new ManualResetEvent(initialState: false);
+            var owner = new Thread(() =>
+            {
+                mutex.WaitOne();
+                ownerAcquired.Set();
+                DataRace.Test_DataRace_ValueType_Static = 42;
+            });
+            var waiter = new Thread(() =>
+            {
+                ownerAcquired.WaitOne();
+                try
+                {
+                    mutex.WaitOne();
+                }
+                catch (AbandonedMutexException)
+                {
+                    // The mutex is acquired despite the exception
+                }
+
+                _ = DataRace.Test_DataRace_ValueType_Static;
+                mutex.ReleaseMutex();
+            });
+
+            owner.Start();
+            waiter.Start();
+            owner.Join();
+            waiter.Join();
         }
 
         public static void Test_SingleGarbageCollection_ObjectTracking_Simple()

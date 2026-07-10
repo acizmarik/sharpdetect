@@ -30,3 +30,7 @@ public readonly record struct SemaphoreAcquireResultArgs(ProcessThreadId Process
 public readonly record struct SemaphoreReleaseArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, int ReleaseCount);
 public readonly record struct SemaphoreCreatedArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, int InitialCount);
 public readonly record struct SemaphoreWaitAsyncArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, ProcessTrackedObjectId WaiterTaskId);
+public readonly record struct EventWaitHandleCreatedArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId EventId, bool InitialState, bool IsAutoReset);
+public readonly record struct EventWaitHandleSetArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId EventId, bool IsAutoReset);
+public readonly record struct EventWaitHandleWaitResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId EventId, bool IsAutoReset, bool IsSuccess);
+public readonly record struct EventWaitHandleResetArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId EventId);

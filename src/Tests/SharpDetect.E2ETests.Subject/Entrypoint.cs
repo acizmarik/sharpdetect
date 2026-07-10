@@ -156,6 +156,42 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_SemaphoreSlimMethods_TryWaitRelease4):
                     Test_SemaphoreSlimMethods_TryWaitRelease4();
                     break;
+                case nameof(Test_MutexMethods_WaitOneRelease1):
+                    Test_MutexMethods_WaitOneRelease1();
+                    break;
+                case nameof(Test_MutexMethods_WaitOneRelease2):
+                    Test_MutexMethods_WaitOneRelease2();
+                    break;
+                case nameof(Test_SemaphoreMethods_WaitOneRelease1):
+                    Test_SemaphoreMethods_WaitOneRelease1();
+                    break;
+                case nameof(Test_SemaphoreMethods_WaitOneRelease2):
+                    Test_SemaphoreMethods_WaitOneRelease2();
+                    break;
+                case nameof(Test_EventWaitHandleMethods_AutoReset_SetWaitOne):
+                    Test_EventWaitHandleMethods_AutoReset_SetWaitOne();
+                    break;
+                case nameof(Test_EventWaitHandleMethods_ManualReset_SetWaitOne):
+                    Test_EventWaitHandleMethods_ManualReset_SetWaitOne();
+                    break;
+                case nameof(Test_SignalAndWaitMethods_Events):
+                    Test_SignalAndWaitMethods_Events();
+                    break;
+                case nameof(Test_SignalAndWaitMethods_MutexSignal):
+                    Test_SignalAndWaitMethods_MutexSignal();
+                    break;
+                case nameof(Test_AbandonedMutexExceptionMethods_Construct):
+                    Test_AbandonedMutexExceptionMethods_Construct();
+                    break;
+                case nameof(Test_WaitMultipleMethods_WaitAll):
+                    Test_WaitMultipleMethods_WaitAll();
+                    break;
+                case nameof(Test_WaitMultipleMethods_WaitAny):
+                    Test_WaitMultipleMethods_WaitAny();
+                    break;
+                case nameof(Test_EventWaitHandleMethods_ManualReset_SetResetSet):
+                    Test_EventWaitHandleMethods_ManualReset_SetResetSet();
+                    break;
             }
 
             // Field events
@@ -553,6 +589,42 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_Semaphore_BatchRelease_WriteRead):
                     Test_NoDataRace_Semaphore_BatchRelease_WriteRead();
+                    break;
+                case nameof(Test_NoDataRace_Mutex_ProtectedWriteRead):
+                    Test_NoDataRace_Mutex_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_Mutex_HighContention_WriteRead):
+                    Test_NoDataRace_Mutex_HighContention_WriteRead();
+                    break;
+                case nameof(Test_NoDataRace_KernelSemaphore_ProtectedWriteRead):
+                    Test_NoDataRace_KernelSemaphore_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_AutoResetEvent_WriteThenSet_WaitThenRead):
+                    Test_NoDataRace_AutoResetEvent_WriteThenSet_WaitThenRead();
+                    break;
+                case nameof(Test_NoDataRace_ManualResetEvent_PublishThenRead):
+                    Test_NoDataRace_ManualResetEvent_PublishThenRead();
+                    break;
+                case nameof(Test_DataRace_ManualResetEvent_SetBeforeWrite_WriteReadRace):
+                    Test_DataRace_ManualResetEvent_SetBeforeWrite_WriteReadRace();
+                    break;
+                case nameof(Test_NoDataRace_SignalAndWait_PingPong):
+                    Test_NoDataRace_SignalAndWait_PingPong();
+                    break;
+                case nameof(Test_NoDataRace_AbandonedMutex_WaiterStillOrdered):
+                    Test_NoDataRace_AbandonedMutex_WaiterStillOrdered();
+                    break;
+                case nameof(Test_NoDataRace_WaitAll_TwoEvents_JoinsBothPublishers):
+                    Test_NoDataRace_WaitAll_TwoEvents_JoinsBothPublishers();
+                    break;
+                case nameof(Test_NoDataRace_WaitAny_WinnerOrdersAccess):
+                    Test_NoDataRace_WaitAny_WinnerOrdersAccess();
+                    break;
+                case nameof(Test_DataRace_WaitAny_LoserNotOrdered):
+                    Test_DataRace_WaitAny_LoserNotOrdered();
+                    break;
+                case nameof(Test_NoDataRace_WaitAny_AbandonedMutex_WaiterStillOrdered):
+                    Test_NoDataRace_WaitAny_AbandonedMutex_WaiterStillOrdered();
                     break;
             }
 

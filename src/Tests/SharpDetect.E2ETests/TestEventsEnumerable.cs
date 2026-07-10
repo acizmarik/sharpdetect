@@ -117,6 +117,14 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, SemaphoreAcquireResultArgs)>(GetNextId(), RecordedEventType.SemaphoreAcquireResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.SemaphoreReleased += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, SemaphoreReleaseArgs)>(GetNextId(), RecordedEventType.SemaphoreReleaseResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.EventWaitHandleCreated += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, EventWaitHandleCreatedArgs)>(GetNextId(), RecordedEventType.EventWaitHandleCreate, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.EventWaitHandleSignaled += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, EventWaitHandleSetArgs)>(GetNextId(), RecordedEventType.EventWaitHandleSet, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.EventWaitHandleWasReset += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, EventWaitHandleResetArgs)>(GetNextId(), RecordedEventType.EventWaitHandleReset, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.EventWaitHandleWaitReturned += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, EventWaitHandleWaitResultArgs)>(GetNextId(), RecordedEventType.WaitHandleWaitResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
     }
     
     public IEnumerator<IEvent<ulong, RecordedEventType>> GetEnumerator()

@@ -117,6 +117,18 @@ internal static class TestMethodDescriptors
             "Test_SemaphoreSlimMethods_TryWaitRelease2",
             "Test_SemaphoreSlimMethods_TryWaitRelease3",
             "Test_SemaphoreSlimMethods_TryWaitRelease4",
+            "Test_MutexMethods_WaitOneRelease1",
+            "Test_MutexMethods_WaitOneRelease2",
+            "Test_SemaphoreMethods_WaitOneRelease1",
+            "Test_SemaphoreMethods_WaitOneRelease2",
+            "Test_EventWaitHandleMethods_AutoReset_SetWaitOne",
+            "Test_EventWaitHandleMethods_ManualReset_SetWaitOne",
+            "Test_SignalAndWaitMethods_Events",
+            "Test_SignalAndWaitMethods_MutexSignal",
+            "Test_AbandonedMutexExceptionMethods_Construct",
+            "Test_WaitMultipleMethods_WaitAll",
+            "Test_WaitMultipleMethods_WaitAny",
+            "Test_EventWaitHandleMethods_ManualReset_SetResetSet",
         };
 
         foreach (var methodName in testMethodNames)
