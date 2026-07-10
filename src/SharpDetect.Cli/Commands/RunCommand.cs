@@ -105,6 +105,11 @@ public sealed partial class RunCommand : ICommand
         var hasTarget = !string.IsNullOrEmpty(targetPath);
         var hasInline = hasPlugin || hasTarget;
 
+        if (hasConfigFile && !File.Exists(argumentsFile))
+            throw new CommandException(
+                $"Configuration file {argumentsFile} does not exist.",
+                (int)ExitCode.ConfigurationError);
+        
         if (hasConfigFile && hasInline)
             throw new CommandException(
                 "Specify either a configuration file or inline options (--plugin and --target), not both.",
