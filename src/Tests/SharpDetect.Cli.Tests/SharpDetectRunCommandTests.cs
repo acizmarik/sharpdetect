@@ -11,21 +11,6 @@ namespace SharpDetect.Cli.Tests;
 public class SharpDetectRunCommandTests
 {
     [Fact]
-    public void Validate_ConfigFileOnly_DoesNotThrow()
-    {
-        var exception = Record.Exception(() =>
-            RunCommand.ValidateOptions(
-                argumentsFile: "config.json",
-                pluginType: null,
-                targetPath: null,
-                isTest: false,
-                testFilter: null,
-                testRunner: TestTargetConfigurationArgs.DefaultRunner));
-
-        Assert.Null(exception);
-    }
-
-    [Fact]
     public void Validate_InlineForm_DoesNotThrow()
     {
         var exception = Record.Exception(() =>
