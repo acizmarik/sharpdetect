@@ -29,7 +29,6 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
     {
         var semaphore = InterProcessSemaphore.CreateOrOpen(options.SemaphoreName, isOwner: true);
         _consumer = new Consumer(options, semaphore, ArrayPool<byte>.Shared);
-        _consumer.Clear();
         _recordedEventParser = recordedEventParser;
         _logger = logger;
         _queueFilePath = options.File;

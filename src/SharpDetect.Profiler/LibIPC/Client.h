@@ -33,7 +33,8 @@ namespace LibIPC
 		Client(std::string commandQueueName, std::string commandQueueFile, UINT commandQueueSize,
 			   std::string commandSemaphoreName,
 			   std::string eventQueueName, std::string eventQueueFile, UINT eventQueueSize,
-			   std::string eventSemaphoreName);
+			   std::string eventSemaphoreName,
+			   std::string registrationQueueName, std::string registrationQueueFile, UINT registrationQueueSize);
 		Client(Client&& other) = delete;
 		Client& operator=(Client&&) = delete;
 		Client(Client& other) = delete;
@@ -85,6 +86,7 @@ namespace LibIPC
 		using ipq_producer_create = PVOID(*)(const char*, const char*, const char*, INT);
 		using ipq_producer_destroy = void (*)(PVOID);
 		using ipq_producer_enqueue = INT(*)(PVOID, BYTE*, INT);
+		using ipq_register_process = INT(*)(const char*, const char*, INT, INT);
 		using ipq_consumer_create = PVOID(*)(const char*, const char*, const char*, INT);
 		using ipq_consumer_destroy = void (*)(PVOID);
 		using ipq_consumer_dequeue = INT(*)(PVOID, BYTE**, INT*);
@@ -99,6 +101,7 @@ namespace LibIPC
 		static const std::string _ipqProducerCreateSymbolName;
 		static const std::string _ipqProducerDestroySymbolName;
 		static const std::string _ipqProducerEnqueueSymbolName;
+		static const std::string _ipqRegisterProcessSymbolName;
 		static const std::string _ipqConsumerCreateSymbolName;
 		static const std::string _ipqConsumerDestroySymbolName;
 		static const std::string _ipqConsumerDequeueSymbolName;
@@ -111,6 +114,9 @@ namespace LibIPC
 		std::string _commandQueueName;
 		std::string _commandMmfName;
 		std::string _commandSemaphoreName;
+		std::string _registrationQueueName;
+		std::string _registrationMmfName;
+		INT _registrationQueueSize;
 		MODULE_HANDLE _ipqModuleHandle;
 		PVOID _ffiProducer;
 		PVOID _ffiConsumer;
@@ -131,6 +137,7 @@ namespace LibIPC
 		PVOID _ipqProducerCreateSymbolAddress;
 		PVOID _ipqProducerDestroySymbolAddress;
 		PVOID _ipqProducerEnqueueSymbolAddress;
+		PVOID _ipqRegisterProcessSymbolAddress;
 		PVOID _ipqConsumerCreateSymbolAddress;
 		PVOID _ipqConsumerDestroySymbolAddress;
 		PVOID _ipqConsumerDequeueSymbolAddress;

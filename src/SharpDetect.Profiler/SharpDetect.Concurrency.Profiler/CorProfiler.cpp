@@ -39,7 +39,10 @@ Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
         configuration.sharedMemoryName,
         configuration.sharedMemoryFile.value_or(std::string()),
         configuration.sharedMemorySize,
-        configuration.sharedMemorySemaphoreName),
+        configuration.sharedMemorySemaphoreName,
+        configuration.registrationQueueName,
+        configuration.registrationQueueFile.value_or(std::string()),
+        configuration.registrationQueueSize),
     _coreModule(0),
     _argumentCapture(_corProfilerInfo, _objectsTracker),
     _typeInjector(

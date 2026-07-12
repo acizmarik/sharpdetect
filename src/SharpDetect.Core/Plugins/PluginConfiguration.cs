@@ -16,6 +16,9 @@ public record PluginConfiguration(
     string? CommandQueueFile,
     uint CommandQueueSize,
     string CommandSemaphoreName,
+    string RegistrationQueueName,
+    string? RegistrationQueueFile,
+    uint RegistrationQueueSize,
     string? TemporaryFilesFolder,
     object? AdditionalData,
     string SessionId)
@@ -47,6 +50,9 @@ public record PluginConfiguration(
             CommandQueueFile: Path.Combine(tempFolder, $"SharpDetect_CommandQueue_{id}.data"),
             CommandQueueSize: 1_048_576 /* 1 MB */,
             CommandSemaphoreName: $"/SharpDetect_CommandQueue_Sem_{id}",
+            RegistrationQueueName: $"SharpDetect_RegistrationQueue_{id}",
+            RegistrationQueueFile: Path.Combine(tempFolder, $"SharpDetect_RegistrationQueue_{id}.data"),
+            RegistrationQueueSize: 65_536 /* 64 KB */,
             TemporaryFilesFolder: temporaryFilesFolder,
             AdditionalData: additionalData,
             SessionId: id);
@@ -68,6 +74,9 @@ public record PluginConfiguration(
                 CommandQueueFile,
                 CommandQueueSize,
                 CommandSemaphoreName,
+                RegistrationQueueName,
+                RegistrationQueueFile,
+                RegistrationQueueSize,
                 AdditionalData
             }, _jsonSerializerOptions);
             using var writer = new StreamWriter(fileStream);

@@ -8,7 +8,12 @@ namespace SharpDetect.InterProcessQueue;
 /// <summary>
 /// Header placed at byte 0 of every shared-memory queue region.
 /// </summary>
-[StructLayout(LayoutKind.Explicit, Size = 64)]
+/// <remarks>
+/// The queue is single-producer/single-consumer across the process boundary.
+/// The producer owns <see cref="WriteOffset"/> and the consumer owns <see cref="ReadOffset"/>.
+/// The two are placed on separate 64-byte cache lines so a message does not bounce a shared line between cores.
+/// </remarks>
+[StructLayout(LayoutKind.Explicit, Size = 192)]
 internal struct QueueHeader
 {
     /// <summary>
@@ -22,21 +27,13 @@ internal struct QueueHeader
     [FieldOffset(8)]
     public long Capacity;
 
-    [FieldOffset(16)]
-    public long ReadOffset;
+    // --- Producer-owned cache line ---
 
-    [FieldOffset(24)]
+    [FieldOffset(64)]
     public long WriteOffset;
 
-    [FieldOffset(32)]
-    public long ReadLockToken;
+    // --- Consumer-owned cache line ---
 
-    [FieldOffset(40)]
-    public long ReadLockAcquiredTimestampTicks;
-
-    [FieldOffset(48)]
-    public long WriteLockToken;
-
-    [FieldOffset(56)]
-    public long WriteLockAcquiredTimestampTicks;
+    [FieldOffset(128)]
+    public long ReadOffset;
 }
