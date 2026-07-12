@@ -34,7 +34,14 @@ internal sealed class WindowsSemaphore : ISemaphore
     public bool Wait(TimeSpan timeout)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
-        return WindowsSemaphoreInterop.TimedWait(_handle, (int)timeout.TotalMilliseconds);
+        return WindowsSemaphoreInterop.TimedWait(_handle, ToTimeoutMs(timeout));
+    }
+
+    private static int ToTimeoutMs(TimeSpan timeout)
+    {
+        // Value 0xFFFFFFFF is reserved for INFINITE
+        var totalMs = timeout.TotalMilliseconds;
+        return totalMs >= int.MaxValue - 1 ? int.MaxValue - 1 : (int)totalMs;
     }
 
     public void Release()

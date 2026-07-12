@@ -18,13 +18,21 @@ internal static unsafe class Exports
     [UnmanagedCallersOnly(EntryPoint = "ipq_producer_create")]
     public static nint CreateProducer(nint queueNamePtr, nint fileNamePtr, nint semaphoreNamePtr, int size)
     {
-        var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
-        var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
-        var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
-        if (clrQueueName == null || clrSemaphoreName == null)
-            return IntPtr.Zero;
+        try
+        {
+            var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
+            var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
+            var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
+            if (clrQueueName == null || clrSemaphoreName == null)
+                return IntPtr.Zero;
 
-        return CreateProducerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
+            return CreateProducerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(CreateProducer), ex);
+            return IntPtr.Zero;
+        }
     }
 
     internal static nint CreateProducerImpl(string queueName, string? fileName, string semaphoreName, int size)
@@ -38,8 +46,9 @@ internal static unsafe class Exports
             Producers.TryAdd(id, producer);
             return id;
         }
-        catch
+        catch (Exception ex)
         {
+            ReportUnexpectedError(nameof(CreateProducerImpl), ex);
             return 0;
         }
     }
@@ -52,10 +61,17 @@ internal static unsafe class Exports
 
     internal static void DestroyProducerImpl(nint producerHandle)
     {
-        if (!Producers.TryGetValue(producerHandle, out var producer))
+        if (!Producers.TryRemove(producerHandle, out var producer))
             return;
 
-        producer.Dispose();
+        try
+        {
+            producer.Dispose();
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(DestroyProducerImpl), ex);
+        }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_producer_enqueue")]
@@ -69,23 +85,43 @@ internal static unsafe class Exports
         if (!Producers.TryGetValue(producerHandle, out var producer))
             return EnqueueErrorType.Unavailable;
 
-        var status = producer.TryEnqueue(new ReadOnlySpan<byte>(data, size));
-        if (status.IsSuccess)
-            return EnqueueErrorType.OK;
+        try
+        {
+            var status = producer.TryEnqueue(new ReadOnlySpan<byte>(data, size));
+            if (status.IsSuccess)
+                return EnqueueErrorType.OK;
 
-        return status.Error;
+            return status.Error;
+        }
+        catch (ObjectDisposedException)
+        {
+            return EnqueueErrorType.Unavailable;
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(EnqueueImpl), ex);
+            return EnqueueErrorType.InternalError;
+        }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_create")]
     public static nint CreateConsumer(nint queueNamePtr, nint fileNamePtr, nint semaphoreNamePtr, int size)
     {
-        var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
-        var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
-        var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
-        if (clrQueueName == null || clrSemaphoreName == null)
-            return IntPtr.Zero;
+        try
+        {
+            var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
+            var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
+            var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
+            if (clrQueueName == null || clrSemaphoreName == null)
+                return IntPtr.Zero;
 
-        return CreateConsumerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
+            return CreateConsumerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(CreateConsumer), ex);
+            return IntPtr.Zero;
+        }
     }
 
     internal static nint CreateConsumerImpl(string queueName, string? fileName, string semaphoreName, int size)
@@ -99,8 +135,9 @@ internal static unsafe class Exports
             Consumers.TryAdd(id, consumer);
             return id;
         }
-        catch
+        catch (Exception ex)
         {
+            ReportUnexpectedError(nameof(CreateConsumerImpl), ex);
             return 0;
         }
     }
@@ -113,11 +150,17 @@ internal static unsafe class Exports
 
     internal static void DestroyConsumerImpl(nint consumerHandle)
     {
-        if (!Consumers.TryGetValue(consumerHandle, out var consumer))
+        if (!Consumers.TryRemove(consumerHandle, out var consumer))
             return;
 
-        consumer.Dispose();
-        Consumers.TryRemove(consumerHandle, out _);
+        try
+        {
+            consumer.Dispose();
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(DestroyConsumerImpl), ex);
+        }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_dequeue")]
@@ -129,13 +172,25 @@ internal static unsafe class Exports
     internal static DequeueErrorType DequeueImpl(nint consumerHandle, byte** dataPtr, int* sizePtr)
     {
         if (!Consumers.TryGetValue(consumerHandle, out var consumer))
-            return DequeueErrorType.UnableToAcquireReadLock;
+            return DequeueErrorType.Unavailable;
 
-        var result = consumer.TryDequeue();
-        if (!result.IsSuccess)
-            return result.Error;
+        try
+        {
+            var result = consumer.TryDequeue();
+            if (!result.IsSuccess)
+                return result.Error;
 
-        return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+            return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+        }
+        catch (ObjectDisposedException)
+        {
+            return DequeueErrorType.Unavailable;
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(DequeueImpl), ex);
+            return DequeueErrorType.InternalError;
+        }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_dequeue_timeout")]
@@ -147,13 +202,25 @@ internal static unsafe class Exports
     internal static DequeueErrorType DequeueWithTimeoutImpl(nint consumerHandle, byte** dataPtr, int* sizePtr, int timeoutMs)
     {
         if (!Consumers.TryGetValue(consumerHandle, out var consumer))
-            return DequeueErrorType.UnableToAcquireReadLock;
+            return DequeueErrorType.Unavailable;
 
-        var result = consumer.TryDequeue(TimeSpan.FromMilliseconds(timeoutMs));
-        if (!result.IsSuccess)
-            return result.Error;
+        try
+        {
+            var result = consumer.TryDequeue(TimeSpan.FromMilliseconds(timeoutMs));
+            if (!result.IsSuccess)
+                return result.Error;
 
-        return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+            return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+        }
+        catch (ObjectDisposedException)
+        {
+            return DequeueErrorType.Unavailable;
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(DequeueWithTimeoutImpl), ex);
+            return DequeueErrorType.InternalError;
+        }
     }
 
     private static DequeueErrorType CopyToUnmanaged(ILocalMemory<byte> memory, byte** dataPtr, int* sizePtr)
@@ -176,9 +243,10 @@ internal static unsafe class Exports
 
             return DequeueErrorType.OK;
         }
-        catch
+        catch (Exception ex)
         {
-            return DequeueErrorType.UnableToAcquireReadLock;
+            ReportUnexpectedError(nameof(CopyToUnmanaged), ex);
+            return DequeueErrorType.InternalError;
         }
     }
 
@@ -192,5 +260,17 @@ internal static unsafe class Exports
     {
         if (dataPtr != null)
             Marshal.FreeHGlobal((nint)dataPtr);
+    }
+
+    private static void ReportUnexpectedError(string operation, Exception exception)
+    {
+        try
+        {
+            Console.Error.WriteLine($"[SharpDetect.InterProcessQueue] Unexpected error in {operation}: {exception}");
+        }
+        catch
+        {
+            // Reporting must never throw back into the FFI boundary
+        }
     }
 }

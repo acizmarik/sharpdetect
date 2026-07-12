@@ -59,7 +59,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
             if (commandResult.ExitCode != 0)
             {
                 var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
-                _logger.Log(level, "Target process exited with non-zero exit code: {ExitCode}.", commandResult.ExitCode);
+                _logger.Log(
+                    level,
+                    "Target process exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}).",
+                    commandResult.ExitCode,
+                    commandResult.ExitCode);
             }
         }
         finally

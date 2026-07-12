@@ -8,5 +8,7 @@ public enum DequeueErrorType
     OK = 0,
     UnableToAcquireReadLock = 1,
     NothingToRead = 2,
-    TimeoutExceeded = 3
+    TimeoutExceeded = 3,
+    InternalError = 4,
+    Unavailable = 5
 }

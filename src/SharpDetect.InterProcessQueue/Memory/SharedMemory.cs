@@ -2,27 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.IO.MemoryMappedFiles;
+using Microsoft.Win32.SafeHandles;
 
 namespace SharpDetect.InterProcessQueue.Memory;
 
-internal sealed unsafe class SharedMemory : IMemory<byte>, IDisposable
+internal sealed unsafe class SharedMemory : SafeHandleZeroOrMinusOneIsInvalid, IMemory<byte>
 {
     private readonly MemoryMappedViewAccessor _view;
-    private readonly byte* _acquiredPointer;
-    private bool _disposed;
 
     public SharedMemory(MemoryMappedViewAccessor view)
+        : base(ownsHandle: true)
     {
         _view = view;
-        _view.SafeMemoryMappedViewHandle.AcquirePointer(ref _acquiredPointer);
-        if (_acquiredPointer == null)
+
+        byte* pointer = null;
+        _view.SafeMemoryMappedViewHandle.AcquirePointer(ref pointer);
+        if (pointer == null)
+        {
+            _view.SafeMemoryMappedViewHandle.ReleasePointer();
             throw new InvalidOperationException("Failed to acquire a valid pointer to the memory-mapped view. The view handle may be invalid or closed.");
+        }
+
+        SetHandle((nint)pointer);
     }
 
     public byte* GetPointer()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        return _acquiredPointer;
+        ObjectDisposedException.ThrowIf(IsClosed, this);
+        return (byte*)handle;
     }
 
     public ReadOnlySpan<byte> Get()
@@ -30,15 +37,10 @@ internal sealed unsafe class SharedMemory : IMemory<byte>, IDisposable
         return new ReadOnlySpan<byte>(GetPointer(), (int)_view.Capacity);
     }
 
-    public void Dispose()
+    protected override bool ReleaseHandle()
     {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-        if (_acquiredPointer != null)
-            _view.SafeMemoryMappedViewHandle.ReleasePointer();
-        _view.Flush();
+        _view.SafeMemoryMappedViewHandle.ReleasePointer();
         _view.Dispose();
+        return true;
     }
 }

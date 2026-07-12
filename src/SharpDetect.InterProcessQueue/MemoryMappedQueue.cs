@@ -22,6 +22,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
     private readonly SharedMemory _sharedMemory;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _maxLockDuration;
+    private readonly long _capacityWithoutHeader;
     private bool _disposed;
 
     public MemoryMappedQueue(MemoryMappedQueueOptions options)
@@ -47,6 +48,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
 
         _arrayPool = arrayPool;
         _timeProvider = timeProvider;
+        _capacityWithoutHeader = capacityWithoutHeader;
 
         _sharedMemoryProvider = _options switch
         {
@@ -55,14 +57,35 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             _ => throw new NotSupportedException($"Unsupported queue options type: {_options.GetType().FullName}.")
         };
         _sharedMemory = _sharedMemoryProvider.CreateAccessor();
+        InitializeOrValidateHeader();
 
         _maxLockDuration = TimeSpan.FromSeconds(10);
         _buffer = new CircularBuffer(_sharedMemory.GetPointer() + headerSize, capacityWithoutHeader);
     }
 
-    ~MemoryMappedQueue()
+    private void InitializeOrValidateHeader()
     {
-        Dispose();
+        var header = (QueueHeader*)_sharedMemory.GetPointer();
+        var magic = Volatile.Read(ref header->Magic);
+        if (magic == 0)
+        {
+            Volatile.Write(ref header->Capacity, _options.Capacity);
+            Volatile.Write(ref header->Magic, QueueHeader.ExpectedMagic);
+            return;
+        }
+
+        if (magic != QueueHeader.ExpectedMagic)
+        {
+            throw new QueueHeaderValidationException(
+                $"Shared memory region \"{_options.Name}\" does not contain a recognizable SharpDetect IPC queue header (magic mismatch).");
+        }
+
+        var capacity = Volatile.Read(ref header->Capacity);
+        if (capacity != _options.Capacity)
+        {
+            throw new QueueHeaderValidationException(
+                $"Shared memory region \"{_options.Name}\" was created with capacity {capacity} bytes, but this process configured {_options.Capacity} bytes.");
+        }
     }
 
     internal void Clear()
@@ -92,7 +115,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             if (!HasEnoughSpace(4 + data.Length))
                 return Error(EnqueueErrorType.NotEnoughFreeMemory);
 
-            var writeOffset = header->WriteOffset;
+            var writeOffset = Volatile.Read(ref header->WriteOffset);
             var nextWriteOffset = writeOffset + 4 + data.Length;
             Span<byte> sizeBuffer = stackalloc byte[4];
             MemoryMarshal.Write(sizeBuffer, data.Length);
@@ -126,8 +149,8 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             if (!lockAcquired)
                 return Error(DequeueErrorType.UnableToAcquireReadLock);
 
-            var readOffset = header->ReadOffset;
-            var writeOffset = header->WriteOffset;
+            var readOffset = Volatile.Read(ref header->ReadOffset);
+            var writeOffset = Volatile.Read(ref header->WriteOffset);
             if (readOffset == writeOffset)
                 return Error(DequeueErrorType.NothingToRead);
 
@@ -136,7 +159,8 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             var dataSize = MemoryMarshal.Read<int>(sizeBuffer);
             ReturnArray(sizeBuffer);
 
-            if (dataSize < 0 || dataSize > _options.Capacity)
+            var unreadBytes = writeOffset - readOffset;
+            if (dataSize < 0 || dataSize > _capacityWithoutHeader || 4 + (long)dataSize > unreadBytes)
                 ThrowDataCorruptionDetected();
 
             var resultBuffer = GetArray(size: dataSize);
@@ -193,16 +217,15 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
 
     private bool HasEnoughSpace(long dataLength)
     {
-        var capacityWithoutHeader = _options.Capacity - Unsafe.SizeOf<QueueHeader>();
-        if (dataLength > capacityWithoutHeader)
+        if (dataLength > _capacityWithoutHeader)
             return false;
 
         var header = GetHeader();
-        var readOffset = header->ReadOffset;
-        var writeOffset = header->WriteOffset;
+        var readOffset = Volatile.Read(ref header->ReadOffset);
+        var writeOffset = Volatile.Read(ref header->WriteOffset);
 
         var unreadData = writeOffset - readOffset;
-        return unreadData + dataLength <= capacityWithoutHeader;
+        return unreadData + dataLength <= _capacityWithoutHeader;
     }
 
     private QueueHeader* GetHeader()
