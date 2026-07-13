@@ -29,6 +29,10 @@ namespace Profiler
         UINT commandQueueSize;
         std::string commandSemaphoreName;
 
+        std::string registrationQueueName;
+        std::optional<std::string> registrationQueueFile;
+        UINT registrationQueueSize;
+
         std::vector<MethodDescriptor> methodDescriptors;
         std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;
         BOOL enableFieldsAccessInstrumentation;

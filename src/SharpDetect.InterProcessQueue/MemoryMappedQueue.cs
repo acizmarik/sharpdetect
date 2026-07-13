@@ -8,11 +8,13 @@ using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using SharpDetect.InterProcessQueue.Synchronization;
 using static OperationResult.Helpers;
 
 namespace SharpDetect.InterProcessQueue;
 
+/// <summary>
+/// A single-producer/single-consumer ring over a shared-memory region
+/// </summary>
 internal sealed unsafe class MemoryMappedQueue : IDisposable
 {
     private readonly MemoryMappedQueueOptions _options;
@@ -20,8 +22,9 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
     private readonly SharedMemoryProvider _sharedMemoryProvider;
     private readonly ArrayPool<byte>? _arrayPool;
     private readonly SharedMemory _sharedMemory;
-    private readonly TimeProvider _timeProvider;
-    private readonly TimeSpan _maxLockDuration;
+    private readonly long _capacityWithoutHeader;
+    private long _cachedReadOffset;
+    private long _cachedWriteOffset;
     private bool _disposed;
 
     public MemoryMappedQueue(MemoryMappedQueueOptions options)
@@ -46,7 +49,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             throw new ArgumentException($"Capacity must be at least {minimumViableSize} bytes (header: {headerSize}, size prefix: {sizeof(int)}, minimum data: 1).", nameof(options));
 
         _arrayPool = arrayPool;
-        _timeProvider = timeProvider;
+        _capacityWithoutHeader = capacityWithoutHeader;
 
         _sharedMemoryProvider = _options switch
         {
@@ -55,154 +58,83 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             _ => throw new NotSupportedException($"Unsupported queue options type: {_options.GetType().FullName}.")
         };
         _sharedMemory = _sharedMemoryProvider.CreateAccessor();
+        InitializeOrValidateHeader();
 
-        _maxLockDuration = TimeSpan.FromSeconds(10);
+        var header = GetHeader();
+        _cachedReadOffset = Volatile.Read(ref header->ReadOffset);
+        _cachedWriteOffset = Volatile.Read(ref header->WriteOffset);
         _buffer = new CircularBuffer(_sharedMemory.GetPointer() + headerSize, capacityWithoutHeader);
     }
 
-    ~MemoryMappedQueue()
+    private void InitializeOrValidateHeader()
     {
-        Dispose();
-    }
-
-    internal void Clear()
-    {
-        var nowTicks = _timeProvider.GetUtcNow().UtcTicks;
-        var header = (QueueHeader*)_sharedMemory.GetPointer();
-        Volatile.Write(ref header->ReadLockToken, 0);
-        Volatile.Write(ref header->WriteLockToken, 0);
-        Volatile.Write(ref header->ReadOffset, 0);
-        Volatile.Write(ref header->WriteOffset, 0);
-        Volatile.Write(ref header->ReadLockAcquiredTimestampTicks, nowTicks);
-        Volatile.Write(ref header->WriteLockAcquiredTimestampTicks, nowTicks);
+        var header = (long*)_sharedMemory.GetPointer();
+        SharedMemoryHeaderProtocol.InitializeOrValidate(
+            header, QueueHeader.ExpectedMagic, _options.Capacity, _options.Name, "SharpDetect IPC queue header");
     }
 
     public Status<EnqueueErrorType> Enqueue(ReadOnlySpan<byte> data)
     {
         var header = GetHeader();
-        var token = LockToken.Next();
-        var lockAcquired = false;
+        var required = 4L + data.Length;
+        if (required > _capacityWithoutHeader)
+            return Error(EnqueueErrorType.NotEnoughFreeMemory);
 
-        try
+        // WriteOffset is owned by this (producer) process; a plain read of our own line suffices.
+        var writeOffset = Volatile.Read(ref header->WriteOffset);
+
+        // Re-read the consumer's ReadOffset only when the cached view says we are full.
+        if (writeOffset - _cachedReadOffset + required > _capacityWithoutHeader)
         {
-            lockAcquired = TryAcquireLock(token, ref header->WriteLockToken, ref header->WriteLockAcquiredTimestampTicks);
-            if (!lockAcquired)
-                return Error(EnqueueErrorType.UnableToAcquireWriteLock);
-
-            if (!HasEnoughSpace(4 + data.Length))
+            _cachedReadOffset = Volatile.Read(ref header->ReadOffset);
+            if (writeOffset - _cachedReadOffset + required > _capacityWithoutHeader)
                 return Error(EnqueueErrorType.NotEnoughFreeMemory);
-
-            var writeOffset = header->WriteOffset;
-            var nextWriteOffset = writeOffset + 4 + data.Length;
-            Span<byte> sizeBuffer = stackalloc byte[4];
-            MemoryMarshal.Write(sizeBuffer, data.Length);
-            _buffer.Write(sizeBuffer, writeOffset);
-            _buffer.Write(data, writeOffset + 4);
-
-            if (Interlocked.CompareExchange(ref header->WriteOffset, nextWriteOffset, writeOffset) != writeOffset)
-                ThrowDataCorruptionDetected();
-        }
-        finally
-        {
-            if (lockAcquired)
-            {
-                if (Interlocked.CompareExchange(ref header->WriteLockToken, 0, token) != token)
-                    ThrowDataCorruptionDetected();
-            }
         }
 
+        Span<byte> sizeBuffer = stackalloc byte[4];
+        MemoryMarshal.Write(sizeBuffer, data.Length);
+        _buffer.Write(sizeBuffer, writeOffset);
+        _buffer.Write(data, writeOffset + 4);
+
+        // Release-store: publishes the payload writes above to the consumer's acquire-load.
+        Volatile.Write(ref header->WriteOffset, writeOffset + required);
         return Ok();
     }
 
     public Result<ILocalMemory<byte>, DequeueErrorType> Dequeue()
     {
         var header = GetHeader();
-        var token = LockToken.Next();
-        var lockAcquired = false;
 
-        try
+        // ReadOffset is owned by this (consumer) process; a plain read of our own line suffices.
+        var readOffset = Volatile.Read(ref header->ReadOffset);
+
+        // Re-read the producer's WriteOffset only when the cached view says we are empty.
+        if (readOffset == _cachedWriteOffset)
         {
-            lockAcquired = TryAcquireLock(token, ref header->ReadLockToken, ref header->ReadLockAcquiredTimestampTicks);
-            if (!lockAcquired)
-                return Error(DequeueErrorType.UnableToAcquireReadLock);
-
-            var readOffset = header->ReadOffset;
-            var writeOffset = header->WriteOffset;
-            if (readOffset == writeOffset)
+            // Acquire-load: pairs with the producer's release-store of WriteOffset.
+            _cachedWriteOffset = Volatile.Read(ref header->WriteOffset);
+            if (readOffset == _cachedWriteOffset)
                 return Error(DequeueErrorType.NothingToRead);
-
-            var sizeBuffer = GetArray(size: 4);
-            _buffer.Read(readOffset, 4, sizeBuffer);
-            var dataSize = MemoryMarshal.Read<int>(sizeBuffer);
-            ReturnArray(sizeBuffer);
-
-            if (dataSize < 0 || dataSize > _options.Capacity)
-                ThrowDataCorruptionDetected();
-
-            var resultBuffer = GetArray(size: dataSize);
-            _buffer.Read(readOffset + 4, dataSize, resultBuffer);
-            ILocalMemory<byte> result = _arrayPool != null
-                ? new BorrowedMemory<byte>(resultBuffer, dataSize, _arrayPool)
-                : new OwnedMemory<byte>(resultBuffer);
-
-            var nextReadOffset = readOffset + 4 + dataSize;
-            if (Interlocked.CompareExchange(ref header->ReadOffset, nextReadOffset, readOffset) != readOffset)
-                ThrowDataCorruptionDetected();
-
-            return Ok(result);
-        }
-        finally
-        {
-            if (lockAcquired)
-            {
-                if (Interlocked.CompareExchange(ref header->ReadLockToken, 0, token) != token)
-                    ThrowDataCorruptionDetected();
-            }
-        }
-    }
-
-    private bool TryAcquireLock(long token, ref long lockTokenField, ref long lockTimestampField)
-    {
-        var now = _timeProvider.GetUtcNow();
-        var prevToken = Interlocked.CompareExchange(ref lockTokenField, token, 0);
-        if (prevToken != 0)
-        {
-            // Could not acquire lock - check if the previous lock can be invalidated
-            var prevTimestamp = Volatile.Read(ref lockTimestampField);
-            var prevLockAge = now - new DateTimeOffset(ticks: prevTimestamp, offset: TimeSpan.Zero);
-            if (prevLockAge <= _maxLockDuration)
-            {
-                // Lock is still valid
-                return false;
-            }
-            else
-            {
-                // Attempt to steal the stale lock: replace the old token with ours
-                if (Interlocked.CompareExchange(ref lockTokenField, token, prevToken) != prevToken)
-                {
-                    // Somebody was faster to acquire the lock
-                    return false;
-                }
-            }
         }
 
-        // Record acquisition timestamp for stale-lock detection by other processes
-        Volatile.Write(ref lockTimestampField, now.UtcTicks);
-        return true;
-    }
+        var sizeBuffer = GetArray(size: 4);
+        _buffer.Read(readOffset, 4, sizeBuffer);
+        var dataSize = MemoryMarshal.Read<int>(sizeBuffer);
+        ReturnArray(sizeBuffer);
 
-    private bool HasEnoughSpace(long dataLength)
-    {
-        var capacityWithoutHeader = _options.Capacity - Unsafe.SizeOf<QueueHeader>();
-        if (dataLength > capacityWithoutHeader)
-            return false;
+        var unreadBytes = _cachedWriteOffset - readOffset;
+        if (dataSize < 0 || dataSize > _capacityWithoutHeader || 4 + (long)dataSize > unreadBytes)
+            ThrowDataCorruptionDetected();
 
-        var header = GetHeader();
-        var readOffset = header->ReadOffset;
-        var writeOffset = header->WriteOffset;
+        var resultBuffer = GetArray(size: dataSize);
+        _buffer.Read(readOffset + 4, dataSize, resultBuffer);
+        ILocalMemory<byte> result = _arrayPool != null
+            ? new BorrowedMemory<byte>(resultBuffer, dataSize, _arrayPool)
+            : new OwnedMemory<byte>(resultBuffer);
 
-        var unreadData = writeOffset - readOffset;
-        return unreadData + dataLength <= capacityWithoutHeader;
+        // Release-store: frees the consumed bytes back to the producer.
+        Volatile.Write(ref header->ReadOffset, readOffset + 4 + dataSize);
+        return Ok(result);
     }
 
     private QueueHeader* GetHeader()

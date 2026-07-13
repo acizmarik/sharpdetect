@@ -12,6 +12,7 @@
 const std::string LibIPC::Client::_ipqProducerCreateSymbolName = "ipq_producer_create";
 const std::string LibIPC::Client::_ipqProducerDestroySymbolName = "ipq_producer_destroy";
 const std::string LibIPC::Client::_ipqProducerEnqueueSymbolName = "ipq_producer_enqueue";
+const std::string LibIPC::Client::_ipqRegisterProcessSymbolName = "ipq_register_process";
 const std::string LibIPC::Client::_ipqConsumerCreateSymbolName = "ipq_consumer_create";
 const std::string LibIPC::Client::_ipqConsumerDestroySymbolName = "ipq_consumer_destroy";
 const std::string LibIPC::Client::_ipqConsumerDequeueSymbolName = "ipq_consumer_dequeue";
@@ -22,13 +23,17 @@ const std::string LibIPC::Client::_ipqFreeMemorySymbolName = "ipq_free_memory";
 LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFile, const UINT commandQueueSize,
 					   std::string commandSemaphoreName,
 					   std::string eventQueueName, std::string eventQueueFile, const UINT eventQueueSize,
-					   std::string eventSemaphoreName) :
+					   std::string eventSemaphoreName,
+					   std::string registrationQueueName, std::string registrationQueueFile, const UINT registrationQueueSize) :
 	_ipqName(std::move(eventQueueName)),
 	_mmfName(std::move(eventQueueFile)),
 	_eventSemaphoreName(std::move(eventSemaphoreName)),
 	_commandQueueName(std::move(commandQueueName)),
 	_commandMmfName(std::move(commandQueueFile)),
 	_commandSemaphoreName(std::move(commandSemaphoreName)),
+	_registrationQueueName(std::move(registrationQueueName)),
+	_registrationMmfName(std::move(registrationQueueFile)),
+	_registrationQueueSize(registrationQueueSize),
 	_ipqModuleHandle(nullptr),
 	_ffiProducer(nullptr),
 	_ffiConsumer(nullptr),
@@ -42,6 +47,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_ipqProducerCreateSymbolAddress(nullptr),
 	_ipqProducerDestroySymbolAddress(nullptr),
 	_ipqProducerEnqueueSymbolAddress(nullptr),
+	_ipqRegisterProcessSymbolAddress(nullptr),
 	_ipqConsumerCreateSymbolAddress(nullptr),
 	_ipqConsumerDestroySymbolAddress(nullptr),
 	_ipqConsumerDequeueSymbolAddress(nullptr),
@@ -82,6 +88,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	_ipqProducerCreateSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqProducerCreateSymbolName);
 	_ipqProducerDestroySymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqProducerDestroySymbolName);
 	_ipqProducerEnqueueSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqProducerEnqueueSymbolName);
+	_ipqRegisterProcessSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqRegisterProcessSymbolName);
 	_ipqConsumerCreateSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerCreateSymbolName);
 	_ipqConsumerDestroySymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerDestroySymbolName);
 	_ipqConsumerDequeueSymbolAddress = LibProfiler::PAL_LoadSymbolAddress(_ipqModuleHandle, _ipqConsumerDequeueSymbolName);
@@ -91,6 +98,7 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 	if (_ipqProducerCreateSymbolAddress == nullptr ||
 		_ipqProducerDestroySymbolAddress == nullptr ||
 		_ipqProducerEnqueueSymbolAddress == nullptr ||
+		_ipqRegisterProcessSymbolAddress == nullptr ||
 		_ipqConsumerCreateSymbolAddress == nullptr ||
 		_ipqConsumerDestroySymbolAddress == nullptr ||
 		_ipqConsumerDequeueSymbolAddress == nullptr ||
@@ -110,6 +118,15 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 		throw std::runtime_error("Could not obtain write access to IPC event queue.");
 	}
 
+	const auto currentPid = static_cast<INT>(LibProfiler::PAL_GetCurrentPid());
+	LOG_F(INFO, "Registering process %d via table: { name: %s, file: %s, size: %d }", currentPid, _registrationQueueName.c_str(), _registrationMmfName.c_str(), _registrationQueueSize);
+	const INT registrationResult = reinterpret_cast<ipq_register_process>(_ipqRegisterProcessSymbolAddress)(_registrationQueueName.c_str(), _registrationMmfName.c_str(), _registrationQueueSize, currentPid);
+	if (registrationResult != 0)
+	{
+		LOG_F(FATAL, "Communication library could not register process %d (error %d).", currentPid, registrationResult);
+		throw std::runtime_error("Could not register process with IPC registration table.");
+	}
+
 	// Create consumer for commands
 	LOG_F(INFO, "IPC command worker configuration: { name: %s, file: %s, size: %d }", _commandQueueName.c_str(), _commandMmfName.c_str(), _commandQueueSize);
 	_ffiConsumer = reinterpret_cast<ipq_consumer_create>(_ipqConsumerCreateSymbolAddress)(_commandQueueName.c_str(), _commandMmfName.c_str(), _commandSemaphoreName.c_str(), _commandQueueSize);
@@ -126,16 +143,40 @@ LibIPC::Client::Client(std::string commandQueueName, std::string commandQueueFil
 
 void LibIPC::Client::SendDirect(const ipq_producer_enqueue enqueueFn, std::vector<char>& buffer)
 {
-	const auto byteStream = reinterpret_cast<BYTE*>(buffer.data());
-	INT result = 0;
-	do
-	{
-		if (result != 0)
-			std::this_thread::yield();
+	constexpr INT enqueueOk = 0;
+	constexpr INT enqueueNotEnoughFreeMemory = 3;
+	constexpr auto maxRetryDuration = std::chrono::seconds(5);
 
-		result = enqueueFn(_ffiProducer, byteStream, static_cast<INT>(buffer.size()));
+	const auto byteStream = reinterpret_cast<BYTE*>(buffer.data());
+	const auto deadline = std::chrono::steady_clock::now() + maxRetryDuration;
+	for (auto spinCount = 0; ; ++spinCount)
+	{
+		const INT result = enqueueFn(_ffiProducer, byteStream, static_cast<INT>(buffer.size()));
+		if (result == enqueueOk)
+			return;
+
+		if (result != enqueueNotEnoughFreeMemory)
+		{
+			LOG_F(ERROR, "Dropping IPC message (%zu bytes) after non-recoverable enqueue error: %d.", buffer.size(), result);
+			return;
+		}
+
+		// A full ring past deadline means we assume the consumer is gone/detached and will never drain it
+		if (std::chrono::steady_clock::now() >= deadline)
+		{
+			LOG_F(ERROR, "Dropping IPC message (%zu bytes): consumer did not drain the queue within %lld s.",
+				buffer.size(), static_cast<long long>(maxRetryDuration.count()));
+			return;
+		}
+
+		// Backoff when repeatedly accessing queue leads to transient failures
+		if (spinCount < 10)
+			std::this_thread::yield();
+		else if (spinCount < 20)
+			std::this_thread::sleep_for(std::chrono::milliseconds(0));
+		else
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
-	while (result != 0);
 }
 
 void LibIPC::Client::DrainQueues(const ipq_producer_enqueue enqueueFn)

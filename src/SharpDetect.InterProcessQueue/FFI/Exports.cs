@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using SharpDetect.InterProcessQueue.Memory;
 using SharpDetect.InterProcessQueue.Synchronization;
@@ -18,50 +19,60 @@ internal static unsafe class Exports
     [UnmanagedCallersOnly(EntryPoint = "ipq_producer_create")]
     public static nint CreateProducer(nint queueNamePtr, nint fileNamePtr, nint semaphoreNamePtr, int size)
     {
-        var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
-        var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
-        var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
-        if (clrQueueName == null || clrSemaphoreName == null)
+        try
+        {
+            return TryMarshalQueueNames(queueNamePtr, fileNamePtr, semaphoreNamePtr, out var queueName, out var fileName, out var semaphoreName)
+                ? CreateProducerImpl(queueName, fileName, semaphoreName, size)
+                : IntPtr.Zero;
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(CreateProducer), ex);
             return IntPtr.Zero;
-
-        return CreateProducerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
+        }
     }
 
     internal static nint CreateProducerImpl(string queueName, string? fileName, string semaphoreName, int size)
     {
-        try
-        {
-            var id = Interlocked.Increment(ref _lastProducerId);
-            var configuration = new Configuration.ProducerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
-            var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
-            var producer = new Producer(configuration, semaphore);
-            Producers.TryAdd(id, producer);
-            return id;
-        }
-        catch
-        {
-            return 0;
-        }
+        var id = Interlocked.Increment(ref _lastProducerId);
+        var configuration = new Configuration.ProducerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
+        var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
+        var producer = new Producer(configuration, semaphore);
+        Producers.TryAdd(id, producer);
+        return id;
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_producer_destroy")]
     public static void DestroyProducer(nint producerHandle)
     {
-        DestroyProducerImpl(producerHandle);
+        try
+        {
+            DestroyProducerImpl(producerHandle);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(DestroyProducer), ex);
+        }
     }
 
     internal static void DestroyProducerImpl(nint producerHandle)
     {
-        if (!Producers.TryGetValue(producerHandle, out var producer))
-            return;
-
-        producer.Dispose();
+        if (Producers.TryRemove(producerHandle, out var producer))
+            producer.Dispose();
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_producer_enqueue")]
     public static EnqueueErrorType Enqueue(nint producerHandle, byte* data, int size)
     {
-        return EnqueueImpl(producerHandle, data, size);
+        try
+        {
+            return EnqueueImpl(producerHandle, data, size);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(Enqueue), ex);
+            return EnqueueErrorType.InternalError;
+        }
     }
 
     internal static EnqueueErrorType EnqueueImpl(nint producerHandle, byte* data, int size)
@@ -69,128 +80,209 @@ internal static unsafe class Exports
         if (!Producers.TryGetValue(producerHandle, out var producer))
             return EnqueueErrorType.Unavailable;
 
-        var status = producer.TryEnqueue(new ReadOnlySpan<byte>(data, size));
-        if (status.IsSuccess)
-            return EnqueueErrorType.OK;
-
-        return status.Error;
+        try
+        {
+            var status = producer.TryEnqueue(new ReadOnlySpan<byte>(data, size));
+            return status.IsSuccess ? EnqueueErrorType.OK : status.Error;
+        }
+        catch (ObjectDisposedException)
+        {
+            return EnqueueErrorType.Unavailable;
+        }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_create")]
     public static nint CreateConsumer(nint queueNamePtr, nint fileNamePtr, nint semaphoreNamePtr, int size)
     {
-        var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
-        var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
-        var clrSemaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
-        if (clrQueueName == null || clrSemaphoreName == null)
+        try
+        {
+            return TryMarshalQueueNames(queueNamePtr, fileNamePtr, semaphoreNamePtr, out var queueName, out var fileName, out var semaphoreName)
+                ? CreateConsumerImpl(queueName, fileName, semaphoreName, size)
+                : IntPtr.Zero;
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(CreateConsumer), ex);
             return IntPtr.Zero;
-
-        return CreateConsumerImpl(clrQueueName, clrFileName, clrSemaphoreName, size);
+        }
     }
 
     internal static nint CreateConsumerImpl(string queueName, string? fileName, string semaphoreName, int size)
     {
-        try
-        {
-            var id = Interlocked.Increment(ref _lastConsumerId);
-            var configuration = new Configuration.ConsumerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
-            var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
-            var consumer = new Consumer(configuration, semaphore);
-            Consumers.TryAdd(id, consumer);
-            return id;
-        }
-        catch
-        {
-            return 0;
-        }
+        var id = Interlocked.Increment(ref _lastConsumerId);
+        var configuration = new Configuration.ConsumerMemoryMappedQueueOptions(queueName, fileName, size, semaphoreName);
+        var semaphore = InterProcessSemaphore.CreateOrOpen(semaphoreName, isOwner: false);
+        var consumer = new Consumer(configuration, semaphore);
+        Consumers.TryAdd(id, consumer);
+        return id;
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_destroy")]
     public static void DestroyConsumer(nint consumerHandle)
     {
-        DestroyConsumerImpl(consumerHandle);
+        try
+        {
+            DestroyConsumerImpl(consumerHandle);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(DestroyConsumer), ex);
+        }
     }
 
     internal static void DestroyConsumerImpl(nint consumerHandle)
     {
-        if (!Consumers.TryGetValue(consumerHandle, out var consumer))
-            return;
-
-        consumer.Dispose();
-        Consumers.TryRemove(consumerHandle, out _);
+        if (Consumers.TryRemove(consumerHandle, out var consumer))
+            consumer.Dispose();
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_dequeue")]
     public static DequeueErrorType Dequeue(nint consumerHandle, byte** dataPtr, int* sizePtr)
     {
-        return DequeueImpl(consumerHandle, dataPtr, sizePtr);
+        try
+        {
+            return DequeueImpl(consumerHandle, dataPtr, sizePtr);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(Dequeue), ex);
+            return DequeueErrorType.InternalError;
+        }
     }
 
     internal static DequeueErrorType DequeueImpl(nint consumerHandle, byte** dataPtr, int* sizePtr)
     {
         if (!Consumers.TryGetValue(consumerHandle, out var consumer))
-            return DequeueErrorType.UnableToAcquireReadLock;
+            return DequeueErrorType.Unavailable;
 
-        var result = consumer.TryDequeue();
-        if (!result.IsSuccess)
-            return result.Error;
-
-        return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+        try
+        {
+            var result = consumer.TryDequeue();
+            return result.IsSuccess ? CopyToUnmanaged(result.Value, dataPtr, sizePtr) : result.Error;
+        }
+        catch (ObjectDisposedException)
+        {
+            return DequeueErrorType.Unavailable;
+        }
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_consumer_dequeue_timeout")]
     public static DequeueErrorType DequeueWithTimeout(nint consumerHandle, byte** dataPtr, int* sizePtr, int timeoutMs)
     {
-        return DequeueWithTimeoutImpl(consumerHandle, dataPtr, sizePtr, timeoutMs);
+        try
+        {
+            return DequeueWithTimeoutImpl(consumerHandle, dataPtr, sizePtr, timeoutMs);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(DequeueWithTimeout), ex);
+            return DequeueErrorType.InternalError;
+        }
     }
 
     internal static DequeueErrorType DequeueWithTimeoutImpl(nint consumerHandle, byte** dataPtr, int* sizePtr, int timeoutMs)
     {
         if (!Consumers.TryGetValue(consumerHandle, out var consumer))
-            return DequeueErrorType.UnableToAcquireReadLock;
+            return DequeueErrorType.Unavailable;
 
-        var result = consumer.TryDequeue(TimeSpan.FromMilliseconds(timeoutMs));
-        if (!result.IsSuccess)
-            return result.Error;
-
-        return CopyToUnmanaged(result.Value, dataPtr, sizePtr);
+        try
+        {
+            var result = consumer.TryDequeue(TimeSpan.FromMilliseconds(timeoutMs));
+            return result.IsSuccess ? CopyToUnmanaged(result.Value, dataPtr, sizePtr) : result.Error;
+        }
+        catch (ObjectDisposedException)
+        {
+            return DequeueErrorType.Unavailable;
+        }
     }
 
     private static DequeueErrorType CopyToUnmanaged(ILocalMemory<byte> memory, byte** dataPtr, int* sizePtr)
     {
-        try
-        {
-            var localMemory = memory.GetLocalMemory();
-            
-            // Allocate unmanaged memory and copy data
-            var size = localMemory.Length;
-            var unmanagedPtr = (byte*)Marshal.AllocHGlobal(size);
-            localMemory.Span.CopyTo(new Span<byte>(unmanagedPtr, size));
-            
-            *dataPtr = unmanagedPtr;
-            *sizePtr = size;
+        var localMemory = memory.GetLocalMemory();
 
-            // Dispose if it's BorrowedMemory to return to pool
-            if (memory is IDisposable disposable)
-                disposable.Dispose();
+        // Allocate unmanaged memory and copy data
+        var size = localMemory.Length;
+        var unmanagedPtr = (byte*)Marshal.AllocHGlobal(size);
+        localMemory.Span.CopyTo(new Span<byte>(unmanagedPtr, size));
 
-            return DequeueErrorType.OK;
-        }
-        catch
-        {
-            return DequeueErrorType.UnableToAcquireReadLock;
-        }
+        *dataPtr = unmanagedPtr;
+        *sizePtr = size;
+
+        // Dispose if it's BorrowedMemory to return to pool
+        if (memory is IDisposable disposable)
+            disposable.Dispose();
+
+        return DequeueErrorType.OK;
     }
 
     [UnmanagedCallersOnly(EntryPoint = "ipq_free_memory")]
     public static void FreeMemory(byte* dataPtr)
     {
-        FreeMemoryImpl(dataPtr);
+        try
+        {
+            FreeMemoryImpl(dataPtr);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(FreeMemory), ex);
+        }
     }
 
     internal static void FreeMemoryImpl(byte* dataPtr)
     {
         if (dataPtr != null)
             Marshal.FreeHGlobal((nint)dataPtr);
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "ipq_register_process")]
+    public static int RegisterProcess(nint queueNamePtr, nint fileNamePtr, int size, int pid)
+    {
+        try
+        {
+            var clrQueueName = Marshal.PtrToStringAnsi(queueNamePtr);
+            var clrFileName = Marshal.PtrToStringAnsi(fileNamePtr);
+            if (clrQueueName == null || pid <= 0)
+                return 1;
+
+            return RegisterProcessImpl(clrQueueName, clrFileName, size, pid);
+        }
+        catch (Exception ex)
+        {
+            ReportUnexpectedError(nameof(RegisterProcess), ex);
+            return 1;
+        }
+    }
+
+    private static int RegisterProcessImpl(string queueName, string? fileName, int size, int pid)
+    {
+        using var table = new RegistrationTable(queueName, fileName, size, createAsConsumer: false);
+        table.Register((uint)pid);
+        return 0;
+    }
+
+    private static bool TryMarshalQueueNames(
+        nint queueNamePtr,
+        nint fileNamePtr,
+        nint semaphoreNamePtr,
+        [NotNullWhen(true)] out string? queueName,
+        out string? fileName,
+        [NotNullWhen(true)] out string? semaphoreName)
+    {
+        queueName = Marshal.PtrToStringAnsi(queueNamePtr);
+        fileName = Marshal.PtrToStringAnsi(fileNamePtr);
+        semaphoreName = Marshal.PtrToStringAnsi(semaphoreNamePtr);
+        return queueName != null && semaphoreName != null;
+    }
+
+    private static void ReportUnexpectedError(string operation, Exception exception)
+    {
+        try
+        {
+            Console.Error.WriteLine($"[SharpDetect.InterProcessQueue] Unexpected error in {operation}: {exception}");
+        }
+        catch
+        {
+            // Reporting must never throw back into the FFI boundary
+        }
     }
 }

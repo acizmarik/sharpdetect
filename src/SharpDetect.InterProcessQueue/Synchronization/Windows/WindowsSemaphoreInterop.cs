@@ -20,12 +20,26 @@ internal static partial class WindowsSemaphoreInterop
 
     internal static void Release(nint sem)
     {
-        ReleaseSemaphore(sem, 1, out _);
+        if (!ReleaseSemaphore(sem, 1, out _))
+            throw new InvalidOperationException($"ReleaseSemaphore failed. Error = {Marshal.GetLastPInvokeError()}");
     }
 
     internal static bool TimedWait(nint sem, int timeoutMs)
     {
-        return WaitForSingleObject(sem, timeoutMs) == 0;
+        const uint WAIT_OBJECT_0 = 0x00000000;
+        const uint WAIT_TIMEOUT = 0x00000102;
+        const uint WAIT_FAILED = 0xFFFFFFFF;
+
+        var result = WaitForSingleObject(sem, timeoutMs);
+        return result switch
+        {
+            WAIT_OBJECT_0 => true,
+            WAIT_TIMEOUT => false,
+            WAIT_FAILED => throw new InvalidOperationException(
+                $"WaitForSingleObject failed. Error = {Marshal.GetLastPInvokeError()}"),
+            _ => throw new InvalidOperationException(
+                $"WaitForSingleObject returned unexpected result 0x{result:X8}."),
+        };
     }
 
     internal static void Close(nint sem)

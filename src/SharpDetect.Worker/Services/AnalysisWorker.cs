@@ -9,31 +9,38 @@ using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
+using SharpDetect.InterProcessQueue;
 using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Worker.Services;
 
 public sealed class AnalysisWorker : IAnalysisWorker
 {
-    private static readonly TimeSpan ProfilerEventReceiveTimeout = TimeSpan.FromMilliseconds(50);
     private const int EventBufferCapacity = 1000;
+    private static readonly TimeSpan IdlePollDelay = TimeSpan.FromMilliseconds(10);
+    private const int MaxBatchPerReceiver = 256;
+    private const int MaxConsecutiveEmptyPolls = 50;
+
     private readonly RunCommandArgs _arguments;
     private readonly IPlugin _plugin;
     private readonly IPluginHost _pluginHost;
-    private readonly IProfilerEventReceiver _eventReceiver;
+    private readonly IProfilerEventReceiverProvider _eventReceiverProvider;
+    private readonly RegistrationTable _registrationTable;
     private readonly ILogger<AnalysisWorker> _logger;
 
     public AnalysisWorker(
         RunCommandArgs arguments,
         IPlugin plugin,
         IPluginHost pluginHost,
-        IProfilerEventReceiver eventReceiver,
+        IProfilerEventReceiverProvider eventReceiverProvider,
+        RegistrationTable registrationTable,
         ILogger<AnalysisWorker> logger)
     {
         _arguments = arguments;
         _plugin = plugin;
         _pluginHost = pluginHost;
-        _eventReceiver = eventReceiver;
+        _eventReceiverProvider = eventReceiverProvider;
+        _registrationTable = registrationTable;
         _logger = logger;
     }
 
@@ -59,12 +66,17 @@ public sealed class AnalysisWorker : IAnalysisWorker
             if (commandResult.ExitCode != 0)
             {
                 var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
-                _logger.Log(level, "Target process exited with non-zero exit code: {ExitCode}.", commandResult.ExitCode);
+                _logger.Log(
+                    level,
+                    "Target process exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}).",
+                    commandResult.ExitCode,
+                    commandResult.ExitCode);
             }
         }
         finally
         {
             CleanupConfigurationFile(configurationPath);
+            CleanupRegistrationQueueFile();
         }
     }
     
@@ -205,37 +217,73 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
     private IEnumerable<RecordedEvent> ReceiveEvents(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
     {
-        // Phase 1: process is running
-        while (!cancellationToken.IsCancellationRequested && !targetProcessTask.IsCompleted)
+        var receivers = new Dictionary<uint, IProfilerEventReceiver>();
+        try
         {
-            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
+            var consecutiveEmptyPolls = 0;
+            while (!cancellationToken.IsCancellationRequested)
             {
-                if (targetProcessTask.IsCompleted)
-                    break;
-                
-                continue;
-            }
+                DiscoverProcesses(receivers);
 
-            yield return currentEvent;
-        }
+                var receivedAny = false;
+                foreach (var (pid, receiver) in receivers)
+                {
+                    if (pid == rootPid)
+                        continue;
 
-        // Phase 2: process has exited. Ensure the ring buffer is drained.
-        const int maxConsecutiveEmptyPolls = 4;
-        var consecutiveEmptyPolls = 0;
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            if (!_eventReceiver.TryReceiveNotification(ProfilerEventReceiveTimeout, out var currentEvent))
-            {
-                if (++consecutiveEmptyPolls >= maxConsecutiveEmptyPolls)
-                    break;
-            }
-            else
-            {
-                consecutiveEmptyPolls = 0;
-                yield return currentEvent;
+                    for (var i = 0; i < MaxBatchPerReceiver && receiver.TryReceiveNotification(out var childEvent); i++)
+                    {
+                        receivedAny = true;
+                        yield return childEvent;
+                    }
+                }
 
-                if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
+                if (receivers.TryGetValue(rootPid, out var rootReceiver))
+                {
+                    for (var i = 0; i < MaxBatchPerReceiver && rootReceiver.TryReceiveNotification(out var rootEvent); i++)
+                    {
+                        receivedAny = true;
+                        yield return rootEvent;
+
+                        if (rootEvent.EventArgs is ProfilerDestroyRecordedEvent && rootEvent.Metadata.Pid == rootPid)
+                            yield break;
+                    }
+                }
+
+                if (receivedAny)
+                {
+                    consecutiveEmptyPolls = 0;
+                    continue;
+                }
+
+                if (targetProcessTask.IsCompleted && ++consecutiveEmptyPolls >= MaxConsecutiveEmptyPolls)
                     yield break;
+
+                Thread.Sleep(IdlePollDelay);
+            }
+        }
+        finally
+        {
+            foreach (var receiver in receivers.Values)
+                (receiver as IDisposable)?.Dispose();
+        }
+    }
+
+    private void DiscoverProcesses(Dictionary<uint, IProfilerEventReceiver> receivers)
+    {
+        foreach (var pid in _registrationTable.DrainNewRegistrations())
+        {
+            if (receivers.ContainsKey(pid))
+                continue;
+
+            try
+            {
+                receivers[pid] = _eventReceiverProvider.Create(pid);
+                _logger.LogTrace("Attached event receiver for PID {Pid}.", pid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to attach event receiver for PID {Pid}.", pid);
             }
         }
     }
@@ -258,6 +306,25 @@ public sealed class AnalysisWorker : IAnalysisWorker
     {
         var tempFolder = _plugin.Configuration.TemporaryFilesFolder ?? Path.GetTempPath();
         return Path.Combine(tempFolder, PluginConfiguration.GetConfigurationFileName(_plugin.Configuration.SessionId));
+    }
+
+    private void CleanupRegistrationQueueFile()
+    {
+        _registrationTable.Dispose();
+
+        var registrationFile = _plugin.Configuration.RegistrationQueueFile;
+        if (registrationFile is null || !File.Exists(registrationFile))
+            return;
+
+        try
+        {
+            File.Delete(registrationFile);
+            _logger.LogTrace("Deleted registration queue file: \"{File}\".", registrationFile);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete registration queue file: \"{File}\".", registrationFile);
+        }
     }
 
     private void CleanupConfigurationFile(string configurationPath)

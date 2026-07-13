@@ -7,7 +7,7 @@ public enum EnqueueErrorType
 {
     OK = 0,
     Unavailable = 1,
-    UnableToAcquireWriteLock = 2,
     NotEnoughFreeMemory = 3,
-    TimeoutExceeded = 4
+    TimeoutExceeded = 4,
+    InternalError = 5
 }

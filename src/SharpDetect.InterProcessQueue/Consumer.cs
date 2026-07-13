@@ -38,11 +38,6 @@ public sealed class Consumer : IDisposable
         _semaphore = semaphore;
     }
 
-    public void Clear()
-    {
-        _queue.Clear();
-    }
-
     public Result<ILocalMemory<byte>, DequeueErrorType> TryDequeue()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
