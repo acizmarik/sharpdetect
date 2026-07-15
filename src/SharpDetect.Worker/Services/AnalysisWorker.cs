@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using CliWrap;
 using Microsoft.Extensions.Logging;
@@ -55,14 +57,30 @@ public sealed class AnalysisWorker : IAnalysisWorker
             _plugin.Configuration.SerializeToFile(configurationPath);
             _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
 
+            var targetStartTimestamp = Stopwatch.GetTimestamp();
             var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(cancellationToken);
             var rootPid = (uint)targetApplicationProcess.ProcessId;
+            AnalysisWorkerMetrics.TargetStarted(rootPid);
             _logger.LogInformation("Started process with PID: {Pid}.", rootPid);
 
-            ExecuteAnalysis(targetApplicationProcess.Task, rootPid, cancellationToken);
+            var targetDoneTimestamp = new StrongBox<long>(0L);
+            var targetExitTimestamp = targetApplicationProcess.Task.ContinueWith(
+                _ =>
+                {
+                    var timestamp = Stopwatch.GetTimestamp();
+                    Interlocked.CompareExchange(ref targetDoneTimestamp.Value, timestamp, 0L);
+                    return timestamp;
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+            ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, cancellationToken);
             _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", rootPid);
 
             var commandResult = await targetApplicationProcess;
+            AnalysisWorkerMetrics.TargetWallCompleted(
+                Stopwatch.GetElapsedTime(targetStartTimestamp, await targetExitTimestamp));
             if (commandResult.ExitCode != 0)
             {
                 var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
@@ -75,6 +93,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
         finally
         {
+            AnalysisWorkerMetrics.TargetExited();
             CleanupConfigurationFile(configurationPath);
             CleanupRegistrationQueueFile();
         }
@@ -151,11 +170,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
         return envVars;
     }
 
-    private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
+    private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
     {
         using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var events = new BlockingCollection<RecordedEvent>(EventBufferCapacity);
-        var producer = new Thread(() => ProduceEvents(events, targetProcessTask, rootPid, receiveCts.Token))
+        var producer = new Thread(() => ProduceEvents(events, targetProcessTask, rootPid, targetDoneTimestamp, receiveCts.Token))
         {
             IsBackground = true,
             Name = "SharpDetect.EventReceiver"
@@ -168,20 +187,29 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
         finally
         {
+            var processTailEnd = Stopwatch.GetTimestamp();
             receiveCts.Cancel();
             producer.Join();
+
+            var exitTimestamp = Volatile.Read(ref targetDoneTimestamp.Value);
+            AnalysisWorkerMetrics.ProcessTailCompleted(exitTimestamp != 0
+                ? Stopwatch.GetElapsedTime(exitTimestamp, processTailEnd)
+                : TimeSpan.Zero);
 
             if (_pluginHost is IDisposable disposable)
                 disposable.Dispose();
         }
     }
 
-    private void ProduceEvents(BlockingCollection<RecordedEvent> events, Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
+    private void ProduceEvents(BlockingCollection<RecordedEvent> events, Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
     {
         try
         {
-            foreach (var currentEvent in ReceiveEvents(targetProcessTask, rootPid, cancellationToken))
+            foreach (var currentEvent in ReceiveEvents(targetProcessTask, rootPid, targetDoneTimestamp, cancellationToken))
+            {
+                AnalysisWorkerMetrics.EventReceived(currentEvent.EventArgs);
                 events.Add(currentEvent, cancellationToken);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -202,6 +230,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
                     return;
 
+                AnalysisWorkerMetrics.EventProcessed();
                 if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
                 {
                     LogFailureAndTerminateAnalysis();
@@ -215,15 +244,37 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
 
-    private IEnumerable<RecordedEvent> ReceiveEvents(Task targetProcessTask, uint rootPid, CancellationToken cancellationToken)
+    private IEnumerable<RecordedEvent> ReceiveEvents(Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
     {
         var receivers = new Dictionary<uint, IProfilerEventReceiver>();
+        var drainStartTimestamp = 0L;
+        var lastDrainedEventTimestamp = 0L;
+
+        void TrackDrainedEvent()
+        {
+            if (drainStartTimestamp == 0)
+                return;
+
+            lastDrainedEventTimestamp = Stopwatch.GetTimestamp();
+            AnalysisWorkerMetrics.EventDrained();
+        }
+
         try
         {
             var consecutiveEmptyPolls = 0;
             while (!cancellationToken.IsCancellationRequested)
             {
                 DiscoverProcesses(receivers);
+
+                if (drainStartTimestamp == 0)
+                {
+                    var doneTimestamp = Volatile.Read(ref targetDoneTimestamp.Value);
+                    if (doneTimestamp != 0)
+                    {
+                        drainStartTimestamp = doneTimestamp;
+                        lastDrainedEventTimestamp = doneTimestamp;
+                    }
+                }
 
                 var receivedAny = false;
                 foreach (var (pid, receiver) in receivers)
@@ -234,6 +285,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     for (var i = 0; i < MaxBatchPerReceiver && receiver.TryReceiveNotification(out var childEvent); i++)
                     {
                         receivedAny = true;
+                        TrackDrainedEvent();
                         yield return childEvent;
                     }
                 }
@@ -243,10 +295,14 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     for (var i = 0; i < MaxBatchPerReceiver && rootReceiver.TryReceiveNotification(out var rootEvent); i++)
                     {
                         receivedAny = true;
+                        TrackDrainedEvent();
                         yield return rootEvent;
 
                         if (rootEvent.EventArgs is ProfilerDestroyRecordedEvent && rootEvent.Metadata.Pid == rootPid)
+                        {
+                            Interlocked.CompareExchange(ref targetDoneTimestamp.Value, Stopwatch.GetTimestamp(), 0L);
                             yield break;
+                        }
                     }
                 }
 
@@ -264,6 +320,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
         finally
         {
+            if (drainStartTimestamp != 0)
+                AnalysisWorkerMetrics.DrainCompleted(Stopwatch.GetElapsedTime(drainStartTimestamp, lastDrainedEventTimestamp));
+
             foreach (var receiver in receivers.Values)
                 (receiver as IDisposable)?.Dispose();
         }

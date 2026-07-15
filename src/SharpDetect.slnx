@@ -29,6 +29,7 @@
     <File Path="../.github/workflows/release.yml" />
   </Folder>
   <Folder Name="/Samples/">
+    <Project Path="Samples/PerfWorkload/PerfWorkload.csproj" />
     <Project Path="Samples/SimpleDataRace/SimpleDataRace.csproj" />
     <Project Path="Samples/SimpleDeadlock/SimpleDeadlock.csproj" />
   </Folder>
@@ -41,6 +42,9 @@
     <Project Path="Tests/SharpDetect.Plugins.DataRace.Common.Tests/SharpDetect.Plugins.DataRace.Common.Tests.csproj" />
     <Project Path="Tests/SharpDetect.Reporting.Tests/SharpDetect.Reporting.Tests.csproj" />
     <Project Path="Tests/SharpDetect.TemporalAsserts/SharpDetect.TemporalAsserts.csproj" />
+  </Folder>
+  <Folder Name="/Tools/">
+    <Project Path="Tools/SharpDetect.Benchmarks/SharpDetect.Benchmarks.csproj" />
   </Folder>
   <Project Path="SharpDetect.Cli/SharpDetect.Cli.csproj" />
   <Project Path="SharpDetect.Communication/SharpDetect.Communication.csproj" />
