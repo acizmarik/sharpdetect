@@ -21,6 +21,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
     private readonly CircularBuffer _buffer;
     private readonly SharedMemoryProvider _sharedMemoryProvider;
     private readonly ArrayPool<byte>? _arrayPool;
+    private readonly BorrowedMemory<byte>? _reusableBorrowed;
     private readonly SharedMemory _sharedMemory;
     private readonly long _capacityWithoutHeader;
     private long _cachedReadOffset;
@@ -49,6 +50,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             throw new ArgumentException($"Capacity must be at least {minimumViableSize} bytes (header: {headerSize}, size prefix: {sizeof(int)}, minimum data: 1).", nameof(options));
 
         _arrayPool = arrayPool;
+        _reusableBorrowed = arrayPool != null ? new BorrowedMemory<byte>(arrayPool) : null;
         _capacityWithoutHeader = capacityWithoutHeader;
 
         _sharedMemoryProvider = _options switch
@@ -128,9 +130,16 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
 
         var resultBuffer = GetArray(size: dataSize);
         _buffer.Read(readOffset + 4, dataSize, resultBuffer);
-        ILocalMemory<byte> result = _arrayPool != null
-            ? new BorrowedMemory<byte>(resultBuffer, dataSize, _arrayPool)
-            : new OwnedMemory<byte>(resultBuffer);
+        ILocalMemory<byte> result;
+        if (_reusableBorrowed != null)
+        {
+            _reusableBorrowed.Reset(resultBuffer, dataSize);
+            result = _reusableBorrowed;
+        }
+        else
+        {
+            result = new OwnedMemory<byte>(resultBuffer);
+        }
 
         // Release-store: frees the consumed bytes back to the producer.
         Volatile.Write(ref header->ReadOffset, readOffset + 4 + dataSize);

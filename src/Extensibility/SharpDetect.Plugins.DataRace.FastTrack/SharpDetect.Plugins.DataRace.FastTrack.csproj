@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
+        <InternalsVisibleTo Include="SharpDetect.Plugins.DataRace.FastTrack.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
         <ProjectReference Include="..\SharpDetect.Plugins.DataRace.Common\SharpDetect.Plugins.DataRace.Common.csproj" />
         <ProjectReference Include="..\SharpDetect.Plugins.Descriptors\SharpDetect.Plugins.Descriptors.csproj" />

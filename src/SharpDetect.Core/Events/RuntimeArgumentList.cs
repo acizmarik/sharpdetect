@@ -3,40 +3,62 @@
 
 using System.Buffers;
 using System.Collections;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace SharpDetect.Core.Events;
 
-public record struct RuntimeArgumentList : IReadOnlyList<RuntimeArgumentInfo>, IDisposable
+public sealed class RuntimeArgumentList : IReadOnlyList<RuntimeArgumentInfo>, IDisposable
 {
-    public int Count { get; }
-    private readonly RuntimeArgumentInfo[] _arguments;
+    private static readonly ConcurrentQueue<RuntimeArgumentList> _pool = new();
+
+    public int Count { get; private set; }
+    private RuntimeArgumentInfo[] _arguments;
     private bool _isDisposed;
 
-    public RuntimeArgumentList(RuntimeArgumentInfo[] arguments, int length)
+    internal bool IsDisposed => _isDisposed;
+
+    private RuntimeArgumentList(RuntimeArgumentInfo[] arguments, int length)
     {
         _arguments = arguments;
         Count = length;
     }
 
-    public readonly RuntimeArgumentInfo this[int index]
+    public static RuntimeArgumentList Rent(RuntimeArgumentInfo[] arguments, int length)
+    {
+        if (_pool.TryDequeue(out var list))
+        {
+            list._arguments = arguments;
+            list.Count = length;
+            list._isDisposed = false;
+            return list;
+        }
+
+        return new RuntimeArgumentList(arguments, length);
+    }
+
+    public RuntimeArgumentInfo this[int index]
     {
         get => index >= 0 && index < Count ? _arguments[index] :
             throw new IndexOutOfRangeException(index.ToString());
     }
 
-    public readonly IEnumerator<RuntimeArgumentInfo> GetEnumerator()
+    public IEnumerator<RuntimeArgumentInfo> GetEnumerator()
         => _arguments.Take(Count).GetEnumerator();
 
-    readonly IEnumerator IEnumerable.GetEnumerator()
+    IEnumerator IEnumerable.GetEnumerator()
         => _arguments.Take(Count).GetEnumerator();
 
     public void Dispose()
     {
+        Debug.Assert(!_isDisposed, "RuntimeArgumentList was disposed twice.");
         if (_isDisposed)
             return;
 
         _isDisposed = true;
         ArrayPool<RuntimeArgumentInfo>.Shared.Return(_arguments);
-        GC.SuppressFinalize(this);
+        _arguments = [];
+        Count = 0;
+        _pool.Enqueue(this);
     }
 }

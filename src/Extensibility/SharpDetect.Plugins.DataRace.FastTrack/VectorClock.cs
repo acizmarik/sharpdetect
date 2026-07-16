@@ -7,48 +7,68 @@ namespace SharpDetect.Plugins.DataRace.FastTrack;
 
 internal sealed class VectorClock
 {
-    private readonly Dictionary<ProcessThreadId, int> _clocks = [];
+    private readonly ThreadIndexTable _threads;
+    private int[] _clocks;
+    private int _length;
 
-    public VectorClock()
+    public VectorClock(ThreadIndexTable threads)
     {
+        _threads = threads;
+        _clocks = [];
     }
 
-    private VectorClock(Dictionary<ProcessThreadId, int> clocks)
+    private VectorClock(ThreadIndexTable threads, int[] clocks, int length)
     {
-        _clocks = new Dictionary<ProcessThreadId, int>(clocks);
+        _threads = threads;
+        _clocks = clocks;
+        _length = length;
     }
     
     public int GetClock(ProcessThreadId threadId)
     {
-        return _clocks.GetValueOrDefault(threadId, 0);
+        if (!_threads.TryGetIndex(threadId, out var index) || index >= _length)
+            return 0;
+
+        return _clocks[index];
     }
     
     public void SetClock(ProcessThreadId threadId, int value)
     {
-        _clocks[threadId] = value;
+        var index = _threads.GetOrAdd(threadId);
+        EnsureLength(index + 1);
+        _clocks[index] = value;
     }
     
     public void Increment(ProcessThreadId threadId)
     {
-        _clocks[threadId] = GetClock(threadId) + 1;
+        var index = _threads.GetOrAdd(threadId);
+        EnsureLength(index + 1);
+        _clocks[index]++;
     }
     
     public void Join(VectorClock other)
     {
-        foreach (var (threadId, otherClock) in other._clocks)
+        var otherLength = other._length;
+        if (otherLength > _length)
+            EnsureLength(otherLength);
+
+        var otherClocks = other._clocks;
+        for (var index = 0; index < otherLength; index++)
         {
-            var myClock = GetClock(threadId);
-            if (otherClock > myClock)
-                _clocks[threadId] = otherClock;
+            if (otherClocks[index] > _clocks[index])
+                _clocks[index] = otherClocks[index];
         }
     }
     
     public ProcessThreadId? FindRacingReader(VectorClock writerVc)
     {
-        foreach (var (threadId, clock) in _clocks)
+        var writerClocks = writerVc._clocks;
+        var writerLength = writerVc._length;
+        for (var index = 0; index < _length; index++)
         {
-            if (clock > writerVc.GetClock(threadId))
-                return threadId;
+            var writerClock = index < writerLength ? writerClocks[index] : 0;
+            if (_clocks[index] > writerClock)
+                return _threads.GetThread(index);
         }
 
         return null;
@@ -60,9 +80,34 @@ internal sealed class VectorClock
         return clock == 0 ? Epoch.None : new Epoch(threadId, clock);
     }
     
+    public void CopyFrom(VectorClock other)
+    {
+        var otherLength = other._length;
+        if (_clocks.Length < otherLength)
+            _clocks = new int[otherLength];
+
+        Array.Copy(other._clocks, _clocks, otherLength);
+        if (_length > otherLength)
+            Array.Clear(_clocks, otherLength, _length - otherLength);
+
+        _length = otherLength;
+    }
+
     public VectorClock Clone()
     {
-        return new VectorClock(_clocks);
+        var copy = new int[_length];
+        Array.Copy(_clocks, copy, _length);
+        return new VectorClock(_threads, copy, _length);
+    }
+
+    private void EnsureLength(int length)
+    {
+        if (length <= _length)
+            return;
+
+        if (_clocks.Length < length)
+            Array.Resize(ref _clocks, Math.Max(length, _clocks.Length * 2));
+
+        _length = length;
     }
 }
-

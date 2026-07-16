@@ -3,7 +3,6 @@
 
 using dnlib.DotNet;
 using Microsoft.Extensions.Logging;
-using OneOf;
 using OperationResult;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Events.Profiler;
@@ -81,10 +80,10 @@ internal sealed class ArgumentsParserService : IArgumentsParser
             throw;
         }
 
-        return new RuntimeArgumentList(arguments, argInfos.Length);
+        return RuntimeArgumentList.Rent(arguments, argInfos.Length);
     }
 
-    private static OneOf<object, TrackedObjectId, TrackedObjectId[]> ParseArgumentValue(TypeSig parameter, ReadOnlySpan<byte> value)
+    private static ArgumentValue ParseArgumentValue(TypeSig parameter, ReadOnlySpan<byte> value)
     {
         // If it is indirect, profiler already resolved the actual value
         var paramSig = parameter.IsByRef ? parameter.Next : parameter;
@@ -92,38 +91,35 @@ internal sealed class ArgumentsParserService : IArgumentsParser
         // Handle SZArray of reference types (e.g., Task[])
         if (paramSig.IsSZArray)
         {
-            return ParseReferenceArrayValue(value);
+            return ArgumentValue.TrackedArray(ParseReferenceArrayValue(value));
         }
 
         // If its not a value type then just load the reference
         if (!paramSig.IsValueType)
         {
-            var pointer = new nuint(MemoryMarshal.Read<ulong>(value));
             // If pointer == 0 it is a null
-            if (pointer == nuint.Zero)
-                return new TrackedObjectId(0);
-
-            // Make sure we do not create new instances for identical pointers
-            return new TrackedObjectId(pointer);
+            // Otherwise, make sure we do not create new instances for identical pointers
+            var pointer = new nuint(MemoryMarshal.Read<ulong>(value));
+            return ArgumentValue.Tracked(new TrackedObjectId(pointer));
         }
 
         // Otherwise try parse value type
         return paramSig.ElementType switch
         {
-            ElementType.Boolean => MemoryMarshal.Read<bool>(value),
-            ElementType.Char => MemoryMarshal.Read<char>(value),
-            ElementType.I1 => MemoryMarshal.Read<sbyte>(value),
-            ElementType.U1 => MemoryMarshal.Read<byte>(value),
-            ElementType.I2 => MemoryMarshal.Read<short>(value),
-            ElementType.U2 => MemoryMarshal.Read<ushort>(value),
-            ElementType.I4 => MemoryMarshal.Read<int>(value),
-            ElementType.U4 => MemoryMarshal.Read<uint>(value),
-            ElementType.I8 => MemoryMarshal.Read<long>(value),
-            ElementType.U8 => MemoryMarshal.Read<ulong>(value),
-            ElementType.R4 => MemoryMarshal.Read<float>(value),
-            ElementType.R8 => MemoryMarshal.Read<double>(value),
-            ElementType.I => MemoryMarshal.Read<nint>(value),
-            ElementType.U => MemoryMarshal.Read<nuint>(value),
+            ElementType.Boolean => ArgumentValue.Primitive(MemoryMarshal.Read<bool>(value) ? 1UL : 0UL, PrimitiveKind.Boolean),
+            ElementType.Char => ArgumentValue.Primitive((ulong)MemoryMarshal.Read<char>(value), PrimitiveKind.Char),
+            ElementType.I1 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<sbyte>(value)), PrimitiveKind.I1),
+            ElementType.U1 => ArgumentValue.Primitive(MemoryMarshal.Read<byte>(value), PrimitiveKind.U1),
+            ElementType.I2 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<short>(value)), PrimitiveKind.I2),
+            ElementType.U2 => ArgumentValue.Primitive(MemoryMarshal.Read<ushort>(value), PrimitiveKind.U2),
+            ElementType.I4 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<int>(value)), PrimitiveKind.I4),
+            ElementType.U4 => ArgumentValue.Primitive(MemoryMarshal.Read<uint>(value), PrimitiveKind.U4),
+            ElementType.I8 => ArgumentValue.Primitive(unchecked((ulong)MemoryMarshal.Read<long>(value)), PrimitiveKind.I8),
+            ElementType.U8 => ArgumentValue.Primitive(MemoryMarshal.Read<ulong>(value), PrimitiveKind.U8),
+            ElementType.R4 => ArgumentValue.Primitive(BitConverter.SingleToUInt32Bits(MemoryMarshal.Read<float>(value)), PrimitiveKind.R4),
+            ElementType.R8 => ArgumentValue.Primitive(BitConverter.DoubleToUInt64Bits(MemoryMarshal.Read<double>(value)), PrimitiveKind.R8),
+            ElementType.I => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<nint>(value)), PrimitiveKind.I),
+            ElementType.U => ArgumentValue.Primitive(MemoryMarshal.Read<nuint>(value), PrimitiveKind.U),
             _ => throw new NotSupportedException($"Could not parse parameter {paramSig}."),
         };
     }

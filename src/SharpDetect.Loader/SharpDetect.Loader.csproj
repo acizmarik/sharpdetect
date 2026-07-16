@@ -3,7 +3,6 @@
     <PackageReference Include="CSharp.OperationResult" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-    <PackageReference Include="OneOf" />
     <PackageReference Include="dnlib" />
   </ItemGroup>
   <ItemGroup>

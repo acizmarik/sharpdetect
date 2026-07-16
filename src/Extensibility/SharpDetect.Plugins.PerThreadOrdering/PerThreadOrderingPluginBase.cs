@@ -110,8 +110,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockTryAcquire)]
     public void OnLockAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var (id, _, lockId) = PushSynchronizationContext(metadata, args);
         LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, lockId));
     }
 
@@ -132,9 +131,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorLockRelease)]
     public void OnLockReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
-        var lockTaken = arguments.Count == 1 || (bool)arguments[1].Value.AsT0;
+        var (id, arguments, lockId) = PushSynchronizationContext(metadata, args);
+        var lockTaken = arguments.Count == 1 || (bool)arguments[1].Value.AsPrimitive;
         if (lockTaken)
             ProcessLockRelease(id, args.ModuleId, args.MethodToken, lockId);
     }
@@ -174,9 +172,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MonitorWaitAttempt)]
     public void OnMonitorWaitAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
+        var (id, _, lockId) = PushSynchronizationContext(metadata, args);
         OnBeforeWaitAttempt(id, lockId);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
         ProcessWaitAttempt(id, args.ModuleId, args.MethodToken, lockId);
     }
 
@@ -184,9 +181,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnMonitorWaitResult(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Peek(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var lockId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
         var success = MemoryMarshal.Read<bool>(args.ReturnValue);
         ProcessWaitReturn(id, args.ModuleId, args.MethodToken, lockId, success);
     }
@@ -195,7 +191,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnSemaphoreCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
-        var initialCount = (int)arguments[1].Value.AsT0;
+        using var _ = arguments;
+        var initialCount = (int)arguments[1].Value.AsPrimitive;
         _waitHandleKinds[semaphoreId] = WaitHandleKind.Semaphore;
         SemaphoreCreated?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, initialCount));
     }
@@ -204,8 +201,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreTryAcquire)]
     public void OnSemaphoreAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var (id, _, semaphoreId) = PushSynchronizationContext(metadata, args);
         SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId));
     }
 
@@ -223,9 +219,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreRelease)]
     public void OnSemaphoreReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
-        var releaseCount = (int)arguments[1].Value.AsT0;
+        var (id, arguments, semaphoreId) = PushSynchronizationContext(metadata, args);
+        var releaseCount = (int)arguments[1].Value.AsPrimitive;
         SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
     }
 
@@ -236,8 +231,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreWaitAsync)]
     public void OnSemaphoreWaitAsyncEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, _) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        PushSynchronizationContext(metadata, args);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.SemaphoreWaitAsyncResult)]
@@ -248,9 +242,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnSemaphoreWaitAsyncExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var semaphoreId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var semaphoreId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
         var waiterTaskId = new ProcessTrackedObjectId(id.ProcessId, new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ReturnValue)));
         _waitAsyncTaskToSemaphore[waiterTaskId] = semaphoreId;
     }
@@ -258,15 +251,15 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.MutexCreate)]
     public void OnMutexCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (_, _, mutexId) = ExtractSynchronizationContext(metadata, args);
+        var (_, arguments, mutexId) = ExtractSynchronizationContext(metadata, args);
+        using var _ = arguments;
         _waitHandleKinds[mutexId] = WaitHandleKind.Mutex;
     }
 
     [RecordedEventBind((ushort)RecordedEventType.MutexRelease)]
     public void OnMutexReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, mutexId) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var (id, _, mutexId) = PushSynchronizationContext(metadata, args);
         // ReleaseMutex proves the kind even when the constructor was not observed (for example, OpenExisting)
         _waitHandleKinds[mutexId] = WaitHandleKind.Mutex;
         LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, mutexId));
@@ -291,8 +284,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.EventWaitHandleSet)]
     public void OnEventWaitHandleSetEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, eventId) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var (id, _, eventId) = PushSynchronizationContext(metadata, args);
         if (!_waitHandleKinds.TryGetValue(eventId, out var kind))
         {
             // Unknown kind (for example, OpenExisting)
@@ -310,8 +302,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.EventWaitHandleReset)]
     public void OnEventWaitHandleResetEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, eventId) = ExtractSynchronizationContext(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var (id, _, eventId) = PushSynchronizationContext(metadata, args);
         EventWaitHandleWasReset?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId));
     }
 
@@ -322,9 +313,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.WaitHandleWait)]
     public void OnWaitHandleWaitEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, handleId) = ExtractSynchronizationContext(metadata, args);
+        var (id, _, handleId) = PushSynchronizationContext(metadata, args);
         _pendingAbandonedMutexes.Remove(id);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
         if (!_waitHandleKinds.TryGetValue(handleId, out var kind))
             return;
 
@@ -354,10 +344,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.WaitHandleSignalAndWait)]
     public void OnWaitHandleSignalAndWaitEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, toSignalId) = ExtractSynchronizationContext(metadata, args);
-        var toWaitOnId = new ProcessTrackedObjectId(id.ProcessId, arguments[1].Value.AsT1);
+        var (id, arguments, toSignalId) = PushSynchronizationContext(metadata, args);
+        var toWaitOnId = new ProcessTrackedObjectId(id.ProcessId, arguments[1].Value.AsTrackedObject);
         _pendingAbandonedMutexes.Remove(id);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
 
         if (_waitHandleKinds.TryGetValue(toSignalId, out var signalKind))
         {
@@ -408,9 +397,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnAbandonedMutexExceptionCreateEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var arguments = ParseArguments(metadata, args);
+        using var arguments = ParseArguments(metadata, args);
         _pendingAbandonedMutexes[id] = arguments.Count > 1
-            ? new ProcessTrackedObjectId(id.ProcessId, arguments[1].Value.AsT1)
+            ? new ProcessTrackedObjectId(id.ProcessId, arguments[1].Value.AsTrackedObject)
             : null;
     }
 
@@ -418,9 +407,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnWaitHandleWaitMultipleEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var arguments = ParseArguments(metadata, args);
         _pendingAbandonedMutexes.Remove(id);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        PushArgumentsOnCallStack(id, metadata, args);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.WaitHandleWaitMultipleResult)]
@@ -431,10 +419,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnWaitHandleWaitMultipleExit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var handles = frame.Arguments!.Value[0].Value.AsT2;
-        var waitAll = (bool)frame.Arguments!.Value[1].Value.AsT0;
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var handles = frameLease.Frame.Arguments![0].Value.AsTrackedObjectArray;
+        var waitAll = (bool)frameLease.Frame.Arguments![1].Value.AsPrimitive;
         var result = MemoryMarshal.Read<int>(args.ReturnValue);
         DispatchWaitMultipleResult(id, args.ModuleId, args.MethodToken, handles, waitAll, result);
     }
@@ -453,8 +440,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         // Note: this method is invoked by the newly started thread
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var arguments = ParseArguments(metadata, args);
-        var threadObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
+        using var arguments = ParseArguments(metadata, args);
+        var threadObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject);
         _threadObjectRegistry.RegisterMapping(threadObjectId, id);
         if (_pendingJoinAttempts.Remove(threadObjectId, out var pendingJoins))
         {
@@ -468,10 +455,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     [RecordedEventBind((ushort)RecordedEventType.ThreadJoinAttempt)]
     public void OnThreadJoinAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var arguments = ParseArguments(metadata, args);
-        var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var (id, _, joinedThreadObjectId) = PushSynchronizationContext(metadata, args);
         ProcessThreadJoinAttempt(id, joinedThreadObjectId, args.ModuleId, args.MethodToken);
     }
 
@@ -479,9 +463,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnThreadJoinResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
         var joinedThreadId = _threadObjectRegistry.GetThreadId(joinedThreadObjectId);
         ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: true));
     }
@@ -491,8 +474,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         // Called on the parent thread when a task is scheduled (e.g. Task.Run)
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var arguments = ParseArguments(metadata, args);
-        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
+        using var arguments = ParseArguments(metadata, args);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject);
         ProcessTaskSchedule(id, taskObjectId);
     }
 
@@ -500,10 +483,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     public void OnTaskStart(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         // Called on the worker thread when the task body begins executing
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var arguments = ParseArguments(metadata, args);
-        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        var (id, _, taskObjectId) = PushSynchronizationContext(metadata, args);
         ProcessTaskStart(id, taskObjectId);
     }
 
@@ -512,19 +492,14 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         // Called on the worker thread when the task body finishes executing
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
         ProcessTaskComplete(id, taskObjectId);
     }
 
     [RecordedEventBind((ushort)RecordedEventType.TaskJoinStart)]
     public void OnTaskJoinStart(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
-    {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var arguments = ParseArguments(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
-    }
+        => PushArgumentsOnCallStack(metadata, args);
     
     [RecordedEventBind((ushort)RecordedEventType.TaskJoinFinish)]
     public void OnTaskJoinFinish(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -599,6 +574,12 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         base.Visit(metadata, args);
     }
 
+    protected override void Visit(RecordedEventMetadata metadata, ThreadDestroyRecordedEvent args)
+    {
+        _callStackTracker.RemoveCallStack(new ProcessThreadId(metadata.Pid, args.ThreadId));
+        base.Visit(metadata, args);
+    }
+
     protected override void Visit(RecordedEventMetadata metadata, GarbageCollectedTrackedObjectsRecordedEvent args)
     {
         if (_waitAsyncTaskToSemaphore.Count > 0)
@@ -626,8 +607,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         // The instrumented method exited via an exception, so no method-exit event was produced
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var frame = frameLease.Frame;
 
         switch ((RecordedEventType)args.Interpretation)
         {
@@ -658,7 +639,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
 
             case RecordedEventType.WaitHandleSignalAndWaitResult:
             {
-                var awaitedHandleId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[1].Value.AsT1);
+                var awaitedHandleId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments![1].Value.AsTrackedObject);
                 if (_pendingAbandonedMutexes.Remove(id))
                     ProcessAbandonedMutexAcquireReturn(id, args.ModuleId, args.MethodToken, awaitedHandleId);
                 else
@@ -671,10 +652,10 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
                 if (!_pendingAbandonedMutexes.Remove(id, out var abandonedHandle))
                     break;
 
-                var waitAll = (bool)frame.Arguments!.Value[1].Value.AsT0;
+                var waitAll = (bool)frame.Arguments![1].Value.AsPrimitive;
                 if (waitAll)
                 {
-                    var handles = frame.Arguments!.Value[0].Value.AsT2;
+                    var handles = frame.Arguments![0].Value.AsTrackedObjectArray;
                     foreach (var handle in handles)
                         DispatchWaitHandleWaitResult(id, args.ModuleId, args.MethodToken, new ProcessTrackedObjectId(id.ProcessId, handle), isSuccess: true);
                 }
@@ -696,7 +677,7 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
 
             case RecordedEventType.ThreadJoinResult:
             {
-                var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+                var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments![0].Value.AsTrackedObject);
                 if (_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joinedThreadId))
                     ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: false));
                 break;
@@ -705,14 +686,14 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
             case RecordedEventType.TaskComplete:
             {
                 // A task whose body faulted completes and release its waiters.
-                var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+                var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments![0].Value.AsTrackedObject);
                 ProcessTaskComplete(id, taskObjectId);
                 break;
             }
 
             case RecordedEventType.TaskJoinFinish:
             {
-                var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+                var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments![0].Value.AsTrackedObject);
                 if (_waitAsyncTaskToSemaphore.Remove(taskObjectId))
                     break;
                 
@@ -729,13 +710,11 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         bool lockTaken)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Peek(id);
-        EnsureCallStackIntegrity(frame, moduleId, functionToken);
-        var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+        using var frameLease = _callStackTracker.PopFrame(id, moduleId, functionToken);
+        var lockId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
 
         if (!lockTaken)
         {
-            _callStackTracker.Pop(id);
             LockAcquireReturned?.Invoke(new(id, moduleId, functionToken, lockId, IsSuccess: false));
             return;
         }
@@ -750,10 +729,9 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         bool isSuccess)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, moduleId, methodToken);
-        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
-        
+        using var frameLease = _callStackTracker.PopFrame(id, moduleId, methodToken);
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
+
         if (_waitAsyncTaskToSemaphore.Remove(taskObjectId, out var semaphoreId) && isSuccess)
         {
             SemaphoreWaitAsyncReturned?.Invoke(new(id, moduleId, methodToken, semaphoreId, taskObjectId));
@@ -770,7 +748,6 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         MdMethodDef functionToken,
         ProcessTrackedObjectId lockId)
     {
-        _callStackTracker.Pop(id);
         LockAcquireReturned?.Invoke(new(id, moduleId, functionToken, lockId, true));
     }
 
@@ -822,7 +799,6 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         bool success)
     {
         OnAfterWaitReturn(id, lockId);
-        _callStackTracker.Pop(id);
         ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, moduleId, methodToken, lockId, success));
     }
 
@@ -894,7 +870,25 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
-        var synchronizationObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsT1);
+        try
+        {
+            var synchronizationObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject);
+            return (id, arguments, synchronizationObjectId);
+        }
+        catch
+        {
+            arguments.Dispose();
+            throw;
+        }
+    }
+
+    private (ProcessThreadId Id, RuntimeArgumentList Arguments, ProcessTrackedObjectId SynchronizationObjectId) PushSynchronizationContext(
+        RecordedEventMetadata metadata,
+        MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        var arguments = PushArgumentsOnCallStack(id, metadata, args);
+        var synchronizationObjectId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject);
         return (id, arguments, synchronizationObjectId);
     }
 
@@ -903,16 +897,15 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         MethodExitRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, args.ModuleId, args.MethodToken);
-        return (id, ExtractSynchronizationObjectIdFromFrame(id, frame));
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var lockId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
+        return (id, lockId);
     }
 
     private void PopFrame(RecordedEventMetadata metadata, ModuleId moduleId, MdMethodDef methodToken)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, moduleId, methodToken);
+        _callStackTracker.PopFrame(id, moduleId, methodToken).Dispose();
     }
 
     private bool DetermineLockTakenFromExitEvent(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
@@ -922,15 +915,15 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
 
         if (args.ByRefArgumentValues.Length > 0)
         {
-            var byRefArguments = ParseArguments(metadata, args);
-            return (bool)byRefArguments[0].Value.AsT0;
+            using var byRefArguments = ParseArguments(metadata, args);
+            return (bool)byRefArguments[0].Value.AsPrimitive;
         }
 
         return true;
     }
 
     private static ProcessTrackedObjectId ExtractSynchronizationObjectIdFromFrame(ProcessThreadId id, StackFrame frame)
-        => new(id.ProcessId, frame.Arguments!.Value[0].Value.AsT1);
+        => new(id.ProcessId, frame.Arguments![0].Value.AsTrackedObject);
 
     private void HandleEventWaitHandleCreate(
         RecordedEventMetadata metadata,
@@ -939,10 +932,11 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         bool isBaseConstructor)
     {
         var (id, arguments, eventId) = ExtractSynchronizationContext(metadata, args);
+        using var _ = arguments;
         if (isBaseConstructor && _waitHandleKinds.ContainsKey(eventId))
             return;
 
-        var initialState = (bool)arguments[1].Value.AsT0;
+        var initialState = (bool)arguments[1].Value.AsPrimitive;
         _waitHandleKinds[eventId] = isAutoReset ? WaitHandleKind.AutoResetEvent : WaitHandleKind.ManualResetEvent;
         EventWaitHandleCreated?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId, initialState, isAutoReset));
     }
@@ -954,9 +948,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         bool isSuccess)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, moduleId, functionToken);
-        var handleId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+        using var frameLease = _callStackTracker.PopFrame(id, moduleId, functionToken);
+        var handleId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
         DispatchWaitHandleWaitResult(id, moduleId, functionToken, handleId, isSuccess);
     }
 
@@ -967,9 +960,8 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         bool isSuccess)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Pop(id);
-        EnsureCallStackIntegrity(frame, moduleId, functionToken);
-        var awaitedHandleId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments!.Value[1].Value.AsT1);
+        using var frameLease = _callStackTracker.PopFrame(id, moduleId, functionToken);
+        var awaitedHandleId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![1].Value.AsTrackedObject);
         DispatchWaitHandleWaitResult(id, moduleId, functionToken, awaitedHandleId, isSuccess);
     }
 
@@ -1049,18 +1041,31 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         bool isSuccess)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var frame = _callStackTracker.Peek(id);
-        EnsureCallStackIntegrity(frame, moduleId, functionToken);
-        var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
-        _callStackTracker.Pop(id);
+        using var frameLease = _callStackTracker.PopFrame(id, moduleId, functionToken);
+        var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
         SemaphoreAcquireReturned?.Invoke(new(id, moduleId, functionToken, semaphoreId, isSuccess));
     }
 
     private void PushArgumentsOnCallStack(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+        => PushArgumentsOnCallStack(new ProcessThreadId(metadata.Pid, metadata.Tid), metadata, args);
+
+    private RuntimeArgumentList PushArgumentsOnCallStack(
+        ProcessThreadId id,
+        RecordedEventMetadata metadata,
+        MethodEnterWithArgumentsRecordedEvent args)
     {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var arguments = ParseArguments(metadata, args);
-        _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        try
+        {
+            _callStackTracker.Push(id, new StackFrame(args.ModuleId, args.MethodToken, arguments));
+        }
+        catch
+        {
+            arguments.Dispose();
+            throw;
+        }
+
+        return arguments;
     }
 
     private RuntimeArgumentList ParseArguments(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
@@ -1103,11 +1108,5 @@ public abstract class PerThreadOrderingPluginBase : PluginBase
         var instanceId = MemoryMarshal.Read<nuint>(args.ArgumentValues.AsSpan()[sizeof(ulong)..]);
         var instance = new ProcessTrackedObjectId(metadata.Pid, new TrackedObjectId(instanceId));
         return (access, instance);
-    }
-
-    private static void EnsureCallStackIntegrity(StackFrame frame, ModuleId moduleId, MdMethodDef methodToken)
-    {
-        if (frame.ModuleId != moduleId || frame.MethodToken != methodToken)
-            throw new PluginException("Call stack frame does not match the expected method.");
     }
 }

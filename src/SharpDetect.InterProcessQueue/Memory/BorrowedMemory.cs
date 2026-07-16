@@ -5,27 +5,33 @@ using System.Buffers;
 
 namespace SharpDetect.InterProcessQueue.Memory;
 
-public struct BorrowedMemory<T> : ILocalMemory<T>, IDisposable
+public sealed class BorrowedMemory<T> : ILocalMemory<T>, IDisposable
 {
     private readonly ArrayPool<T> _arrayPool;
     private T[] _array;
     private int _size;
     private bool _disposed;
 
-    internal BorrowedMemory(T[] array, int size, ArrayPool<T> arrayPool)
+    internal BorrowedMemory(ArrayPool<T> arrayPool)
+    {
+        _arrayPool = arrayPool;
+        _array = [];
+    }
+
+    internal void Reset(T[] array, int size)
     {
         _array = array;
         _size = size;
-        _arrayPool = arrayPool;
+        _disposed = false;
     }
 
-    public readonly ReadOnlySpan<T> Get()
+    public ReadOnlySpan<T> Get()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return new ReadOnlySpan<T>(_array, 0, _size);
     }
 
-    public readonly ReadOnlyMemory<T> GetLocalMemory()
+    public ReadOnlyMemory<T> GetLocalMemory()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return new ReadOnlyMemory<T>(_array, 0, _size);

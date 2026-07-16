@@ -17,6 +17,7 @@ internal sealed class FastTrackDetector
     private readonly FieldResolver _fieldResolver;
     private readonly MethodResolver _methodResolver;
     private readonly TimeProvider _timeProvider;
+    private readonly ThreadIndexTable _clockThreads = new();
     private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
@@ -48,7 +49,7 @@ internal sealed class FastTrackDetector
     {
         if (!_threadClocks.ContainsKey(threadId))
         {
-            var vc = new VectorClock();
+            var vc = new VectorClock(_clockThreads);
             vc.SetClock(threadId, 1);
             _threadClocks[threadId] = vc;
         }
@@ -57,6 +58,7 @@ internal sealed class FastTrackDetector
     public void RecordThreadDestroyed(ProcessThreadId threadId)
     {
         // Keep the clock around for join operations; it will be cleaned up naturally
+        // Its index in _clockThreads must not be given to a different thread either
     }
 
     public void RecordGarbageCollectedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
@@ -134,7 +136,10 @@ internal sealed class FastTrackDetector
     public void RecordLockReleased(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
     {
         var threadVc = GetOrCreateThreadClock(threadId);
-        _lockClocks[lockId] = threadVc.Clone();
+        if (_lockClocks.TryGetValue(lockId, out var lockVc))
+            lockVc.CopyFrom(threadVc);
+        else
+            _lockClocks[lockId] = threadVc.Clone();
         threadVc.Increment(threadId);
     }
 
@@ -142,7 +147,7 @@ internal sealed class FastTrackDetector
     {
         var pool = new Queue<VectorClock>(capacity: initialCount);
         for (var i = 0; i < initialCount; i++)
-            pool.Enqueue(new VectorClock());
+            pool.Enqueue(new VectorClock(_clockThreads));
         _semaphoreClocks[semaphoreId] = pool;
     }
 
@@ -169,7 +174,7 @@ internal sealed class FastTrackDetector
     public void RecordEventCreated(ProcessTrackedObjectId eventId, bool initialState)
     {
         if (initialState)
-            _eventClocks[eventId] = new VectorClock();
+            _eventClocks[eventId] = new VectorClock(_clockThreads);
         else
             _eventClocks.Remove(eventId);
     }
@@ -420,7 +425,7 @@ internal sealed class FastTrackDetector
         return false;
     }
 
-    private static void UpdateReadState(ProcessThreadId threadId, ShadowVariable shadow, VectorClock threadVc)
+    private void UpdateReadState(ProcessThreadId threadId, ShadowVariable shadow, VectorClock threadVc)
     {
         if (shadow.HasReadVectorClock)
         {
@@ -434,7 +439,7 @@ internal sealed class FastTrackDetector
         }
         else
         {
-            var readVc = new VectorClock();
+            var readVc = new VectorClock(_clockThreads);
             readVc.SetClock(shadow.ReadEpoch.ThreadId, shadow.ReadEpoch.Clock);
             readVc.SetClock(threadId, threadVc.GetClock(threadId));
             shadow.ExpandReadToVectorClock(readVc);
@@ -463,7 +468,7 @@ internal sealed class FastTrackDetector
     {
         if (!_threadClocks.TryGetValue(threadId, out var vc))
         {
-            vc = new VectorClock();
+            vc = new VectorClock(_clockThreads);
             vc.SetClock(threadId, 1);
             _threadClocks[threadId] = vc;
         }
@@ -486,7 +491,7 @@ internal sealed class FastTrackDetector
     {
         if (!_lockClocks.TryGetValue(lockId, out var vc))
         {
-            vc = new VectorClock();
+            vc = new VectorClock(_clockThreads);
             _lockClocks[lockId] = vc;
         }
 
@@ -499,7 +504,7 @@ internal sealed class FastTrackDetector
         var clocks = GetVolatileClockMap(objectId);
         if (!clocks.TryGetValue(fieldId, out var vc))
         {
-            vc = new VectorClock();
+            vc = new VectorClock(_clockThreads);
             clocks[fieldId] = vc;
         }
 
