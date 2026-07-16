@@ -169,6 +169,37 @@ Task("Tests")
     });
 });
 
+Task("Validate-Benchmark-Configuration")
+    .Does(() =>
+{
+    if (!configuration.Equals("Release", StringComparison.OrdinalIgnoreCase) && !HasArgument("allow-debug-benchmark"))
+        throw new Exception("Benchmark baselines must be measured with --configuration=Release (pass --allow-debug-benchmark to override).");
+});
+
+Task("Benchmark")
+    .IsDependentOn("Validate-Benchmark-Configuration")
+    .IsDependentOn("Build-Local-Environment")
+    .Does(() =>
+{
+    var benchmarkArguments = new ProcessArgumentBuilder()
+        .Append("--workload")
+        .AppendQuoted(MakeAbsolute(File($"./Samples/PerfWorkload/bin/{configuration}/{sdk}/PerfWorkload.dll")).FullPath);
+
+    foreach (var name in new[] { "iterations", "threads", "warmup", "runs", "output" })
+    {
+        if (HasArgument(name))
+            benchmarkArguments.Append($"--{name}").AppendQuoted(Argument<string>(name));
+    }
+
+    DotNetRun("./Tools/SharpDetect.Benchmarks/SharpDetect.Benchmarks.csproj",
+        benchmarkArguments,
+        new DotNetRunSettings
+        {
+            Configuration = configuration,
+            NoBuild = true
+        });
+});
+
 Task("Coverage-Report")
     .Does(() =>
 {

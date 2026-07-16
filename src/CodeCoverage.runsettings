@@ -4,7 +4,7 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
-          <Exclude>[SharpDetect.E2ETests.Subject]*</Exclude>
+          <Exclude>[SharpDetect.E2ETests.Subject]*,[SharpDetect.Benchmarks]*</Exclude>
         </Configuration>
       </DataCollector>
     </DataCollectors>

@@ -1,0 +1,16 @@
+{
+    "Target":
+    {
+        "Path": "../../Samples/PerfWorkload/bin/Debug/net10.0/PerfWorkload.dll",
+        "Args": "--iterations 1000000 --threads 8",
+        "RedirectInputOutput":
+        {
+            "SingleConsoleMode": true
+        }
+    },
+    "Analysis":
+    {
+        "PluginName": "FastTrack",
+        "RenderReport": false
+    }
+}
