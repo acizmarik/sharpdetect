@@ -124,16 +124,16 @@ TailcallMsg Helpers::CreateTailcallrMsg(MetadataMsg&& metadataMsg, UINT64 module
     return { std::move(metadataMsg), TailcallMsgArgsInstance(discriminator, TailcallMsgArgs(moduleId, mdMethodDef)) };
 }
 
-MethodEnterWithArgumentsMsg Helpers::CreateMethodEnterWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos, std::optional<std::vector<BYTE>>&& stackFrames)
+MethodEnterWithArgumentsMsg Helpers::CreateMethodEnterWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, ByteSpanView argValues, ByteSpanView argInfos, std::optional<ByteSpanView> stackFrames)
 {
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::MethodEnterWithArguments);
-    return { std::move(metadataMsg), MethodEnterWithArgumentsMsgArgsInstance(discriminator, MethodEnterWithArgumentsMsgArgs(moduleId, mdMethodDef, interpretation, std::move(argValues), std::move(argInfos), std::move(stackFrames))) };
+    return { std::move(metadataMsg), MethodEnterWithArgumentsMsgArgsInstance(discriminator, MethodEnterWithArgumentsMsgArgs(moduleId, mdMethodDef, interpretation, argValues, argInfos, stackFrames)) };
 }
 
-MethodExitWithArgumentsMsg Helpers::CreateMethodExitWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, std::vector<BYTE>&& returnValue, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos)
+MethodExitWithArgumentsMsg Helpers::CreateMethodExitWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, ByteSpanView returnValue, ByteSpanView argValues, ByteSpanView argInfos)
 {
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::MethodExitWithArguments);
-    return { std::move(metadataMsg), MethodExitWithArgumentsMsgArgsInstance(discriminator, MethodExitWithArgumentsMsgArgs(moduleId, mdMethodDef, interpretation, std::move(returnValue), std::move(argValues), std::move(argInfos))) };
+    return { std::move(metadataMsg), MethodExitWithArgumentsMsgArgsInstance(discriminator, MethodExitWithArgumentsMsgArgs(moduleId, mdMethodDef, interpretation, returnValue, argValues, argInfos)) };
 }
 
 TailcallWithArgumentsMsg Helpers::CreateTailcallArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos)
