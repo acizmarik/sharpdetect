@@ -56,8 +56,8 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
         // Assert
         Assert.True(dequeueResult.IsSuccess);
         var memory = dequeueResult.Value;
-        var actualMessage = memory.GetLocalMemory().ToArray();
-        (memory as IDisposable)?.Dispose();
+        var actualMessage = memory.Memory.ToArray();
+        memory.Dispose();
         
         Assert.Equal(expectedMessage, actualMessage);
     }
@@ -89,8 +89,8 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
             Assert.True(dequeueResult.IsSuccess);
             
             var memory = dequeueResult.Value;
-            var actualMessage = memory.GetLocalMemory().ToArray();
-            (memory as IDisposable)?.Dispose();
+            var actualMessage = memory.Memory.ToArray();
+            memory.Dispose();
             
             Assert.Equal(message, actualMessage);
         }

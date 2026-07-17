@@ -38,8 +38,8 @@ public class SpscRingTests : InterProcessQueueTestsBase
 
             var dequeue = consumer.TryDequeue();
             Assert.True(dequeue.IsSuccess);
-            var actual = dequeue.Value.GetLocalMemory().ToArray();
-            (dequeue.Value as IDisposable)?.Dispose();
+            var actual = dequeue.Value.Memory.ToArray();
+            dequeue.Value.Dispose();
 
             Assert.Equal(payload, actual);
         }
@@ -68,8 +68,8 @@ public class SpscRingTests : InterProcessQueueTestsBase
         {
             var dequeue = consumer.TryDequeue();
             Assert.True(dequeue.IsSuccess);
-            var actual = dequeue.Value.GetLocalMemory().ToArray();
-            (dequeue.Value as IDisposable)?.Dispose();
+            var actual = dequeue.Value.Memory.ToArray();
+            dequeue.Value.Dispose();
             Assert.Equal(payload, actual);
         }
 

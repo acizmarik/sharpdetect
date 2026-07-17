@@ -21,11 +21,12 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
     private readonly CircularBuffer _buffer;
     private readonly SharedMemoryProvider _sharedMemoryProvider;
     private readonly ArrayPool<byte>? _arrayPool;
-    private readonly BorrowedMemory<byte>? _reusableBorrowed;
     private readonly SharedMemory _sharedMemory;
     private readonly long _capacityWithoutHeader;
     private long _cachedReadOffset;
     private long _cachedWriteOffset;
+    private byte[]? _outstandingArray;
+    private int _messageVersion;
     private bool _disposed;
 
     public MemoryMappedQueue(MemoryMappedQueueOptions options)
@@ -50,7 +51,6 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
             throw new ArgumentException($"Capacity must be at least {minimumViableSize} bytes (header: {headerSize}, size prefix: {sizeof(int)}, minimum data: 1).", nameof(options));
 
         _arrayPool = arrayPool;
-        _reusableBorrowed = arrayPool != null ? new BorrowedMemory<byte>(arrayPool) : null;
         _capacityWithoutHeader = capacityWithoutHeader;
 
         _sharedMemoryProvider = _options switch
@@ -103,9 +103,12 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         return Ok();
     }
 
-    public Result<ILocalMemory<byte>, DequeueErrorType> Dequeue()
+    public Result<QueueMessage, DequeueErrorType> Dequeue()
     {
         var header = GetHeader();
+
+        if (_outstandingArray != null)
+            throw new InvalidOperationException("The previously dequeued message has not been disposed yet.");
 
         // ReadOffset is owned by this (consumer) process; a plain read of our own line suffices.
         var readOffset = Volatile.Read(ref header->ReadOffset);
@@ -130,21 +133,32 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
 
         var resultBuffer = GetArray(size: dataSize);
         _buffer.Read(readOffset + 4, dataSize, resultBuffer);
-        ILocalMemory<byte> result;
-        if (_reusableBorrowed != null)
-        {
-            _reusableBorrowed.Reset(resultBuffer, dataSize);
-            result = _reusableBorrowed;
-        }
-        else
-        {
-            result = new OwnedMemory<byte>(resultBuffer);
-        }
+        _outstandingArray = resultBuffer;
+        var message = new QueueMessage(this, resultBuffer, dataSize, ++_messageVersion);
 
         // Release-store: frees the consumed bytes back to the producer.
         Volatile.Write(ref header->ReadOffset, readOffset + 4 + dataSize);
-        return Ok(result);
+        return Ok(message);
     }
+
+    internal void Release(int version)
+    {
+        if (!IsCurrent(version))
+            return;
+
+        var array = _outstandingArray!;
+        _outstandingArray = null;
+        ReturnArray(array);
+    }
+
+    internal void ValidateCurrent(int version)
+    {
+        if (!IsCurrent(version))
+            throw new ObjectDisposedException(nameof(QueueMessage), "The message has already been disposed.");
+    }
+
+    private bool IsCurrent(int version)
+        => _outstandingArray != null && version == _messageVersion;
 
     private QueueHeader* GetHeader()
     {

@@ -196,21 +196,20 @@ internal static unsafe class Exports
         }
     }
 
-    private static DequeueErrorType CopyToUnmanaged(ILocalMemory<byte> memory, byte** dataPtr, int* sizePtr)
+    private static DequeueErrorType CopyToUnmanaged(QueueMessage message, byte** dataPtr, int* sizePtr)
     {
-        var localMemory = memory.GetLocalMemory();
+        using (message)
+        {
+            var messageMemory = message.Memory;
 
-        // Allocate unmanaged memory and copy data
-        var size = localMemory.Length;
-        var unmanagedPtr = (byte*)Marshal.AllocHGlobal(size);
-        localMemory.Span.CopyTo(new Span<byte>(unmanagedPtr, size));
+            // Allocate unmanaged memory and copy data
+            var size = messageMemory.Length;
+            var unmanagedPtr = (byte*)Marshal.AllocHGlobal(size);
+            messageMemory.Span.CopyTo(new Span<byte>(unmanagedPtr, size));
 
-        *dataPtr = unmanagedPtr;
-        *sizePtr = size;
-
-        // Dispose if it's BorrowedMemory to return to pool
-        if (memory is IDisposable disposable)
-            disposable.Dispose();
+            *dataPtr = unmanagedPtr;
+            *sizePtr = size;
+        }
 
         return DequeueErrorType.OK;
     }
