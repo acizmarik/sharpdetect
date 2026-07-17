@@ -18,7 +18,7 @@ namespace LibProfiler
 	{
 	public:
 		ObjectsTracker()
-			: _currentObjectId({ }), _allocations({ })
+			: _currentObjectId({ }), _gcEpoch(0), _allocations({ })
 		{
 
 		}
@@ -33,6 +33,7 @@ namespace LibProfiler
 	private:
 		std::optional<GarbageCollectionContext> _gcContext;
 		std::atomic<TrackedObjectId> _currentObjectId;
+		std::atomic<UINT64> _gcEpoch;
 		std::unordered_map<ObjectID, TrackedObjectId> _allocations;
 		std::mutex _allocationMutex;
 	};
