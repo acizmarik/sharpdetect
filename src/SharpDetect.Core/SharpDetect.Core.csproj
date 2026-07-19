@@ -3,7 +3,6 @@
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
 		<PackageReference Include="CSharp.OperationResult" />
-		<PackageReference Include="OneOf" />
 		<PackageReference Include="dnlib" />
 		<PackageReference Include="CommunityToolkit.Diagnostics" />
 		<PackageReference Include="MessagePack" />
@@ -11,5 +10,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="SharpDetect.E2ETests" />
+		<InternalsVisibleTo Include="SharpDetect.Core.Tests" />
+		<InternalsVisibleTo Include="SharpDetect.Plugins.PerThreadOrdering.Tests" />
 	</ItemGroup>
 </Project>

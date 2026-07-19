@@ -50,6 +50,7 @@ namespace Profiler
 	public:
 		explicit CorProfiler(const Configuration &configuration);
 		HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
+		HRESULT STDMETHODCALLTYPE Shutdown() override;
 		
 		void OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId) override;
 		void OnCreateStackSnapshots(UINT64 commandId, const std::vector<UINT64>& targetThreadIds) override;
@@ -75,6 +76,7 @@ namespace Profiler
 		HRESULT AbortAttach(const std::string& reason);
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;
+		[[nodiscard]] UINT64 GetCurrentThreadIdCached() const;
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
 		HRESULT PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
 
@@ -84,6 +86,8 @@ namespace Profiler
 		Configuration _configuration;
 		LibIPC::Client _client;
 		ModuleID _coreModule;
+		UINT32 _pid;
+		std::atomic<UINT64> _threadIdCacheEpoch;
 
 		MetadataStore _metadataStore;
 		LibProfiler::ObjectsTracker _objectsTracker;

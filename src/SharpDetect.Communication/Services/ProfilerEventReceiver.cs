@@ -78,13 +78,13 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
     }
     
     private bool TryParseEvent(
-        ILocalMemory<byte> memory, 
-        IRecordedEventParser parser, 
+        QueueMessage message,
+        IRecordedEventParser parser,
         [NotNullWhen(true)] out RecordedEvent? recordedEvent)
     {
         try
         {
-            recordedEvent = parser.Parse(memory.GetLocalMemory());
+            recordedEvent = parser.Parse(message.Memory);
             return true;
         }
         catch (Exception ex)
@@ -95,7 +95,7 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
         }
         finally
         {
-            (memory as IDisposable)?.Dispose();
+            message.Dispose();
         }
     }
 

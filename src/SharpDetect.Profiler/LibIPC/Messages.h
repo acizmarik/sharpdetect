@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <vector>
 #include <optional>
@@ -91,6 +92,12 @@ namespace LibIPC
 		CreateStackSnapshots = 2
 	};
 
+	struct ByteSpanView
+	{
+		const BYTE* data;
+		std::size_t size;
+	};
+
 	using CommandMetadataMsg = msgpack::type::tuple<UINT32, UINT64>;
 
 	using CreateStackSnapshotMsgArgs = msgpack::type::tuple<UINT64>;
@@ -175,11 +182,11 @@ namespace LibIPC
 	using TailcallMsgArgsInstance = msgpack::type::tuple<INT32, TailcallMsgArgs>;
 	using TailcallMsg = msgpack::type::tuple<MetadataMsg, TailcallMsgArgsInstance>;
 
-	using MethodEnterWithArgumentsMsgArgs = msgpack::type::tuple<UINT64, UINT32, USHORT, std::vector<BYTE>, std::vector<BYTE>, std::optional<std::vector<BYTE>>>;
+	using MethodEnterWithArgumentsMsgArgs = msgpack::type::tuple<UINT64, UINT32, USHORT, ByteSpanView, ByteSpanView, std::optional<ByteSpanView>>;
 	using MethodEnterWithArgumentsMsgArgsInstance = msgpack::type::tuple<INT32, MethodEnterWithArgumentsMsgArgs>;
 	using MethodEnterWithArgumentsMsg = msgpack::type::tuple<MetadataMsg, MethodEnterWithArgumentsMsgArgsInstance>;
 
-	using MethodExitWithArgumentsMsgArgs = msgpack::type::tuple<UINT64, UINT32, USHORT, std::vector<BYTE>, std::vector<BYTE>, std::vector<BYTE>>;
+	using MethodExitWithArgumentsMsgArgs = msgpack::type::tuple<UINT64, UINT32, USHORT, ByteSpanView, ByteSpanView, ByteSpanView>;
 	using MethodExitWithArgumentsMsgArgsInstance = msgpack::type::tuple<INT32, MethodExitWithArgumentsMsgArgs>;
 	using MethodExitWithArgumentsMsg = msgpack::type::tuple<MetadataMsg, MethodExitWithArgumentsMsgArgsInstance>;
 
@@ -252,8 +259,8 @@ namespace LibIPC
 		MethodExitMsg CreateMethodExitMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation);
 		MethodUnwoundMsg CreateMethodUnwoundMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation);
 		TailcallMsg CreateTailcallrMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef);
-		MethodEnterWithArgumentsMsg CreateMethodEnterWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos, std::optional<std::vector<BYTE>>&& stackFrames);
-		MethodExitWithArgumentsMsg CreateMethodExitWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT, std::vector<BYTE>&& returnValue, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos);
+		MethodEnterWithArgumentsMsg CreateMethodEnterWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT interpretation, ByteSpanView argValues, ByteSpanView argInfos, std::optional<ByteSpanView> stackFrames);
+		MethodExitWithArgumentsMsg CreateMethodExitWithArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, USHORT, ByteSpanView returnValue, ByteSpanView argValues, ByteSpanView argInfos);
 		TailcallWithArgumentsMsg CreateTailcallArgumentsMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, std::vector<BYTE>&& argValues, std::vector<BYTE>&& argInfos);
 
 		AssemblyReferenceInjectionMsg CreateAssemblyReferenceInjectionMsg(MetadataMsg&& metadataMsg, UINT64 targetAssemblyId, UINT64 assemblyId);
@@ -268,5 +275,28 @@ namespace LibIPC
 		StackTraceSnapshotsMsg CreateStackTraceSnapshotsMsg(MetadataMsg&& metadataMsg, std::vector<StackTraceSnapshotMsgArgs>&& snapshots);
 
 		FieldAccessInstrumentationMsg CreateFieldAccessInstrumentationMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, UINT32 methodOffset, UINT32 fieldToken, UINT64 instrumentationMark, bool isVolatile);
+	}
+}
+
+namespace msgpack
+{
+	MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
+	{
+		namespace adaptor
+		{
+			template <>
+			struct pack<LibIPC::ByteSpanView>
+			{
+				template <typename Stream>
+				msgpack::packer<Stream>& operator()(msgpack::packer<Stream>& o, const LibIPC::ByteSpanView& v) const
+				{
+					const uint32_t size = checked_get_container_size(v.size);
+					o.pack_bin(size);
+					if (size != 0)
+						o.pack_bin_body(reinterpret_cast<const char*>(v.data), size);
+					return o;
+				}
+			};
+		}
 	}
 }

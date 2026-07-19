@@ -35,11 +35,14 @@
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/SharpDetect.Cli.Tests/SharpDetect.Cli.Tests.csproj" />
+    <Project Path="Tests/SharpDetect.Core.Tests/SharpDetect.Core.Tests.csproj" />
     <Project Path="Tests/SharpDetect.E2ETests.Subject/SharpDetect.E2ETests.Subject.csproj" />
     <Project Path="Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj" />
     <Project Path="Tests/SharpDetect.InterProcessQueue.Tests/SharpDetect.InterProcessQueue.Tests.csproj" />
     <Project Path="Tests/SharpDetect.PluginHost.Tests/SharpDetect.PluginHost.Tests.csproj" />
     <Project Path="Tests/SharpDetect.Plugins.DataRace.Common.Tests/SharpDetect.Plugins.DataRace.Common.Tests.csproj" />
+    <Project Path="Tests/SharpDetect.Plugins.DataRace.FastTrack.Tests/SharpDetect.Plugins.DataRace.FastTrack.Tests.csproj" />
+    <Project Path="Tests/SharpDetect.Plugins.PerThreadOrdering.Tests/SharpDetect.Plugins.PerThreadOrdering.Tests.csproj" />
     <Project Path="Tests/SharpDetect.Reporting.Tests/SharpDetect.Reporting.Tests.csproj" />
     <Project Path="Tests/SharpDetect.TemporalAsserts/SharpDetect.TemporalAsserts.csproj" />
   </Folder>

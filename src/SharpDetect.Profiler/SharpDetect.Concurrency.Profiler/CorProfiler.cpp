@@ -32,18 +32,23 @@ thread_local std::stack<std::vector<UINT_PTR>> ArgsCallStack;
 Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
     _configuration(configuration),
     _client(
-		configuration.commandQueueName,
-		configuration.commandQueueFile.value_or(std::string()),
-		configuration.commandQueueSize,
-		configuration.commandSemaphoreName,
-        configuration.sharedMemoryName,
-        configuration.sharedMemoryFile.value_or(std::string()),
-        configuration.sharedMemorySize,
-        configuration.sharedMemorySemaphoreName,
-        configuration.registrationQueueName,
-        configuration.registrationQueueFile.value_or(std::string()),
-        configuration.registrationQueueSize),
+        LibIPC::QueueEndpoint{
+            configuration.commandQueueName,
+            configuration.commandQueueFile.value_or(std::string()),
+            configuration.commandQueueSize,
+            configuration.commandSemaphoreName},
+        LibIPC::QueueEndpoint{
+            configuration.sharedMemoryName,
+            configuration.sharedMemoryFile.value_or(std::string()),
+            configuration.sharedMemorySize,
+            configuration.sharedMemorySemaphoreName},
+        LibIPC::RegistrationEndpoint{
+            configuration.registrationQueueName,
+            configuration.registrationQueueFile.value_or(std::string()),
+            configuration.registrationQueueSize}),
     _coreModule(0),
+    _pid(static_cast<UINT32>(LibProfiler::PAL_GetCurrentPid())),
+    _threadIdCacheEpoch(0),
     _argumentCapture(_corProfilerInfo, _objectsTracker),
     _typeInjector(
         _corProfilerInfo,
@@ -179,6 +184,13 @@ PROFILER_STUB TailcallStub(const FunctionIDOrClientID functionId, const COR_PRF_
     ProfilerInstance->TailcallMethod(functionId, eltInfo);
 }
 
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Shutdown()
+{
+    _terminating = true;
+    _client.Shutdown();
+    return LibProfiler::CorProfilerBase::Shutdown();
+}
+
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadCreated(const ThreadID threadId)
 {
     if (_terminating)
@@ -193,6 +205,10 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadDestroyed(const ThreadID 
 {
     if (_terminating)
         return S_OK;
+
+    // Invalidate cached ThreadIDs: after a destroy, an OS thread could re-attach and
+    // receive a different runtime thread (see GetCurrentThreadIdCached)
+    _threadIdCacheEpoch.fetch_add(1, std::memory_order_release);
 
     _client.Send(LibIPC::Helpers::CreateThreadDestroyMsg(CreateMetadataMsg(), threadId));
     return S_OK;
@@ -506,7 +522,8 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         return E_FAIL;
     }
 
-    std::vector<UINT_PTR> indirects;
+    thread_local std::vector<UINT_PTR> indirects;
+    indirects.clear();
     thread_local std::vector<BYTE> rawArgumentInfos;
     rawArgumentInfos.resize(argumentsLength);
     hr = _corProfilerInfo->GetFunctionEnter3Info(decision->functionId, eltInfo, &frameInfo, &argumentsLength, reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
@@ -517,8 +534,10 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     const auto& argumentInfos = *reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data());
-    std::vector<BYTE> argumentValues;
-    std::vector<BYTE> argumentOffsets;
+    thread_local std::vector<BYTE> argumentValues;
+    thread_local std::vector<BYTE> argumentOffsets;
+    argumentValues.clear();
+    argumentOffsets.clear();
 
     // Reserve estimated capacity (exact for non-array args; arrays will grow dynamically)
     auto const estimatedValuesLength = std::accumulate(
@@ -545,19 +564,16 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         ArgsCallStack.push(indirects);
 
     // Capture stack trace if required
-    std::optional<std::vector<BYTE>> stackFrames;
+    thread_local std::vector<BYTE> stackFramesBlob;
+    bool hasStackFrames = false;
     if (decision->captureStackTraceOnEnter)
     {
-        std::vector<BYTE> blob;
-        if (SUCCEEDED(LibProfiler::StackWalker::CaptureCurrentStackTrace(
+        hasStackFrames = SUCCEEDED(LibProfiler::StackWalker::CaptureCurrentStackTrace(
                 _corProfilerInfo,
                 1,
                 _configuration.stackTraceCollectionMaxDepth,
-                blob))
-            && !blob.empty())
-        {
-            stackFrames = std::move(blob);
-        }
+                stackFramesBlob))
+            && !stackFramesBlob.empty();
     }
 
     // Notify about method enter with arguments
@@ -566,9 +582,11 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         moduleId,
         methodDef,
         decision->enterWithArgsEventId,
-        std::move(argumentValues),
-        std::move(argumentOffsets),
-        std::move(stackFrames)));
+        LibIPC::ByteSpanView { argumentValues.data(), argumentValues.size() },
+        LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() },
+        hasStackFrames
+            ? std::make_optional(LibIPC::ByteSpanView { stackFramesBlob.data(), stackFramesBlob.size() })
+            : std::nullopt));
     return S_OK;
 }
 
@@ -609,8 +627,8 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         LOG_F(ERROR, "Could not retrieve return value info for method %d. Error: 0x%x", methodDef, hr);
         return E_FAIL;
     }
-    std::vector<BYTE> returnValue;
-    returnValue.resize(returnValueInfo.length);
+    thread_local std::vector<BYTE> returnValue;
+    returnValue.assign(returnValueInfo.length, 0);
     if (hasReturnValue)
     {
         hr = _argumentCapture.GetReturnValue(
@@ -625,8 +643,10 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     }
 
     // Retrieve by-ref arguments data
-    std::vector<BYTE> argumentValues;
-    std::vector<BYTE> argumentOffsets;
+    thread_local std::vector<BYTE> argumentValues;
+    thread_local std::vector<BYTE> argumentOffsets;
+    argumentValues.clear();
+    argumentOffsets.clear();
     if (hasIndirects)
     {
         auto& indirects = ArgsCallStack.top();
@@ -668,9 +688,9 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         moduleId,
         methodDef,
         decision->exitWithArgsEventId,
-        std::move(returnValue),
-        std::move(argumentValues),
-        std::move(argumentOffsets)));
+        LibIPC::ByteSpanView { returnValue.data(), returnValue.size() },
+        LibIPC::ByteSpanView { argumentValues.data(), argumentValues.size() },
+        LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() }));
 
     return S_OK;
 }
@@ -752,19 +772,34 @@ HRESULT Profiler::CorProfiler::AbortAttach(const std::string& reason)
     return E_FAIL;
 }
 
+UINT64 Profiler::CorProfiler::GetCurrentThreadIdCached() const
+{
+    // A cached ThreadID stays valid only while the OS thread keeps its runtime thread
+    // ThreadDestroyed bumps the epoch, forcing revalidation
+    thread_local UINT64 cachedThreadId = 0;
+    thread_local UINT64 cachedEpoch = 0;
+
+    const auto epoch = _threadIdCacheEpoch.load(std::memory_order_acquire);
+    if (cachedThreadId == 0 || cachedEpoch != epoch)
+    {
+        ThreadID threadId = 0;
+        if (FAILED(_corProfilerInfo->GetCurrentThreadID(&threadId)))
+            threadId = 0;
+        cachedThreadId = threadId;
+        cachedEpoch = epoch;
+    }
+
+    return cachedThreadId;
+}
+
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg() const
 {
-    ThreadID threadId = 0;
-    if (FAILED(_corProfilerInfo->GetCurrentThreadID(&threadId)))
-        threadId = 0;
-    return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId);
+    return LibIPC::Helpers::CreateMetadataMsg(_pid, GetCurrentThreadIdCached());
 }
 
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg(const UINT64 commandId) const
 {
-    ThreadID threadId;
-    _corProfilerInfo->GetCurrentThreadID(&threadId);
-    return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId, commandId);
+    return LibIPC::Helpers::CreateMetadataMsg(_pid, GetCurrentThreadIdCached(), commandId);
 }
 
 void Profiler::CorProfiler::OnCreateStackSnapshot(const UINT64 commandId, const UINT64 targetThreadId)

@@ -38,7 +38,7 @@ public sealed class Consumer : IDisposable
         _semaphore = semaphore;
     }
 
-    public Result<ILocalMemory<byte>, DequeueErrorType> TryDequeue()
+    public Result<QueueMessage, DequeueErrorType> TryDequeue()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (!_semaphore.TryWait())
@@ -47,7 +47,7 @@ public sealed class Consumer : IDisposable
         return _queue.Dequeue();
     }
 
-    public Result<ILocalMemory<byte>, DequeueErrorType> TryDequeue(TimeSpan timeout)
+    public Result<QueueMessage, DequeueErrorType> TryDequeue(TimeSpan timeout)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 

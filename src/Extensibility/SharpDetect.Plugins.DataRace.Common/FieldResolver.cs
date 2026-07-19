@@ -69,15 +69,18 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
         return true;
     }
 
+    private const FieldFlags ExcludeFromAnalysisMask =
+        FieldFlags.IsReadOnly |
+        FieldFlags.IsThreadStatic |
+        FieldFlags.IsAsyncStateMachineInternalField |
+        FieldFlags.IsTaskOrContinuationInternalField |
+        FieldFlags.IsStaticDelegateType;
+
     public static bool ShouldExcludeFromAnalysis(
         FieldFlags flags,
         IDataRacePluginConfiguration configuration)
     {
-        return flags.HasFlag(FieldFlags.IsReadOnly) ||
-               flags.HasFlag(FieldFlags.IsThreadStatic) ||
-               flags.HasFlag(FieldFlags.IsAsyncStateMachineInternalField) ||
-               flags.HasFlag(FieldFlags.IsTaskOrContinuationInternalField) ||
-               flags.HasFlag(FieldFlags.IsStaticDelegateType);
+        return (flags & ExcludeFromAnalysisMask) != 0;
     }
 
     private FieldFlags ComputeFieldFlags(FieldDef fieldDef)

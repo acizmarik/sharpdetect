@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
 
@@ -19,15 +20,24 @@ public sealed class ThreadCallStackTracker
     {
         _callstacks[processThreadId].Push(frame);
     }
-    
-    public StackFrame Pop(ProcessThreadId processThreadId)
+
+    public FrameLease PopFrame(ProcessThreadId processThreadId, ModuleId moduleId, MdMethodDef methodToken)
     {
-        return _callstacks[processThreadId].Pop();
+        var callstack = _callstacks[processThreadId];
+        var frame = callstack.Peek();
+        if (frame.ModuleId != moduleId || frame.MethodToken != methodToken)
+            throw new PluginException("Call stack frame does not match the expected method.");
+
+        return new FrameLease(callstack.Pop());
     }
-    
-    public StackFrame Peek(ProcessThreadId processThreadId)
+
+    public void RemoveCallStack(ProcessThreadId processThreadId)
     {
-        return _callstacks[processThreadId].Peek();
+        if (!_callstacks.Remove(processThreadId, out var callstack))
+            return;
+
+        foreach (var frame in callstack)
+            frame.Arguments?.Dispose();
     }
 
     public IReadOnlyDictionary<ProcessThreadId, Callstack> GetSnapshot()
@@ -40,4 +50,3 @@ public sealed class ThreadCallStackTracker
         return _callstacks.Keys.ToHashSet();
     }
 }
-
