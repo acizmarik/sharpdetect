@@ -10,3 +10,6 @@
 [submodule "src/SharpDetect.Profiler/lib/json"]
 	path = src/SharpDetect.Profiler/lib/json
 	url = https://github.com/nlohmann/json.git
+[submodule "src/SharpDetect.Profiler/lib/doctest"]
+	path = src/SharpDetect.Profiler/lib/doctest
+	url = https://github.com/doctest/doctest.git
