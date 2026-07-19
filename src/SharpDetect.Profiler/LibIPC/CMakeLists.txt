@@ -20,7 +20,7 @@ if (UNIX AND NOT APPLE)
 		"${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
 elseif (WIN32)
 	list(APPEND INCLUDE_DIRECTORIES "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
-	target_compile_definitions(LibIPC PRIVATE WIN32_LEAN_AND_MEAN)
+	target_compile_definitions(LibIPC PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
 
 target_include_directories(LibIPC PUBLIC ${INCLUDE_DIRECTORIES})
