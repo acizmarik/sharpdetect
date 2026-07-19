@@ -32,17 +32,20 @@ thread_local std::stack<std::vector<UINT_PTR>> ArgsCallStack;
 Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
     _configuration(configuration),
     _client(
-		configuration.commandQueueName,
-		configuration.commandQueueFile.value_or(std::string()),
-		configuration.commandQueueSize,
-		configuration.commandSemaphoreName,
-        configuration.sharedMemoryName,
-        configuration.sharedMemoryFile.value_or(std::string()),
-        configuration.sharedMemorySize,
-        configuration.sharedMemorySemaphoreName,
-        configuration.registrationQueueName,
-        configuration.registrationQueueFile.value_or(std::string()),
-        configuration.registrationQueueSize),
+        LibIPC::QueueEndpoint{
+            configuration.commandQueueName,
+            configuration.commandQueueFile.value_or(std::string()),
+            configuration.commandQueueSize,
+            configuration.commandSemaphoreName},
+        LibIPC::QueueEndpoint{
+            configuration.sharedMemoryName,
+            configuration.sharedMemoryFile.value_or(std::string()),
+            configuration.sharedMemorySize,
+            configuration.sharedMemorySemaphoreName},
+        LibIPC::RegistrationEndpoint{
+            configuration.registrationQueueName,
+            configuration.registrationQueueFile.value_or(std::string()),
+            configuration.registrationQueueSize}),
     _coreModule(0),
     _pid(static_cast<UINT32>(LibProfiler::PAL_GetCurrentPid())),
     _threadIdCacheEpoch(0),

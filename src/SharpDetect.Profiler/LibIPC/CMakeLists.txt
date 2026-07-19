@@ -1,6 +1,13 @@
 set(SOURCES
 	"Client.cpp"
-	"Messages.cpp")
+	"CommandDispatcher.cpp"
+	"EventDispatcher.cpp"
+	"IpqConsumer.cpp"
+	"IpqLibrary.cpp"
+	"IpqProducer.cpp"
+	"LaneRegistry.cpp"
+	"Messages.cpp"
+	"OverflowBuffer.cpp")
 
 add_library (LibIPC STATIC ${SOURCES})
 
