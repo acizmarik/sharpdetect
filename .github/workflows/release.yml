@@ -11,13 +11,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]
-        rid: [win-x64, linux-x64]
-        exclude:
-          # Cross-compilation is not supported 
-          - os: ubuntu-latest
-            rid: win-x64
+        include:
           - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
             rid: linux-x64
     steps:
     - uses: actions/checkout@v6

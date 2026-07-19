@@ -155,18 +155,81 @@ string GetProfilerLibraryPath(string profilerName)
         : $"{baseDirectory}/{profilerName}.{libraryExtension}";
 }
 
-Task("Tests")
-    .IsDependentOn("Build-Local-Environment")
+Task("Test-Unit")
+    .IsDependentOn("Build-Managed")
     .Does(() =>
 {
     DotNetTest("./SharpDetect.slnx", new DotNetTestSettings
     {
         Configuration = configuration,
+        Filter = "FullyQualifiedName!~SharpDetect.E2ETests",
         Loggers = new[] { "trx" },
         Collectors = new[] { "XPlat Code Coverage" },
         ResultsDirectory = "./TestResults",
-        Settings = File("./CodeCoverage.runsettings")
+        Settings = File("./CodeCoverage.runsettings"),
+        NoRestore = true,
+        NoBuild = true
     });
+});
+
+Task("Test-E2E")
+    .IsDependentOn("Build-Local-Environment")
+    .Does(() =>
+{
+    DotNetTest("./Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj", new DotNetTestSettings
+    {
+        Configuration = configuration,
+        Loggers = new[] { "trx" },
+        Collectors = new[] { "XPlat Code Coverage" },
+        ResultsDirectory = "./TestResults",
+        Settings = File("./CodeCoverage.runsettings"),
+        NoRestore = true,
+        NoBuild = true
+    });
+});
+
+Task("Tests")
+    .IsDependentOn("Test-Unit")
+    .IsDependentOn("Test-E2E");
+
+Task("Test-Native")
+    .Does(() =>
+{
+    var testBuildDirectory = $"./SharpDetect.Profiler/artifacts/{rid}-tests";
+    EnsureDirectoryExists(testBuildDirectory);
+
+    var exitCode = StartProcess("cmake", new ProcessSettings
+    {
+        Arguments = new ProcessArgumentBuilder()
+            .Append("../..")
+            .Append($"-DCMAKE_BUILD_TYPE={configuration}")
+            .Append("-DSHARPDETECT_BUILD_TESTS=ON"),
+        WorkingDirectory = testBuildDirectory
+    });
+    if (exitCode != 0)
+        throw new Exception($"CMake configure (tests) failed with exit code: {exitCode}");
+
+    exitCode = StartProcess("cmake", new ProcessSettings
+    {
+        Arguments = new ProcessArgumentBuilder()
+            .Append("--build").Append(".")
+            .Append("--config").Append(configuration)
+            .Append("--target").Append("LibIPC.Tests")
+            .Append("--parallel"),
+        WorkingDirectory = testBuildDirectory
+    });
+    if (exitCode != 0)
+        throw new Exception($"CMake build (tests) failed with exit code: {exitCode}");
+
+    exitCode = StartProcess("ctest", new ProcessSettings
+    {
+        Arguments = new ProcessArgumentBuilder()
+            .Append("--output-on-failure")
+            .Append("--build-config").Append(configuration),
+        WorkingDirectory = testBuildDirectory
+    });
+    if (exitCode != 0)
+        throw new Exception($"Native tests failed with exit code: {exitCode}");
 });
 
 Task("Validate-Benchmark-Configuration")
