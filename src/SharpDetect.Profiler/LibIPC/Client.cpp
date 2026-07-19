@@ -16,7 +16,8 @@ LibIPC::Client::Client(
     const QueueEndpoint& commandQueue,
     const QueueEndpoint& eventQueue,
     const RegistrationEndpoint& registrationQueue) :
-	_commandReceivingEnabled(true)
+	_commandReceivingEnabled(true),
+	_shutdownCompleted(false)
 {
 	auto const ipqPathStringPointer = std::getenv("SharpDetect_IPQ_PATH");
 	if (ipqPathStringPointer == nullptr)
@@ -70,9 +71,16 @@ LibIPC::Client::Client(
 
 LibIPC::Client::~Client()
 {
+	Shutdown();
+}
+
+void LibIPC::Client::Shutdown()
+{
 	if (_producer == nullptr)
 		return;
 
+	if (_shutdownCompleted.exchange(true, std::memory_order_acq_rel))
+		return;
 
 	_events->Stop();
 	if (_commandReceivingEnabled)
@@ -85,6 +93,4 @@ LibIPC::Client::~Client()
 	msgpack::pack(sbuf, destroyMsg);
 	std::vector<char> buffer(sbuf.data(), sbuf.data() + sbuf.size());
 	_producer->Send(buffer);
-
-
 }

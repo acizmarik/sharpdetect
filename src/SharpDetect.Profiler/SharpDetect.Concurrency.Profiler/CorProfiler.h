@@ -50,6 +50,7 @@ namespace Profiler
 	public:
 		explicit CorProfiler(const Configuration &configuration);
 		HRESULT STDMETHODCALLTYPE Initialize(IUnknown* pICorProfilerInfoUnk) override;
+		HRESULT STDMETHODCALLTYPE Shutdown() override;
 		
 		void OnCreateStackSnapshot(UINT64 commandId, UINT64 targetThreadId) override;
 		void OnCreateStackSnapshots(UINT64 commandId, const std::vector<UINT64>& targetThreadIds) override;

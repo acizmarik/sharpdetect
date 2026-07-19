@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -30,6 +31,7 @@ namespace LibIPC
 		Client(Client& other) = delete;
 		Client& operator=(const Client&) = delete;
 		~Client();
+		void Shutdown();
 
 		template<class... Types>
 		void Send(msgpack::type::tuple<Types...>&& data)
@@ -57,6 +59,7 @@ namespace LibIPC
 
 	private:
 		bool _commandReceivingEnabled;
+		std::atomic_bool _shutdownCompleted;
 		std::unique_ptr<IpqLibrary> _library;
 		std::unique_ptr<IpqProducer> _producer;
 		std::unique_ptr<IpqConsumer> _consumer;

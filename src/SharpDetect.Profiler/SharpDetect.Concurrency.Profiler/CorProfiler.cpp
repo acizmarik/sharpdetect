@@ -184,6 +184,13 @@ PROFILER_STUB TailcallStub(const FunctionIDOrClientID functionId, const COR_PRF_
     ProfilerInstance->TailcallMethod(functionId, eltInfo);
 }
 
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Shutdown()
+{
+    _terminating = true;
+    _client.Shutdown();
+    return LibProfiler::CorProfilerBase::Shutdown();
+}
+
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadCreated(const ThreadID threadId)
 {
     if (_terminating)
