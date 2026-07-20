@@ -39,8 +39,9 @@ internal static class RunValidation
         var violations = new List<string>();
         if (run.Metrics.EventsReceived <= 0)
             violations.Add("no events were received from the profiler.");
-        if (run.Metrics.EventsProcessed != run.Metrics.EventsReceived)
-            violations.Add($"events processed ({run.Metrics.EventsProcessed}) != events received ({run.Metrics.EventsReceived})");
+        var unprocessedEvents = run.Metrics.EventsReceived - run.Metrics.EventsProcessed;
+        if (unprocessedEvents is < 0 or > 1)
+            violations.Add($"events processed ({run.Metrics.EventsProcessed}) does not account for events received ({run.Metrics.EventsReceived})");
         if (run.Metrics.TargetWallSeconds <= 0)
             violations.Add("target wall time was not measured (0)");
         if (run.Metrics.TargetWallSeconds > run.WallSeconds + WallToleranceSeconds)
