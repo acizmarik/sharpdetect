@@ -60,7 +60,9 @@ internal abstract class PluginHostBase : IPluginHost, IDisposable
     {
         // Native threads don't have managed thread ID (native threads are represented with Tid = 0)
         // Profiler initialize & load are sent from native thread during runtime initialization
+        // Command responses are emitted by the profiler's command dispatcher thread
         return recordedEvent.Metadata.Tid != default ||
+               recordedEvent.Metadata.CommandId is not null ||
                recordedEvent.EventArgs is ProfilerInitializeRecordedEvent ||
                recordedEvent.EventArgs is ProfilerLoadRecordedEvent;
     }
