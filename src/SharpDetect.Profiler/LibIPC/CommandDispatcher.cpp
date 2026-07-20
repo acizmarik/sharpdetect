@@ -28,6 +28,8 @@ void LibIPC::CommandDispatcher::Stop()
 
 void LibIPC::CommandDispatcher::CommandThreadLoop()
 {
+	constexpr INT dequeueTimeoutMs = 50;
+
 	LOG_F(INFO, "IPC command worker thread started.");
 
 	while (!_terminating)
@@ -35,7 +37,7 @@ void LibIPC::CommandDispatcher::CommandThreadLoop()
 		BYTE* dataPtr = nullptr;
 		INT size = 0;
 
-		if (!_consumer.TryDequeue(&dataPtr, &size, 1000))
+		if (!_consumer.TryDequeue(&dataPtr, &size, dequeueTimeoutMs))
 			continue;
 
 		try

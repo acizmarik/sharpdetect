@@ -122,7 +122,6 @@ internal sealed class E2ETestBuilder
                 path: resolvedSubjectPath,
                 args: _customTargetRelativePath is null ? _subjectArgs : null,
                 additionalEnvironmentVariables: _additionalTargetEnvironmentVariables,
-                redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true),
                 kind: _targetKind,
                 test: _testTargetConfiguration),
             Analysis: new AnalysisPluginConfigurationArgs(
