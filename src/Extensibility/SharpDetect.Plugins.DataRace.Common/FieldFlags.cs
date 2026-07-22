@@ -12,6 +12,5 @@ public enum FieldFlags
     IsAsyncStateMachineInternalField = 1 << 3,
     IsTaskOrContinuationInternalField = 1 << 4,
     IsStaticDelegateType = 1 << 5,
-    IsAutoPropertyBackingField = 1 << 6,
 }
 

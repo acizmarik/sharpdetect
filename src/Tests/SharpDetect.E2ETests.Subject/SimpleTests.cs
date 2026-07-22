@@ -1218,6 +1218,37 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = instance.Test_DataRace_ValueType_InstanceProperty);
         }
 
+        public static void Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess()
+        {
+            RunConcurrently(
+                () => _ = StaticCctorHelperInit.Value,
+                () => _ = StaticCctorHelperInit.Value);
+        }
+
+        public static void Test_DataRace_StaticHelperWrite_NotFromCctor_WriteReadRace()
+        {
+            StaticHelperWrite.WriteValue(1);
+            RunConcurrently(
+                () => StaticHelperWrite.WriteValue(99),
+                () => _ = StaticHelperWrite.Value);
+        }
+
+        public static void Test_NoDataRace_CtorSetterWrite_PublishThenRead()
+        {
+            var instance = new CtorSetterInit(42);
+            RunConcurrently(
+                () => _ = instance.Value,
+                () => _ = instance.Value);
+        }
+
+        public static void Test_DataRace_ObjectInitializerThenPostPublicationWrite()
+        {
+            var instance = new DataRace { Test_DataRace_ValueType_InstanceProperty = 1 };
+            RunConcurrently(
+                () => instance.Test_DataRace_ValueType_InstanceProperty = 99,
+                () => _ = instance.Test_DataRace_ValueType_InstanceProperty);
+        }
+
         public static void Test_NoDataRace_ReferenceType_Instance_ReadReadNoRace()
         {
             var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
