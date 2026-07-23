@@ -8,11 +8,8 @@ namespace SharpDetect.PluginHost.Services.Strategies;
 
 internal sealed class PassthroughPluginHost : PluginHostBase
 {
-    public PassthroughPluginHost(
-        IRecordedEventBindingsCompiler recordedEventBindingsCompiler,
-        IPlugin plugin,
-        ILogger<PassthroughPluginHost> logger)
-        : base(recordedEventBindingsCompiler, plugin, logger)
+    public PassthroughPluginHost(IPlugin plugin, ILogger<PassthroughPluginHost> logger)
+        : base(plugin, logger)
     {
         
     }

@@ -4,23 +4,20 @@
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
-using System.Collections.Immutable;
+using System.Collections.Frozen;
 
 namespace SharpDetect.PluginHost.Services.Strategies;
 
 internal abstract class PluginHostBase : IPluginHost, IDisposable
 {
-    protected ImmutableDictionary<RecordedEventHandlerType, BoundMethodEnterExitHandler> CustomMethodEntryExitHandlers { get; }
+    protected FrozenDictionary<RecordedEventHandlerType, RecordedEventHandler> CustomMethodEntryExitHandlers { get; }
     protected IPlugin Plugin { get; }
     protected ILogger Logger { get; }
     private bool _isDisposed;
 
-    protected PluginHostBase(
-        IRecordedEventBindingsCompiler recordedEventBindingsCompiler,
-        IPlugin plugin,
-        ILogger logger)
+    protected PluginHostBase(IPlugin plugin, ILogger logger)
     {
-        CustomMethodEntryExitHandlers = recordedEventBindingsCompiler.CompileCustomEventBindings(plugin);
+        CustomMethodEntryExitHandlers = plugin.CustomEventHandlers.ToFrozenDictionary();
         Plugin = plugin;
         Logger = logger;
     }
@@ -30,7 +27,7 @@ internal abstract class PluginHostBase : IPluginHost, IDisposable
         if (!ShouldProcessEvent(recordedEvent))
             return RecordedEventState.Discarded;
 
-        BoundMethodEnterExitHandler? customHandler = null;
+        RecordedEventHandler? customHandler = null;
         if (recordedEvent.EventArgs is ICustomizableEventType customizableEventType)
         {
             var handlerType = new RecordedEventHandlerType((RecordedEventType)customizableEventType.Interpretation, recordedEvent.EventArgs.GetType());
@@ -49,9 +46,9 @@ internal abstract class PluginHostBase : IPluginHost, IDisposable
         }
     }
     
-    protected virtual RecordedEventState ProcessEventCore(RecordedEvent recordedEvent, BoundMethodEnterExitHandler? customHandler)
+    protected virtual RecordedEventState ProcessEventCore(RecordedEvent recordedEvent, RecordedEventHandler? customHandler)
     {
-        customHandler?.Invoke(Plugin, recordedEvent.Metadata, recordedEvent.EventArgs);
+        customHandler?.Invoke(recordedEvent.Metadata, recordedEvent.EventArgs);
         Plugin.EventsVisitor.Visit(recordedEvent.Metadata, recordedEvent.EventArgs);
         return RecordedEventState.Executed;
     }

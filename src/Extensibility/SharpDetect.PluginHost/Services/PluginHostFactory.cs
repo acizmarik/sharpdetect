@@ -9,21 +9,16 @@ namespace SharpDetect.PluginHost.Services;
 
 internal sealed class PluginHostFactory
 {
-    private readonly IRecordedEventBindingsCompiler _recordedEventBindingsCompiler;
     private readonly ILoggerFactory _loggerFactory;
 
-    public PluginHostFactory(
-        IRecordedEventBindingsCompiler recordedEventBindingsCompiler,
-        ILoggerFactory loggerFactory)
+    public PluginHostFactory(ILoggerFactory loggerFactory)
     {
-        _recordedEventBindingsCompiler = recordedEventBindingsCompiler;
         _loggerFactory = loggerFactory;
     }
 
     public IPluginHost CreateHost(IPlugin plugin)
     {
         var passthrough = new PassthroughPluginHost(
-            _recordedEventBindingsCompiler,
             plugin,
             _loggerFactory.CreateLogger<PassthroughPluginHost>());
 

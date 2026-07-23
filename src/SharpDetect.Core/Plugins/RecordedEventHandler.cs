@@ -5,7 +5,6 @@ using SharpDetect.Core.Events;
 
 namespace SharpDetect.Core.Plugins;
 
-public delegate void BoundMethodEnterExitHandler(
-    IPlugin plugin,
+public delegate void RecordedEventHandler(
     RecordedEventMetadata metadata,
     IRecordedEventArgs args);

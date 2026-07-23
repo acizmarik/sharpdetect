@@ -10,7 +10,6 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<PluginHostFactory>();
         services.AddSingleton<ICallstackResolver, CallstackResolver>();
-        services.AddSingleton<IRecordedEventBindingsCompiler, RecordedEventBindingsCompiler>();
         services.AddSingleton<IPluginHost>(sp =>
         {
             var factory = sp.GetRequiredService<PluginHostFactory>();
