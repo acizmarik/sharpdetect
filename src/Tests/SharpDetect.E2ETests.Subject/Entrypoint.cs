@@ -356,6 +356,18 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Volatile_ValueType_Instance_Write):
                     Test_Field_Volatile_ValueType_Instance_Write();
                     break;
+                case nameof(Test_Field_ValueType_Static_TernaryWrite):
+                    Test_Field_ValueType_Static_TernaryWrite();
+                    break;
+                case nameof(Test_Field_Volatile_ValueType_Static_TernaryWrite):
+                    Test_Field_Volatile_ValueType_Static_TernaryWrite();
+                    break;
+                case nameof(Test_Field_ReferenceType_Instance_TernaryValueWrite):
+                    Test_Field_ReferenceType_Instance_TernaryValueWrite();
+                    break;
+                case nameof(Test_Field_ReferenceType_Instance_TernaryReceiverRead):
+                    Test_Field_ReferenceType_Instance_TernaryReceiverRead();
+                    break;
             }
 
             // Array events
@@ -547,6 +559,9 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_VolatileField_Instance_ReadWriteNoRace):
                     Test_NoDataRace_VolatileField_Instance_ReadWriteNoRace();
+                    break;
+                case nameof(Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses):
+                    Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses();
                     break;
                 case nameof(Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin):
                     Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin();

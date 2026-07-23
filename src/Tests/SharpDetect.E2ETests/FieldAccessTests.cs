@@ -239,6 +239,26 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     public Task VolatileInstanceField_ValueType_Write(string sdk)
         => VolatileFieldAccess("Test_Field_Volatile_ValueType_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite);
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task StaticField_ValueType_TernaryWrite_BranchTargetsStore(string sdk)
+        => FieldAccess("Test_Field_ValueType_Static_TernaryWrite", sdk, RecordedEventType.StaticFieldWrite);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task VolatileStaticField_ValueType_TernaryWrite_BranchTargetsStore(string sdk)
+        => VolatileFieldAccess("Test_Field_Volatile_ValueType_Static_TernaryWrite", sdk, RecordedEventType.StaticFieldWrite);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_ReferenceType_TernaryValueWrite_BranchTargetsStore(string sdk)
+        => FieldAccess("Test_Field_ReferenceType_Instance_TernaryValueWrite", sdk, RecordedEventType.InstanceFieldWrite);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_ReferenceType_TernaryReceiverRead_BranchTargetsLoad(string sdk)
+        => FieldAccess("Test_Field_ReferenceType_Instance_TernaryReceiverRead", sdk, RecordedEventType.InstanceFieldRead);
+
     private async Task FieldAccess(string subjectArgs, string sdk, RecordedEventType eventType)
     {
         // Arrange

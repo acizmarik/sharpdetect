@@ -686,6 +686,29 @@ namespace SharpDetect.E2ETests.Subject
             instance.Test_Field_Volatile_ValueType_Instance = 123;
         }
 
+        public static void Test_Field_ValueType_Static_TernaryWrite()
+        {
+            StaticFieldValueType.Test_Field_ValueType_Static = Environment.CurrentManagedThreadId < 0 ? 123 : 456;
+        }
+
+        public static void Test_Field_Volatile_ValueType_Static_TernaryWrite()
+        {
+            StaticFieldValueType.Test_Field_Volatile_ValueType_Static = Environment.CurrentManagedThreadId < 0 ? 123 : 456;
+        }
+
+        public static void Test_Field_ReferenceType_Instance_TernaryValueWrite()
+        {
+            var instance = new InstanceFieldReferenceType();
+            instance.Test_Field_ReferenceType_Instance = Environment.CurrentManagedThreadId < 0 ? new object() : new object();
+        }
+
+        public static void Test_Field_ReferenceType_Instance_TernaryReceiverRead()
+        {
+            var first = new InstanceFieldReferenceType();
+            var second = new InstanceFieldReferenceType();
+            _ = (Environment.CurrentManagedThreadId < 0 ? first : second).Test_Field_ReferenceType_Instance;
+        }
+
         public static void Test_Array_I_Read()
         {
             ArrayElement.Test_Array_I = new nuint[1];
@@ -1289,7 +1312,40 @@ namespace SharpDetect.E2ETests.Subject
                 () => Volatile.Read(ref dataRace.Test_DataRace_ValueType_InstanceField), 
                 () => Volatile.Write(ref dataRace.Test_DataRace_ValueType_InstanceField, 123));
         }
-        
+
+        public static void Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses()
+        {
+            const int volatilePingPongRounds = 1000;
+            DataRace.Test_DataRace_ValueType_Static = 0;
+            DataRace.Test_Volatile_ValueType_Static = 0;
+            DataRace.Test_Volatile_ValueType_Static_Back = 0;
+            RunConcurrently(
+                () =>
+                {
+                    for (var round = 1; round <= volatilePingPongRounds; round++)
+                    {
+                        DataRace.Test_DataRace_ValueType_Static = round;
+                        DataRace.Test_Volatile_ValueType_Static = round;
+
+                        var spinner = new SpinWait();
+                        while (DataRace.Test_Volatile_ValueType_Static_Back < round)
+                            spinner.SpinOnce();
+                    }
+                },
+                () =>
+                {
+                    for (var round = 1; round <= volatilePingPongRounds; round++)
+                    {
+                        var spinner = new SpinWait();
+                        while (DataRace.Test_Volatile_ValueType_Static < round)
+                            spinner.SpinOnce();
+
+                        _ = DataRace.Test_DataRace_ValueType_Static;
+                        DataRace.Test_Volatile_ValueType_Static_Back = round;
+                    }
+                });
+        }
+
         public static void Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin()
         {
             Task.Run(() => { DataRace.Test_DataRace_ValueType_Static = 42; }).Wait();
