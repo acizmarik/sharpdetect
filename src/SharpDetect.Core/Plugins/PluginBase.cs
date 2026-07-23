@@ -15,6 +15,7 @@ namespace SharpDetect.Core.Plugins;
 public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 {
     public abstract PluginConfiguration Configuration { get; }
+    public IReadOnlyDictionary<RecordedEventHandlerType, RecordedEventHandler> CustomEventHandlers => _customEventHandlers;
     protected SummaryBuilder Reporter { get; }
     protected ILogger Logger { get; }
     protected IModuleBindContext ModuleBindContext { get; }
@@ -22,6 +23,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected ISymbolResolver SymbolResolver { get; }
     protected IReadOnlyDictionary<ProcessThreadId, string> Threads { get; }
     protected IReadOnlyDictionary<InstrumentationPointId, InstrumentedFieldAccess> InstrumentedFieldAccesses { get; }
+    private readonly Dictionary<RecordedEventHandlerType, RecordedEventHandler> _customEventHandlers;
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
     private readonly Dictionary<ProcessThreadId, string> _threads;
     private readonly Dictionary<InstrumentationPointId, InstrumentedFieldAccess> _instrumentedFieldAccesses;
@@ -45,6 +47,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         Logger = logger;
         _profilerCommandSenderProvider = profilerCommandSenderProvider;
         _profilerCommandSenders = ImmutableDictionary<int, IProfilerCommandSender>.Empty;
+        _customEventHandlers = [];
         _callstacks = [];
         _threads = [];
         _instrumentedFieldAccesses = [];
@@ -52,6 +55,10 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         Threads = _threads;
         InstrumentedFieldAccesses = _instrumentedFieldAccesses;
     }
+
+    protected void Bind<TArgs>(RecordedEventType type, Action<RecordedEventMetadata, TArgs> handler)
+        where TArgs : IRecordedEventArgs, ICustomizableEventType
+        => _customEventHandlers.Add(new(type, typeof(TArgs)), (metadata, args) => handler(metadata, (TArgs)args));
 
     protected override void Visit(RecordedEventMetadata metadata, ProfilerLoadRecordedEvent args)
     {

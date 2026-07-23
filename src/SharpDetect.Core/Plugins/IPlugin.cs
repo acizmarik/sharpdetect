@@ -12,6 +12,7 @@ public interface IPlugin
     DirectoryInfo ReportTemplates { get; }
     PluginConfiguration Configuration { get; }
     RecordedEventActionVisitorBase EventsVisitor { get; }
+    IReadOnlyDictionary<RecordedEventHandlerType, RecordedEventHandler> CustomEventHandlers { get; }
 
     Summary CreateDiagnostics();
     IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports);
