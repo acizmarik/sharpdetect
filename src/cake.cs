@@ -1,8 +1,13 @@
+// Copyright 2026 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+#:sdk Cake.Sdk@6.2.0
+
 //////////////////////////////////////////////////////////////////////
 ////////////////////////// ARGUMENTS /////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-var rid = Argument<string>("rid", GetDefaultRuntimeIdentifier());
+var rid = Argument("rid", GetDefaultRuntimeIdentifier());
 var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
@@ -11,9 +16,7 @@ var sdk = Argument("sdk", GetTargetFramework());
 string GetTargetFramework()
 {
     var tfm = XmlPeek("./Directory.Build.props", "/Project/PropertyGroup/TargetFramework/text()");
-    if (string.IsNullOrEmpty(tfm))
-        throw new Exception("Could not read <TargetFramework> from Directory.Build.props.");
-    return tfm;
+    return !string.IsNullOrEmpty(tfm) ? tfm : throw new Exception("Could not read <TargetFramework> from Directory.Build.props.");
 }
 
 string GetDefaultRuntimeIdentifier()
@@ -26,16 +29,31 @@ string GetDefaultRuntimeIdentifier()
     throw new Exception("Unknown or unsupported platform. Please specify the runtime identifier using --rid parameter.");
 }
 
-Information($"Executing target: {target}.");
-Information($"Using runtime identifier: {rid}.");
-
 //////////////////////////////////////////////////////////////////////
 ////////////////////////// CONFIGURATION /////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-var artifactsDirectory = "./artifacts";
+const string artifactsDirectory = "./artifacts";
 var nativeArtifactsDirectory = artifactsDirectory + "/Profilers/" + rid + "/";
-var profilers = new string[] { "SharpDetect.Concurrency.Profiler" };
+var profilers = new[] { "SharpDetect.Concurrency.Profiler" };
+var warningsAsErrorsSettings = new DotNetMSBuildSettings
+{
+    TreatAllWarningsAs = MSBuildTreatAllWarningsAs.Error
+};
+
+//////////////////////////////////////////////////////////////////////
+////////////////////// SETUP / TEARDOWN //////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+Setup(_ =>
+{
+    Information($"Target:                     {target}");
+    Information($"Configuration:              {configuration}");
+    Information($"Runtime identifier:         {rid}");
+    Information($"Target framework:           {sdk}");
+    Information($"Artifacts directory:        {artifactsDirectory}");
+    Information($"Native artifacts directory: {nativeArtifactsDirectory}");
+});
 
 //////////////////////////////////////////////////////////////////////
 ////////////////////////////// TASKS /////////////////////////////////
@@ -53,23 +71,37 @@ Task("Clean")
     CleanDirectory("./SharpDetect.Profiler/artifacts");
 });
 
-Task("Build-Managed")
+Task("Restore")
     .IsDependentOn("Clean")
+    .Does(() =>
+{
+    DotNetRestore("./SharpDetect.slnx");
+    DotNetRestore("./Samples/SimpleDataRaceTestsMtp/SimpleDataRaceTestsMtp.csproj");
+    DotNetRestore("./Samples/SimpleDataRaceTestsVSTest/SimpleDataRaceTestsVSTest.csproj");
+});
+
+Task("Build-Managed")
+    .IsDependentOn("Restore")
     .Does(() =>
 {
     DotNetBuild("./SharpDetect.slnx", new DotNetBuildSettings
     {
-        Configuration = configuration
+        Configuration = configuration,
+        NoRestore = true,
+        MSBuildSettings = warningsAsErrorsSettings
     });
 
-    // Some samples are intentionally left out of solution (cannot mix VSTest and MTP projects in a single solution)
     DotNetBuild("./Samples/SimpleDataRaceTestsMtp/SimpleDataRaceTestsMtp.csproj", new DotNetBuildSettings
     {
-        Configuration = configuration
+        Configuration = configuration,
+        NoRestore = true,
+        MSBuildSettings = warningsAsErrorsSettings
     });
     DotNetBuild("./Samples/SimpleDataRaceTestsVSTest/SimpleDataRaceTestsVSTest.csproj", new DotNetBuildSettings
     {
-        Configuration = configuration
+        Configuration = configuration,
+        NoRestore = true,
+        MSBuildSettings = warningsAsErrorsSettings
     });
 });
 
@@ -134,7 +166,7 @@ Task("Copy-Native-Artifacts")
 
     var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/{sdk}/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
     if (!System.IO.File.Exists(ipqLibrary))
-        throw new Exception($"IPQ native library not found at: {ipqLibrary}");    
+        throw new Exception($"IPQ native library not found at: {ipqLibrary}");
     CopyFileToDirectory(ipqLibrary, nativeArtifactsDirectory);
 
     foreach (var profilerName in profilers)
@@ -163,12 +195,13 @@ Task("Test-Unit")
     {
         Configuration = configuration,
         Filter = "FullyQualifiedName!~SharpDetect.E2ETests",
-        Loggers = new[] { "trx" },
-        Collectors = new[] { "XPlat Code Coverage" },
+        Loggers = [ "trx" ],
+        Collectors = [ "XPlat Code Coverage" ],
         ResultsDirectory = "./TestResults",
         Settings = File("./CodeCoverage.runsettings"),
         NoRestore = true,
-        NoBuild = true
+        NoBuild = true,
+        ToolTimeout = TimeSpan.FromMinutes(10)
     });
 });
 
@@ -179,12 +212,13 @@ Task("Test-E2E")
     DotNetTest("./Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj", new DotNetTestSettings
     {
         Configuration = configuration,
-        Loggers = new[] { "trx" },
-        Collectors = new[] { "XPlat Code Coverage" },
+        Loggers = [ "trx" ],
+        Collectors = [ "XPlat Code Coverage" ],
         ResultsDirectory = "./TestResults",
         Settings = File("./CodeCoverage.runsettings"),
         NoRestore = true,
-        NoBuild = true
+        NoBuild = true,
+        ToolTimeout = TimeSpan.FromMinutes(20)
     });
 });
 
@@ -266,7 +300,7 @@ Task("Benchmark")
 Task("Coverage-Report")
     .Does(() =>
 {
-    var reportDirectory = "./TestResults/CoverageReport";
+    const string reportDirectory = "./TestResults/CoverageReport";
     EnsureDirectoryExists(reportDirectory);
 
     var exitCode = StartProcess("dotnet", new ProcessSettings
@@ -299,7 +333,7 @@ Task("CI-Pack")
     .IsDependentOn("CI-Prepare-Managed")
     .Does(() =>
 {
-    var outputDirectory = $"{artifactsDirectory}";
+    const string outputDirectory = $"{artifactsDirectory}";
     EnsureDirectoryExists(outputDirectory);
     
     DotNetPack("./SharpDetect.Cli", new DotNetPackSettings
@@ -311,9 +345,7 @@ Task("CI-Pack")
     Information($"Package created in: {outputDirectory}");
     var packages = GetFiles($"{outputDirectory}/*.nupkg");
     foreach (var package in packages)
-    {
         Information($"  - {package.GetFilename()}");
-    }
 });
 
-RunTarget(target);
+await RunTargetAsync(target);

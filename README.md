@@ -183,8 +183,7 @@ cd sharpdetect
 git submodule update --init --recursive
 
 cd src
-dotnet tool restore
-dotnet cake
+dotnet cake.cs
 ```
 
 ## Platform Support
