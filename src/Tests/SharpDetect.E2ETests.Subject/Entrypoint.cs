@@ -515,6 +515,18 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead):
                     Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead();
                     break;
+                case nameof(Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess):
+                    Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess();
+                    break;
+                case nameof(Test_DataRace_StaticHelperWrite_NotFromCctor_WriteReadRace):
+                    Test_DataRace_StaticHelperWrite_NotFromCctor_WriteReadRace();
+                    break;
+                case nameof(Test_NoDataRace_CtorSetterWrite_PublishThenRead):
+                    Test_NoDataRace_CtorSetterWrite_PublishThenRead();
+                    break;
+                case nameof(Test_DataRace_ObjectInitializerThenPostPublicationWrite):
+                    Test_DataRace_ObjectInitializerThenPostPublicationWrite();
+                    break;
                 case nameof(Test_NoDataRace_ReferenceType_Static_ReadReadNoRace):
                     Test_NoDataRace_ReferenceType_Static_ReadReadNoRace();
                     break;

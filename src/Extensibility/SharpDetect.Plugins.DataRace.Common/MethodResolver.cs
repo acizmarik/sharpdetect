@@ -13,11 +13,55 @@ public sealed class MethodResolver(IMetadataContext metadataContext, ILogger log
 {
     private readonly Dictionary<MethodDefOrRef, MethodDef> _resolvedMethods = [];
 
-    public ConstructorKind GetConstructorKind(uint processId, ModuleId moduleId, MdMethodDef methodToken)
+    public bool IsStaticConstructorOf(
+        uint processId,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        TypeDef declaringType)
+    {
+        if (!TryResolve(processId, moduleId, methodToken, out var methodDef))
+            return false;
+
+        if (!methodDef!.IsStaticConstructor)
+            return false;
+
+        var comparer = new SigComparer();
+        return comparer.Equals(methodDef.DeclaringType, declaringType);
+    }
+
+    public bool IsInstanceConstructorOf(
+        uint processId,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        TypeDef declaringType)
+    {
+        if (!TryResolve(processId, moduleId, methodToken, out var methodDef))
+            return false;
+
+        if (!methodDef!.IsInstanceConstructor)
+            return false;
+
+        var comparer = new SigComparer();
+        ITypeDefOrRef? current = methodDef.DeclaringType;
+        while (current != null)
+        {
+            if (comparer.Equals(current, declaringType))
+                return true;
+
+            current = current.ResolveTypeDef()?.BaseType;
+        }
+
+        return false;
+    }
+
+    private bool TryResolve(uint processId, ModuleId moduleId, MdMethodDef methodToken, out MethodDef? methodDef)
     {
         var key = new MethodDefOrRef(processId, moduleId, methodToken);
-        if (_resolvedMethods.TryGetValue(key, out var methodDef))
-            return GetConstructorKind(methodDef);
+        if (_resolvedMethods.TryGetValue(key, out var cached))
+        {
+            methodDef = cached;
+            return true;
+        }
 
         var resolver = metadataContext.GetResolver(processId);
         var resolveResult = resolver.ResolveMethod(processId, moduleId, methodToken);
@@ -28,19 +72,12 @@ public sealed class MethodResolver(IMetadataContext metadataContext, ILogger log
                 "Could not resolve method with token={MethodToken} in module {ModuleId}",
                 methodToken.Value,
                 moduleId.Value);
-            return ConstructorKind.None;
+            methodDef = null;
+            return false;
         }
 
         methodDef = resolveResult.Value;
         _resolvedMethods.Add(key, methodDef);
-        return GetConstructorKind(methodDef);
-    }
-
-    private static ConstructorKind GetConstructorKind(MethodDef methodDef)
-    {
-        if (!methodDef.IsConstructor)
-            return ConstructorKind.None;
-
-        return methodDef.IsInstanceConstructor ? ConstructorKind.Instance : ConstructorKind.Static;
+        return true;
     }
 }

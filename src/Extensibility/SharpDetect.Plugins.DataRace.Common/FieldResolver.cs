@@ -102,21 +102,7 @@ public sealed class FieldResolver(IMetadataContext metadataContext, ILogger logg
         if (IsFieldDelegateCacheInCompilerGeneratedType(fieldDef))
             flags |= FieldFlags.IsStaticDelegateType;
 
-        if (IsAutoPropertyBackingField(fieldDef))
-            flags |= FieldFlags.IsAutoPropertyBackingField;
-
         return flags;
-    }
-
-    private bool IsAutoPropertyBackingField(FieldDef fieldDef)
-    {
-        const string backingFieldNameSuffix = "k__BackingField";
-
-        var name = fieldDef.Name?.String;
-        if (name is null || !name.EndsWith(backingFieldNameSuffix, StringComparison.Ordinal))
-            return false;
-
-        return HasCompilerGeneratedAttribute(fieldDef, fieldDef.Module);
     }
 
     private bool HasCompilerGeneratedAttribute(IHasCustomAttribute member, ModuleDef module)

@@ -1,6 +1,8 @@
 ﻿// Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Runtime.CompilerServices;
+
 namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
 {
     public class DataRace
@@ -40,6 +42,55 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
                 Test_DataRace_ReferenceType_InstanceField = referenceValue;
                 Test_DataRace_ValueType_StaticWrittenInCtor = value;
             }
+        }
+    }
+
+    public class StaticCctorHelperInit
+    {
+        public static int Value;
+
+        static StaticCctorHelperInit()
+        {
+            InitializeValue(42);
+        }
+
+        private static void InitializeValue(int value)
+        {
+            Value = value;
+        }
+    }
+
+    public class StaticHelperWrite
+    {
+        public static int Value;
+
+        public static void WriteValue(int value)
+        {
+            Value = value;
+        }
+    }
+
+    public class CtorSetterInit
+    {
+        public int Value { get; set; }
+
+        public CtorSetterInit(int value)
+        {
+            Value = value;
+        }
+    }
+
+    public class CrossObjectWriter
+    {
+        public int Value;
+
+        public CrossObjectWriter()
+        {
+        }
+
+        public CrossObjectWriter(CrossObjectWriter other, int value)
+        {
+            other.Value = value;
         }
     }
 }

@@ -100,6 +100,44 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task StaticCctorHelperWrite_WithoutStackTraces_IsReportedAsRace(string sdk, string plugin)
+        => AssertDetectsDataRace(
+            "Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess", sdk, plugin,
+            enableStackTraceCollection: false);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task StaticCctorHelperWrite_WithStackTraces_IsNotReported(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace(
+            "Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess", sdk, plugin,
+            enableStackTraceCollection: true);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_CtorSetterWrite_PublishThenRead_WithoutStackTraces(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace(
+            "Test_NoDataRace_CtorSetterWrite_PublishThenRead", sdk, plugin,
+            enableStackTraceCollection: false);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_CtorSetterWrite_PublishThenRead_WithStackTraces(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace(
+            "Test_NoDataRace_CtorSetterWrite_PublishThenRead", sdk, plugin,
+            enableStackTraceCollection: true);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_StaticHelperWrite_NotFromCctor_WriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_StaticHelperWrite_NotFromCctor_WriteReadRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ObjectInitializerThenPostPublicationWrite(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ObjectInitializerThenPostPublicationWrite", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ReferenceType_Static_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ReferenceType_Static_ReadReadNoRace", sdk, plugin);
@@ -314,14 +352,32 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     private static readonly string[] SkipSystemAssemblies = ["System.", "Microsoft."];
 
-    private async Task AssertDetectsDataRace(string subjectArgs, string sdk, string pluginFullTypeName)
+
+    private static object CreateConfiguration(bool enableStackTraceCollection)
+    {
+        return enableStackTraceCollection
+            ? new
+            {
+                SkipInstrumentationForAssemblies = SkipSystemAssemblies,
+                EnableStackTraceCollection = true,
+                StackTraceCollectionMaxDepth = 8,
+                StackTraceCollectionForFields = Array.Empty<string>()
+            }
+            : new { SkipInstrumentationForAssemblies = SkipSystemAssemblies };
+    }
+
+    private async Task AssertDetectsDataRace(
+        string subjectArgs,
+        string sdk,
+        string pluginFullTypeName,
+        bool enableStackTraceCollection = false)
     {
         // Arrange
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
             .WithTestPlugin(pluginFullTypeName)
-            .WithPluginConfiguration(new { SkipInstrumentationForAssemblies = SkipSystemAssemblies })
+            .WithPluginConfiguration(CreateConfiguration(enableStackTraceCollection))
             .Build(sdk, testOutput, additionalData);
         var plugin = GetTestPlugin(services);
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
@@ -336,14 +392,18 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         Assert.Equal(plugin.ReportCategory, report.Category);
     }
 
-    private async Task AssertDoesNotDetectDataRace(string subjectArgs, string sdk, string pluginFullTypeName)
+    private async Task AssertDoesNotDetectDataRace(
+        string subjectArgs,
+        string sdk,
+        string pluginFullTypeName,
+        bool enableStackTraceCollection = false)
     {
         // Arrange
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
             .WithTestPlugin(pluginFullTypeName)
-            .WithPluginConfiguration(new { SkipInstrumentationForAssemblies = SkipSystemAssemblies })
+            .WithPluginConfiguration(CreateConfiguration(enableStackTraceCollection))
             .Build(sdk, testOutput, additionalData);
         var plugin = GetTestPlugin(services);
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();

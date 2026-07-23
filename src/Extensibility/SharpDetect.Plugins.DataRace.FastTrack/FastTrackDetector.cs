@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using dnlib.DotNet;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
@@ -309,7 +310,6 @@ internal sealed class FastTrackDetector
         CapturedStackTrace stack)
     {
         var moduleId = stack.Top.ModuleId;
-        var methodToken = stack.Top.MethodToken;
         if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out var fieldFlags) ||
             FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration))
         {
@@ -320,7 +320,7 @@ internal sealed class FastTrackDetector
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
         var threadVc = GetOrCreateThreadClock(threadId);
         var currentEpoch = threadVc.GetEpoch(threadId);
-        var writeKind = ClassifyWrite(threadId, moduleId, methodToken, fieldFlags, objectId);
+        var writeKind = ClassifyWrite(threadId, fieldDef!, objectId, stack);
 
         var isInstantiationWrite = writeKind == WriteKind.Instantiation;
         if (!isInstantiationWrite &&
@@ -377,31 +377,61 @@ internal sealed class FastTrackDetector
     
     private WriteKind ClassifyWrite(
         ProcessThreadId threadId,
-        ModuleId moduleId,
-        MdMethodDef methodToken,
-        FieldFlags fieldFlags,
-        ProcessTrackedObjectId? objectId)
+        FieldDef fieldDef,
+        ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack)
     {
-        var isStaticField = objectId == null;
-        var constructorKind = _methodResolver.GetConstructorKind(threadId.ProcessId, moduleId, methodToken);
+        var processId = threadId.ProcessId;
+        var declaringType = fieldDef.DeclaringType;
         var isInstantiatorExclusive = UpdateObjectPublicationState(threadId, objectId);
 
-        if (isStaticField)
+        if (objectId == null)
         {
-            return constructorKind == ConstructorKind.Static
+            return IsInitializedByStaticConstructor(processId, declaringType, stack)
                 ? WriteKind.Instantiation
                 : WriteKind.Regular;
         }
 
-        if (constructorKind != ConstructorKind.None)
-            return WriteKind.Instantiation;
+        if (!isInstantiatorExclusive)
+            return WriteKind.Regular;
 
-        // An auto-property is written via its compiler-generated setter
-        // Treat it as initialization if object not escaped instantiation thread yet
-        if (isInstantiatorExclusive && fieldFlags.HasFlag(FieldFlags.IsAutoPropertyBackingField))
-            return WriteKind.MaybeInstantiation;
+        return IsInitializedByInstanceConstructor(processId, declaringType, stack)
+            ? WriteKind.Instantiation
+            : WriteKind.Regular;
+    }
 
-        return WriteKind.Regular;
+    private bool IsInitializedByStaticConstructor(
+        uint processId,
+        TypeDef declaringType,
+        CapturedStackTrace stack)
+    {
+        if (_methodResolver.IsStaticConstructorOf(processId, stack.Top.ModuleId, stack.Top.MethodToken, declaringType))
+            return true;
+
+        foreach (var frame in stack.GetDeeperFrames())
+        {
+            if (_methodResolver.IsStaticConstructorOf(processId, frame.ModuleId, frame.MethodToken, declaringType))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool IsInitializedByInstanceConstructor(
+        uint processId,
+        TypeDef declaringType,
+        CapturedStackTrace stack)
+    {
+        if (_methodResolver.IsInstanceConstructorOf(processId, stack.Top.ModuleId, stack.Top.MethodToken, declaringType))
+            return true;
+
+        foreach (var frame in stack.GetDeeperFrames())
+        {
+            if (_methodResolver.IsInstanceConstructorOf(processId, frame.ModuleId, frame.MethodToken, declaringType))
+                return true;
+        }
+
+        return false;
     }
     
     private bool UpdateObjectPublicationState(ProcessThreadId threadId, ProcessTrackedObjectId? objectId)
