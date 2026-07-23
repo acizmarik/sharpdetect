@@ -184,6 +184,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_VolatileExplicitAccess_Static_ReadWriteNoRace", sdk, plugin);
 

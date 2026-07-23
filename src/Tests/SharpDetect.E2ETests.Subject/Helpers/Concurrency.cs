@@ -12,6 +12,7 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static int Test_DataRace_ValueType_StaticWrittenInCtor;
         public static int Test_DataRace_ValueType_StaticProperty { get; set; }
         public static volatile int Test_Volatile_ValueType_Static;
+        public static volatile int Test_Volatile_ValueType_Static_Back;
         [ThreadStatic]
         public static object? Test_ThreadStatic_ReferenceType;
         [ThreadStatic]

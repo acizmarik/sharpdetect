@@ -253,18 +253,51 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		return E_FAIL;
 	}
 
-	// LDC.I8 <instrumentation-mark>
-	const auto ldcInstruction = rewriter.NewILInstr();
-	ldcInstruction->m_opcode = CEE_LDC_I8;
-	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
-	rewriter.InsertAfter(currentInstruction, ldcInstruction);
-	// CALL <injected-method-handler>
-	const auto callInstruction = rewriter.NewILInstr();
-	callInstruction->m_opcode = CEE_CALL;
-	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
-	rewriter.InsertAfter(ldcInstruction, callInstruction);
-	// Skip to next non-injected instruction
-	currentInstruction = callInstruction;
+	if (isStore)
+	{
+		const auto headInstruction = isVolatile ? currentInstruction->m_pPrev : currentInstruction;
+		headInstruction->m_opcode = CEE_NOP;
+		// LDC.I8 <instrumentation-mark>
+		const auto ldcInstruction = rewriter.NewILInstr();
+		ldcInstruction->m_opcode = CEE_LDC_I8;
+		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+		rewriter.InsertAfter(headInstruction, ldcInstruction);
+		// CALL <injected-method-handler>
+		const auto callInstruction = rewriter.NewILInstr();
+		callInstruction->m_opcode = CEE_CALL;
+		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+		rewriter.InsertAfter(ldcInstruction, callInstruction);
+
+		if (isVolatile)
+		{
+			const auto volatileInstruction = rewriter.NewILInstr();
+			volatileInstruction->m_opcode = CEE_VOLATILE;
+			rewriter.InsertAfter(callInstruction, volatileInstruction);
+		}
+		else
+		{
+			const auto storeInstruction = rewriter.NewILInstr();
+			storeInstruction->m_opcode = CEE_STSFLD;
+			storeInstruction->m_Arg32 = static_cast<INT32>(fieldToken);
+			rewriter.InsertAfter(callInstruction, storeInstruction);
+			currentInstruction = storeInstruction;
+		}
+	}
+	else
+	{
+		// LDC.I8 <instrumentation-mark>
+		const auto ldcInstruction = rewriter.NewILInstr();
+		ldcInstruction->m_opcode = CEE_LDC_I8;
+		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+		rewriter.InsertAfter(currentInstruction, ldcInstruction);
+		// CALL <injected-method-handler>
+		const auto callInstruction = rewriter.NewILInstr();
+		callInstruction->m_opcode = CEE_CALL;
+		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+		rewriter.InsertAfter(ldcInstruction, callInstruction);
+		// Skip to next non-injected instruction
+		currentInstruction = callInstruction;
+	}
 
 	LOG_F(INFO, "Instrumented static field %s access in method %d with stub %d from module %s.",
 		isStore ? "write" : "read",
@@ -408,8 +441,11 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		fieldSigForLocalLen = static_cast<ULONG>(stored.size());
 	}
 
-	if (isVolatile)
-		currentInstruction = currentInstruction->m_pPrev;
+	// The event must reach the queue before the store executes (release-before-store)
+	const auto accessOpcode = currentInstruction->m_opcode;
+	const auto headInstruction = isVolatile ? currentInstruction->m_pPrev : currentInstruction;
+	headInstruction->m_opcode = CEE_NOP;
+	auto tailInstruction = headInstruction;
 
 	// Add a local to capture the object instance for the handler call
 	PCCOR_SIGNATURE instanceSignature = g_ObjectTypeSignature;
@@ -420,57 +456,106 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	{
 		// STLOC <value-local> (store written value)
 		addedLocals.emplace_back(fieldSigForLocal, fieldSigForLocalLen);
+		const auto valueLocalIndex = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
 		const auto stlocValueInstruction = rewriter.NewILInstr();
 		stlocValueInstruction->m_opcode = CEE_STLOC;
-		stlocValueInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
-		rewriter.InsertBefore(currentInstruction, stlocValueInstruction);
+		stlocValueInstruction->m_Arg16 = valueLocalIndex;
+		rewriter.InsertAfter(tailInstruction, stlocValueInstruction);
+		tailInstruction = stlocValueInstruction;
 		// DUP (duplicate object reference)
 		const auto dupInstruction = rewriter.NewILInstr();
 		dupInstruction->m_opcode = CEE_DUP;
-		rewriter.InsertBefore(currentInstruction, dupInstruction);
+		rewriter.InsertAfter(tailInstruction, dupInstruction);
+		tailInstruction = dupInstruction;
 		// STLOC <instance-local> (save object reference copy)
 		const auto stlocInstanceInstruction = rewriter.NewILInstr();
 		stlocInstanceInstruction->m_opcode = CEE_STLOC;
 		stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
-		rewriter.InsertBefore(currentInstruction, stlocInstanceInstruction);
+		rewriter.InsertAfter(tailInstruction, stlocInstanceInstruction);
+		tailInstruction = stlocInstanceInstruction;
 		// LDLOC <value-local> (restore written value)
 		const auto ldlocValueInstruction = rewriter.NewILInstr();
 		ldlocValueInstruction->m_opcode = CEE_LDLOC;
-		ldlocValueInstruction->m_Arg16 = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
-		rewriter.InsertBefore(currentInstruction, ldlocValueInstruction);
+		ldlocValueInstruction->m_Arg16 = valueLocalIndex;
+		rewriter.InsertAfter(tailInstruction, ldlocValueInstruction);
+		tailInstruction = ldlocValueInstruction;
+		// LDC.I8 <instrumentation-mark>
+		const auto ldcInstruction = rewriter.NewILInstr();
+		ldcInstruction->m_opcode = CEE_LDC_I8;
+		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+		rewriter.InsertAfter(tailInstruction, ldcInstruction);
+		tailInstruction = ldcInstruction;
+		// LDLOC <instance-local> (restore object reference)
+		const auto ldlocInstanceInstruction = rewriter.NewILInstr();
+		ldlocInstanceInstruction->m_opcode = CEE_LDLOC;
+		ldlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
+		rewriter.InsertAfter(tailInstruction, ldlocInstanceInstruction);
+		tailInstruction = ldlocInstanceInstruction;
+		// CALL <injected-method-handler>
+		const auto callInstruction = rewriter.NewILInstr();
+		callInstruction->m_opcode = CEE_CALL;
+		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+		rewriter.InsertAfter(tailInstruction, callInstruction);
+		tailInstruction = callInstruction;
 	}
 	else
 	{
 		// DUP (duplicate object reference)
 		const auto dupInstruction = rewriter.NewILInstr();
 		dupInstruction->m_opcode = CEE_DUP;
-		rewriter.InsertBefore(currentInstruction, dupInstruction);
+		rewriter.InsertAfter(tailInstruction, dupInstruction);
+		tailInstruction = dupInstruction;
 		// STLOC <instance-local> (save object reference copy)
 		const auto stlocInstanceInstruction = rewriter.NewILInstr();
 		stlocInstanceInstruction->m_opcode = CEE_STLOC;
 		stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
-		rewriter.InsertBefore(currentInstruction, stlocInstanceInstruction);
+		rewriter.InsertAfter(tailInstruction, stlocInstanceInstruction);
+		tailInstruction = stlocInstanceInstruction;
 	}
-	// <FIELD-ACCESS> (LDFLD/STFLD) — original instruction with correct type on stack
+
+	// <FIELD-ACCESS> (LDFLD/STFLD) — re-emit the original access; its node became the head
+	ILInstr* accessInstruction;
 	if (isVolatile)
-		currentInstruction = currentInstruction->m_pNext;
-	// LDC.I8 <instrumentation-mark>
-	const auto ldcInstruction = rewriter.NewILInstr();
-	ldcInstruction->m_opcode = CEE_LDC_I8;
-	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
-	rewriter.InsertAfter(currentInstruction, ldcInstruction);
-	// LDLOC <instance-local> (restore object reference)
-	const auto ldLocInstanceInstruction2 = rewriter.NewILInstr();
-	ldLocInstanceInstruction2->m_opcode = CEE_LDLOC;
-	ldLocInstanceInstruction2->m_Arg16 = instanceLocalIndex;
-	rewriter.InsertAfter(ldcInstruction, ldLocInstanceInstruction2);
-	// CALL <injected-method-handler>
-	const auto callInstruction = rewriter.NewILInstr();
-	callInstruction->m_opcode = CEE_CALL;
-	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
-	rewriter.InsertAfter(ldLocInstanceInstruction2, callInstruction);
-	// Skip to next non-injected instruction
-	currentInstruction = callInstruction;
+	{
+		const auto volatileInstruction = rewriter.NewILInstr();
+		volatileInstruction->m_opcode = CEE_VOLATILE;
+		rewriter.InsertAfter(tailInstruction, volatileInstruction);
+		accessInstruction = currentInstruction;
+	}
+	else
+	{
+		const auto newAccessInstruction = rewriter.NewILInstr();
+		newAccessInstruction->m_opcode = accessOpcode;
+		newAccessInstruction->m_Arg32 = static_cast<INT32>(fieldToken);
+		rewriter.InsertAfter(tailInstruction, newAccessInstruction);
+		accessInstruction = newAccessInstruction;
+	}
+
+	if (isStore)
+	{
+		currentInstruction = accessInstruction;
+	}
+	else
+	{
+		// Reads keep emitting after the load (acquire side)
+		// LDC.I8 <instrumentation-mark>
+		const auto ldcInstruction = rewriter.NewILInstr();
+		ldcInstruction->m_opcode = CEE_LDC_I8;
+		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+		rewriter.InsertAfter(accessInstruction, ldcInstruction);
+		// LDLOC <instance-local> (restore object reference)
+		const auto ldlocInstanceInstruction = rewriter.NewILInstr();
+		ldlocInstanceInstruction->m_opcode = CEE_LDLOC;
+		ldlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
+		rewriter.InsertAfter(ldcInstruction, ldlocInstanceInstruction);
+		// CALL <injected-method-handler>
+		const auto callInstruction = rewriter.NewILInstr();
+		callInstruction->m_opcode = CEE_CALL;
+		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+		rewriter.InsertAfter(ldlocInstanceInstruction, callInstruction);
+		// Skip to next non-injected instruction
+		currentInstruction = callInstruction;
+	}
 
 	LOG_F(INFO, "Instrumented instance field %s access in method %d with stub %d from module %s.",
 		isStore ? "write" : "read",

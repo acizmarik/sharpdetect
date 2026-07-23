@@ -579,6 +579,10 @@ HRESULT ILRewriter::ComputeStackTypes()
     std::vector<StackSlotKind> stack;
     stack.reserve(m_maxStack);
 
+    // The scan is linear. After unconditional jump the state of stack is unknown. We need to keep track
+    std::unordered_map<ILInstr*, std::vector<StackSlotKind>> branchTargetStates;
+    auto stackKnown = true;
+
     // Pre-parse method argument types and local variable types from signature blobs.
     std::vector<StackSlotKind> argTypes;
     BuildArgTypes(pImport, m_tkMethod, argTypes);
@@ -609,11 +613,13 @@ HRESULT ILRewriter::ComputeStackTypes()
 
     for (ILInstr* pInstr = m_IL.m_pNext; pInstr != &m_IL; pInstr = pInstr->m_pNext)
     {
-        unsigned opcode = pInstr->m_opcode;
-
-        // Skip internal pseudo-instructions
+        const auto opcode = pInstr->m_opcode;
         if (opcode == CEE_SWITCH_ARG)
+        {
+            if (stackKnown && pInstr->m_pTarget != nullptr)
+                branchTargetStates.try_emplace(pInstr->m_pTarget, stack);
             continue;
+        }
 
         // Safety: skip opcodes outside the known range
         if (opcode >= CEE_COUNT)
@@ -625,6 +631,18 @@ HRESULT ILRewriter::ComputeStackTypes()
         {
             stack.clear();
             stack.push_back(handlerIt->second);
+            stackKnown = true;
+        }
+
+        // Recover branch stack state if it is only reachable via a branch
+        if (!stackKnown)
+        {
+            auto targetIt = branchTargetStates.find(pInstr);
+            if (targetIt != branchTargetStates.end())
+            {
+                stack = targetIt->second;
+                stackKnown = true;
+            }
         }
 
         // Instructions that empty the stack (leave/leave.s, endfinally, throw, rethrow, endfilter)
@@ -633,6 +651,7 @@ HRESULT ILRewriter::ComputeStackTypes()
             opcode == CEE_RETHROW)
         {
             stack.clear();
+            stackKnown = false;
             continue;
         }
 
@@ -664,6 +683,7 @@ HRESULT ILRewriter::ComputeStackTypes()
             if (opcode == CEE_RET)
             {
                 stack.clear();
+                stackKnown = false;
                 continue;
             }
             else if (opcode == CEE_CALL || opcode == CEE_CALLVIRT || opcode == CEE_NEWOBJ)
@@ -723,6 +743,9 @@ HRESULT ILRewriter::ComputeStackTypes()
                 stack.pop_back();
         }
 
+        if ((s_OpCodeFlags[opcode] & OPCODEFLAGS_BranchTarget) != 0 && stackKnown && pInstr->m_pTarget != nullptr)
+            branchTargetStates.try_emplace(pInstr->m_pTarget, stack);
+
         // --- Push ---
         int pushCount = k_rgnStackPushes[opcode];
 
@@ -772,6 +795,7 @@ HRESULT ILRewriter::ComputeStackTypes()
         if (opcode == CEE_BR || opcode == CEE_BR_S)
         {
             stack.clear();
+            stackKnown = false;
         }
     }
 
