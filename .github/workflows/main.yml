@@ -35,8 +35,7 @@ jobs:
     - name: Native unit tests
       run: |
         cd src
-        dotnet tool restore
-        dotnet cake --rid=${{ matrix.rid }} --target=Test-Native
+        dotnet cake.cs -- --rid=${{ matrix.rid }} --target=Test-Native
 
   managed-unit-tests:
     runs-on: ${{ matrix.os }}
@@ -65,8 +64,7 @@ jobs:
     - name: Managed unit tests
       run: |
         cd src
-        dotnet tool restore
-        dotnet cake --rid=${{ matrix.rid }} --target=Test-Unit
+        dotnet cake.cs -- --rid=${{ matrix.rid }} --target=Test-Unit
     - name: Report test results
       uses: dorny/test-reporter@v3
       if: ${{ !cancelled() }}
@@ -109,8 +107,7 @@ jobs:
     - name: E2E tests
       run: |
         cd src
-        dotnet tool restore
-        dotnet cake --rid=${{ matrix.rid }} --target=Test-E2E
+        dotnet cake.cs -- --rid=${{ matrix.rid }} --target=Test-E2E
     - name: Report test results
       uses: dorny/test-reporter@v3
       if: ${{ !cancelled() }}
@@ -148,7 +145,7 @@ jobs:
       run: |
         cd src
         dotnet tool restore
-        dotnet cake --target=Coverage-Report
+        dotnet cake.cs -- --target=Coverage-Report
     - name: Write coverage to job summary
       shell: bash
       run: cat src/TestResults/CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
