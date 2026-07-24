@@ -8,6 +8,7 @@ set(SOURCES
     "AssemblyDef.cpp"
     "ModuleDef.cpp"
     "SignatureUtils.cpp"
+    "TypeClassification.cpp"
     "WString.cpp")
 
 add_library (LibMetadata STATIC ${SOURCES})
