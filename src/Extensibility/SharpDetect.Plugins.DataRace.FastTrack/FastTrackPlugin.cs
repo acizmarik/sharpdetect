@@ -78,6 +78,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     TaskMethodDescriptors.GetAllMethods()).Concat(
                     SemaphoreSlimMethodDescriptors.GetAllMethods()).Concat(
                     WaitHandleMethodDescriptors.GetAllMethods()).Concat(
+                    ConcurrentDictionaryMethodDescriptors.GetAllMethods()).Concat(
+                    LazyMethodDescriptors.GetAllMethods()).Concat(
                     FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
