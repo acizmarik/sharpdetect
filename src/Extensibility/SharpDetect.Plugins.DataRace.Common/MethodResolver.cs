@@ -11,7 +11,7 @@ namespace SharpDetect.Plugins.DataRace.Common;
 
 public sealed class MethodResolver(IMetadataContext metadataContext, ILogger logger)
 {
-    private readonly Dictionary<MethodDefOrRef, MethodDef> _resolvedMethods = [];
+    private readonly Dictionary<MethodDefOrRef, MethodDef?> _resolvedMethods = [];
 
     public bool IsStaticConstructorOf(
         uint processId,
@@ -60,7 +60,7 @@ public sealed class MethodResolver(IMetadataContext metadataContext, ILogger log
         if (_resolvedMethods.TryGetValue(key, out var cached))
         {
             methodDef = cached;
-            return true;
+            return cached is not null;
         }
 
         var resolver = metadataContext.GetResolver(processId);
@@ -68,10 +68,20 @@ public sealed class MethodResolver(IMetadataContext metadataContext, ILogger log
 
         if (resolveResult.IsError)
         {
-            logger.LogWarning(
-                "Could not resolve method with token={MethodToken} in module {ModuleId}",
-                methodToken.Value,
-                moduleId.Value);
+            if (resolveResult.Error == MetadataResolverErrorType.ModuleDynamicallyGenerated)
+            {
+                // Dynamically generated modules never become resolvable
+                _resolvedMethods.Add(key, null);
+            }
+            else
+            {
+                logger.LogDebug(
+                    "Could not resolve method with token={MethodToken} in module {ModuleId} ({Error})",
+                    methodToken.Value,
+                    moduleId.Value,
+                    resolveResult.Error);
+            }
+
             methodDef = null;
             return false;
         }
