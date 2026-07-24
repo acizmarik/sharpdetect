@@ -115,6 +115,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         EventWaitHandleSignaled += OnEventWaitHandleSignaled;
         EventWaitHandleWasReset += OnEventWaitHandleWasReset;
         EventWaitHandleWaitReturned += OnEventWaitHandleWaitReturned;
+        ValuePublication += OnValuePublication;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -299,6 +300,27 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     private void OnSemaphoreCreated(SemaphoreCreatedArgs args)
     {
         _detector.RecordSemaphoreCreated(args.SemaphoreId, args.InitialCount);
+    }
+
+    private void OnValuePublication(ValuePublicationArgs args)
+    {
+        switch (args.Kind)
+        {
+            case ValuePublicationKind.Store:
+                _detector.RecordValuePublished(args.ProcessThreadId, args.Value);
+                break;
+            case ValuePublicationKind.Load:
+                _detector.RecordValueObserved(args.ProcessThreadId, args.Value);
+                break;
+            case ValuePublicationKind.StoreLoad:
+                _detector.RecordValuePublished(args.ProcessThreadId, args.Value);
+                _detector.RecordValueObserved(args.ProcessThreadId, args.Value);
+                break;
+            case ValuePublicationKind.MaybeStoreLoad:
+                _detector.RecordValuePublished(args.ProcessThreadId, args.Value, onlyIfAbsent: true);
+                _detector.RecordValueObserved(args.ProcessThreadId, args.Value);
+                break;
+        }
     }
 
     private void OnSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args)
