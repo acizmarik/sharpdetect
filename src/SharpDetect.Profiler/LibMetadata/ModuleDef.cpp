@@ -195,6 +195,42 @@ HRESULT LibProfiler::ModuleDef::FindTypeRef(
 		});
 }
 
+HRESULT LibProfiler::ModuleDef::FindTypeRefByName(
+	IN const std::string& name,
+	OUT mdTypeRef* typeRef) const
+{
+	auto& metadataImport = GetMetadataImport();
+
+	constexpr ULONG batchSize = 64;
+	HCORENUM enumerator = nullptr;
+	mdTypeRef typeRefs[batchSize];
+	ULONG count = 0;
+	HRESULT result = E_FAIL;
+
+	while (SUCCEEDED(metadataImport.EnumTypeRefs(&enumerator, typeRefs, batchSize, &count)) && count > 0)
+	{
+		for (ULONG i = 0; i < count; ++i)
+		{
+			std::string typeRefName;
+			if (FAILED(GetTypeRefProps(typeRefs[i], nullptr, typeRefName)))
+				continue;
+
+			if (typeRefName == name)
+			{
+				*typeRef = typeRefs[i];
+				result = S_OK;
+				break;
+			}
+		}
+
+		if (result == S_OK)
+			break;
+	}
+
+	metadataImport.CloseEnum(enumerator);
+	return result;
+}
+
 HRESULT LibProfiler::ModuleDef::FindMethodDef(
 	IN const std::string& name,
 	IN const PCCOR_SIGNATURE signature,

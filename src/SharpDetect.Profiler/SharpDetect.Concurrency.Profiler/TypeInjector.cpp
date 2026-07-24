@@ -52,6 +52,55 @@ static void AppendCompressedData(ULONG value, std::vector<COR_SIGNATURE>& result
     result.insert(result.end(), bytes, bytes + length);
 }
 
+static size_t SkipOneType(const std::vector<CorElementType>& elementTypes, size_t index)
+{
+    if (index >= elementTypes.size())
+        return index;
+
+    switch (elementTypes[index])
+    {
+        case CorElementType::ELEMENT_TYPE_VAR:
+        case CorElementType::ELEMENT_TYPE_MVAR:
+            return std::min(index + 2, elementTypes.size());
+        case CorElementType::ELEMENT_TYPE_BYREF:
+        case CorElementType::ELEMENT_TYPE_SZARRAY:
+        case CorElementType::ELEMENT_TYPE_PTR:
+            return SkipOneType(elementTypes, index + 1);
+        default:
+            return index + 1;
+    }
+}
+
+static ULONG CountGenericArguments(const std::vector<CorElementType>& elementTypes, size_t start)
+{
+    ULONG count = 0;
+    for (size_t i = start; i < elementTypes.size(); i = SkipOneType(elementTypes, i))
+        ++count;
+    return count;
+}
+
+static HRESULT ResolveTypeToken(
+    const LibProfiler::ModuleDef& moduleDef,
+    const std::string& typeName,
+    mdToken& token)
+{
+    mdTypeDef typeDef;
+    if (SUCCEEDED(moduleDef.FindTypeDef(typeName, &typeDef)))
+    {
+        token = typeDef;
+        return S_OK;
+    }
+
+    mdTypeRef typeRef;
+    if (SUCCEEDED(moduleDef.FindTypeRefByName(typeName, &typeRef)))
+    {
+        token = typeRef;
+        return S_OK;
+    }
+
+    return E_FAIL;
+}
+
 static HRESULT SerializeArgumentTypeDescriptor(
     const Profiler::ArgumentTypeDescriptor& descriptor,
     const LibProfiler::ModuleDef& moduleDef,
@@ -74,15 +123,15 @@ static HRESULT SerializeArgumentTypeDescriptor(
 
             result.push_back(elementTypes[i + 1]);
 
-            mdTypeDef typeDef;
-            if (FAILED(moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef)))
+            mdToken genericTypeToken;
+            if (FAILED(ResolveTypeToken(moduleDef, descriptor.typeName.value(), genericTypeToken)))
             {
                 LOG_F(ERROR, "Generic type %s not found in module", descriptor.typeName.value().c_str());
                 return E_FAIL;
             }
-            AppendCompressedToken(typeDef, result);
+            AppendCompressedToken(genericTypeToken, result);
 
-            const ULONG genericArgumentCount = static_cast<ULONG>(elementTypes.size() - (i + 2));
+            const ULONG genericArgumentCount = CountGenericArguments(elementTypes, i + 2);
             AppendCompressedData(genericArgumentCount, result);
 
             i += 2;
@@ -91,14 +140,13 @@ static HRESULT SerializeArgumentTypeDescriptor(
 
         if (elementType == CorElementType::ELEMENT_TYPE_CLASS || elementType == CorElementType::ELEMENT_TYPE_VALUETYPE)
         {
-            mdTypeDef typeDef;
-            if (FAILED(moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef)))
+            mdToken typeToken;
+            if (FAILED(ResolveTypeToken(moduleDef, descriptor.typeName.value(), typeToken)))
             {
-                // FIXME: add support for type references
                 LOG_F(ERROR, "Type %s not found in module", descriptor.typeName.value().c_str());
                 return E_FAIL;
             }
-            AppendCompressedToken(typeDef, result);
+            AppendCompressedToken(typeToken, result);
         }
 
         ++i;

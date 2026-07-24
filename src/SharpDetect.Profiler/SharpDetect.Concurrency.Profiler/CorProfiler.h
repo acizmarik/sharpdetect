@@ -16,6 +16,7 @@
 #include "../LibIPC/Messages.h"
 #include "../LibProfilerCore/CorProfilerBase.h"
 #include "../LibMetadata/ModuleDef.h"
+#include "../LibMetadata/TypeClassification.h"
 #include "../LibProfilerCore/ObjectsTracker.h"
 #include "../LibDescriptors/Configuration.h"
 #include "../LibDescriptors/MethodDescriptor.h"
@@ -28,6 +29,9 @@
 
 namespace Profiler
 {
+	enum class GenericCaptureState : UINT8 { Unresolved, Allow, Suppress };
+	enum class EltCallbackKind : UINT8 { Enter, Leave };
+
 	struct EltDecision
 	{
 		FunctionID functionId;
@@ -43,6 +47,7 @@ namespace Profiler
 		bool hasIndirects;
 		bool emitExitEvent;
 		bool captureStackTraceOnEnter;
+		std::atomic<GenericCaptureState> genericCapture;
 	};
 
 	class CorProfiler final : public LibProfiler::CorProfilerBase, public LibIPC::ICommandHandler
@@ -70,7 +75,7 @@ namespace Profiler
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT TailcallMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> FindMethodDescriptor(FunctionID functionId);
-		[[nodiscard]] const EltDecision* GetEltDecision(FunctionID functionId, BOOL* pbHookFunction);
+		[[nodiscard]] EltDecision* GetEltDecision(FunctionID functionId, BOOL* pbHookFunction);
 
 	private:
 		HRESULT AbortAttach(const std::string& reason);
@@ -79,6 +84,9 @@ namespace Profiler
 		[[nodiscard]] UINT64 GetCurrentThreadIdCached() const;
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
 		HRESULT PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
+		[[nodiscard]] GenericCaptureState ClassifyGenericValueCapture(FunctionID functionId, COR_PRF_FRAME_INFO frameInfo, const MethodDescriptor& descriptor);
+		[[nodiscard]] COR_PRF_FRAME_INFO GetFrameInfo(const EltDecision& decision, COR_PRF_ELT_INFO eltInfo, EltCallbackKind callback) const;
+		[[nodiscard]] bool ShouldSuppressGenericCapture(EltDecision& decision, COR_PRF_ELT_INFO eltInfo, EltCallbackKind callback);
 
 		HRESULT InitializeProfilingFeatures() const;
 
@@ -97,7 +105,7 @@ namespace Profiler
 		TypeInjector _typeInjector;
 
 		std::deque<EltDecision> _eltDecisions;
-		std::unordered_map<FunctionID, const EltDecision*> _eltDecisionLookup;
+		std::unordered_map<FunctionID, EltDecision*> _eltDecisionLookup;
 		std::mutex _eltDecisionMutex;
 	};
 }

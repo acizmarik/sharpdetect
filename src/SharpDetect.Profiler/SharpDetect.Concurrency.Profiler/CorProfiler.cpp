@@ -433,7 +433,127 @@ static BOOL HasIndirects(const Profiler::MethodDescriptor& descriptor)
     return indirectIt != descriptor.rewritingDescriptor.arguments.cend();
 }
 
-const Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID functionId, BOOL* pbHookFunction)
+Profiler::GenericCaptureState Profiler::CorProfiler::ClassifyGenericValueCapture(
+    const FunctionID functionId,
+    const COR_PRF_FRAME_INFO frameInfo,
+    const Profiler::MethodDescriptor& descriptor)
+{
+    auto const resolveModuleDef = [this](const ModuleID moduleId) -> std::shared_ptr<LibProfiler::ModuleDef>
+    {
+        return _metadataStore.HasModuleDef(moduleId) ? _metadataStore.GetModuleDef(moduleId) : nullptr;
+    };
+
+    auto state = GenericCaptureState::Allow;
+    auto const classify = [&](const Profiler::ArgumentTypeDescriptor& type)
+    {
+        size_t offset = 0;
+        if (!type.elementTypes.empty() && type.elementTypes[offset] == ELEMENT_TYPE_BYREF)
+            ++offset;
+
+        if (type.elementTypes.size() < offset + 2 || type.elementTypes[offset] != ELEMENT_TYPE_VAR)
+            return;
+
+        auto const typeArgIndex = static_cast<ULONG32>(type.elementTypes[offset + 1]);
+        switch (LibProfiler::ClassifyClassGenericArgument(*_corProfilerInfo, resolveModuleDef, functionId, frameInfo, typeArgIndex))
+        {
+            case LibProfiler::GenericTypeArgKind::Reference:
+                break;
+            case LibProfiler::GenericTypeArgKind::Value:
+                state = GenericCaptureState::Suppress;
+                break;
+            case LibProfiler::GenericTypeArgKind::Unknown:
+                if (state != GenericCaptureState::Suppress)
+                    state = GenericCaptureState::Unresolved;
+                break;
+        }
+    };
+
+    constexpr auto captureAsReference = static_cast<UINT>(CapturedValueFlags::CaptureAsReference);
+
+    if (descriptor.rewritingDescriptor.returnValue.has_value() &&
+        (static_cast<UINT>(descriptor.rewritingDescriptor.returnValue->flags) & captureAsReference) != 0)
+    {
+        classify(descriptor.signatureDescriptor.returnType);
+    }
+
+    auto const hasThis =
+        (static_cast<UINT>(descriptor.signatureDescriptor.callingConvention) &
+         static_cast<UINT>(CorCallingConvention::IMAGE_CEE_CS_CALLCONV_HASTHIS)) != 0;
+
+    for (const auto& [index, value] : descriptor.rewritingDescriptor.arguments)
+    {
+        if (state == GenericCaptureState::Suppress)
+            break;
+
+        if ((static_cast<UINT>(value.flags) & captureAsReference) == 0)
+            continue;
+
+        if (hasThis && index == 0)
+            continue;
+
+        auto const parameterIndex = static_cast<size_t>(hasThis ? index - 1 : index);
+        if (parameterIndex >= descriptor.signatureDescriptor.argumentTypeElements.size())
+            continue;
+
+        classify(descriptor.signatureDescriptor.argumentTypeElements[parameterIndex]);
+    }
+
+    return state;
+}
+
+COR_PRF_FRAME_INFO Profiler::CorProfiler::GetFrameInfo(
+    const EltDecision& decision,
+    const COR_PRF_ELT_INFO eltInfo,
+    const EltCallbackKind callback) const
+{
+    COR_PRF_FRAME_INFO frameInfo { };
+    if (callback == EltCallbackKind::Enter)
+    {
+        ULONG argumentsLength = 0;
+        _corProfilerInfo->GetFunctionEnter3Info(decision.functionId, eltInfo, &frameInfo, &argumentsLength, nullptr);
+    }
+    else
+    {
+        COR_PRF_FUNCTION_ARGUMENT_RANGE returnValueInfo { };
+        _corProfilerInfo->GetFunctionLeave3Info(decision.functionId, eltInfo, &frameInfo, &returnValueInfo);
+    }
+
+    return frameInfo;
+}
+
+bool Profiler::CorProfiler::ShouldSuppressGenericCapture(
+    EltDecision& decision,
+    const COR_PRF_ELT_INFO eltInfo,
+    const EltCallbackKind callback)
+{
+    switch (decision.genericCapture.load(std::memory_order_relaxed))
+    {
+        case GenericCaptureState::Allow:
+            return false;
+        case GenericCaptureState::Suppress:
+            return true;
+        case GenericCaptureState::Unresolved:
+            break;
+    }
+
+    if (decision.descriptor == nullptr)
+        return false;
+
+    auto const frameInfo = GetFrameInfo(decision, eltInfo, callback);
+    auto state = ClassifyGenericValueCapture(decision.functionId, frameInfo, *decision.descriptor);
+    if (state == GenericCaptureState::Unresolved)
+    {
+        if (frameInfo == 0)
+            return true;
+
+        state = GenericCaptureState::Suppress;
+    }
+
+    decision.genericCapture.store(state, std::memory_order_relaxed);
+    return state != GenericCaptureState::Allow;
+}
+
+Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID functionId, BOOL* pbHookFunction)
 {
     *pbHookFunction = FALSE;
 
@@ -448,6 +568,12 @@ const Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const Functio
     if (!shouldInjectHooks)
         return nullptr;
 
+    const auto& descriptor = *descriptorPointer.get();
+    auto const genericCapture = ClassifyGenericValueCapture(functionId, 0, descriptor);
+    if (genericCapture == GenericCaptureState::Suppress)
+        return nullptr;
+
+    // An unresolved instantiation is settled by the first ELT callback, which has a frame info at hand
     *pbHookFunction = TRUE;
 
     auto guard = std::lock_guard(_eltDecisionMutex);
@@ -464,8 +590,7 @@ const Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const Functio
     const auto exitMappings = _rewriteRegistry.FindMethodExitMappings(
         moduleId, methodDef, originalMethodExitEvent, originalMethodExitWithArgumentsEvent);
 
-    const auto& descriptor = *descriptorPointer.get();
-    EltDecision decision{};
+    auto& decision = _eltDecisions.emplace_back();
     decision.functionId = functionId;
     decision.moduleId = moduleId;
     decision.methodDef = methodDef;
@@ -479,9 +604,9 @@ const Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const Functio
     decision.hasIndirects = HasIndirects(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
     decision.captureStackTraceOnEnter = descriptor.rewritingDescriptor.captureStackTraceOnEnter;
+    decision.genericCapture.store(genericCapture, std::memory_order_relaxed);
 
-    _eltDecisions.push_back(decision);
-    const auto* stored = &_eltDecisions.back();
+    auto* stored = &decision;
     _eltDecisionLookup.emplace(functionId, stored);
     return stored;
 }
@@ -491,8 +616,11 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     if (_terminating)
         return S_OK;
 
-    const auto* decision = reinterpret_cast<const EltDecision*>(functionOrClientId.clientID);
+    auto* decision = reinterpret_cast<EltDecision*>(functionOrClientId.clientID);
     if (decision == nullptr)
+        return S_OK;
+
+    if (ShouldSuppressGenericCapture(*decision, eltInfo, EltCallbackKind::Enter))
         return S_OK;
 
     const auto moduleId = decision->moduleId;
@@ -595,8 +723,11 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     if (_terminating)
         return S_OK;
 
-    const auto* decision = reinterpret_cast<const EltDecision*>(functionOrClientId.clientID);
+    auto* decision = reinterpret_cast<EltDecision*>(functionOrClientId.clientID);
     if (decision == nullptr || !decision->emitExitEvent)
+        return S_OK;
+
+    if (ShouldSuppressGenericCapture(*decision, eltInfo, EltCallbackKind::Leave))
         return S_OK;
 
     const auto moduleId = decision->moduleId;
@@ -667,7 +798,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
             auto const argumentOffsetsLength = indirects.size() * sizeof(UINT);
             argumentValues.resize(argumentValuesLength);
             argumentOffsets.resize(argumentOffsetsLength);
-            hr = Profiler::ArgumentCapture::GetByRefArguments(
+            hr = _argumentCapture.GetByRefArguments(
                 descriptor,
                 indirects,
                 std::span(argumentValues.data(), argumentValues.size()),

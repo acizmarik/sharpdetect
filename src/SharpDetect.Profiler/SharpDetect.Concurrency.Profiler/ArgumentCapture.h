@@ -28,7 +28,7 @@ namespace Profiler
 			std::vector<BYTE>& argumentValues,
 			std::vector<BYTE>& argumentOffsets);
 
-		static HRESULT GetByRefArguments(
+		HRESULT GetByRefArguments(
 			const MethodDescriptor& methodDescriptor,
 			const std::vector<UINT_PTR>& indirects,
 			std::span<BYTE> indirectValues,

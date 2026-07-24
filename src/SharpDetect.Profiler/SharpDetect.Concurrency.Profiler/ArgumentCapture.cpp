@@ -55,6 +55,17 @@ HRESULT Profiler::ArgumentCapture::GetByRefArguments(
         UINT argInfo = index << 16 | value.size;
         const UINT_PTR indirectAddress = indirects[indirectsPointer];
         std::memcpy(indirectValues.data(), reinterpret_cast<LPVOID>(indirectAddress), value.size);
+
+        if ((static_cast<UINT>(value.flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
+        {
+            ObjectID objectId;
+            std::memcpy(&objectId, indirectValues.data(), sizeof(ObjectID));
+            LibProfiler::TrackedObjectId trackedObjectId = 0;
+            if (objectId != 0)
+                trackedObjectId = _objectsTracker.GetTrackedObject(objectId);
+            std::memcpy(indirectValues.data(), &trackedObjectId, sizeof(LibProfiler::TrackedObjectId));
+        }
+
         std::memcpy(indirectOffsets.data(), &argInfo, sizeof(UINT));
         indirectValues = indirectValues.subspan(value.size);
         indirectOffsets = indirectOffsets.subspan(sizeof(UINT));

@@ -93,6 +93,10 @@ namespace LibProfiler
 			IN const std::string& name,
 			OUT mdTypeRef* typeRef) const;
 
+		HRESULT FindTypeRefByName(
+			IN const std::string& name,
+			OUT mdTypeRef* typeRef) const;
+
 		HRESULT FindMethodDef(
 			IN const std::string& name,
 			IN PCCOR_SIGNATURE signature,
