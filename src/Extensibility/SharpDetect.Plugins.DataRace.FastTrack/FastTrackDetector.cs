@@ -26,6 +26,7 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
     private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _publicationClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
     private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, bool Escaped);
     
@@ -76,6 +77,7 @@ internal sealed class FastTrackDetector
             _taskClocks.Remove(processObjectId);
             _escapeStates.Remove(processObjectId);
             _instanceVolatileClocks.Remove(processObjectId);
+            _publicationClocks.Remove(processObjectId);
         }
     }
     
@@ -252,6 +254,26 @@ internal sealed class FastTrackDetector
         volatileVc.Join(threadVc);
         GetVolatileClockMap(objectId)[fieldId] = threadVc.Clone();
         threadVc.Increment(threadId);
+    }
+
+    public void RecordValuePublished(ProcessThreadId threadId, ProcessTrackedObjectId valueId)
+    {
+        var threadVc = GetOrCreateThreadClock(threadId);
+        if (_publicationClocks.TryGetValue(valueId, out var publicationVc))
+            publicationVc.Join(threadVc);
+        else
+            _publicationClocks[valueId] = threadVc.Clone();
+
+        threadVc.Increment(threadId);
+    }
+
+    public void RecordValueObserved(ProcessThreadId threadId, ProcessTrackedObjectId valueId)
+    {
+        if (!_publicationClocks.TryGetValue(valueId, out var publicationVc))
+            return;
+
+        var threadVc = GetOrCreateThreadClock(threadId);
+        threadVc.Join(publicationVc);
     }
 
     public DataRaceInfo? RecordRead(

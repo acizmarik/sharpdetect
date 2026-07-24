@@ -35,6 +35,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
         RegisterThreadBindings();
         RegisterTaskBindings();
         RegisterFieldAccessBindings();
+        RegisterValuePublicationBindings();
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
@@ -74,6 +75,16 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
 
     protected override void Visit(RecordedEventMetadata metadata, MethodUnwoundRecordedEvent args)
     {
+        // Value-publication hooks do not push call-stack frames
+        switch ((RecordedEventType)args.Interpretation)
+        {
+            case RecordedEventType.ValuePublicationStore:
+            case RecordedEventType.ValuePublicationLoad:
+            case RecordedEventType.ValuePublicationStoreLoad:
+            case RecordedEventType.ValuePublicationLoadByRef:
+                return;
+        }
+
         // The instrumented method exited via an exception, so no method-exit event was produced
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);

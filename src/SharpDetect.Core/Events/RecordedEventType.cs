@@ -117,4 +117,10 @@ public enum RecordedEventType : ushort
     TaskComplete = 202,
     TaskJoinStart = 203,
     TaskJoinFinish = 204,
+
+    /* Value publication */
+    ValuePublicationStore = 220,
+    ValuePublicationLoad = 221,
+    ValuePublicationStoreLoad = 222,
+    ValuePublicationLoadByRef = 223,
 }

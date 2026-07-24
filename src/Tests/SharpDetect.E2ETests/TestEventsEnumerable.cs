@@ -125,7 +125,17 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, EventWaitHandleResetArgs)>(GetNextId(), RecordedEventType.EventWaitHandleReset, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.EventWaitHandleWaitReturned += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, EventWaitHandleWaitResultArgs)>(GetNextId(), RecordedEventType.WaitHandleWaitResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.ValuePublication += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ValuePublicationArgs)>(GetNextId(), GetValuePublicationEventType(args.Kind), (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
     }
+
+    private static RecordedEventType GetValuePublicationEventType(ValuePublicationKind kind) => kind switch
+    {
+        ValuePublicationKind.Store => RecordedEventType.ValuePublicationStore,
+        ValuePublicationKind.Load => RecordedEventType.ValuePublicationLoad,
+        ValuePublicationKind.StoreLoad => RecordedEventType.ValuePublicationStoreLoad,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unrecognized value publication kind.")
+    };
     
     public IEnumerator<IEvent<ulong, RecordedEventType>> GetEnumerator()
     {
