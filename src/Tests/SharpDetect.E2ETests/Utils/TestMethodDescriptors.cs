@@ -133,6 +133,7 @@ internal static class TestMethodDescriptors
             "Test_WaitMultipleMethods_WaitAll",
             "Test_WaitMultipleMethods_WaitAny",
             "Test_EventWaitHandleMethods_ManualReset_SetResetSet",
+            "Test_LazyMethods_GetValue",
         };
 
         foreach (var methodName in testMethodNames)

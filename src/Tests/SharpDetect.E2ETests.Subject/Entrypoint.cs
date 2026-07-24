@@ -192,6 +192,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_EventWaitHandleMethods_ManualReset_SetResetSet):
                     Test_EventWaitHandleMethods_ManualReset_SetResetSet();
                     break;
+                case nameof(Test_LazyMethods_GetValue):
+                    Test_LazyMethods_GetValue();
+                    break;
             }
 
             // Field events
@@ -529,6 +532,30 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess):
                     Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess();
+                    break;
+                case nameof(Test_NoDataRace_ConcurrentDictionaryPublishThenRead):
+                    Test_NoDataRace_ConcurrentDictionaryPublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_ConcurrentDictionaryGetOrAddFactoryThenRead):
+                    Test_NoDataRace_ConcurrentDictionaryGetOrAddFactoryThenRead();
+                    break;
+                case nameof(Test_NoDataRace_ConcurrentDictionaryMissingKeyThrows):
+                    Test_NoDataRace_ConcurrentDictionaryMissingKeyThrows();
+                    break;
+                case nameof(Test_DataRace_ConcurrentDictionaryPostPublicationWrite):
+                    Test_DataRace_ConcurrentDictionaryPostPublicationWrite();
+                    break;
+                case nameof(Test_NoDataRace_LazyPublishThenRead):
+                    Test_NoDataRace_LazyPublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_LazyValueTypePublishThenRead):
+                    Test_NoDataRace_LazyValueTypePublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_LazyFactoryThrows):
+                    Test_NoDataRace_LazyFactoryThrows();
+                    break;
+                case nameof(Test_DataRace_LazyPostPublicationWrite):
+                    Test_DataRace_LazyPostPublicationWrite();
                     break;
                 case nameof(Test_DataRace_StaticHelperWrite_NotFromCctor_WriteReadRace):
                     Test_DataRace_StaticHelperWrite_NotFromCctor_WriteReadRace();

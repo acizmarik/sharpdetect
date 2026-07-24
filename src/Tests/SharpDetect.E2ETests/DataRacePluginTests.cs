@@ -139,6 +139,46 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConcurrentDictionaryPublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentDictionaryPublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConcurrentDictionaryGetOrAddFactoryThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentDictionaryGetOrAddFactoryThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ConcurrentDictionaryPostPublicationWrite(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ConcurrentDictionaryPostPublicationWrite", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConcurrentDictionaryMissingKeyThrows(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentDictionaryMissingKeyThrows", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LazyPublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LazyPublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LazyValueTypePublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LazyValueTypePublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LazyFactoryThrows(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LazyFactoryThrows", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_LazyPostPublicationWrite(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_LazyPostPublicationWrite", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ReferenceType_Static_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ReferenceType_Static_ReadReadNoRace", sdk, plugin);
 
