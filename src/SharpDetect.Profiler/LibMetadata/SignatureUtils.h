@@ -17,12 +17,17 @@ namespace LibProfiler
         const TypeArgs& classArgs,
         const TypeArgs& methodArgs);
 
-    bool SigTypeContainsGenericParam(const BYTE* signature, unsigned length);
+    enum class SigTypeResolution
+    {
+        Unchanged,
+        Substituted,
+        Failed
+    };
 
-    bool ResolveSigType(
+    SigTypeResolution ResolveSigType(
         const BYTE* typeSignature,
         unsigned typeSignatureLength,
-        const std::vector<std::pair<const BYTE*, unsigned>>& typeArgs,
+        const TypeArgs& typeArgs,
         std::vector<BYTE>& resolved);
 
     bool ParseTypeSpecGenericArgs(

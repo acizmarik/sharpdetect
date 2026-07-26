@@ -53,6 +53,8 @@ namespace Profiler
 			std::vector<BYTE>& argValues,
 			std::vector<BYTE>& argOffsets);
 
+		void TranslateToTrackedObject(const void* source, BYTE* destination);
+
 		ICorProfilerInfo10*& _corProfilerInfo;
 		LibProfiler::ObjectsTracker& _objectsTracker;
 	};

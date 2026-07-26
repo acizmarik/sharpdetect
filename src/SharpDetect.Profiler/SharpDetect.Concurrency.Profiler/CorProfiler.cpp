@@ -433,6 +433,21 @@ static BOOL HasIndirects(const Profiler::MethodDescriptor& descriptor)
     return indirectIt != descriptor.rewritingDescriptor.arguments.cend();
 }
 
+static Profiler::GenericCaptureState CombineGenericCaptureStates(
+    const Profiler::GenericCaptureState left,
+    const Profiler::GenericCaptureState right)
+{
+    using State = Profiler::GenericCaptureState;
+
+    if (left == State::Suppress || right == State::Suppress)
+        return State::Suppress;
+
+    if (left == State::Unresolved || right == State::Unresolved)
+        return State::Unresolved;
+
+    return State::Allow;
+}
+
 Profiler::GenericCaptureState Profiler::CorProfiler::ClassifyGenericValueCapture(
     const FunctionID functionId,
     const COR_PRF_FRAME_INFO frameInfo,
@@ -443,7 +458,6 @@ Profiler::GenericCaptureState Profiler::CorProfiler::ClassifyGenericValueCapture
         return _metadataStore.HasModuleDef(moduleId) ? _metadataStore.GetModuleDef(moduleId) : nullptr;
     };
 
-    auto state = GenericCaptureState::Allow;
     auto const classify = [&](const Profiler::ArgumentTypeDescriptor& type)
     {
         size_t offset = 0;
@@ -451,11 +465,11 @@ Profiler::GenericCaptureState Profiler::CorProfiler::ClassifyGenericValueCapture
             ++offset;
 
         if (type.elementTypes.size() < offset + 2)
-            return;
+            return GenericCaptureState::Allow;
 
         auto const elementType = type.elementTypes[offset];
         if (elementType != ELEMENT_TYPE_VAR && elementType != ELEMENT_TYPE_MVAR)
-            return;
+            return GenericCaptureState::Allow;
 
         auto const typeArgIndex = static_cast<ULONG32>(type.elementTypes[offset + 1]);
         auto const kind = elementType == ELEMENT_TYPE_VAR
@@ -464,24 +478,24 @@ Profiler::GenericCaptureState Profiler::CorProfiler::ClassifyGenericValueCapture
 
         switch (kind)
         {
+            case LibProfiler::GenericTypeArgKind::Value:
+                return GenericCaptureState::Suppress;
+            case LibProfiler::GenericTypeArgKind::Unknown:
+                return GenericCaptureState::Unresolved;
             case LibProfiler::GenericTypeArgKind::Reference:
                 break;
-            case LibProfiler::GenericTypeArgKind::Value:
-                state = GenericCaptureState::Suppress;
-                break;
-            case LibProfiler::GenericTypeArgKind::Unknown:
-                if (state != GenericCaptureState::Suppress)
-                    state = GenericCaptureState::Unresolved;
-                break;
         }
+
+        return GenericCaptureState::Allow;
     };
 
     constexpr auto captureAsReference = static_cast<UINT>(CapturedValueFlags::CaptureAsReference);
 
+    auto state = GenericCaptureState::Allow;
     if (descriptor.rewritingDescriptor.returnValue.has_value() &&
         (static_cast<UINT>(descriptor.rewritingDescriptor.returnValue->flags) & captureAsReference) != 0)
     {
-        classify(descriptor.signatureDescriptor.returnType);
+        state = CombineGenericCaptureStates(state, classify(descriptor.signatureDescriptor.returnType));
     }
 
     auto const hasThis =
@@ -503,7 +517,7 @@ Profiler::GenericCaptureState Profiler::CorProfiler::ClassifyGenericValueCapture
         if (parameterIndex >= descriptor.signatureDescriptor.argumentTypeElements.size())
             continue;
 
-        classify(descriptor.signatureDescriptor.argumentTypeElements[parameterIndex]);
+        state = CombineGenericCaptureStates(state, classify(descriptor.signatureDescriptor.argumentTypeElements[parameterIndex]));
     }
 
     return state;
