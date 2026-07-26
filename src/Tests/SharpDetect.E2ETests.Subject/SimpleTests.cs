@@ -1691,6 +1691,16 @@ namespace SharpDetect.E2ETests.Subject
                 });
         }
 
+        private static T Identity<T>(T value) => value;
+        
+        public static void Test_DataRace_WriteValueFromGenericMethodCall()
+        {
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
+            RunConcurrently(
+                () => instance.Test_DataRace_ReferenceType_InstanceField = Identity(new object()),
+                () => _ = instance.Test_DataRace_ReferenceType_InstanceField);
+        }
+
         public static void Test_ConcurrentDictionaryMethods_Store()
         {
             var dictionary = new ConcurrentDictionary<int, object>();

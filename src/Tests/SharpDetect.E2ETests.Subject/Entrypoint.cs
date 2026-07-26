@@ -563,6 +563,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_LazyLockFreeReaderObservesPublication):
                     Test_NoDataRace_LazyLockFreeReaderObservesPublication();
                     break;
+                case nameof(Test_DataRace_WriteValueFromGenericMethodCall):
+                    Test_DataRace_WriteValueFromGenericMethodCall();
+                    break;
                 case nameof(Test_NoDataRace_LazyValueTypePublishThenRead):
                     Test_NoDataRace_LazyValueTypePublishThenRead();
                     break;

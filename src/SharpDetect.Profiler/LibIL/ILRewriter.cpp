@@ -49,7 +49,7 @@ HRESULT ILRewriter::Initialize()
         // Get metadata interfaces ready
 
     IfFailRet(m_pICorProfilerInfo->GetModuleMetaData(
-        m_moduleId, ofRead | ofWrite, IID_IMetaDataImport, (IUnknown**)&m_pMetaDataImport));
+        m_moduleId, ofRead | ofWrite, IID_IMetaDataImport2, (IUnknown**)&m_pMetaDataImport));
 
     IfFailRet(m_pMetaDataImport->QueryInterface(IID_IMetaDataEmit, (void **)&m_pMetaDataEmit));
 
@@ -278,9 +278,16 @@ namespace
     enum StackSlotKind : unsigned char { SlotOther = 0, SlotObjRef = 1 };
     using LibProfiler::SkipSigType;
 
+    using TypeArgs = std::vector<std::pair<const BYTE*, unsigned>>;
+
+    const TypeArgs& NoTypeArgs()
+    {
+        static const TypeArgs empty;
+        return empty;
+    }
+
     // Check if the leading element type of a signature blob represents an object reference.
-    // Only inspects the signature bytes — no metadata resolution needed.
-    bool IsSigTypeObjRef(const BYTE* sig, unsigned len)
+    bool IsSigTypeObjRef(const BYTE* sig, unsigned len, const TypeArgs& classArgs, const TypeArgs& methodArgs)
     {
         if (len == 0) return false;
         BYTE elem = sig[0];
@@ -296,9 +303,28 @@ namespace
             if (len >= 2)
                 return sig[1] == ELEMENT_TYPE_CLASS;
             return false;
+        case ELEMENT_TYPE_VAR:
+        case ELEMENT_TYPE_MVAR:
+        {
+            if (len < 2)
+                return false;
+            const TypeArgs& args = (elem == ELEMENT_TYPE_VAR) ? classArgs : methodArgs;
+            ULONG index;
+            CorSigUncompressData(sig + 1, &index);
+            if (index >= args.size())
+                return false;
+
+            auto const& [argSig, argLen] = args[index];
+            return IsSigTypeObjRef(argSig, argLen, NoTypeArgs(), NoTypeArgs());
+        }
         default:
             return false;
         }
+    }
+
+    bool IsSigTypeObjRef(const BYTE* sig, unsigned len)
+    {
+        return IsSigTypeObjRef(sig, len, NoTypeArgs(), NoTypeArgs());
     }
 
 
@@ -477,30 +503,54 @@ namespace
         }
     }
 
-    // Return the number of parameters a method pops (excluding the return value push).
-    // Works for mdMethodDef, mdMemberRef.  Returns -1 on failure.
-    int GetMethodParamCount(IMetaDataImport* pImport, mdToken methodToken, bool* hasThis, bool* returnsVoid)
+    // Everything the stack simulation needs to know about the target of a call.
+    struct CallTargetInfo
     {
+        int paramCount = -1; // -1 when the signature could not be resolved
+        bool hasThis = false;
+        bool returnsVoid = true;
+        bool returnsObjRef = false;
+    };
+
+    CallTargetInfo ResolveCallTarget(IMetaDataImport2* pImport, mdToken methodToken)
+    {
+        CallTargetInfo info;
+
+        TypeArgs methodTypeArgs;
+        mdToken signatureToken = methodToken;
+        if (TypeFromToken(methodToken) == mdtMethodSpec)
+        {
+            mdToken parent = mdTokenNil;
+            PCCOR_SIGNATURE instantiation = nullptr;
+            ULONG instantiationLength = 0;
+            if (FAILED(pImport->GetMethodSpecProps(methodToken, &parent, &instantiation, &instantiationLength)))
+                return info;
+
+            if (instantiation != nullptr)
+                LibProfiler::ParseMethodSpecGenericArgs(instantiation, instantiationLength, methodTypeArgs);
+
+            signatureToken = parent;
+        }
+
         PCCOR_SIGNATURE sig = nullptr;
         ULONG sigLen = 0;
-
-        auto tokenType = TypeFromToken(methodToken);
+        auto const tokenType = TypeFromToken(signatureToken);
         if (tokenType == mdtMethodDef)
         {
-            pImport->GetMethodProps(methodToken, nullptr, nullptr, 0, nullptr,
+            pImport->GetMethodProps(signatureToken, nullptr, nullptr, 0, nullptr,
                                     nullptr, &sig, &sigLen, nullptr, nullptr);
         }
         else if (tokenType == mdtMemberRef)
         {
-            pImport->GetMemberRefProps(methodToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
+            pImport->GetMemberRefProps(signatureToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
         }
 
         if (sig == nullptr || sigLen == 0)
-            return -1;
+            return info;
 
         // Byte 0: calling convention
         BYTE callingConv = sig[0];
-        *hasThis = (callingConv & IMAGE_CEE_CS_CALLCONV_HASTHIS) != 0;
+        info.hasThis = (callingConv & IMAGE_CEE_CS_CALLCONV_HASTHIS) != 0;
         const BYTE* ptr = sig + 1;
 
         // Skip generic param count if GENERIC
@@ -513,46 +563,15 @@ namespace
         // Parameter count
         ULONG paramCount;
         ptr += CorSigUncompressData(ptr, &paramCount);
+        info.paramCount = static_cast<int>(paramCount);
 
-        // Check return type – is it void?
-        *returnsVoid = (*ptr == ELEMENT_TYPE_VOID);
+        auto const remaining = static_cast<unsigned>(sigLen - (ptr - sig));
+        if (remaining == 0)
+            return info;
 
-        return static_cast<int>(paramCount);
-    }
-
-    // Determine whether a method's return type is an object reference.
-    // Conservatively returns false when we cannot tell.
-    bool MethodReturnsObjRef(IMetaDataImport* pImport, mdToken methodToken)
-    {
-        PCCOR_SIGNATURE sig = nullptr;
-        ULONG sigLen = 0;
-
-        auto tokenType = TypeFromToken(methodToken);
-        if (tokenType == mdtMethodDef)
-            pImport->GetMethodProps(methodToken, nullptr, nullptr, 0, nullptr,
-                                    nullptr, &sig, &sigLen, nullptr, nullptr);
-        else if (tokenType == mdtMemberRef)
-            pImport->GetMemberRefProps(methodToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
-
-        if (sig == nullptr || sigLen < 2)
-            return false;
-
-        const BYTE* ptr = sig;
-        BYTE callingConv = *ptr++;
-
-        // Skip generic param count
-        if (callingConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
-        {
-            ULONG g;
-            ptr += CorSigUncompressData(ptr, &g);
-        }
-
-        // Skip param count
-        ULONG paramCount;
-        ptr += CorSigUncompressData(ptr, &paramCount);
-
-        unsigned remaining = static_cast<unsigned>(sigLen - (ptr - sig));
-        return IsSigTypeObjRef(ptr, remaining);
+        info.returnsVoid = (*ptr == ELEMENT_TYPE_VOID);
+        info.returnsObjRef = IsSigTypeObjRef(ptr, remaining, NoTypeArgs(), methodTypeArgs);
+        return info;
     }
 }
 
@@ -561,12 +580,12 @@ HRESULT ILRewriter::ComputeStackTypes()
     // We need IMetaDataImport to resolve VarPop/VarPush for call instructions.
     // m_pMetaDataImport may not be set yet (Initialize() might not have been called).
     // In that case, acquire a temporary one.
-    IMetaDataImport* pImport = m_pMetaDataImport;
+    IMetaDataImport2* pImport = m_pMetaDataImport;
     bool ownedImport = false;
     if (pImport == nullptr)
     {
         HRESULT hr = m_pICorProfilerInfo->GetModuleMetaData(
-            m_moduleId, ofRead, IID_IMetaDataImport, (IUnknown**)&pImport);
+            m_moduleId, ofRead, IID_IMetaDataImport2, (IUnknown**)&pImport);
         if (FAILED(hr) || pImport == nullptr)
         {
             // Cannot get metadata – skip stack analysis, all annotations remain false
@@ -689,15 +708,13 @@ HRESULT ILRewriter::ComputeStackTypes()
             else if (opcode == CEE_CALL || opcode == CEE_CALLVIRT || opcode == CEE_NEWOBJ)
             {
                 mdToken methodToken = static_cast<mdToken>(pInstr->m_Arg32);
-                bool hasThis = false;
-                bool returnsVoid = true;
-                int paramCount = GetMethodParamCount(pImport, methodToken, &hasThis, &returnsVoid);
-                if (paramCount >= 0)
+                auto const target = ResolveCallTarget(pImport, methodToken);
+                if (target.paramCount >= 0)
                 {
-                    int totalPop = paramCount;
+                    int totalPop = target.paramCount;
                     // For call/callvirt, add 1 for 'this' if instance method
                     // For newobj, 'this' is not on the stack (it is created by the instruction)
-                    if (opcode != CEE_NEWOBJ && hasThis)
+                    if (opcode != CEE_NEWOBJ && target.hasThis)
                         totalPop += 1;
                     for (int i = 0; i < totalPop && !stack.empty(); i++)
                         stack.pop_back();
@@ -713,11 +730,9 @@ HRESULT ILRewriter::ComputeStackTypes()
                 {
                     stack.push_back(SlotObjRef);
                 }
-                else if (!returnsVoid)
+                else if (!target.returnsVoid)
                 {
-                    // Check if return type is an object reference
-                    bool isRef = MethodReturnsObjRef(pImport, methodToken);
-                    stack.push_back(isRef ? SlotObjRef : SlotOther);
+                    stack.push_back(target.returnsObjRef ? SlotObjRef : SlotOther);
                 }
                 continue;
             }

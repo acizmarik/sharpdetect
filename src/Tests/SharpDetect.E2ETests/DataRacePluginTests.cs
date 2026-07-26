@@ -189,6 +189,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_WriteValueFromGenericMethodCall(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_WriteValueFromGenericMethodCall", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ReferenceType_Static_ReadReadNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ReferenceType_Static_ReadReadNoRace", sdk, plugin);
 

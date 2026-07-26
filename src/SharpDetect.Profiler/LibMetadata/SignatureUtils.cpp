@@ -230,6 +230,34 @@ bool LibProfiler::ParseTypeSpecGenericArgs(
     return typeArgs.size() == genericArgsCount;
 }
 
+bool LibProfiler::ParseMethodSpecGenericArgs(
+    const BYTE* methodSpecSignature,
+    const unsigned methodSpecSigLength,
+    std::vector<std::pair<const BYTE*, unsigned>>& typeArgs)
+{
+    if (methodSpecSigLength == 0)
+        return false;
+
+    unsigned position = 0;
+    if (methodSpecSignature[position++] != IMAGE_CEE_CS_CALLCONV_GENERICINST)
+        return false;
+
+    ULONG genericArgsCount;
+    position += CorSigUncompressData(methodSpecSignature + position, &genericArgsCount);
+
+    typeArgs.clear();
+    typeArgs.reserve(genericArgsCount);
+    for (ULONG i = 0; i < genericArgsCount && position < methodSpecSigLength; i++)
+    {
+        const BYTE* argStart = methodSpecSignature + position;
+        unsigned argLength = SkipSigType(argStart, methodSpecSigLength - position);
+        typeArgs.emplace_back(argStart, argLength);
+        position += argLength;
+    }
+
+    return typeArgs.size() == genericArgsCount;
+}
+
 bool LibProfiler::ResolveSigType(
     const BYTE* typeSignature,
     const unsigned typeSignatureLength,
