@@ -24,6 +24,7 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _eventClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _forkClocks = [];
     private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _publicationClocks = [];
@@ -75,18 +76,25 @@ internal sealed class FastTrackDetector
             _semaphoreClocks.Remove(processObjectId);
             _eventClocks.Remove(processObjectId);
             _taskClocks.Remove(processObjectId);
+            _forkClocks.Remove(processObjectId);
             _escapeStates.Remove(processObjectId);
             _instanceVolatileClocks.Remove(processObjectId);
             _publicationClocks.Remove(processObjectId);
         }
     }
     
-    public void RecordThreadFork(ProcessThreadId parentThreadId, ProcessThreadId childThreadId)
+    public void RecordThreadForkRequested(ProcessThreadId parentThreadId, ProcessTrackedObjectId threadObjectId)
     {
         var parentVc = GetOrCreateThreadClock(parentThreadId);
-        var childVc = GetOrCreateThreadClock(childThreadId);
-        childVc.Join(parentVc);
+        _forkClocks[threadObjectId] = parentVc.Clone();
         parentVc.Increment(parentThreadId);
+    }
+
+    public void RecordThreadFork(ProcessTrackedObjectId threadObjectId, ProcessThreadId childThreadId)
+    {
+        var childVc = GetOrCreateThreadClock(childThreadId);
+        if (_forkClocks.Remove(threadObjectId, out var forkVc))
+            childVc.Join(forkVc);
     }
     
     public void RecordThreadJoin(ProcessThreadId joinerThreadId, ProcessThreadId joinedThreadId)

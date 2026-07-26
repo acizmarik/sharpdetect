@@ -262,6 +262,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     private void OnThreadStarting(ThreadStartingArgs obj)
     {
         _startingThreads[obj.ThreadObjectId] = obj.ProcessThreadId;
+        _detector.RecordThreadForkRequested(obj.ProcessThreadId, obj.ThreadObjectId);
     }
     
     private void OnThreadStarted(ThreadStartArgs obj)
@@ -275,7 +276,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
             Threads.GetValueOrDefault(childThreadId, childThreadId.ToString()));
         
         _detector.RecordThreadCreated(childThreadId);
-        _detector.RecordThreadFork(parentThreadId, childThreadId);
+        _detector.RecordThreadFork(obj.ThreadObjectId, childThreadId);
     }
 
     private void OnTaskScheduled(TaskScheduleArgs args)
