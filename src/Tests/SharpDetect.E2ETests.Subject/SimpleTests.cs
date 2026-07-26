@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using SharpDetect.E2ETests.Subject.Helpers;
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
@@ -1248,6 +1249,109 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = StaticCctorHelperInit.Value);
         }
 
+        public static void Test_NoDataRace_ConcurrentDictionaryPublishThenRead()
+        {
+            var dictionary = new ConcurrentDictionary<int, DataRace>();
+            RunConcurrently(
+                () =>
+                {
+                    var instance = new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 };
+                    var published = dictionary.GetOrAdd(1, instance);
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                },
+                () =>
+                {
+                    var instance = new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 };
+                    var published = dictionary.GetOrAdd(1, instance);
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                });
+        }
+
+        public static void Test_NoDataRace_ConcurrentDictionaryGetOrAddFactoryThenRead()
+        {
+            var dictionary = new ConcurrentDictionary<int, DataRace>();
+            Func<int, DataRace> factory = _ => new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 };
+            RunConcurrently(
+                () =>
+                {
+                    var published = dictionary.GetOrAdd(1, factory);
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                },
+                () =>
+                {
+                    var published = dictionary.GetOrAdd(1, factory);
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                });
+        }
+
+        public static void Test_NoDataRace_ConcurrentDictionaryMissingKeyThrows()
+        {
+            var dictionary = new ConcurrentDictionary<int, DataRace>();
+            RunConcurrently(
+                () => { try { _ = dictionary[42]; } catch (KeyNotFoundException) { } },
+                () => { try { _ = dictionary[42]; } catch (KeyNotFoundException) { } });
+        }
+
+        public static void Test_DataRace_ConcurrentDictionaryPostPublicationWrite()
+        {
+            var dictionary = new ConcurrentDictionary<int, DataRace>();
+            var instance = new DataRace { Test_DataRace_ValueType_InstanceProperty = 1 };
+            dictionary[1] = instance;
+            RunConcurrently(
+                () => instance.Test_DataRace_ValueType_InstanceProperty = 99,
+                () =>
+                {
+                    var published = dictionary[1];
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                });
+        }
+
+        public static void Test_NoDataRace_LazyPublishThenRead()
+        {
+            var lazy = new Lazy<DataRace>(() => new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 });
+            RunConcurrently(
+                () =>
+                {
+                    var published = lazy.Value;
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                },
+                () =>
+                {
+                    var published = lazy.Value;
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                });
+        }
+
+        public static void Test_NoDataRace_LazyValueTypePublishThenRead()
+        {
+            var lazy = new Lazy<int>(() => 42);
+            RunConcurrently(
+                () => _ = lazy.Value,
+                () => _ = lazy.Value);
+        }
+
+        public static void Test_NoDataRace_LazyFactoryThrows()
+        {
+            var lazy = new Lazy<DataRace>(() => throw new InvalidOperationException("Factory failed."));
+            RunConcurrently(
+                () => { try { _ = lazy.Value; } catch (InvalidOperationException) { } },
+                () => { try { _ = lazy.Value; } catch (InvalidOperationException) { } });
+        }
+
+        public static void Test_DataRace_LazyPostPublicationWrite()
+        {
+            var instance = new DataRace { Test_DataRace_ValueType_InstanceProperty = 1 };
+            var lazy = new Lazy<DataRace>(() => instance);
+            _ = lazy.Value;
+            RunConcurrently(
+                () => instance.Test_DataRace_ValueType_InstanceProperty = 99,
+                () =>
+                {
+                    var published = lazy.Value;
+                    _ = published.Test_DataRace_ValueType_InstanceProperty;
+                });
+        }
+
         public static void Test_DataRace_StaticHelperWrite_NotFromCctor_WriteReadRace()
         {
             StaticHelperWrite.WriteValue(1);
@@ -1526,6 +1630,125 @@ namespace SharpDetect.E2ETests.Subject
             manualResetEvent.Reset();
             manualResetEvent.Set();
             manualResetEvent.WaitOne();
+        }
+
+        public static void Test_LazyMethods_GetValue()
+        {
+            var lazy = new Lazy<object>(() => new object());
+            // The first access materializes the value (slow path), the second one only reads it (fast path)
+            _ = lazy.Value;
+            _ = lazy.Value;
+        }
+
+        private const int PublicationSpinLimit = 2000;
+
+        public static void Test_NoDataRace_ConcurrentDictionaryLockFreeReaderObservesPublication()
+        {
+            var dictionary = new ConcurrentDictionary<int, DataRace>();
+            var published = new DataRace();
+            RunConcurrently(
+                () =>
+                {
+                    published.Test_DataRace_ValueType_InstanceField = 42;
+                    dictionary.TryAdd(1, published);
+                },
+                () =>
+                {
+                    DataRace? observed = null;
+                    for (var i = 0; i < PublicationSpinLimit && observed is null; i++)
+                    {
+                        if (!dictionary.TryGetValue(1, out observed))
+                            Thread.Sleep(1);
+                    }
+
+                    if (observed is null)
+                        throw new TimeoutException("Publisher never made the value visible to the lock-free reader.");
+
+                    _ = observed.Test_DataRace_ValueType_InstanceField;
+                });
+        }
+
+        public static void Test_NoDataRace_LazyLockFreeReaderObservesPublication()
+        {
+            var published = new DataRace();
+            var lazy = new Lazy<DataRace>(() => published);
+            RunConcurrently(
+                () =>
+                {
+                    published.Test_DataRace_ValueType_InstanceField = 42;
+                    _ = lazy.Value;
+                },
+                () =>
+                {
+                    for (var i = 0; i < PublicationSpinLimit && !lazy.IsValueCreated; i++)
+                        Thread.Sleep(1);
+
+                    if (!lazy.IsValueCreated)
+                        throw new TimeoutException("Publisher never materialized the lazy value.");
+
+                    var observed = lazy.Value;
+                    _ = observed.Test_DataRace_ValueType_InstanceField;
+                });
+        }
+
+        private static T Identity<T>(T value) => value;
+        
+        public static void Test_DataRace_WriteValueFromGenericMethodCall()
+        {
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
+            RunConcurrently(
+                () => instance.Test_DataRace_ReferenceType_InstanceField = Identity(new object()),
+                () => _ = instance.Test_DataRace_ReferenceType_InstanceField);
+        }
+
+        private sealed class GenericBox<T>
+        {
+            public T Value = default!;
+
+            public T Get() => Value;
+        }
+        
+        public static void Test_DataRace_ReadValueThroughGenericField()
+        {
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
+            var box = new GenericBox<DataRace> { Value = instance };
+            RunConcurrently(
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object(),
+                () => _ = box.Value.Test_DataRace_ReferenceType_InstanceField);
+        }
+        
+        public static void Test_DataRace_ReadValueThroughGenericReturn()
+        {
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
+            var box = new GenericBox<DataRace> { Value = instance };
+            RunConcurrently(
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object(),
+                () => _ = box.Get().Test_DataRace_ReferenceType_InstanceField);
+        }
+
+        public static void Test_ConcurrentDictionaryMethods_Store()
+        {
+            var dictionary = new ConcurrentDictionary<int, object>();
+            // Each of these publishes a value through a distinct store-shaped hook
+            dictionary.TryAdd(1, new object());
+            dictionary[2] = new object();
+            dictionary.TryUpdate(2, new object(), dictionary[2]);
+        }
+
+        public static void Test_ConcurrentDictionaryMethods_LoadByRef()
+        {
+            var dictionary = new ConcurrentDictionary<int, object>();
+            dictionary[1] = new object();
+            // Both observe the value through an out parameter rather than a return value
+            dictionary.TryGetValue(1, out _);
+            dictionary.TryRemove(1, out _);
+        }
+
+        public static void Test_ConcurrentDictionaryMethods_AddOrUpdate()
+        {
+            var dictionary = new ConcurrentDictionary<int, object>();
+            _ = dictionary.AddOrUpdate(1, new object(), (_, existing) => existing);
+            _ = dictionary.AddOrUpdate(1, _ => new object(), (_, existing) => existing);
         }
 
         public static void Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace()

@@ -195,6 +195,53 @@ HRESULT LibProfiler::ModuleDef::FindTypeRef(
 		});
 }
 
+HRESULT LibProfiler::ModuleDef::FindTypeRefByName(
+	IN const std::string& name,
+	OUT mdTypeRef* typeRef) const
+{
+	auto& metadataImport = GetMetadataImport();
+
+	constexpr ULONG batchSize = 64;
+	HCORENUM enumerator = nullptr;
+	mdTypeRef typeRefs[batchSize];
+	ULONG count = 0;
+	HRESULT result = E_FAIL;
+	ULONG matches = 0;
+
+	while (SUCCEEDED(metadataImport.EnumTypeRefs(&enumerator, typeRefs, batchSize, &count)) && count > 0)
+	{
+		for (ULONG i = 0; i < count; ++i)
+		{
+			std::string typeRefName;
+			if (FAILED(GetTypeRefProps(typeRefs[i], nullptr, typeRefName)))
+				continue;
+
+			if (typeRefName != name)
+				continue;
+
+			if (matches++ == 0)
+			{
+				*typeRef = typeRefs[i];
+				result = S_OK;
+			}
+		}
+	}
+
+	metadataImport.CloseEnum(enumerator);
+
+	if (matches > 1)
+	{
+		LOG_F(
+			WARNING,
+			"Type reference %s is ambiguous in module %s (%u candidates); using the first one.",
+			name.c_str(),
+			_name.c_str(),
+			matches);
+	}
+
+	return result;
+}
+
 HRESULT LibProfiler::ModuleDef::FindMethodDef(
 	IN const std::string& name,
 	IN const PCCOR_SIGNATURE signature,

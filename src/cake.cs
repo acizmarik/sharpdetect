@@ -248,7 +248,6 @@ Task("Test-Native")
         Arguments = new ProcessArgumentBuilder()
             .Append("--build").Append(".")
             .Append("--config").Append(configuration)
-            .Append("--target").Append("LibIPC.Tests")
             .Append("--parallel"),
         WorkingDirectory = testBuildDirectory
     });

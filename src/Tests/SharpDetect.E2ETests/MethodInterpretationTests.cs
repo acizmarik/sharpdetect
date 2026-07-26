@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Core.Events;
+using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.TemporalAsserts;
 using SharpDetect.TemporalAsserts.TemporalOperators;
@@ -435,6 +436,104 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Lazy_GetValue(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_LazyMethods_GetValue")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.ValuePublicationMaybeStoreLoad))
+            .Then(EventuallyEventType(RecordedEventType.ValuePublicationMaybeStoreLoad))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act && Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        var publishedValues = events
+            .Where(e => e.Type == RecordedEventType.ValuePublicationMaybeStoreLoad)
+            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args.Value)
+            .ToList();
+        Assert.True(
+            publishedValues.GroupBy(value => value).Any(group => group.Count() >= 2),
+            $"Expected a value published by both accesses, observed {publishedValues.Count} publication(s).");
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_ConcurrentDictionary_Store(string sdk)
+    {
+        // TryAdd, set_Item and TryUpdate each publish through a method-enter store hook
+        await AssertPublishesDistinctValues(
+            "Test_ConcurrentDictionaryMethods_Store",
+            RecordedEventType.ValuePublicationStore,
+            expectedCount: 3,
+            sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_ConcurrentDictionary_LoadByRef(string sdk)
+    {
+        // TryGetValue and TryRemove both observe the same value through an out parameter
+        await AssertPublishesDistinctValues(
+            "Test_ConcurrentDictionaryMethods_LoadByRef",
+            RecordedEventType.ValuePublicationLoad,
+            expectedCount: 1,
+            sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_ConcurrentDictionary_AddOrUpdate(string sdk)
+    {
+        // Both AddOrUpdate overloads return the resulting value, so they publish and observe it
+        await AssertPublishesDistinctValues(
+            "Test_ConcurrentDictionaryMethods_AddOrUpdate",
+            RecordedEventType.ValuePublicationStoreLoad,
+            expectedCount: 1,
+            sdk);
+    }
+
+    private async Task AssertPublishesDistinctValues(
+        string subjectArgs,
+        RecordedEventType eventType,
+        int expectedCount,
+        string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(eventType))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act && Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        var publishedValues = events
+            .Where(e => e.Type == eventType)
+            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args.Value)
+            .Distinct()
+            .ToList();
+        Assert.True(
+            publishedValues.Count >= expectedCount,
+            $"Expected at least {expectedCount} distinct {eventType} value(s), observed {publishedValues.Count}.");
     }
 
     private async Task MonitorAcquireReleaseBalanced(string subjectArgs, string sdk)

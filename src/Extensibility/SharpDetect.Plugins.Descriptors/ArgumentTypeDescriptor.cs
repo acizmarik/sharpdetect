@@ -34,8 +34,19 @@ public record ArgumentTypeDescriptor
         => new([CorElementType.ELEMENT_TYPE_SZARRAY, .. elementType.ElementTypes], elementType.TypeName);
     
 
-    public static ArgumentTypeDescriptor CreateGenericInst(string genericTypeName, ArgumentTypeDescriptor typeArgument)
-        => new([CorElementType.ELEMENT_TYPE_GENERICINST, CorElementType.ELEMENT_TYPE_CLASS, .. typeArgument.ElementTypes], genericTypeName);
+    public static ArgumentTypeDescriptor CreateGenericInst(string genericTypeName, params IEnumerable<ArgumentTypeDescriptor> typeArguments)
+    {
+        var elements = new List<CorElementType>
+        {
+            CorElementType.ELEMENT_TYPE_GENERICINST,
+            CorElementType.ELEMENT_TYPE_CLASS
+        };
+        
+        foreach (var typeArgument in typeArguments)
+            elements.AddRange(typeArgument.ElementTypes);
+
+        return new([.. elements], genericTypeName);
+    }
 
     public static ArgumentTypeDescriptor CreateGenericTypeParam(int index)
         => CreateGenericParam(CorElementType.ELEMENT_TYPE_VAR, index);

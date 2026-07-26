@@ -52,6 +52,72 @@ static void AppendCompressedData(ULONG value, std::vector<COR_SIGNATURE>& result
     result.insert(result.end(), bytes, bytes + length);
 }
 
+static bool TrySkipOneType(const std::vector<CorElementType>& elementTypes, size_t index, size_t& next)
+{
+    if (index >= elementTypes.size())
+    {
+        next = index;
+        return true;
+    }
+
+    switch (elementTypes[index])
+    {
+        case CorElementType::ELEMENT_TYPE_VAR:
+        case CorElementType::ELEMENT_TYPE_MVAR:
+            next = std::min(index + 2, elementTypes.size());
+            return true;
+        case CorElementType::ELEMENT_TYPE_BYREF:
+        case CorElementType::ELEMENT_TYPE_SZARRAY:
+        case CorElementType::ELEMENT_TYPE_PTR:
+            return TrySkipOneType(elementTypes, index + 1, next);
+        case CorElementType::ELEMENT_TYPE_GENERICINST:
+        case CorElementType::ELEMENT_TYPE_CLASS:
+        case CorElementType::ELEMENT_TYPE_VALUETYPE:
+            return false;
+        default:
+            next = index + 1;
+            return true;
+    }
+}
+
+static bool TryCountGenericArguments(const std::vector<CorElementType>& elementTypes, size_t start, ULONG& count)
+{
+    count = 0;
+    for (size_t i = start; i < elementTypes.size(); )
+    {
+        size_t next;
+        if (!TrySkipOneType(elementTypes, i, next))
+            return false;
+
+        ++count;
+        i = next;
+    }
+
+    return true;
+}
+
+static HRESULT ResolveTypeToken(
+    const LibProfiler::ModuleDef& moduleDef,
+    const std::string& typeName,
+    mdToken& token)
+{
+    mdTypeDef typeDef;
+    if (SUCCEEDED(moduleDef.FindTypeDef(typeName, &typeDef)))
+    {
+        token = typeDef;
+        return S_OK;
+    }
+
+    mdTypeRef typeRef;
+    if (SUCCEEDED(moduleDef.FindTypeRefByName(typeName, &typeRef)))
+    {
+        token = typeRef;
+        return S_OK;
+    }
+
+    return E_FAIL;
+}
+
 static HRESULT SerializeArgumentTypeDescriptor(
     const Profiler::ArgumentTypeDescriptor& descriptor,
     const LibProfiler::ModuleDef& moduleDef,
@@ -74,15 +140,23 @@ static HRESULT SerializeArgumentTypeDescriptor(
 
             result.push_back(elementTypes[i + 1]);
 
-            mdTypeDef typeDef;
-            if (FAILED(moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef)))
+            mdToken genericTypeToken;
+            if (FAILED(ResolveTypeToken(moduleDef, descriptor.typeName.value(), genericTypeToken)))
             {
                 LOG_F(ERROR, "Generic type %s not found in module", descriptor.typeName.value().c_str());
                 return E_FAIL;
             }
-            AppendCompressedToken(typeDef, result);
+            AppendCompressedToken(genericTypeToken, result);
 
-            const ULONG genericArgumentCount = static_cast<ULONG>(elementTypes.size() - (i + 2));
+            ULONG genericArgumentCount = 0;
+            if (!TryCountGenericArguments(elementTypes, i + 2, genericArgumentCount))
+            {
+                LOG_F(
+                    ERROR,
+                    "Generic type %s has a nested named type argument, which is not representable.",
+                    descriptor.typeName.value().c_str());
+                return E_FAIL;
+            }
             AppendCompressedData(genericArgumentCount, result);
 
             i += 2;
@@ -91,14 +165,13 @@ static HRESULT SerializeArgumentTypeDescriptor(
 
         if (elementType == CorElementType::ELEMENT_TYPE_CLASS || elementType == CorElementType::ELEMENT_TYPE_VALUETYPE)
         {
-            mdTypeDef typeDef;
-            if (FAILED(moduleDef.FindTypeDef(descriptor.typeName.value(), &typeDef)))
+            mdToken typeToken;
+            if (FAILED(ResolveTypeToken(moduleDef, descriptor.typeName.value(), typeToken)))
             {
-                // FIXME: add support for type references
                 LOG_F(ERROR, "Type %s not found in module", descriptor.typeName.value().c_str());
                 return E_FAIL;
             }
-            AppendCompressedToken(typeDef, result);
+            AppendCompressedToken(typeToken, result);
         }
 
         ++i;

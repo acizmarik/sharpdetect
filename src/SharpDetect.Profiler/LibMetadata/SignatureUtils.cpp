@@ -112,86 +112,45 @@ unsigned LibProfiler::SkipSigType(const BYTE* signature, unsigned length)
     }
 }
 
-bool LibProfiler::SigTypeContainsGenericParam(const BYTE* signature, unsigned length)
+bool LibProfiler::IsSigTypeObjectReference(
+    const BYTE* signature,
+    const unsigned length,
+    const TypeArgs& classArgs,
+    const TypeArgs& methodArgs)
 {
+    static const TypeArgs noTypeArgs;
+
     if (length == 0)
         return false;
 
-    unsigned position = 0;
-    auto const element = signature[position++];
-
+    auto const element = signature[0];
     switch (element)
     {
-        case ELEMENT_TYPE_VAR:
-        case ELEMENT_TYPE_MVAR:
+        case ELEMENT_TYPE_CLASS:
+        case ELEMENT_TYPE_OBJECT:
+        case ELEMENT_TYPE_STRING:
+        case ELEMENT_TYPE_SZARRAY:
+        case ELEMENT_TYPE_ARRAY:
             return true;
 
-        case ELEMENT_TYPE_VOID:
-        case ELEMENT_TYPE_BOOLEAN:
-        case ELEMENT_TYPE_CHAR:
-        case ELEMENT_TYPE_I1: case ELEMENT_TYPE_U1:
-        case ELEMENT_TYPE_I2: case ELEMENT_TYPE_U2:
-        case ELEMENT_TYPE_I4: case ELEMENT_TYPE_U4:
-        case ELEMENT_TYPE_I8: case ELEMENT_TYPE_U8:
-        case ELEMENT_TYPE_R4: case ELEMENT_TYPE_R8:
-        case ELEMENT_TYPE_I:  case ELEMENT_TYPE_U:
-        case ELEMENT_TYPE_STRING:
-        case ELEMENT_TYPE_OBJECT:
-        case ELEMENT_TYPE_TYPEDBYREF:
-            return false;
-
-        case ELEMENT_TYPE_PTR:
-        case ELEMENT_TYPE_BYREF:
-        case ELEMENT_TYPE_SZARRAY:
-        case ELEMENT_TYPE_PINNED:
-            return SigTypeContainsGenericParam(signature + position, length - position);
-
-        case ELEMENT_TYPE_VALUETYPE:
-        case ELEMENT_TYPE_CLASS:
-        {
-            // Compressed token follows — skip it, no generic params possible here
-            ULONG token;
-            position += CorSigUncompressData(signature + position, &token);
-            return false;
-        }
-
         case ELEMENT_TYPE_GENERICINST:
-        {
-            position++;
-            ULONG token;
-            position += CorSigUncompressData(signature + position, &token);
-            ULONG genericArgumentsCount;
-            position += CorSigUncompressData(signature + position, &genericArgumentsCount);
-            for (ULONG i = 0; i < genericArgumentsCount && position < length; i++)
-            {
-                if (SigTypeContainsGenericParam(signature + position, length - position))
-                    return true;
-                position += SkipSigType(signature + position, length - position);
-            }
-            return false;
-        }
+            return length >= 2 && signature[1] == ELEMENT_TYPE_CLASS;
 
-        case ELEMENT_TYPE_ARRAY:
+        case ELEMENT_TYPE_VAR:
+        case ELEMENT_TYPE_MVAR:
         {
-            return SigTypeContainsGenericParam(signature + position, length - position);
-        }
+            if (length < 2)
+                return false;
 
-        case ELEMENT_TYPE_FNPTR:
-        {
-            position++;
-            ULONG paramCount;
-            position += CorSigUncompressData(signature + position, &paramCount);
-            if (SigTypeContainsGenericParam(signature + position, length - position))
-                return true;
-            return false;
-        }
+            const TypeArgs& typeArgs = (element == ELEMENT_TYPE_VAR) ? classArgs : methodArgs;
+            ULONG index;
+            CorSigUncompressData(signature + 1, &index);
+            if (index >= typeArgs.size())
+                return false;
 
-        case ELEMENT_TYPE_CMOD_REQD:
-        case ELEMENT_TYPE_CMOD_OPT:
-        {
-            ULONG token;
-            position += CorSigUncompressData(signature + position, &token);
-            return SigTypeContainsGenericParam(signature + position, length - position);
+            // Classify the substituted argument without substituting again
+            auto const& [argSignature, argLength] = typeArgs[index];
+            return IsSigTypeObjectReference(argSignature, argLength, noTypeArgs, noTypeArgs);
         }
 
         default:
@@ -230,14 +189,58 @@ bool LibProfiler::ParseTypeSpecGenericArgs(
     return typeArgs.size() == genericArgsCount;
 }
 
-bool LibProfiler::ResolveSigType(
+bool LibProfiler::ParseMethodSpecGenericArgs(
+    const BYTE* methodSpecSignature,
+    const unsigned methodSpecSigLength,
+    std::vector<std::pair<const BYTE*, unsigned>>& typeArgs)
+{
+    if (methodSpecSigLength == 0)
+        return false;
+
+    unsigned position = 0;
+    if (methodSpecSignature[position++] != IMAGE_CEE_CS_CALLCONV_GENERICINST)
+        return false;
+
+    ULONG genericArgsCount;
+    position += CorSigUncompressData(methodSpecSignature + position, &genericArgsCount);
+
+    typeArgs.clear();
+    typeArgs.reserve(genericArgsCount);
+    for (ULONG i = 0; i < genericArgsCount && position < methodSpecSigLength; i++)
+    {
+        const BYTE* argStart = methodSpecSignature + position;
+        unsigned argLength = SkipSigType(argStart, methodSpecSigLength - position);
+        typeArgs.emplace_back(argStart, argLength);
+        position += argLength;
+    }
+
+    return typeArgs.size() == genericArgsCount;
+}
+
+namespace
+{
+    using LibProfiler::SigTypeResolution;
+
+    SigTypeResolution RewindUnlessSubstituted(
+        const SigTypeResolution resolution,
+        const size_t mark,
+        std::vector<BYTE>& resolved)
+    {
+        if (resolution != SigTypeResolution::Substituted)
+            resolved.resize(mark);
+
+        return resolution;
+    }
+}
+
+LibProfiler::SigTypeResolution LibProfiler::ResolveSigType(
     const BYTE* typeSignature,
     const unsigned typeSignatureLength,
-    const std::vector<std::pair<const BYTE*, unsigned>>& typeArgs,
+    const TypeArgs& typeArgs,
     std::vector<BYTE>& resolved)
 {
     if (typeSignatureLength == 0)
-        return false;
+        return SigTypeResolution::Failed;
 
     unsigned position = 0;
     auto const element = typeSignature[position++];
@@ -249,68 +252,12 @@ bool LibProfiler::ResolveSigType(
             ULONG index;
             CorSigUncompressData(typeSignature + position, &index);
             if (index >= typeArgs.size())
-                return false;
+                return SigTypeResolution::Failed;
 
             // Substitute with the concrete type argument
-            auto const& [argPtr, argLength] = typeArgs[index];
-            resolved.insert(resolved.end(), argPtr, argPtr + argLength);
-            return true;
-        }
-
-        case ELEMENT_TYPE_GENERICINST:
-        {
-            resolved.push_back(element);
-            // Copy CLASS/VALUETYPE + token
-            const auto innerElement = typeSignature[position];
-            resolved.push_back(innerElement);
-            position++;
-            ULONG token;
-            auto compressedLength = CorSigUncompressData(typeSignature + position, &token);
-            resolved.insert(resolved.end(), typeSignature + position, typeSignature + position + compressedLength);
-            position += compressedLength;
-            // Generic arguments count
-            ULONG genericArgsCount;
-            compressedLength = CorSigUncompressData(typeSignature + position, &genericArgsCount);
-            resolved.insert(resolved.end(), typeSignature + position, typeSignature + position + compressedLength);
-            position += compressedLength;
-            // Resolve each argument
-            for (ULONG i = 0; i < genericArgsCount && position < typeSignatureLength; i++)
-            {
-                if (!ResolveSigType(typeSignature + position, typeSignatureLength - position, typeArgs, resolved))
-                    return false;
-                position += SkipSigType(typeSignature + position, typeSignatureLength - position);
-            }
-            return true;
-        }
-
-        case ELEMENT_TYPE_ARRAY:
-        {
-            resolved.push_back(element);
-            unsigned const totalLength = SkipSigType(typeSignature, typeSignatureLength);
-            if (!ResolveSigType(typeSignature + position, typeSignatureLength - position, typeArgs, resolved))
-                return false;
-
-            position += SkipSigType(typeSignature + position, typeSignatureLength - position);
-            resolved.insert(resolved.end(), typeSignature + position, typeSignature + totalLength);
-            return true;
-        }
-
-        case ELEMENT_TYPE_FNPTR:
-        {
-            const unsigned totalLength = SkipSigType(typeSignature, typeSignatureLength);
-            resolved.insert(resolved.end(), typeSignature, typeSignature + totalLength);
-            return true;
-        }
-
-        case ELEMENT_TYPE_CMOD_REQD:
-        case ELEMENT_TYPE_CMOD_OPT:
-        {
-            resolved.push_back(element);
-            ULONG token;
-            const auto compressedLength = CorSigUncompressData(typeSignature + position, &token);
-            resolved.insert(resolved.end(), typeSignature + position, typeSignature + position + compressedLength);
-            position += compressedLength;
-            return ResolveSigType(typeSignature + position, typeSignatureLength - position, typeArgs, resolved);
+            auto const& [argSignature, argLength] = typeArgs[index];
+            resolved.insert(resolved.end(), argSignature, argSignature + argLength);
+            return SigTypeResolution::Substituted;
         }
 
         case ELEMENT_TYPE_PTR:
@@ -318,45 +265,74 @@ bool LibProfiler::ResolveSigType(
         case ELEMENT_TYPE_SZARRAY:
         case ELEMENT_TYPE_PINNED:
         {
+            auto const mark = resolved.size();
             resolved.push_back(element);
-            // Recursively resolve inner signature element
-            return ResolveSigType(typeSignature + position, typeSignatureLength - position, typeArgs, resolved);
+            auto const inner = ResolveSigType(
+                typeSignature + position, typeSignatureLength - position, typeArgs, resolved);
+            return RewindUnlessSubstituted(inner, mark, resolved);
         }
 
-        case ELEMENT_TYPE_VALUETYPE:
-        case ELEMENT_TYPE_CLASS:
-        case ELEMENT_TYPE_MVAR:
+        case ELEMENT_TYPE_CMOD_REQD:
+        case ELEMENT_TYPE_CMOD_OPT:
         {
-            // Note: ELEMENT_TYPE_MVAR is intentionally skipped and not resolved
-            // Copy element and compressed token as-is
-            resolved.push_back(element);
-            ULONG data;
-            const auto compressedLength = CorSigUncompressData(typeSignature + position, &data);
-            resolved.insert(resolved.end(), typeSignature + position, typeSignature + position + compressedLength);
-            return true;
+            ULONG token;
+            position += CorSigUncompressData(typeSignature + position, &token);
+
+            auto const mark = resolved.size();
+            resolved.insert(resolved.end(), typeSignature, typeSignature + position);
+            auto const inner = ResolveSigType(
+                typeSignature + position, typeSignatureLength - position, typeArgs, resolved);
+            return RewindUnlessSubstituted(inner, mark, resolved);
         }
 
-        case ELEMENT_TYPE_VOID:
-        case ELEMENT_TYPE_BOOLEAN:
-        case ELEMENT_TYPE_CHAR:
-        case ELEMENT_TYPE_I1:
-        case ELEMENT_TYPE_U1:
-        case ELEMENT_TYPE_I2:
-        case ELEMENT_TYPE_U2:
-        case ELEMENT_TYPE_I4:
-        case ELEMENT_TYPE_U4:
-        case ELEMENT_TYPE_I8:
-        case ELEMENT_TYPE_U8:
-        case ELEMENT_TYPE_R4:
-        case ELEMENT_TYPE_R8:
-        case ELEMENT_TYPE_I:
-        case ELEMENT_TYPE_U:
-        case ELEMENT_TYPE_STRING:
-        case ELEMENT_TYPE_OBJECT:
-        case ELEMENT_TYPE_TYPEDBYREF:
-        default:
-            // Primitive element type or unknown — copy as-is
+        case ELEMENT_TYPE_GENERICINST:
+        {
+            auto const mark = resolved.size();
+            // The generic type definition (CLASS or VALUETYPE plus its token) is never a parameter
+            position += SkipSigType(typeSignature + position, typeSignatureLength - position);
+            ULONG genericArgsCount;
+            position += CorSigUncompressData(typeSignature + position, &genericArgsCount);
+            resolved.insert(resolved.end(), typeSignature, typeSignature + position);
+
+            auto result = SigTypeResolution::Unchanged;
+            for (ULONG i = 0; i < genericArgsCount && position < typeSignatureLength; i++)
+            {
+                auto const argLength = SkipSigType(typeSignature + position, typeSignatureLength - position);
+                auto const argument = ResolveSigType(
+                    typeSignature + position, typeSignatureLength - position, typeArgs, resolved);
+                if (argument == SigTypeResolution::Failed)
+                    return SigTypeResolution::Failed;
+
+                if (argument == SigTypeResolution::Unchanged)
+                    resolved.insert(resolved.end(), typeSignature + position, typeSignature + position + argLength);
+                else
+                    result = SigTypeResolution::Substituted;
+
+                position += argLength;
+            }
+
+            return RewindUnlessSubstituted(result, mark, resolved);
+        }
+
+        case ELEMENT_TYPE_ARRAY:
+        {
+            auto const mark = resolved.size();
             resolved.push_back(element);
-            return true;
+            auto const elementTypeLength = SkipSigType(typeSignature + position, typeSignatureLength - position);
+            auto const inner = ResolveSigType(
+                typeSignature + position, typeSignatureLength - position, typeArgs, resolved);
+            if (inner != SigTypeResolution::Substituted)
+                return RewindUnlessSubstituted(inner, mark, resolved);
+
+            // Preserve the array shape (rank, sizes and lower bounds) trailing the element type
+            position += elementTypeLength;
+            auto const totalLength = SkipSigType(typeSignature, typeSignatureLength);
+            resolved.insert(resolved.end(), typeSignature + position, typeSignature + totalLength);
+            return SigTypeResolution::Substituted;
+        }
+
+        default:
+            // A leaf (primitive, CLASS, VALUETYPE), function pointer or generic that cannot be closed
+            return SigTypeResolution::Unchanged;
     }
 }

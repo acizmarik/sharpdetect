@@ -8,19 +8,36 @@
 
 namespace LibProfiler
 {
+    using TypeArgs = std::vector<std::pair<const BYTE*, unsigned>>;
     unsigned SkipSigType(const BYTE* signature, unsigned length);
 
-    bool SigTypeContainsGenericParam(const BYTE* signature, unsigned length);
+    bool IsSigTypeObjectReference(
+        const BYTE* signature,
+        unsigned length,
+        const TypeArgs& classArgs,
+        const TypeArgs& methodArgs);
 
-    bool ResolveSigType(
+    enum class SigTypeResolution
+    {
+        Unchanged,
+        Substituted,
+        Failed
+    };
+
+    SigTypeResolution ResolveSigType(
         const BYTE* typeSignature,
         unsigned typeSignatureLength,
-        const std::vector<std::pair<const BYTE*, unsigned>>& typeArgs,
+        const TypeArgs& typeArgs,
         std::vector<BYTE>& resolved);
 
     bool ParseTypeSpecGenericArgs(
         const BYTE* typeSpecSignature,
         unsigned typeSpecSigLength,
+        std::vector<std::pair<const BYTE*, unsigned>>& typeArgs);
+
+    bool ParseMethodSpecGenericArgs(
+        const BYTE* methodSpecSignature,
+        unsigned methodSpecSigLength,
         std::vector<std::pair<const BYTE*, unsigned>>& typeArgs);
 }
 

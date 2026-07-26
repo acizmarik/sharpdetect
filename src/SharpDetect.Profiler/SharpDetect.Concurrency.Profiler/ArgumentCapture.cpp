@@ -15,6 +15,19 @@ Profiler::ArgumentCapture::ArgumentCapture(ICorProfilerInfo10*& corProfilerInfo,
 {
 }
 
+void Profiler::ArgumentCapture::TranslateToTrackedObject(const void* source, BYTE* destination)
+{
+    ObjectID objectId;
+    std::memcpy(&objectId, source, sizeof(ObjectID));
+
+    // Tracking object id 0 (null reference) would be problematic - there could be alliases
+    LibProfiler::TrackedObjectId trackedObjectId = 0;
+    if (objectId != 0)
+        trackedObjectId = _objectsTracker.GetTrackedObject(objectId);
+
+    std::memcpy(destination, &trackedObjectId, sizeof(LibProfiler::TrackedObjectId));
+}
+
 HRESULT Profiler::ArgumentCapture::GetArguments(
     const MethodDescriptor& methodDescriptor,
     std::vector<UINT_PTR>& indirects,
@@ -55,6 +68,10 @@ HRESULT Profiler::ArgumentCapture::GetByRefArguments(
         UINT argInfo = index << 16 | value.size;
         const UINT_PTR indirectAddress = indirects[indirectsPointer];
         std::memcpy(indirectValues.data(), reinterpret_cast<LPVOID>(indirectAddress), value.size);
+
+        if ((static_cast<UINT>(value.flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
+            TranslateToTrackedObject(indirectValues.data(), indirectValues.data());
+
         std::memcpy(indirectOffsets.data(), &argInfo, sizeof(UINT));
         indirectValues = indirectValues.subspan(value.size);
         indirectOffsets = indirectOffsets.subspan(sizeof(UINT));
@@ -109,11 +126,17 @@ HRESULT Profiler::ArgumentCapture::GetArgument(
 
     if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
     {
-        // Managed reference (object can be later moved by GC)
-        ObjectID objectId;
-        std::memcpy(&objectId, argValues.data() + argValues.size() - sizeof(ObjectID), sizeof(ObjectID));
-        auto const trackedObjectId = _objectsTracker.GetTrackedObject(objectId);
-        std::memcpy(argValues.data() + argValues.size() - sizeof(ObjectID), &trackedObjectId, sizeof(ObjectID));
+        auto* const slot = argValues.data() + argValues.size() - sizeof(ObjectID);
+        if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::IndirectLoad)) != 0)
+        {
+            // The pointed-to reference is only settled at method exit - leave a placeholder until then
+            constexpr LibProfiler::TrackedObjectId notTrackedYet = 0;
+            std::memcpy(slot, &notTrackedYet, sizeof(notTrackedYet));
+        }
+        else
+        {
+            TranslateToTrackedObject(slot, slot);
+        }
     }
 
     return S_OK;
@@ -170,16 +193,7 @@ HRESULT Profiler::ArgumentCapture::GetReferenceArrayArgument(
     // Read each element reference and resolve to tracked ID
     for (UINT i = 0; i < elementCount; i++)
     {
-        ObjectID elementObjectId;
-        std::memcpy(&elementObjectId, pData + i * sizeof(ObjectID), sizeof(ObjectID));
-
-        LibProfiler::TrackedObjectId trackedId = 0;
-        if (elementObjectId != 0)
-        {
-            trackedId = _objectsTracker.GetTrackedObject(elementObjectId);
-        }
-
-        std::memcpy(writePtr, &trackedId, elementSize);
+        TranslateToTrackedObject(pData + i * sizeof(ObjectID), writePtr);
         writePtr += elementSize;
     }
 
@@ -202,10 +216,7 @@ HRESULT Profiler::ArgumentCapture::GetReturnValue(
     if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
     {
         // Managed reference (object can be later moved by GC)
-        ObjectID objectId;
-        std::memcpy(&objectId, reinterpret_cast<LPVOID>(range.startAddress), sizeof(ObjectID));
-        auto const trackedObjectId = _objectsTracker.GetTrackedObject(objectId);
-        std::memcpy(returnValue.data(), &trackedObjectId, sizeof(ObjectID));
+        TranslateToTrackedObject(reinterpret_cast<LPVOID>(range.startAddress), returnValue.data());
     }
     else
     {

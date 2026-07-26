@@ -28,7 +28,7 @@ namespace Profiler
 			std::vector<BYTE>& argumentValues,
 			std::vector<BYTE>& argumentOffsets);
 
-		static HRESULT GetByRefArguments(
+		HRESULT GetByRefArguments(
 			const MethodDescriptor& methodDescriptor,
 			const std::vector<UINT_PTR>& indirects,
 			std::span<BYTE> indirectValues,
@@ -52,6 +52,8 @@ namespace Profiler
 			COR_PRF_FUNCTION_ARGUMENT_RANGE range,
 			std::vector<BYTE>& argValues,
 			std::vector<BYTE>& argOffsets);
+
+		void TranslateToTrackedObject(const void* source, BYTE* destination);
 
 		ICorProfilerInfo10*& _corProfilerInfo;
 		LibProfiler::ObjectsTracker& _objectsTracker;

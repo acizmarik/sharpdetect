@@ -254,7 +254,7 @@ private:
 
     IMethodMalloc * m_pIMethodMalloc;
 
-    IMetaDataImport * m_pMetaDataImport;
+    IMetaDataImport2 * m_pMetaDataImport;
     IMetaDataEmit * m_pMetaDataEmit;
 
 public:

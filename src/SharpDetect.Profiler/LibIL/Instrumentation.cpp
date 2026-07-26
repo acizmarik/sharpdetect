@@ -404,41 +404,53 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	const BYTE* fieldSigForLocal = fieldSignature + 1;
 	ULONG fieldSigForLocalLen = fieldSignatureLength - 1;
 
-	if (isStore && SigTypeContainsGenericParam(fieldSigForLocal, fieldSigForLocalLen))
+	if (isStore)
 	{
-		if (TypeFromToken(declaringTypeToken) != mdtTypeSpec)
+		TypeArgs typeArgs;
+		if (TypeFromToken(declaringTypeToken) == mdtTypeSpec)
 		{
-			LOG_F(INFO, "Skipping instance field write instrumentation for field token %d in method %d from module %s. Declaring type token is not TypeSpec. Cannot resolve generic field signature.",
-				fieldToken, mdMethodDef, moduleDef.GetName().c_str());
-			return E_FAIL;
-		}
+			PCCOR_SIGNATURE typeSpecSig;
+			ULONG typeSpecSigLen;
+			hr = moduleDef.GetTypeSpecProps(declaringTypeToken, &typeSpecSig, &typeSpecSigLen);
+			if (FAILED(hr))
+				return E_FAIL;
 
-		PCCOR_SIGNATURE typeSpecSig;
-		ULONG typeSpecSigLen;
-		hr = moduleDef.GetTypeSpecProps(declaringTypeToken, &typeSpecSig, &typeSpecSigLen);
-		if (FAILED(hr))
-			return E_FAIL;
-
-		std::vector<std::pair<const BYTE*, unsigned>> typeArgs;
-		if (!ParseTypeSpecGenericArgs(typeSpecSig, typeSpecSigLen, typeArgs))
-		{
-			LOG_F(ERROR, "Could not parse TypeSpec generic arguments for token %d in module %s.",
-				declaringTypeToken, moduleDef.GetName().c_str());
-			return E_FAIL;
+			if (!ParseTypeSpecGenericArgs(typeSpecSig, typeSpecSigLen, typeArgs))
+			{
+				LOG_F(
+				    ERROR,
+				    "Could not parse TypeSpec generic arguments for token %d in module %s.",
+					declaringTypeToken,
+					moduleDef.GetName().c_str());
+				return E_FAIL;
+			}
 		}
 
 		std::vector<BYTE> resolvedSig;
-		if (!ResolveSigType(fieldSigForLocal, fieldSigForLocalLen, typeArgs, resolvedSig))
+		switch (ResolveSigType(fieldSigForLocal, fieldSigForLocalLen, typeArgs, resolvedSig))
 		{
-			LOG_F(ERROR, "Could not resolve generic field signature for field token %d in module %s.",
-				fieldToken, moduleDef.GetName().c_str());
-			return E_FAIL;
-		}
+			case SigTypeResolution::Unchanged:
+				// The field signature is already closed and types the local as it stands
+				break;
 
-		ownedSignatures.push_back(std::move(resolvedSig));
-		auto const& stored = ownedSignatures.back();
-		fieldSigForLocal = stored.data();
-		fieldSigForLocalLen = static_cast<ULONG>(stored.size());
+			case SigTypeResolution::Substituted:
+			{
+				ownedSignatures.push_back(std::move(resolvedSig));
+				auto const& stored = ownedSignatures.back();
+				fieldSigForLocal = stored.data();
+				fieldSigForLocalLen = static_cast<ULONG>(stored.size());
+				break;
+			}
+
+			case SigTypeResolution::Failed:
+				LOG_F(
+				    INFO,
+				    "Skipping instance field write instrumentation for field token %d in method %d from module %s. Could not close the generic field signature.",
+					fieldToken,
+					mdMethodDef,
+					moduleDef.GetName().c_str());
+				return E_FAIL;
+		}
 	}
 
 	// The event must reach the queue before the store executes (release-before-store)

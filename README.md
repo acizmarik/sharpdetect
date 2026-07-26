@@ -105,6 +105,10 @@ The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanaga
 - `System.Threading.Thread`
 - `System.Threading.Tasks.Task`
 
+#### Supported Value Publication
+- `System.Lazy<T>`
+- `System.Collections.Concurrent.ConcurrentDictionary<TKey, TValue>`
+
 #### Supported Memory Accesses
 - Static fields (`LDSFLD`, `STSFLD`)
 - Instance fields (`LDFLD`, `STFLD`)
@@ -148,6 +152,7 @@ sharpdetect init \
 
 - **False positives**:
    - Memory accesses guarded by unsupported synchronization primitives may report data races.
+   - Value publication is tracked by the identity of the published object, so it covers reference types only.
 - **False negatives**: 
    - Array element accesses are not analyzed.
    - Heuristics for determining object publication is responsible for missing some data races.
