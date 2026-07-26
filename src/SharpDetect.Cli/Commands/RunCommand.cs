@@ -28,7 +28,7 @@ public sealed partial class RunCommand : ICommand
     private string? TestFilter { get; set; }
 
     [CommandOption("runner", Description = "Test runner: Mtp (default) | VSTest (requires --test)")]
-    private TestRunner TestRunner { get; set; } = TestTargetConfigurationArgs.DefaultRunner;
+    private TestRunner? TestRunner { get; set; }
 
     [CommandOption("instrument-system-libraries", Description = "Instrument system assemblies (System, Microsoft, test frameworks..)")]
     private bool InstrumentSystemLibraries { get; set; }
@@ -80,7 +80,7 @@ public sealed partial class RunCommand : ICommand
         catch (Exception exception)
         {
             throw new CommandException(
-                message: "Analysis failed due to an internal error",
+                message: $"Analysis failed: {ExceptionMessages.Flatten(exception)}",
                 exitCode: (int)ExitCode.AnalysisError,
                 innerException: exception);
         }
@@ -97,7 +97,7 @@ public sealed partial class RunCommand : ICommand
         string? targetPath,
         bool isTest,
         string? testFilter,
-        TestRunner testRunner,
+        TestRunner? testRunner,
         bool instrumentSystemLibraries = false)
     {
         var hasConfigFile = !string.IsNullOrEmpty(argumentsFile);
@@ -113,31 +113,37 @@ public sealed partial class RunCommand : ICommand
         if (hasConfigFile && hasInline)
             throw new CommandException(
                 "Specify either a configuration file or inline options (--plugin and --target), not both.",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
 
         if (!hasConfigFile && !hasInline)
             throw new CommandException(
                 "Either provide a configuration file or specify inline options (--plugin and --target).",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
 
         if (hasInline && (!hasPlugin || !hasTarget))
             throw new CommandException(
                 "Both --plugin and --target are required when using inline options.",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
 
         if (!isTest && testFilter is not null)
             throw new CommandException(
                 "--filter requires --test.",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
 
-        if (!isTest && testRunner != TestTargetConfigurationArgs.DefaultRunner)
+        if (!isTest && testRunner is not null)
             throw new CommandException(
                 "--runner requires --test.",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
 
         if (hasConfigFile && instrumentSystemLibraries)
             throw new CommandException(
                 "--instrument-system-libraries cannot be combined with a configuration file; set SkipInstrumentationForAssemblies in the file instead.",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
     }
 }

@@ -20,7 +20,7 @@ public class SharpDetectRunCommandTests
                 targetPath: "app.dll",
                 isTest: false,
                 testFilter: null,
-                testRunner: TestTargetConfigurationArgs.DefaultRunner));
+                testRunner: null));
 
         Assert.Null(exception);
     }
@@ -50,7 +50,7 @@ public class SharpDetectRunCommandTests
                 targetPath: "app.dll",
                 isTest: false,
                 testFilter: null,
-                testRunner: TestTargetConfigurationArgs.DefaultRunner));
+                testRunner: null));
 
         Assert.Equal((int)ExitCode.ConfigurationError, exception.ExitCode);
     }
@@ -65,7 +65,7 @@ public class SharpDetectRunCommandTests
                 targetPath: null,
                 isTest: false,
                 testFilter: null,
-                testRunner: TestTargetConfigurationArgs.DefaultRunner));
+                testRunner: null));
 
         Assert.Equal((int)ExitCode.ConfigurationError, exception.ExitCode);
     }
@@ -80,7 +80,7 @@ public class SharpDetectRunCommandTests
                 targetPath: null,
                 isTest: false,
                 testFilter: null,
-                testRunner: TestTargetConfigurationArgs.DefaultRunner));
+                testRunner: null));
 
         Assert.Equal((int)ExitCode.ConfigurationError, exception.ExitCode);
     }
@@ -95,7 +95,7 @@ public class SharpDetectRunCommandTests
                 targetPath: "app.dll",
                 isTest: false,
                 testFilter: null,
-                testRunner: TestTargetConfigurationArgs.DefaultRunner));
+                testRunner: null));
 
         Assert.Equal((int)ExitCode.ConfigurationError, exception.ExitCode);
     }
@@ -110,8 +110,26 @@ public class SharpDetectRunCommandTests
                 targetPath: "app.dll",
                 isTest: false,
                 testFilter: "FullyQualifiedName~Something",
-                testRunner: TestTargetConfigurationArgs.DefaultRunner));
+                testRunner: null));
 
         Assert.Equal((int)ExitCode.ConfigurationError, exception.ExitCode);
+    }
+
+    [Theory]
+    [InlineData(TestRunner.Mtp)]
+    [InlineData(TestRunner.VsTest)]
+    public void Validate_RunnerWithoutTest_ThrowsConfigurationError(TestRunner testRunner)
+    {
+        var exception = Assert.Throws<CommandException>(() =>
+            RunCommand.ValidateOptions(
+                argumentsFile: null,
+                pluginType: "FastTrack",
+                targetPath: "app.dll",
+                isTest: false,
+                testFilter: null,
+                testRunner: testRunner));
+
+        Assert.Equal((int)ExitCode.ConfigurationError, exception.ExitCode);
+        Assert.Contains("--runner requires --test", exception.Message);
     }
 }
