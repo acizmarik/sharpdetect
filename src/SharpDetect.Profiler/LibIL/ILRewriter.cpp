@@ -453,24 +453,44 @@ namespace
         }
     }
 
+    // Recover the generic arguments that ELEMENT_TYPE_VAR in a member's signature refers to.
+    void ResolveDeclaringTypeSpecArgs(IMetaDataImport2* pImport, mdToken declaringToken, TypeArgs& classArgs)
+    {
+        if (TypeFromToken(declaringToken) != mdtTypeSpec)
+            return;
+
+        PCCOR_SIGNATURE typeSpecSig = nullptr;
+        ULONG typeSpecSigLen = 0;
+        if (FAILED(pImport->GetTypeSpecFromToken(declaringToken, &typeSpecSig, &typeSpecSigLen)) ||
+            typeSpecSig == nullptr)
+        {
+            return;
+        }
+
+        LibProfiler::ParseTypeSpecGenericArgs(typeSpecSig, typeSpecSigLen, classArgs);
+    }
+
     // Determine the kind for a field load (ldfld pushes the field value).
-    // Reads the field signature blob — no type resolution.
-    StackSlotKind GetFieldLoadKind(IMetaDataImport* pImport, mdToken fieldToken)
+    StackSlotKind GetFieldLoadKind(IMetaDataImport2* pImport, mdToken fieldToken)
     {
         PCCOR_SIGNATURE sig = nullptr;
         ULONG sigLen = 0;
+        mdToken declaringToken = mdTokenNil;
         auto tt = TypeFromToken(fieldToken);
         if (tt == mdtFieldDef)
-            pImport->GetFieldProps(fieldToken, nullptr, nullptr, 0, nullptr,
+            pImport->GetFieldProps(fieldToken, &declaringToken, nullptr, 0, nullptr,
                                    nullptr, &sig, &sigLen, nullptr, nullptr, nullptr);
         else if (tt == mdtMemberRef)
-            pImport->GetMemberRefProps(fieldToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
+            pImport->GetMemberRefProps(fieldToken, &declaringToken, nullptr, 0, nullptr, &sig, &sigLen);
 
         if (sig == nullptr || sigLen < 2) return SlotOther;
         const BYTE* ptr = sig;
         if (*ptr == IMAGE_CEE_CS_CALLCONV_FIELD) ptr++;
-        unsigned rem = static_cast<unsigned>(sigLen - (ptr - sig));
-        return IsSigTypeObjRef(ptr, rem) ? SlotObjRef : SlotOther;
+        const auto rem = static_cast<unsigned>(sigLen - (ptr - sig));
+
+        TypeArgs classTypeArgs;
+        ResolveDeclaringTypeSpecArgs(pImport, declaringToken, classTypeArgs);
+        return IsSigTypeObjRef(ptr, rem, classTypeArgs, NoTypeArgs()) ? SlotObjRef : SlotOther;
     }
 
     // Get the argument index for ldarg-family opcodes. Returns -1 if not ldarg.
@@ -534,15 +554,16 @@ namespace
 
         PCCOR_SIGNATURE sig = nullptr;
         ULONG sigLen = 0;
+        mdToken declaringToken = mdTokenNil;
         auto const tokenType = TypeFromToken(signatureToken);
         if (tokenType == mdtMethodDef)
         {
-            pImport->GetMethodProps(signatureToken, nullptr, nullptr, 0, nullptr,
+            pImport->GetMethodProps(signatureToken, &declaringToken, nullptr, 0, nullptr,
                                     nullptr, &sig, &sigLen, nullptr, nullptr);
         }
         else if (tokenType == mdtMemberRef)
         {
-            pImport->GetMemberRefProps(signatureToken, nullptr, nullptr, 0, nullptr, &sig, &sigLen);
+            pImport->GetMemberRefProps(signatureToken, &declaringToken, nullptr, 0, nullptr, &sig, &sigLen);
         }
 
         if (sig == nullptr || sigLen == 0)
@@ -570,7 +591,10 @@ namespace
             return info;
 
         info.returnsVoid = (*ptr == ELEMENT_TYPE_VOID);
-        info.returnsObjRef = IsSigTypeObjRef(ptr, remaining, NoTypeArgs(), methodTypeArgs);
+
+        TypeArgs classTypeArgs;
+        ResolveDeclaringTypeSpecArgs(pImport, declaringToken, classTypeArgs);
+        info.returnsObjRef = IsSigTypeObjRef(ptr, remaining, classTypeArgs, methodTypeArgs);
         return info;
     }
 }

@@ -1701,6 +1701,31 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = instance.Test_DataRace_ReferenceType_InstanceField);
         }
 
+        private sealed class GenericBox<T>
+        {
+            public T Value = default!;
+
+            public T Get() => Value;
+        }
+        
+        public static void Test_DataRace_ReadValueThroughGenericField()
+        {
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
+            var box = new GenericBox<DataRace> { Value = instance };
+            RunConcurrently(
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object(),
+                () => _ = box.Value.Test_DataRace_ReferenceType_InstanceField);
+        }
+        
+        public static void Test_DataRace_ReadValueThroughGenericReturn()
+        {
+            var instance = new DataRace { Test_DataRace_ReferenceType_InstanceField = new object() };
+            var box = new GenericBox<DataRace> { Value = instance };
+            RunConcurrently(
+                () => instance.Test_DataRace_ReferenceType_InstanceField = new object(),
+                () => _ = box.Get().Test_DataRace_ReferenceType_InstanceField);
+        }
+
         public static void Test_ConcurrentDictionaryMethods_Store()
         {
             var dictionary = new ConcurrentDictionary<int, object>();

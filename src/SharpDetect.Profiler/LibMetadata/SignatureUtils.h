@@ -22,7 +22,7 @@ namespace LibProfiler
         const BYTE* typeSpecSignature,
         unsigned typeSpecSigLength,
         std::vector<std::pair<const BYTE*, unsigned>>& typeArgs);
-    
+
     bool ParseMethodSpecGenericArgs(
         const BYTE* methodSpecSignature,
         unsigned methodSpecSigLength,
