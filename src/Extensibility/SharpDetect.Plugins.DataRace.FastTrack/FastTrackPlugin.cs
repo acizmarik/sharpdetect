@@ -51,7 +51,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
             timeProvider,
             logger)
     {
-        var configuration = pluginOptionsConfiguration.ParseConfigurationOrDefault<FastTrackPluginConfiguration>(Logger);
+        var configuration = pluginOptionsConfiguration.ParseConfigurationOrDefault<FastTrackPluginConfiguration>();
         _detector = new FastTrackDetector(configuration, metadataContext, timeProvider, logger, GetThreadName);
 
         Configuration = PluginConfiguration.Create(

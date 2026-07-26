@@ -64,6 +64,9 @@ internal sealed class RunCommandHandler : IDisposable
             })
             .WithPlugin(pluginType)
             .Build();
+
+        // Instantiate the plugin eagerly - it parses its own configuration section and reports problems immediately
+        provider.GetRequiredService<IPlugin>();
         return provider;
     }
 

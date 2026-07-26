@@ -2,15 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SharpDetect.Worker.Commands;
 
 public static class CommandDeserializer
 {
-    private static readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions()
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions()
     {
         Converters = { new DescriptiveEnumConverterFactory() },
-        PropertyNamingPolicy = null
+        PropertyNamingPolicy = null,
+        PropertyNameCaseInsensitive = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
     
     public static TCommandArgs DeserializeCommandArguments<TCommandArgs>(string configuration)
@@ -18,9 +23,9 @@ public static class CommandDeserializer
     {
         try
         {
-            var deserialized = JsonSerializer.Deserialize<TCommandArgs>(configuration, _jsonSerializerOptions)
+            var expanded = Environment.ExpandEnvironmentVariables(configuration);
+            return JsonSerializer.Deserialize<TCommandArgs>(expanded, JsonSerializerOptions)
                    ?? throw new JsonException("Could not parse provided configuration.");
-            return ExpandEnvironmentVariables<TCommandArgs>(deserialized);
         }
         catch (JsonException e)
         {
@@ -48,9 +53,9 @@ public static class CommandDeserializer
     private static TCommandArgs ExpandEnvironmentVariables<TCommandArgs>(TCommandArgs commandArgs)
         where TCommandArgs : class
     {
-        var serialized = JsonSerializer.Serialize(commandArgs, _jsonSerializerOptions);
+        var serialized = JsonSerializer.Serialize(commandArgs, JsonSerializerOptions);
         var expanded = Environment.ExpandEnvironmentVariables(serialized);
-        return JsonSerializer.Deserialize<TCommandArgs>(expanded, _jsonSerializerOptions) 
+        return JsonSerializer.Deserialize<TCommandArgs>(expanded, JsonSerializerOptions) 
                ?? throw new JsonException("Could not expand environment variables in the command arguments.");
     }
 }

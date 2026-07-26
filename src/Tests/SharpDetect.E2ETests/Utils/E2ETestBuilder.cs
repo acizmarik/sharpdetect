@@ -127,7 +127,7 @@ internal sealed class E2ETestBuilder
             Analysis: new AnalysisPluginConfigurationArgs(
                 configuration: _pluginConfiguration,
                 pluginFullTypeName: _pluginTypeName,
-                path: resolvedAnalysisPath,
+                pathRaw: resolvedAnalysisPath,
                 renderReport: _renderReport,
                 logLevel: AnalysisLogLevel,
                 temporaryFilesFolder: temporaryFilesFolder,
