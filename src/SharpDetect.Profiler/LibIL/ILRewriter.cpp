@@ -278,7 +278,8 @@ namespace
     enum StackSlotKind : unsigned char { SlotOther = 0, SlotObjRef = 1 };
     using LibProfiler::SkipSigType;
 
-    using TypeArgs = std::vector<std::pair<const BYTE*, unsigned>>;
+    using LibProfiler::TypeArgs;
+    using LibProfiler::IsSigTypeObjectReference;
 
     const TypeArgs& NoTypeArgs()
     {
@@ -286,45 +287,11 @@ namespace
         return empty;
     }
 
-    // Check if the leading element type of a signature blob represents an object reference.
-    bool IsSigTypeObjRef(const BYTE* sig, unsigned len, const TypeArgs& classArgs, const TypeArgs& methodArgs)
-    {
-        if (len == 0) return false;
-        BYTE elem = sig[0];
-        switch (elem)
-        {
-        case ELEMENT_TYPE_CLASS:
-        case ELEMENT_TYPE_OBJECT:
-        case ELEMENT_TYPE_STRING:
-        case ELEMENT_TYPE_SZARRAY:
-        case ELEMENT_TYPE_ARRAY:
-            return true;
-        case ELEMENT_TYPE_GENERICINST:
-            if (len >= 2)
-                return sig[1] == ELEMENT_TYPE_CLASS;
-            return false;
-        case ELEMENT_TYPE_VAR:
-        case ELEMENT_TYPE_MVAR:
-        {
-            if (len < 2)
-                return false;
-            const TypeArgs& args = (elem == ELEMENT_TYPE_VAR) ? classArgs : methodArgs;
-            ULONG index;
-            CorSigUncompressData(sig + 1, &index);
-            if (index >= args.size())
-                return false;
-
-            auto const& [argSig, argLen] = args[index];
-            return IsSigTypeObjRef(argSig, argLen, NoTypeArgs(), NoTypeArgs());
-        }
-        default:
-            return false;
-        }
-    }
-
+    // The current method's own signature and locals are typed against its open generic
+    // parameters, which no call site pins down, so they are classified without substitution.
     bool IsSigTypeObjRef(const BYTE* sig, unsigned len)
     {
-        return IsSigTypeObjRef(sig, len, NoTypeArgs(), NoTypeArgs());
+        return IsSigTypeObjectReference(sig, len, NoTypeArgs(), NoTypeArgs());
     }
 
 
@@ -490,7 +457,7 @@ namespace
 
         TypeArgs classTypeArgs;
         ResolveDeclaringTypeSpecArgs(pImport, declaringToken, classTypeArgs);
-        return IsSigTypeObjRef(ptr, rem, classTypeArgs, NoTypeArgs()) ? SlotObjRef : SlotOther;
+        return IsSigTypeObjectReference(ptr, rem, classTypeArgs, NoTypeArgs()) ? SlotObjRef : SlotOther;
     }
 
     // Get the argument index for ldarg-family opcodes. Returns -1 if not ldarg.
@@ -594,7 +561,7 @@ namespace
 
         TypeArgs classTypeArgs;
         ResolveDeclaringTypeSpecArgs(pImport, declaringToken, classTypeArgs);
-        info.returnsObjRef = IsSigTypeObjRef(ptr, remaining, classTypeArgs, methodTypeArgs);
+        info.returnsObjRef = IsSigTypeObjectReference(ptr, remaining, classTypeArgs, methodTypeArgs);
         return info;
     }
 }

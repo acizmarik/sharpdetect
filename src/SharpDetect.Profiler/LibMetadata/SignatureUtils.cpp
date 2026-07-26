@@ -112,6 +112,52 @@ unsigned LibProfiler::SkipSigType(const BYTE* signature, unsigned length)
     }
 }
 
+bool LibProfiler::IsSigTypeObjectReference(
+    const BYTE* signature,
+    const unsigned length,
+    const TypeArgs& classArgs,
+    const TypeArgs& methodArgs)
+{
+    static const TypeArgs noTypeArgs;
+
+    if (length == 0)
+        return false;
+
+    auto const element = signature[0];
+    switch (element)
+    {
+        case ELEMENT_TYPE_CLASS:
+        case ELEMENT_TYPE_OBJECT:
+        case ELEMENT_TYPE_STRING:
+        case ELEMENT_TYPE_SZARRAY:
+        case ELEMENT_TYPE_ARRAY:
+            return true;
+
+        case ELEMENT_TYPE_GENERICINST:
+            return length >= 2 && signature[1] == ELEMENT_TYPE_CLASS;
+
+        case ELEMENT_TYPE_VAR:
+        case ELEMENT_TYPE_MVAR:
+        {
+            if (length < 2)
+                return false;
+
+            const TypeArgs& typeArgs = (element == ELEMENT_TYPE_VAR) ? classArgs : methodArgs;
+            ULONG index;
+            CorSigUncompressData(signature + 1, &index);
+            if (index >= typeArgs.size())
+                return false;
+
+            // Classify the substituted argument without substituting again
+            auto const& [argSignature, argLength] = typeArgs[index];
+            return IsSigTypeObjectReference(argSignature, argLength, noTypeArgs, noTypeArgs);
+        }
+
+        default:
+            return false;
+    }
+}
+
 bool LibProfiler::SigTypeContainsGenericParam(const BYTE* signature, unsigned length)
 {
     if (length == 0)
