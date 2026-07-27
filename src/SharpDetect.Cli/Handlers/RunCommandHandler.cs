@@ -33,7 +33,7 @@ internal sealed class RunCommandHandler : IDisposable
         }
         catch (Exception ex) when (ex is not CommandException)
         {
-            throw new CommandException(ex.Message, (int)ExitCode.ConfigurationError, innerException: ex);
+            throw new CommandException(ExceptionMessages.Flatten(ex), (int)ExitCode.ConfigurationError, innerException: ex);
         }
     }
 
@@ -47,7 +47,7 @@ internal sealed class RunCommandHandler : IDisposable
         }
         catch (Exception ex) when (ex is not CommandException)
         {
-            throw new CommandException(ex.Message, (int)ExitCode.ConfigurationError, innerException: ex);
+            throw new CommandException(ExceptionMessages.Flatten(ex), (int)ExitCode.ConfigurationError, innerException: ex);
         }
     }
 
@@ -64,6 +64,9 @@ internal sealed class RunCommandHandler : IDisposable
             })
             .WithPlugin(pluginType)
             .Build();
+
+        // Instantiate the plugin eagerly - it parses its own configuration section and reports problems immediately
+        provider.GetRequiredService<IPlugin>();
         return provider;
     }
 
@@ -106,7 +109,9 @@ internal sealed class RunCommandHandler : IDisposable
         }
         catch (Exception exception)
         {
-            throw new IOException($"Could not load configuration file from path: \"{configurationPath}\".", exception);
+            throw new IOException(
+                $"Could not load configuration file from path: \"{configurationPath}\": {exception.Message}",
+                exception);
         }
     }
 
@@ -135,9 +140,14 @@ internal sealed class RunCommandHandler : IDisposable
             return match
                 ?? throw new TypeLoadException($"Could not find plugin named \"{pluginName}\" in assembly \"{assembly.FullName}\".");
         }
+        catch (TypeLoadException)
+        {
+            // Already names the plugin and the assembly it was looked up in
+            throw;
+        }
         catch (Exception e)
         {
-            throw new ArgumentException("Error during loading plugin.", e);
+            throw new ArgumentException($"Could not load plugin assembly \"{assemblyPath}\": {e.Message}", e);
         }
     }
     

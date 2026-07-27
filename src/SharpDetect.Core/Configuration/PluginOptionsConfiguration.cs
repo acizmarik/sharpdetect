@@ -2,17 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
 
 namespace SharpDetect.Core.Configuration;
 
 public class PluginOptionsConfiguration
 {
-    private readonly JsonSerializerOptions _jsonSerializerOptions = new()
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         AllowTrailingCommas = true,
-        ReadCommentHandling = JsonCommentHandling.Skip
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
     
     /// <summary>
@@ -20,8 +21,8 @@ public class PluginOptionsConfiguration
     /// This will be deserialized by the plugin into its specific configuration type.
     /// </summary>
     public object? RawJsonConfiguration { get; init; }
-    
-    public TConfig ParseConfigurationOrDefault<TConfig>(ILogger logger)
+
+    public TConfig ParseConfigurationOrDefault<TConfig>()
         where TConfig : IPluginOptionsConfig<TConfig>
     {
         if (RawJsonConfiguration == null)
@@ -37,8 +38,7 @@ public class PluginOptionsConfiguration
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "Failed to parse configuration JSON, using default settings");
-            return TConfig.Default;
+            throw new ArgumentException($"Could not parse the \"Configuration\" section of the analysis plugin: {ex.Message}", ex);
         }
     }
 }

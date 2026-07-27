@@ -28,7 +28,7 @@ public sealed partial class InitCommand : ICommand
     private string? TestFilter { get; set; }
 
     [CommandOption("runner", Description = "Test runner: Mtp (default) | VSTest (requires --test)")]
-    private TestRunner TestRunner { get; set; } = TestTargetConfigurationArgs.DefaultRunner;
+    private TestRunner? TestRunner { get; set; }
 
     [CommandOption("instrument-system-libraries", Description = "Instrument system assemblies (System, Microsoft, test frameworks..)")]
     private bool InstrumentSystemLibraries { get; set; }
@@ -39,14 +39,16 @@ public sealed partial class InitCommand : ICommand
         {
             throw new CommandException(
                 "--filter requires --test.",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
         }
 
-        if (!IsTest && TestRunner != TestTargetConfigurationArgs.DefaultRunner)
+        if (!IsTest && TestRunner is not null)
         {
             throw new CommandException(
                 "--runner requires --test.",
-                (int)ExitCode.ConfigurationError);
+                (int)ExitCode.ConfigurationError,
+                showHelp: true);
         }
 
         try
@@ -69,7 +71,7 @@ public sealed partial class InitCommand : ICommand
         catch (Exception exception)
         {
             throw new CommandException(
-                message: exception.Message,
+                message: ExceptionMessages.Flatten(exception),
                 exitCode: (int)ExitCode.ConfigurationError,
                 innerException: exception);
         }

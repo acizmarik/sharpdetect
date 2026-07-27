@@ -17,6 +17,11 @@ public sealed class AnalysisPluginConfigurationArgs
     public object? Configuration { get; }
     public string? PluginFullTypeName { get; }
     public string? PluginName { get; }
+
+    [JsonPropertyName(nameof(Path))]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PathRaw { get; }
+
     [JsonIgnore] public string Path { get; }
     public bool RenderReport { get; }
     public LogLevel LogLevel { get; }
@@ -30,7 +35,7 @@ public sealed class AnalysisPluginConfigurationArgs
         object? configuration = null,
         string? pluginFullTypeName = null,
         string? pluginName = null,
-        string path = DefaultPath,
+        string? pathRaw = null,
         bool renderReport = DefaultRenderReport,
         LogLevel logLevel = DefaultLogLevel,
         string? temporaryFilesFolder = null,
@@ -38,6 +43,7 @@ public sealed class AnalysisPluginConfigurationArgs
         string? reportFileName = null,
         string? sessionId = null)
     {
+        var path = pathRaw ?? DefaultPath;
         Guard.IsNotNullOrWhiteSpace(path);
         if (string.IsNullOrWhiteSpace(pluginFullTypeName) && string.IsNullOrWhiteSpace(pluginName))
             throw new ArgumentException($"Either {nameof(pluginFullTypeName)} or {nameof(pluginName)} must be provided.");
@@ -45,6 +51,7 @@ public sealed class AnalysisPluginConfigurationArgs
         Configuration = configuration;
         PluginFullTypeName = pluginFullTypeName;
         PluginName = pluginName;
+        PathRaw = pathRaw;
         Path = EnvironmentUtils.ExpandEnvironmentVariablesForPath(path);
         RenderReport = renderReport;
         LogLevel = logLevel;
@@ -53,8 +60,4 @@ public sealed class AnalysisPluginConfigurationArgs
         ReportFileName = reportFileName;
         SessionId = sessionId;
     }
-    
-    [JsonPropertyName(nameof(Path))]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    private string? PathSerialized => Path == DefaultPath ? null : Path;
 }
