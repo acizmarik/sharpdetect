@@ -28,4 +28,4 @@ target_include_directories(LibIPC.Tests PRIVATE ${INCLUDE_DIRECTORIES})
 target_link_libraries(LibIPC.Tests PRIVATE loguru Threads::Threads)
 apply_profiler_compile_options(LibIPC.Tests)
 
-add_test(NAME LibIPC.Tests COMMAND LibIPC.Tests)
+add_doctest_test(LibIPC.Tests)

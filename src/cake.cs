@@ -33,12 +33,92 @@ string GetDefaultRuntimeIdentifier()
 ////////////////////////// CONFIGURATION /////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
+const string solution = "./SharpDetect.slnx";
 const string artifactsDirectory = "./artifacts";
-var nativeArtifactsDirectory = artifactsDirectory + "/Profilers/" + rid + "/";
+const string testResultsDirectory = "./TestResults";
+const string profilerSourceDirectory = "./SharpDetect.Profiler";
+const string profilerArtifactsRootDirectory = profilerSourceDirectory + "/artifacts";
+const string ipqProject = "./SharpDetect.InterProcessQueue";
+const string cliProject = "./SharpDetect.Cli";
+
+var supportedRuntimeIdentifiers = new[] { "win-x64", "linux-x64" };
+var nativeArtifactsDirectory = $"{artifactsDirectory}/Profilers/{rid}/";
+var profilerBuildDirectory = $"{profilerArtifactsRootDirectory}/{rid}";
+var profilerTestsBuildDirectory = $"{profilerArtifactsRootDirectory}/{rid}-tests";
 var profilers = new[] { "SharpDetect.Concurrency.Profiler" };
+
+// Projects that are intentionally excluded from the solution (MTP and VSTest must not be in same solution)
+var standaloneProjects = new[]
+{
+    "./Samples/SimpleDataRaceTestsMtp/SimpleDataRaceTestsMtp.csproj",
+    "./Samples/SimpleDataRaceTestsVSTest/SimpleDataRaceTestsVSTest.csproj"
+};
+
 var warningsAsErrorsSettings = new DotNetMSBuildSettings
 {
     TreatAllWarningsAs = MSBuildTreatAllWarningsAs.Error
+};
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////// HELPERS /////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+void RunTool(string tool, string description, string? workingDirectory, Action<ProcessArgumentBuilder> configureArguments)
+{
+    var arguments = new ProcessArgumentBuilder();
+    configureArguments(arguments);
+
+    var settings = new ProcessSettings { Arguments = arguments };
+    if (workingDirectory is not null)
+        settings.WorkingDirectory = workingDirectory;
+
+    var exitCode = StartProcess(tool, settings);
+    if (exitCode != 0)
+        throw new Exception($"{description} failed with exit code: {exitCode}");
+}
+
+void CMakeConfigure(string buildDirectory, params string[] options)
+{
+    EnsureDirectoryExists(buildDirectory);
+    RunTool("cmake", $"CMake configure ({buildDirectory})", buildDirectory, arguments =>
+    {
+        arguments.AppendQuoted(MakeAbsolute(Directory(profilerSourceDirectory)).FullPath);
+        arguments.Append($"-DCMAKE_BUILD_TYPE={configuration}");
+        foreach (var option in options)
+            arguments.AppendQuoted(option);
+    });
+}
+
+void CMakeBuild(string buildDirectory, string? cmakeTarget = null)
+{
+    RunTool("cmake", $"CMake build ({cmakeTarget ?? "all"})", buildDirectory, arguments =>
+    {
+        arguments.Append("--build").Append(".")
+                 .Append("--config").Append(configuration)
+                 .Append("--parallel");
+        if (cmakeTarget is not null)
+            arguments.Append("--target").Append(cmakeTarget);
+    });
+}
+
+DotNetBuildSettings CreateBuildSettings() => new DotNetBuildSettings
+{
+    Configuration = configuration,
+    NoRestore = true,
+    MSBuildSettings = warningsAsErrorsSettings
+};
+
+DotNetTestSettings CreateTestSettings(TimeSpan timeout, string? filter = null) => new DotNetTestSettings
+{
+    Configuration = configuration,
+    Filter = filter,
+    Loggers = ["trx"],
+    Collectors = ["XPlat Code Coverage"],
+    ResultsDirectory = testResultsDirectory,
+    Settings = File("./CodeCoverage.runsettings"),
+    NoRestore = true,
+    NoBuild = true,
+    ToolTimeout = timeout
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -47,6 +127,9 @@ var warningsAsErrorsSettings = new DotNetMSBuildSettings
 
 Setup(_ =>
 {
+    if (!supportedRuntimeIdentifiers.Contains(rid))
+        throw new Exception($"Unsupported runtime identifier '{rid}'");
+
     Information($"Target:                     {target}");
     Information($"Configuration:              {configuration}");
     Information($"Runtime identifier:         {rid}");
@@ -63,53 +146,38 @@ Task("Clean")
     .WithCriteria(c => HasArgument("rebuild"))
     .Does(() =>
 {
-    DotNetClean("./SharpDetect.slnx", new DotNetCleanSettings
+    DotNetClean(solution, new DotNetCleanSettings
     {
         Configuration = configuration
     });
-    CleanDirectory("./artifacts");
-    CleanDirectory("./SharpDetect.Profiler/artifacts");
+    CleanDirectory(artifactsDirectory);
+    CleanDirectory(profilerArtifactsRootDirectory);
 });
 
 Task("Restore")
     .IsDependentOn("Clean")
     .Does(() =>
 {
-    DotNetRestore("./SharpDetect.slnx");
-    DotNetRestore("./Samples/SimpleDataRaceTestsMtp/SimpleDataRaceTestsMtp.csproj");
-    DotNetRestore("./Samples/SimpleDataRaceTestsVSTest/SimpleDataRaceTestsVSTest.csproj");
+    DotNetRestore(solution);
+    foreach (var project in standaloneProjects)
+        DotNetRestore(project);
 });
 
 Task("Build-Managed")
     .IsDependentOn("Restore")
     .Does(() =>
 {
-    DotNetBuild("./SharpDetect.slnx", new DotNetBuildSettings
-    {
-        Configuration = configuration,
-        NoRestore = true,
-        MSBuildSettings = warningsAsErrorsSettings
-    });
+    DotNetBuild(solution, CreateBuildSettings());
 
-    DotNetBuild("./Samples/SimpleDataRaceTestsMtp/SimpleDataRaceTestsMtp.csproj", new DotNetBuildSettings
-    {
-        Configuration = configuration,
-        NoRestore = true,
-        MSBuildSettings = warningsAsErrorsSettings
-    });
-    DotNetBuild("./Samples/SimpleDataRaceTestsVSTest/SimpleDataRaceTestsVSTest.csproj", new DotNetBuildSettings
-    {
-        Configuration = configuration,
-        NoRestore = true,
-        MSBuildSettings = warningsAsErrorsSettings
-    });
+    foreach (var project in standaloneProjects)
+        DotNetBuild(project, CreateBuildSettings());
 });
 
 Task("Build-IPQ")
-    .IsDependentOn("Build-Managed")
+    .IsDependentOn("Restore")
     .Does(() =>
 {
-    DotNetPublish("./SharpDetect.InterProcessQueue", new DotNetPublishSettings
+    DotNetPublish(ipqProject, new DotNetPublishSettings
     {
         Configuration = configuration,
         Runtime = rid
@@ -117,54 +185,22 @@ Task("Build-IPQ")
 });
 
 Task("Build-Profiler")
-    .IsDependentOn("Build-IPQ")
+    .IsDependentOn("Clean")
     .Does(() =>
 {
-    var profilerArtifactsDirectory = $"./SharpDetect.Profiler/artifacts/{rid}";
-    EnsureDirectoryExists(profilerArtifactsDirectory);
-
-    var exitCode = StartProcess("cmake", new ProcessSettings
-    {
-        Arguments = new ProcessArgumentBuilder()
-            .Append("../..")
-            .Append($"-DCMAKE_BUILD_TYPE={configuration}"),
-        WorkingDirectory = profilerArtifactsDirectory
-    });
-
-    if (exitCode != 0)
-        throw new Exception($"CMake configure failed with exit code: {exitCode}");
-
-    exitCode = StartProcess("cmake", new ProcessSettings
-    {
-        Arguments = new ProcessArgumentBuilder()
-            .Append("--build")
-            .Append(".")
-            .Append("--config")
-            .Append(configuration)
-            .Append("--parallel"),
-        WorkingDirectory = profilerArtifactsDirectory
-    });
-
-    if (exitCode != 0)
-        throw new Exception($"CMake build failed with exit code: {exitCode}");
-});
-
-Task("Build-Local-Environment")
-    .IsDependentOn("Build-Managed")
-    .IsDependentOn("Build-IPQ")
-    .IsDependentOn("Build-Profiler")
-    .Does(() =>
-{
-    RunTarget("Copy-Native-Artifacts");
+    CMakeConfigure(profilerBuildDirectory);
+    CMakeBuild(profilerBuildDirectory);
 });
 
 Task("Copy-Native-Artifacts")
+    .IsDependentOn("Build-IPQ")
+    .IsDependentOn("Build-Profiler")
     .Does(() =>
 {
     EnsureDirectoryExists(artifactsDirectory);
     EnsureDirectoryExists(nativeArtifactsDirectory);
 
-    var ipqLibrary = $"./SharpDetect.InterProcessQueue/bin/{configuration}/{sdk}/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
+    var ipqLibrary = $"{ipqProject}/bin/{configuration}/{sdk}/{rid}/native/SharpDetect.InterProcessQueue.{libraryExtension}";
     if (!System.IO.File.Exists(ipqLibrary))
         throw new Exception($"IPQ native library not found at: {ipqLibrary}");
     CopyFileToDirectory(ipqLibrary, nativeArtifactsDirectory);
@@ -181,89 +217,58 @@ Task("Copy-Native-Artifacts")
 
 string GetProfilerLibraryPath(string profilerName)
 {
-    var baseDirectory = $"./SharpDetect.Profiler/artifacts/{rid}/{profilerName}";
+    var baseDirectory = $"{profilerBuildDirectory}/{profilerName}";
     return rid.StartsWith("win")
         ? $"{baseDirectory}/{configuration}/{profilerName}.{libraryExtension}"
         : $"{baseDirectory}/{profilerName}.{libraryExtension}";
 }
 
-Task("Test-Unit")
+Task("Build-Local-Environment")
+    .IsDependentOn("Build-Managed")
+    .IsDependentOn("Copy-Native-Artifacts");
+
+Task("Test-Unit-Managed")
     .IsDependentOn("Build-Managed")
     .Does(() =>
 {
-    DotNetTest("./SharpDetect.slnx", new DotNetTestSettings
+    DotNetTest(solution, CreateTestSettings(
+        timeout: TimeSpan.FromMinutes(10),
+        filter: "FullyQualifiedName!~SharpDetect.E2ETests"));
+});
+
+Task("Test-Unit-Native")
+    .IsDependentOn("Clean")
+    .Does(() =>
+{
+    EnsureDirectoryExists(testResultsDirectory);
+    DeleteFiles($"{testResultsDirectory}/native-tests-*.xml");
+
+    CMakeConfigure(profilerTestsBuildDirectory,
+        "-DSHARPDETECT_BUILD_TESTS=ON",
+        $"-DSHARPDETECT_TEST_RESULTS_DIR={MakeAbsolute(Directory(testResultsDirectory)).FullPath}");
+    CMakeBuild(profilerTestsBuildDirectory, "SharpDetect.NativeTests");
+
+    RunTool("ctest", $"Native tests (reports in {testResultsDirectory})", profilerTestsBuildDirectory, arguments =>
     {
-        Configuration = configuration,
-        Filter = "FullyQualifiedName!~SharpDetect.E2ETests",
-        Loggers = [ "trx" ],
-        Collectors = [ "XPlat Code Coverage" ],
-        ResultsDirectory = "./TestResults",
-        Settings = File("./CodeCoverage.runsettings"),
-        NoRestore = true,
-        NoBuild = true,
-        ToolTimeout = TimeSpan.FromMinutes(10)
+        arguments.Append("--output-on-failure")
+                 .Append("--build-config").Append(configuration);
     });
 });
+
+Task("Test-Unit")
+    .IsDependentOn("Test-Unit-Managed")
+    .IsDependentOn("Test-Unit-Native");
 
 Task("Test-E2E")
     .IsDependentOn("Build-Local-Environment")
     .Does(() =>
 {
-    DotNetTest("./Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj", new DotNetTestSettings
-    {
-        Configuration = configuration,
-        Loggers = [ "trx" ],
-        Collectors = [ "XPlat Code Coverage" ],
-        ResultsDirectory = "./TestResults",
-        Settings = File("./CodeCoverage.runsettings"),
-        NoRestore = true,
-        NoBuild = true,
-        ToolTimeout = TimeSpan.FromMinutes(20)
-    });
+    DotNetTest("./Tests/SharpDetect.E2ETests/SharpDetect.E2ETests.csproj", CreateTestSettings(timeout: TimeSpan.FromMinutes(20)));
 });
 
 Task("Tests")
     .IsDependentOn("Test-Unit")
     .IsDependentOn("Test-E2E");
-
-Task("Test-Native")
-    .Does(() =>
-{
-    var testBuildDirectory = $"./SharpDetect.Profiler/artifacts/{rid}-tests";
-    EnsureDirectoryExists(testBuildDirectory);
-
-    var exitCode = StartProcess("cmake", new ProcessSettings
-    {
-        Arguments = new ProcessArgumentBuilder()
-            .Append("../..")
-            .Append($"-DCMAKE_BUILD_TYPE={configuration}")
-            .Append("-DSHARPDETECT_BUILD_TESTS=ON"),
-        WorkingDirectory = testBuildDirectory
-    });
-    if (exitCode != 0)
-        throw new Exception($"CMake configure (tests) failed with exit code: {exitCode}");
-
-    exitCode = StartProcess("cmake", new ProcessSettings
-    {
-        Arguments = new ProcessArgumentBuilder()
-            .Append("--build").Append(".")
-            .Append("--config").Append(configuration)
-            .Append("--parallel"),
-        WorkingDirectory = testBuildDirectory
-    });
-    if (exitCode != 0)
-        throw new Exception($"CMake build (tests) failed with exit code: {exitCode}");
-
-    exitCode = StartProcess("ctest", new ProcessSettings
-    {
-        Arguments = new ProcessArgumentBuilder()
-            .Append("--output-on-failure")
-            .Append("--build-config").Append(configuration),
-        WorkingDirectory = testBuildDirectory
-    });
-    if (exitCode != 0)
-        throw new Exception($"Native tests failed with exit code: {exitCode}");
-});
 
 Task("Validate-Benchmark-Configuration")
     .Does(() =>
@@ -299,22 +304,18 @@ Task("Benchmark")
 Task("Coverage-Report")
     .Does(() =>
 {
-    const string reportDirectory = "./TestResults/CoverageReport";
+    const string reportDirectory = testResultsDirectory + "/CoverageReport";
     EnsureDirectoryExists(reportDirectory);
 
-    var exitCode = StartProcess("dotnet", new ProcessSettings
+    RunTool("dotnet", "ReportGenerator", workingDirectory: null, arguments =>
     {
-        Arguments = new ProcessArgumentBuilder()
-            .Append("tool")
-            .Append("run")
-            .Append("reportgenerator")
-            .Append("-reports:./TestResults/**/coverage.cobertura.xml")
-            .Append($"-targetdir:{reportDirectory}")
-            .Append("-reporttypes:Html;MarkdownSummaryGithub")
+        arguments.Append("tool")
+                 .Append("run")
+                 .Append("reportgenerator")
+                 .Append($"-reports:{testResultsDirectory}/**/coverage.cobertura.xml")
+                 .Append($"-targetdir:{reportDirectory}")
+                 .Append("-reporttypes:Html;MarkdownSummaryGithub");
     });
-
-    if (exitCode != 0)
-        throw new Exception($"ReportGenerator failed with exit code: {exitCode}");
 
     Information($"Coverage report generated in: {reportDirectory}");
 });
@@ -322,7 +323,7 @@ Task("Coverage-Report")
 Task("CI-Prepare-Managed")
     .Does(() =>
 {
-    DotNetPublish("./SharpDetect.Cli", new DotNetPublishSettings
+    DotNetPublish(cliProject, new DotNetPublishSettings
     {
         Configuration = configuration
     });
@@ -332,17 +333,16 @@ Task("CI-Pack")
     .IsDependentOn("CI-Prepare-Managed")
     .Does(() =>
 {
-    const string outputDirectory = $"{artifactsDirectory}";
-    EnsureDirectoryExists(outputDirectory);
-    
-    DotNetPack("./SharpDetect.Cli", new DotNetPackSettings
+    EnsureDirectoryExists(artifactsDirectory);
+
+    DotNetPack(cliProject, new DotNetPackSettings
     {
         Configuration = configuration,
-        OutputDirectory = outputDirectory
+        OutputDirectory = artifactsDirectory
     });
-    
-    Information($"Package created in: {outputDirectory}");
-    var packages = GetFiles($"{outputDirectory}/*.nupkg");
+
+    Information($"Package created in: {artifactsDirectory}");
+    var packages = GetFiles($"{artifactsDirectory}/*.nupkg");
     foreach (var package in packages)
         Information($"  - {package.GetFilename()}");
 });

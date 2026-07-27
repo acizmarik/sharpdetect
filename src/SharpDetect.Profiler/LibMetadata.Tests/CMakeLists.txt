@@ -22,4 +22,4 @@ endif()
 target_include_directories(LibMetadata.Tests PRIVATE ${INCLUDE_DIRECTORIES})
 apply_profiler_compile_options(LibMetadata.Tests)
 
-add_test(NAME LibMetadata.Tests COMMAND LibMetadata.Tests)
+add_doctest_test(LibMetadata.Tests)
