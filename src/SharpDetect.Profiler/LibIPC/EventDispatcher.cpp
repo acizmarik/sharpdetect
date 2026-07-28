@@ -125,6 +125,7 @@ bool LibIPC::EventDispatcher::DrainAvailableEvents()
 
 		if (minSequence == std::numeric_limits<UINT64>::max())
 		{
+			_sink.Flush();
 			_lanes.PruneClosed();
 			return progress;
 		}
@@ -132,6 +133,7 @@ bool LibIPC::EventDispatcher::DrainAvailableEvents()
 		if (minSequence > _nextSequenceToEmit)
 		{
 			// A producer claimed the next sequence but has not published it yet
+			_sink.Flush();
 			if (gapStart == std::chrono::steady_clock::time_point { })
 				gapStart = std::chrono::steady_clock::now();
 

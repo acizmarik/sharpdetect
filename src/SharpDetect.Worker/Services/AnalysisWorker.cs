@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -18,10 +17,12 @@ namespace SharpDetect.Worker.Services;
 
 public sealed class AnalysisWorker : IAnalysisWorker
 {
-    private const int EventBufferCapacity = 1000;
+    private const int EventBatchSize = 256;
+    private const int MaxPendingEventBatches = 16;
     private static readonly TimeSpan IdlePollDelay = TimeSpan.FromMilliseconds(10);
-    private const int MaxBatchPerReceiver = 256;
+    private const int MaxPollsPerReceiver = 64;
     private const int MaxConsecutiveEmptyPolls = 50;
+    private const int MaxConsecutiveFailedRecords = 1000;
 
     private readonly RunCommandArgs _arguments;
     private readonly IPlugin _plugin;
@@ -173,8 +174,8 @@ public sealed class AnalysisWorker : IAnalysisWorker
     private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
     {
         using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        using var events = new BlockingCollection<RecordedEvent>(EventBufferCapacity);
-        var producer = new Thread(() => ProduceEvents(events, targetProcessTask, rootPid, targetDoneTimestamp, receiveCts.Token))
+        using var events = new EventBatchPipe(EventBatchSize, MaxPendingEventBatches);
+        var producer = new Thread(() => ProduceEvents(events, targetProcessTask, targetDoneTimestamp, receiveCts.Token))
         {
             IsBackground = true,
             Name = "SharpDetect.EventReceiver"
@@ -201,40 +202,54 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
 
-    private void ProduceEvents(BlockingCollection<RecordedEvent> events, Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
+    private void ProduceEvents(
+        EventBatchPipe events,
+        Task targetProcessTask,
+        StrongBox<long> targetDoneTimestamp,
+        CancellationToken cancellationToken)
     {
         try
         {
-            foreach (var currentEvent in ReceiveEvents(targetProcessTask, rootPid, targetDoneTimestamp, cancellationToken))
-            {
-                AnalysisWorkerMetrics.EventReceived(currentEvent.EventArgs);
-                events.Add(currentEvent, cancellationToken);
-            }
+            ReceiveEvents(events, targetProcessTask, targetDoneTimestamp, cancellationToken);
         }
         catch (OperationCanceledException)
         {
             // Expected when the consumer finishes (or analysis is cancelled) while we wait for buffer capacity.
         }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "Event receiver stopped; the analysis is incomplete");
+        }
         finally
         {
-            events.CompleteAdding();
+            events.Complete(cancellationToken);
         }
     }
 
-    private void ProcessEvents(BlockingCollection<RecordedEvent> events, uint rootPid, CancellationToken cancellationToken)
+    private void ProcessEvents(EventBatchPipe events, uint rootPid, CancellationToken cancellationToken)
     {
         try
         {
-            foreach (var currentEvent in events.GetConsumingEnumerable(cancellationToken))
+            while (events.TryTakeBatch(out var batch, cancellationToken))
             {
-                if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
-                    return;
-
-                AnalysisWorkerMetrics.EventProcessed();
-                if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
+                var processed = 0;
+                try
                 {
-                    LogFailureAndTerminateAnalysis();
-                    return;
+                    var buffer = batch.Buffer;
+                    for (; processed < batch.Count; processed++)
+                    {
+                        var currentEvent = buffer[processed];
+                        if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
+                            return;
+
+                        if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
+                            LogFailureAndTerminateAnalysis();
+                    }
+                }
+                finally
+                {
+                    AnalysisWorkerMetrics.EventsProcessed(processed);
+                    events.Recycle(batch);
                 }
             }
         }
@@ -244,19 +259,41 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
 
-    private IEnumerable<RecordedEvent> ReceiveEvents(Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
+    private void ReceiveEvents(
+        EventBatchPipe events,
+        Task targetProcessTask,
+        StrongBox<long> targetDoneTimestamp,
+        CancellationToken cancellationToken)
     {
         var receivers = new Dictionary<uint, IProfilerEventReceiver>();
         var drainStartTimestamp = 0L;
         var lastDrainedEventTimestamp = 0L;
+        var consecutiveFailedRecords = 0;
 
-        void TrackDrainedEvent()
+
+        bool DrainReceiver(IProfilerEventReceiver receiver)
         {
-            if (drainStartTimestamp == 0)
-                return;
+            var receivedAny = false;
+            for (var poll = 0; poll < MaxPollsPerReceiver; poll++)
+            {
+                var destination = events.GetWriteSpan();
+                var count = receiver.TryReceiveNotifications(destination, out var failedRecords);
+                consecutiveFailedRecords = count > 0 ? 0 : consecutiveFailedRecords + failedRecords;
+                if (count == 0)
+                    break;
 
-            lastDrainedEventTimestamp = Stopwatch.GetTimestamp();
-            AnalysisWorkerMetrics.EventDrained();
+                AnalysisWorkerMetrics.EventsReceived(destination[..count]);
+                if (drainStartTimestamp != 0)
+                {
+                    lastDrainedEventTimestamp = Stopwatch.GetTimestamp();
+                    AnalysisWorkerMetrics.EventsDrained(count);
+                }
+
+                events.Advance(count, cancellationToken);
+                receivedAny = true;
+            }
+
+            return receivedAny;
         }
 
         try
@@ -277,34 +314,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 }
 
                 var receivedAny = false;
-                foreach (var (pid, receiver) in receivers)
-                {
-                    if (pid == rootPid)
-                        continue;
+                foreach (var receiver in receivers.Values)
+                    receivedAny |= DrainReceiver(receiver);
 
-                    for (var i = 0; i < MaxBatchPerReceiver && receiver.TryReceiveNotification(out var childEvent); i++)
-                    {
-                        receivedAny = true;
-                        TrackDrainedEvent();
-                        yield return childEvent;
-                    }
-                }
-
-                if (receivers.TryGetValue(rootPid, out var rootReceiver))
-                {
-                    for (var i = 0; i < MaxBatchPerReceiver && rootReceiver.TryReceiveNotification(out var rootEvent); i++)
-                    {
-                        receivedAny = true;
-                        TrackDrainedEvent();
-                        yield return rootEvent;
-
-                        if (rootEvent.EventArgs is ProfilerDestroyRecordedEvent && rootEvent.Metadata.Pid == rootPid)
-                        {
-                            Interlocked.CompareExchange(ref targetDoneTimestamp.Value, Stopwatch.GetTimestamp(), 0L);
-                            yield break;
-                        }
-                    }
-                }
+                if (consecutiveFailedRecords >= MaxConsecutiveFailedRecords)
+                    LogUnreadableEventStreamAndTerminateAnalysis(consecutiveFailedRecords);
 
                 if (receivedAny)
                 {
@@ -312,8 +326,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     continue;
                 }
 
+                events.Flush(cancellationToken);
                 if (targetProcessTask.IsCompleted && ++consecutiveEmptyPolls >= MaxConsecutiveEmptyPolls)
-                    yield break;
+                    return;
 
                 Thread.Sleep(IdlePollDelay);
             }
@@ -406,6 +421,13 @@ public sealed class AnalysisWorker : IAnalysisWorker
     private void LogFailureAndTerminateAnalysis()
     {
         _logger.LogCritical("Cannot continue with analysis due to corrupted shadow runtime state.");
+        throw new AnalysisFailedException();
+    }
+
+    [DoesNotReturn]
+    private void LogUnreadableEventStreamAndTerminateAnalysis(int failedRecords)
+    {
+        _logger.LogCritical("Discarded {FailedRecords} consecutive unparsable events.", failedRecords);
         throw new AnalysisFailedException();
     }
 }

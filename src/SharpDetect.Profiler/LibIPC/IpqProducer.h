@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -15,6 +17,10 @@ namespace LibIPC
 	class IpqProducer : public IEventSink
 	{
 	public:
+		static constexpr std::size_t RecordHeaderSize = sizeof(std::int32_t);
+		static constexpr std::size_t FlushThresholdBytes = 64 * 1024;
+		static constexpr std::size_t BatchSlackBytes = 4 * 1024;
+
 		IpqProducer(
 			const IpqLibrary& library,
 			const std::string& name,
@@ -28,9 +34,12 @@ namespace LibIPC
 		IpqProducer& operator=(IpqProducer&&) = delete;
 
 		void Send(std::vector<char>& buffer) override;
+		void Flush() override;
 
 	private:
+		void SendMessage(char* data, std::size_t size);
 		const IpqLibrary& _library;
 		PVOID _handle;
+		std::vector<char> _batch;
 	};
 }

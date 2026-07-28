@@ -93,4 +93,5 @@ void LibIPC::Client::Shutdown()
 	msgpack::pack(sbuf, destroyMsg);
 	std::vector<char> buffer(sbuf.data(), sbuf.data() + sbuf.size());
 	_producer->Send(buffer);
+	_producer->Flush();
 }

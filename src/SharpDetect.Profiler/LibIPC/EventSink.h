@@ -12,5 +12,6 @@ namespace LibIPC
 	public:
 		virtual ~IEventSink() = default;
 		virtual void Send(std::vector<char>& buffer) = 0;
+		virtual void Flush() = 0;
 	};
 }
