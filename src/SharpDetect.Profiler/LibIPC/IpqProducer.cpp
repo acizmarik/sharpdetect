@@ -81,7 +81,7 @@ void LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
 	constexpr auto maxRetryDuration = std::chrono::seconds(5);
 
 	const auto byteStream = reinterpret_cast<BYTE*>(data);
-	const auto deadline = std::chrono::steady_clock::now() + maxRetryDuration;
+	auto deadline = std::chrono::steady_clock::time_point { };
 	for (auto spinCount = 0; ; ++spinCount)
 	{
 		const INT result = _library.Enqueue(_handle, byteStream, static_cast<INT>(size));
@@ -98,8 +98,14 @@ void LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
 			return;
 		}
 
+		// The retry budget only starts once the ring is actually full, so the common path never reads the clock
+		const auto now = std::chrono::steady_clock::now();
+		if (deadline == std::chrono::steady_clock::time_point { })
+		{
+			deadline = now + maxRetryDuration;
+		}
 		// A full ring past deadline means we assume the consumer is gone/detached and will never drain it
-		if (std::chrono::steady_clock::now() >= deadline)
+		else if (now >= deadline)
 		{
 			LOG_F(
 				ERROR,
