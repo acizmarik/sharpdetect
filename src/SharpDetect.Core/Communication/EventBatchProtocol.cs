@@ -12,6 +12,27 @@ public static class EventBatchProtocol
     public static EventBatchRecordStatus TryReadRecord(
         ReadOnlyMemory<byte> batch,
         ref int offset,
+        out byte format,
+        out ReadOnlyMemory<byte> payload)
+    {
+        format = default;
+        payload = default;
+
+        var status = TryReadRecord(batch, ref offset, out var record);
+        if (status != EventBatchRecordStatus.Record)
+            return status;
+
+        if (record.IsEmpty)
+            return EventBatchRecordStatus.Corrupted;
+
+        format = record.Span[0];
+        payload = record[1..];
+        return EventBatchRecordStatus.Record;
+    }
+
+    public static EventBatchRecordStatus TryReadRecord(
+        ReadOnlyMemory<byte> batch,
+        ref int offset,
         out ReadOnlyMemory<byte> record)
     {
         record = default;

@@ -11,6 +11,7 @@
 #include "cor.h"
 #include "CommandDispatcher.h"
 #include "EventDispatcher.h"
+#include "FixedEvents.h"
 #include "IpqConsumer.h"
 #include "IpqLibrary.h"
 #include "IpqProducer.h"
@@ -37,7 +38,7 @@ namespace LibIPC
 		void Send(msgpack::type::tuple<Types...>&& data)
 		{
 			thread_local msgpack::sbuffer buffer;
-			buffer.clear();
+			PrepareMsgPackBuffer(buffer);
 			msgpack::pack(buffer, data);
 			_events->Enqueue(buffer.data(), buffer.size());
 		}
@@ -46,9 +47,14 @@ namespace LibIPC
 		void SendPriority(msgpack::type::tuple<Types...>&& data)
 		{
 			thread_local msgpack::sbuffer buffer;
-			buffer.clear();
+			PrepareMsgPackBuffer(buffer);
 			msgpack::pack(buffer, data);
 			_events->EnqueuePriority(buffer.data(), buffer.size());
+		}
+
+		void SendRaw(const char* data, const std::size_t size)
+		{
+			_events->Enqueue(data, size);
 		}
 
 		void SetCommandHandler(ICommandHandler* handler)
@@ -58,6 +64,13 @@ namespace LibIPC
 		[[nodiscard]] bool IsCommandReceivingEnabled() const { return _commandReceivingEnabled; }
 
 	private:
+		static void PrepareMsgPackBuffer(msgpack::sbuffer& buffer)
+		{
+			constexpr auto format = static_cast<char>(FixedEvents::MsgPackFormat);
+			buffer.clear();
+			buffer.write(&format, sizeof(format));
+		}
+
 		bool _commandReceivingEnabled;
 		std::atomic_bool _shutdownCompleted;
 		std::unique_ptr<IpqLibrary> _library;

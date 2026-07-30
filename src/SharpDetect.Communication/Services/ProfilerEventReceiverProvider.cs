@@ -26,6 +26,6 @@ internal sealed class ProfilerEventReceiverProvider : IProfilerEventReceiverProv
             _baseOptions.Capacity,
             $"{_baseOptions.SemaphoreName}.{pid}");
 
-        return ActivatorUtilities.CreateInstance<ProfilerEventReceiver>(_serviceProvider, perPidOptions);
+        return ActivatorUtilities.CreateInstance<ProfilerEventReceiver>(_serviceProvider, perPidOptions, pid);
     }
 }

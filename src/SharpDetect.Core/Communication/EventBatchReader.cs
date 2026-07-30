@@ -6,12 +6,20 @@ using SharpDetect.Core.Serialization;
 
 namespace SharpDetect.Core.Communication;
 
-public sealed class EventBatchReader(IRecordedEventParser parser)
+public sealed class EventBatchReader
 {
+    private readonly IRecordedEventParser _parser;
+    private readonly uint _pid;
     private ReadOnlyMemory<byte> _batch;
     private int _offset;
     private bool _exhausted = true;
     public bool HasPendingRecords => !_exhausted;
+
+    public EventBatchReader(IRecordedEventParser parser, uint pid)
+    {
+        _parser = parser;
+        _pid = pid;
+    }
     
     public void SetBatch(ReadOnlyMemory<byte> batch)
     {
@@ -35,7 +43,7 @@ public sealed class EventBatchReader(IRecordedEventParser parser)
 
         while (count < destination.Length && !_exhausted)
         {
-            var status = EventBatchProtocol.TryReadRecord(_batch, ref _offset, out var record);
+            var status = EventBatchProtocol.TryReadRecord(_batch, ref _offset, out var format, out var record);
             if (status != EventBatchRecordStatus.Record)
             {
                 _exhausted = true;
@@ -46,9 +54,26 @@ public sealed class EventBatchReader(IRecordedEventParser parser)
                     lastFailure);
             }
 
+            if (format != FixedEventFormat.MsgPackFormat)
+            {
+                if (FixedEventFormat.TryRead(format, record.Span, out var threadId, out var eventArgs))
+                {
+                    destination[count] = new RecordedEvent(new RecordedEventMetadata(_pid, threadId), eventArgs);
+                    count++;
+                }
+                else
+                {
+                    failedRecords++;
+                    lastFailure = new InvalidDataException(
+                        $"Malformed fixed-layout event record (format {format}, {record.Length} bytes).");
+                }
+
+                continue;
+            }
+
             try
             {
-                destination[count] = parser.Parse(record);
+                destination[count] = _parser.Parse(record);
                 count++;
             }
             catch (Exception ex)

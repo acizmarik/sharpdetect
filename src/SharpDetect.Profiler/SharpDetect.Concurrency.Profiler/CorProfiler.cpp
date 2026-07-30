@@ -41,6 +41,7 @@ namespace
         std::vector<BYTE> argumentOffsets;
         std::vector<BYTE> stackFramesBlob;
         std::vector<BYTE> returnValue;
+        std::vector<char> fixedEventBuffer;
     };
 
     thread_local EltThreadScratch EltScratch;
@@ -668,11 +669,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     if (decision->descriptor == nullptr || !decision->hasArguments)
     {
         // Notify about method enter without arguments
-        _client.Send(LibIPC::Helpers::CreateMethodEnterMsg(
-            CreateMetadataMsg(),
-            moduleId,
-            methodDef,
-            decision->enterEventId));
+        SendMethodEnter(moduleId, methodDef, decision->enterEventId);
         return S_OK;
     }
 
@@ -758,8 +755,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     // Notify about method enter with arguments
-    _client.Send(LibIPC::Helpers::CreateMethodEnterWithArgumentsMsg(
-        CreateMetadataMsg(),
+    SendMethodEnterWithArguments(
         moduleId,
         methodDef,
         decision->enterWithArgsEventId,
@@ -767,7 +763,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() },
         hasStackFrames
             ? std::make_optional(LibIPC::ByteSpanView { stackFramesBlob.data(), stackFramesBlob.size() })
-            : std::nullopt));
+            : std::nullopt);
     return S_OK;
 }
 
@@ -789,11 +785,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     if (decision->descriptor == nullptr || (!decision->hasReturnValue && !decision->hasIndirects))
     {
         // Notify about method leave without arguments
-        _client.Send(LibIPC::Helpers::CreateMethodExitMsg(
-            CreateMetadataMsg(),
-            moduleId,
-            methodDef,
-            decision->exitEventId));
+        SendMethodExit(moduleId, methodDef, decision->exitEventId);
         return S_OK;
     }
 
@@ -868,14 +860,13 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     }
 
     // Notify about method leave with arguments
-    _client.Send(LibIPC::Helpers::CreateMethodExitWithArgumentsMsg(
-        CreateMetadataMsg(),
+    SendMethodExitWithArguments(
         moduleId,
         methodDef,
         decision->exitWithArgsEventId,
         LibIPC::ByteSpanView { returnValue.data(), returnValue.size() },
         LibIPC::ByteSpanView { argumentValues.data(), argumentValues.size() },
-        LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() }));
+        LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() });
 
     return S_OK;
 }
@@ -981,6 +972,58 @@ UINT64 Profiler::CorProfiler::GetCurrentThreadIdCached() const
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg() const
 {
     return LibIPC::Helpers::CreateMetadataMsg(_pid, GetCurrentThreadIdCached());
+}
+
+void Profiler::CorProfiler::SendMethodEnter(const UINT64 moduleId, const UINT32 methodToken, const USHORT interpretation)
+{
+    LibIPC::FixedEvents::WriteMethodEnter(EltScratch.fixedEventBuffer, GetCurrentThreadIdCached(), moduleId, methodToken, interpretation);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
+}
+
+void Profiler::CorProfiler::SendMethodExit(const UINT64 moduleId, const UINT32 methodToken, const USHORT interpretation)
+{
+    LibIPC::FixedEvents::WriteMethodExit(EltScratch.fixedEventBuffer, GetCurrentThreadIdCached(), moduleId, methodToken, interpretation);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
+}
+
+void Profiler::CorProfiler::SendMethodEnterWithArguments(
+    const UINT64 moduleId,
+    const UINT32 methodToken,
+    const USHORT interpretation,
+    const LibIPC::ByteSpanView argumentValues,
+    const LibIPC::ByteSpanView argumentInfos,
+    const std::optional<LibIPC::ByteSpanView> stackFrames)
+{
+    LibIPC::FixedEvents::WriteMethodEnterWithArguments(
+        EltScratch.fixedEventBuffer,
+        GetCurrentThreadIdCached(),
+        moduleId,
+        methodToken,
+        interpretation,
+        argumentValues,
+        argumentInfos,
+        stackFrames);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
+}
+
+void Profiler::CorProfiler::SendMethodExitWithArguments(
+    const UINT64 moduleId,
+    const UINT32 methodToken,
+    const USHORT interpretation,
+    const LibIPC::ByteSpanView returnValue,
+    const LibIPC::ByteSpanView byRefArgumentValues,
+    const LibIPC::ByteSpanView byRefArgumentInfos)
+{
+    LibIPC::FixedEvents::WriteMethodExitWithArguments(
+        EltScratch.fixedEventBuffer,
+        GetCurrentThreadIdCached(),
+        moduleId,
+        methodToken,
+        interpretation,
+        returnValue,
+        byRefArgumentValues,
+        byRefArgumentInfos);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
 }
 
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg(const UINT64 commandId) const

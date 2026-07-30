@@ -25,12 +25,13 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
 
     public ProfilerEventReceiver(
         ConsumerMemoryMappedQueueOptions options,
+        uint pid,
         IRecordedEventParser recordedEventParser,
         ILogger<IProfilerEventReceiver> logger)
     {
         var semaphore = InterProcessSemaphore.CreateOrOpen(options.SemaphoreName, isOwner: true);
         _consumer = new Consumer(options, semaphore, ArrayPool<byte>.Shared);
-        _reader = new EventBatchReader(recordedEventParser);
+        _reader = new EventBatchReader(recordedEventParser, pid);
         _logger = logger;
         _queueFilePath = options.File;
 
