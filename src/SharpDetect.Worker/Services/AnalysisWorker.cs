@@ -76,12 +76,15 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
 
-            ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, cancellationToken);
+            var processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, cancellationToken);
             _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", rootPid);
 
             var commandResult = await targetApplicationProcess;
+            var targetExit = await targetExitTimestamp;
             AnalysisWorkerMetrics.TargetWallCompleted(
-                Stopwatch.GetElapsedTime(targetStartTimestamp, await targetExitTimestamp));
+                Stopwatch.GetElapsedTime(targetStartTimestamp, targetExit));
+            var processTail = Stopwatch.GetElapsedTime(targetExit, processTailEnd);
+            AnalysisWorkerMetrics.ProcessTailCompleted(processTail > TimeSpan.Zero ? processTail : TimeSpan.Zero);
             if (commandResult.ExitCode != 0)
             {
                 var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
@@ -171,7 +174,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         return envVars;
     }
 
-    private void ExecuteAnalysis(Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
+    private long ExecuteAnalysis(Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
     {
         using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var events = new EventBatchPipe(EventBatchSize, MaxPendingEventBatches);
@@ -182,24 +185,22 @@ public sealed class AnalysisWorker : IAnalysisWorker
         };
         producer.Start();
 
+        var processTailEnd = 0L;
         try
         {
             ProcessEvents(events, rootPid, cancellationToken);
         }
         finally
         {
-            var processTailEnd = Stopwatch.GetTimestamp();
+            processTailEnd = Stopwatch.GetTimestamp();
             receiveCts.Cancel();
             producer.Join();
-
-            var exitTimestamp = Volatile.Read(ref targetDoneTimestamp.Value);
-            AnalysisWorkerMetrics.ProcessTailCompleted(exitTimestamp != 0
-                ? Stopwatch.GetElapsedTime(exitTimestamp, processTailEnd)
-                : TimeSpan.Zero);
 
             if (_pluginHost is IDisposable disposable)
                 disposable.Dispose();
         }
+
+        return processTailEnd;
     }
 
     private void ProduceEvents(
