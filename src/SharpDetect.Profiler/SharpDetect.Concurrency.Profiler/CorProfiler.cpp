@@ -27,7 +27,24 @@
 #include "CorProfiler.h"
 
 Profiler::CorProfiler* ProfilerInstance;
-thread_local std::stack<std::vector<UINT_PTR>> ArgsCallStack;
+
+namespace
+{
+    // Per-thread scratch state of the ELT callbacks. Keeping it in a single thread_local object
+    // costs one TLS lookup per callback instead of one per buffer
+    struct EltThreadScratch
+    {
+        std::stack<std::vector<UINT_PTR>> argsCallStack;
+        std::vector<BYTE> rawArgumentInfos;
+        std::vector<UINT_PTR> indirects;
+        std::vector<BYTE> argumentValues;
+        std::vector<BYTE> argumentOffsets;
+        std::vector<BYTE> stackFramesBlob;
+        std::vector<BYTE> returnValue;
+    };
+
+    thread_local EltThreadScratch EltScratch;
+}
 
 Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
     _configuration(configuration),
@@ -661,11 +678,12 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
 
     // Retrieve information about arguments
     const auto& descriptor = *decision->descriptor;
+    auto& scratch = EltScratch;
 
     // Retrieve arguments data
     constexpr ULONG argumentInfosBufferSize = 1024;
     COR_PRF_FRAME_INFO frameInfo { };
-    thread_local std::vector<BYTE> rawArgumentInfos;
+    auto& rawArgumentInfos = scratch.rawArgumentInfos;
     if (rawArgumentInfos.size() < argumentInfosBufferSize)
         rawArgumentInfos.resize(argumentInfosBufferSize);
 
@@ -693,12 +711,12 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         return E_FAIL;
     }
 
-    thread_local std::vector<UINT_PTR> indirects;
+    auto& indirects = scratch.indirects;
     indirects.clear();
 
     const auto& argumentInfos = *reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data());
-    thread_local std::vector<BYTE> argumentValues;
-    thread_local std::vector<BYTE> argumentOffsets;
+    auto& argumentValues = scratch.argumentValues;
+    auto& argumentOffsets = scratch.argumentOffsets;
     argumentValues.clear();
     argumentOffsets.clear();
 
@@ -724,10 +742,10 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     if (descriptor.rewritingDescriptor.returnValue.has_value() || !indirects.empty())
-        ArgsCallStack.push(indirects);
+        scratch.argsCallStack.push(indirects);
 
     // Capture stack trace if required
-    thread_local std::vector<BYTE> stackFramesBlob;
+    auto& stackFramesBlob = scratch.stackFramesBlob;
     bool hasStackFrames = false;
     if (decision->captureStackTraceOnEnter)
     {
@@ -783,6 +801,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     const auto& descriptor = *decision->descriptor;
     auto const hasIndirects = decision->hasIndirects;
     auto const hasReturnValue = decision->hasReturnValue;
+    auto& scratch = EltScratch;
 
     // Retrieve return value data
     COR_PRF_FRAME_INFO frameInfo;
@@ -793,7 +812,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         LOG_F(ERROR, "Could not retrieve return value info for method %d. Error: 0x%x", methodDef, hr);
         return E_FAIL;
     }
-    thread_local std::vector<BYTE> returnValue;
+    auto& returnValue = scratch.returnValue;
     returnValue.assign(returnValueInfo.length, 0);
     if (hasReturnValue)
     {
@@ -809,13 +828,13 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     }
 
     // Retrieve by-ref arguments data
-    thread_local std::vector<BYTE> argumentValues;
-    thread_local std::vector<BYTE> argumentOffsets;
+    auto& argumentValues = scratch.argumentValues;
+    auto& argumentOffsets = scratch.argumentOffsets;
     argumentValues.clear();
     argumentOffsets.clear();
     if (hasIndirects)
     {
-        auto& indirects = ArgsCallStack.top();
+        auto& indirects = scratch.argsCallStack.top();
         if (!indirects.empty())
         {
             auto const argumentValuesLength = std::accumulate(
@@ -841,11 +860,11 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
             if (FAILED(hr))
             {
                 LOG_F(ERROR, "Could not parse by-ref arguments data for method %d. Error: 0x%x.", methodDef, hr);
-                ArgsCallStack.pop();
+                scratch.argsCallStack.pop();
                 return E_FAIL;
             }
         }
-        ArgsCallStack.pop();
+        scratch.argsCallStack.pop();
     }
 
     // Notify about method leave with arguments
@@ -893,8 +912,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionEnter(co
     if (descriptorPointer)
     {
         const auto& descriptor = *descriptorPointer.get();
-        if ((descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor)) && !ArgsCallStack.empty())
-            ArgsCallStack.pop();
+        auto& argsCallStack = EltScratch.argsCallStack;
+        if ((descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor)) && !argsCallStack.empty())
+            argsCallStack.pop();
     }
 
     auto const interpretation = hasCustomMethodExitEvent ? customMethodExitEvent : customMethodExitWithArgumentsEvent;
