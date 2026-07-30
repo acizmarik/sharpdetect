@@ -663,25 +663,38 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     const auto& descriptor = *decision->descriptor;
 
     // Retrieve arguments data
+    constexpr ULONG argumentInfosBufferSize = 1024;
     COR_PRF_FRAME_INFO frameInfo { };
-    ULONG argumentsLength = 0;
-    HRESULT hr = _corProfilerInfo->GetFunctionEnter3Info(decision->functionId, eltInfo, &frameInfo, &argumentsLength, nullptr);
-    if (hr != HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER))
+    thread_local std::vector<BYTE> rawArgumentInfos;
+    if (rawArgumentInfos.size() < argumentInfosBufferSize)
+        rawArgumentInfos.resize(argumentInfosBufferSize);
+
+    auto argumentsLength = static_cast<ULONG>(rawArgumentInfos.size());
+    HRESULT hr = _corProfilerInfo->GetFunctionEnter3Info(
+        decision->functionId,
+        eltInfo,
+        &frameInfo,
+        &argumentsLength,
+        reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
+    if (hr == HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER))
     {
-        LOG_F(ERROR, "Could not retrieve arguments info for method %d. Error: 0x%x", methodDef, hr);
-        return E_FAIL;
+        rawArgumentInfos.resize(argumentsLength);
+        hr = _corProfilerInfo->GetFunctionEnter3Info(
+            decision->functionId,
+            eltInfo,
+            &frameInfo,
+            &argumentsLength,
+            reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
     }
 
-    thread_local std::vector<UINT_PTR> indirects;
-    indirects.clear();
-    thread_local std::vector<BYTE> rawArgumentInfos;
-    rawArgumentInfos.resize(argumentsLength);
-    hr = _corProfilerInfo->GetFunctionEnter3Info(decision->functionId, eltInfo, &frameInfo, &argumentsLength, reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not retrieve arguments data for method %d. Error: 0x%x.", methodDef, hr);
         return E_FAIL;
     }
+
+    thread_local std::vector<UINT_PTR> indirects;
+    indirects.clear();
 
     const auto& argumentInfos = *reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data());
     thread_local std::vector<BYTE> argumentValues;
