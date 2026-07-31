@@ -50,7 +50,8 @@ public static class ThreadMethodDescriptors
                 Arguments: [ new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)) ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ThreadStartCallback,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
         
         ThreadStartCore = new MethodDescriptor(
             MethodName: "StartCore",
@@ -67,7 +68,8 @@ public static class ThreadMethodDescriptors
                 Arguments: [ new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)) ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ThreadStartCore,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods()

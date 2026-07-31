@@ -5,10 +5,16 @@
 
 #include "cor.h"
 #include "ILRewriter.h"
+#include "ModuleDef.h"
 
 namespace LibProfiler
 {
 	HRESULT IsVolatile(
 		IN const ILInstr& instruction,
 		OUT BOOL* isVolatile);
+
+	HRESULT IsFieldExcludedFromRaceAnalysis(
+		IN const ModuleDef& moduleDef,
+		IN mdToken fieldToken,
+		OUT BOOL* isExcluded);
 }

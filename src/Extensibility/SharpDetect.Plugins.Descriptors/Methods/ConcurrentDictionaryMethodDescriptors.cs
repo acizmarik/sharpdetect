@@ -52,7 +52,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         SetItem = new MethodDescriptor(
             MethodName: "set_Item",
@@ -69,7 +70,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         GetItem = new MethodDescriptor(
             MethodName: "get_Item",
@@ -175,7 +177,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         AddOrUpdateValue = new MethodDescriptor(
             MethodName: "AddOrUpdate",

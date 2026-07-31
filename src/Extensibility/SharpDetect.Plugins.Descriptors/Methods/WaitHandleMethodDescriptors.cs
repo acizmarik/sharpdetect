@@ -127,7 +127,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.MutexCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         MutexCtor = new MethodDescriptor(
             MethodName: ".ctor",
@@ -147,7 +148,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.MutexCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         MutexRelease = new MethodDescriptor(
             MethodName: "ReleaseMutex",
@@ -185,7 +187,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg, InitialCountArg, MaximumCountArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         SemaphoreReleaseCore = new MethodDescriptor(
             MethodName: "ReleaseCore",
@@ -223,7 +226,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg, InitialStateArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.EventWaitHandleCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         AutoResetEventCtor = new MethodDescriptor(
             MethodName: ".ctor",
@@ -243,7 +247,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg, InitialStateArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.AutoResetEventCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         ManualResetEventCtor = new MethodDescriptor(
             MethodName: ".ctor",
@@ -263,7 +268,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg, InitialStateArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ManualResetEventCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         EventWaitHandleSet = new MethodDescriptor(
             MethodName: "Set",
@@ -358,7 +364,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.AbandonedMutexExceptionCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         AbandonedMutexExceptionCtorWithHandle = new MethodDescriptor(
             MethodName: ".ctor",
@@ -379,7 +386,8 @@ public static class WaitHandleMethodDescriptors
                 Arguments: [ObjectRefArg, AbandonedMutexHandleArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.AbandonedMutexExceptionCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods()

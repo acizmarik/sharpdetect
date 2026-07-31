@@ -56,7 +56,8 @@ public static class SemaphoreSlimMethodDescriptors
                 Arguments: [ObjectRefArg, InitialCountArg, MaximumCountArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreCreate,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         WaitV8 = new MethodDescriptor(
             MethodName: "Wait",

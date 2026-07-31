@@ -26,6 +26,22 @@ static bool ShouldSkipInstrumentation(
 	return false;
 }
 
+static bool ShouldSkipFieldAccessInstrumentation(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN const ILInstr& instruction,
+	IN const mdToken fieldToken)
+{
+	BOOL isVolatile;
+	if (FAILED(LibProfiler::IsVolatile(instruction, &isVolatile)) || isVolatile)
+		return false;
+
+	BOOL isExcluded;
+	if (FAILED(LibProfiler::IsFieldExcludedFromRaceAnalysis(moduleDef, fieldToken, &isExcluded)))
+		return false;
+
+	return isExcluded;
+}
+
 static bool ShouldCaptureFieldStack(
 	IN const LibProfiler::ModuleDef& moduleDef,
 	IN mdToken fieldToken,
@@ -105,12 +121,16 @@ HRESULT LibProfiler::PatchMethodBody(
 
 		if (enableFieldsAccessInstrumentation)
 		{
+			auto const fieldToken = static_cast<mdToken>(currentInstruction->m_Arg32);
 			if (ShouldSkipInstrumentation(moduleDef, skipInstrumentationForAssemblies))
 				continue;
 
 			// Static field access
 			if (currentInstruction->m_opcode == CEE_LDSFLD || currentInstruction->m_opcode == CEE_STSFLD)
 			{
+				if (ShouldSkipFieldAccessInstrumentation(moduleDef, *currentInstruction, fieldToken))
+					continue;
+
 				auto const mark = instrumentationMark.fetch_add(1);
 				ILInstr* nextInstruction = nullptr;
 
@@ -134,6 +154,9 @@ HRESULT LibProfiler::PatchMethodBody(
 			// Instance field access
 			if (currentInstruction->m_opcode == CEE_LDFLD || currentInstruction->m_opcode == CEE_STFLD)
 			{
+				if (ShouldSkipFieldAccessInstrumentation(moduleDef, *currentInstruction, fieldToken))
+					continue;
+
 				// Import local variable signature if not done yet
 				if (!importedLocals)
 				{

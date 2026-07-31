@@ -49,7 +49,8 @@ public static class TaskMethodDescriptors
                 Arguments: [ObjectRefArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.TaskSchedule,
-                MethodExitInterpretation: null));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
 
         TaskInnerInvoke = CreateInnerInvokeMethodDescriptorForType(TaskTypeName);
 
