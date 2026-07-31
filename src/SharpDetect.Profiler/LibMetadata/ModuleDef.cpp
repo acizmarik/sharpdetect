@@ -407,6 +407,42 @@ HRESULT LibProfiler::ModuleDef::GetFieldProps(
 	return S_OK;
 }
 
+HRESULT LibProfiler::ModuleDef::GetFieldAttributes(
+	IN const mdFieldDef fieldDef,
+	OUT DWORD* attributes) const
+{
+	auto& metadataImport = GetMetadataImport();
+	return metadataImport.GetFieldProps(
+		fieldDef,
+		nullptr,
+		nullptr,
+		0,
+		nullptr,
+		attributes,
+		nullptr,
+		nullptr,
+		nullptr,
+		nullptr,
+		nullptr);
+}
+
+HRESULT LibProfiler::ModuleDef::HasCustomAttribute(
+	IN const mdToken token,
+	IN const WCHAR* attributeFullName,
+	OUT BOOL* hasAttribute) const
+{
+	auto& metadataImport = GetMetadataImport();
+	const void* attributeData = nullptr;
+	ULONG attributeDataLength = 0;
+
+	HRESULT hr = metadataImport.GetCustomAttributeByName(token, attributeFullName, &attributeData, &attributeDataLength);
+	if (FAILED(hr))
+		return hr;
+
+	*hasAttribute = (hr == S_OK);
+	return S_OK;
+}
+
 HRESULT LibProfiler::ModuleDef::GetFieldRefProps(
 	IN const mdToken fieldMemberRef,
 	OUT mdToken* parent,

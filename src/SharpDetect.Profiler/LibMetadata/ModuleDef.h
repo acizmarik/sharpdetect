@@ -135,6 +135,15 @@ namespace LibProfiler
 			OUT PCCOR_SIGNATURE* fieldSignature,
 			OUT ULONG* fieldSignatureLength) const;
 
+		HRESULT GetFieldAttributes(
+			IN mdFieldDef fieldDef,
+			OUT DWORD* attributes) const;
+
+		HRESULT HasCustomAttribute(
+			IN mdToken token,
+			IN const WCHAR* attributeFullName,
+			OUT BOOL* hasAttribute) const;
+
 		HRESULT GetFieldRefProps(
 			IN mdToken fieldMemberRef,
 			OUT mdToken* parent,
