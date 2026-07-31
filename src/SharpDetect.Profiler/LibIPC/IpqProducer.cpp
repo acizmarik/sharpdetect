@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <chrono>
+#include <limits>
 #include <stdexcept>
 #include <thread>
 
@@ -23,6 +24,8 @@ LibIPC::IpqProducer::IpqProducer(
 		LOG_F(FATAL, "Communication library could not create producer");
 		throw std::runtime_error("Could not obtain write access to IPC event queue.");
 	}
+
+	_batch.reserve(FlushThresholdBytes + BatchSlackBytes);
 }
 
 LibIPC::IpqProducer::~IpqProducer()
@@ -33,15 +36,55 @@ LibIPC::IpqProducer::~IpqProducer()
 
 void LibIPC::IpqProducer::Send(std::vector<char>& buffer)
 {
+	constexpr auto maxRecordSize = static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max());
+	const auto size = buffer.size();
+	if (size > maxRecordSize)
+	{
+		LOG_F(ERROR, "Dropping IPC message (%zu bytes): record exceeds the maximum size.", size);
+		return;
+	}
+
+	const auto sizeField = static_cast<std::int32_t>(size);
+	const auto sizeFieldBytes = reinterpret_cast<const char*>(&sizeField);
+	_batch.insert(_batch.end(), sizeFieldBytes, sizeFieldBytes + RecordHeaderSize);
+	_batch.insert(_batch.end(), buffer.begin(), buffer.end());
+
+	// An oversized record ends up in a batch of its own
+	if (_batch.size() >= FlushThresholdBytes)
+		Flush();
+}
+
+void LibIPC::IpqProducer::Flush()
+{
+	if (_batch.empty())
+		return;
+
+	SendMessage(_batch.data(), _batch.size());
+
+	// An oversized record grows the batch far past the threshold
+	if (_batch.capacity() > FlushThresholdBytes + BatchSlackBytes)
+	{
+		std::vector<char> replacement;
+		replacement.reserve(FlushThresholdBytes + BatchSlackBytes);
+		_batch.swap(replacement);
+	}
+	else
+	{
+		_batch.clear();
+	}
+}
+
+void LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
+{
 	constexpr INT enqueueOk = 0;
 	constexpr INT enqueueNotEnoughFreeMemory = 3;
 	constexpr auto maxRetryDuration = std::chrono::seconds(5);
 
-	const auto byteStream = reinterpret_cast<BYTE*>(buffer.data());
-	const auto deadline = std::chrono::steady_clock::now() + maxRetryDuration;
+	const auto byteStream = reinterpret_cast<BYTE*>(data);
+	auto deadline = std::chrono::steady_clock::time_point { };
 	for (auto spinCount = 0; ; ++spinCount)
 	{
-		const INT result = _library.Enqueue(_handle, byteStream, static_cast<INT>(buffer.size()));
+		const INT result = _library.Enqueue(_handle, byteStream, static_cast<INT>(size));
 		if (result == enqueueOk)
 			return;
 
@@ -50,18 +93,24 @@ void LibIPC::IpqProducer::Send(std::vector<char>& buffer)
 			LOG_F(
 				ERROR,
 				"Dropping IPC message (%zu bytes) after non-recoverable enqueue error: %d.",
-				buffer.size(),
+				size,
 				result);
 			return;
 		}
 
+		// The retry budget only starts once the ring is actually full, so the common path never reads the clock
+		const auto now = std::chrono::steady_clock::now();
+		if (deadline == std::chrono::steady_clock::time_point { })
+		{
+			deadline = now + maxRetryDuration;
+		}
 		// A full ring past deadline means we assume the consumer is gone/detached and will never drain it
-		if (std::chrono::steady_clock::now() >= deadline)
+		else if (now >= deadline)
 		{
 			LOG_F(
 				ERROR,
 				"Dropping IPC message (%zu bytes): consumer did not drain the queue within %lld seconds.",
-				buffer.size(),
+				size,
 				static_cast<long long>(maxRetryDuration.count()));
 			return;
 		}

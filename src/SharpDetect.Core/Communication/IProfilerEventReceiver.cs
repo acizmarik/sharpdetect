@@ -1,13 +1,11 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Diagnostics.CodeAnalysis;
 using SharpDetect.Core.Events;
 
 namespace SharpDetect.Core.Communication;
 
 public interface IProfilerEventReceiver
 {
-    bool TryReceiveNotification([NotNullWhen(true)] out RecordedEvent? recordedEvent);
-    bool TryReceiveNotification(TimeSpan timeout, [NotNullWhen(true)] out RecordedEvent? recordedEvent);
+    int TryReceiveNotifications(Span<RecordedEvent> destination, out int failedRecordsCount);
 }

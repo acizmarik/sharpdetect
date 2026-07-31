@@ -66,21 +66,25 @@ public static class AnalysisWorkerMetrics
 
     public static long CurrentTargetPid => Volatile.Read(ref _targetPid);
 
-    internal static void EventReceived(IRecordedEventArgs eventArgs)
+    internal static void EventsReceived(ReadOnlySpan<RecordedEvent> recordedEvents)
     {
-        _receivedEvents++;
+        _receivedEvents += recordedEvents.Length;
         if (!ReceivedByTypeCounter.Enabled)
             return;
 
-        if (ReceivedEventsByType.Value.TryGetValue(eventArgs.GetType(), out var count))
-            count.Value++;
+        var byType = ReceivedEventsByType.Value;
+        foreach (var recordedEvent in recordedEvents)
+        {
+            if (byType.TryGetValue(recordedEvent.EventArgs.GetType(), out var count))
+                count.Value++;
+        }
     }
 
-    internal static void EventProcessed()
-        => _processedEvents++;
+    internal static void EventsProcessed(int count)
+        => _processedEvents += count;
 
-    internal static void EventDrained()
-        => _drainedEvents++;
+    internal static void EventsDrained(int count)
+        => _drainedEvents += count;
 
     internal static void DrainCompleted(TimeSpan duration)
         => _drainDurationSeconds += duration.TotalSeconds;

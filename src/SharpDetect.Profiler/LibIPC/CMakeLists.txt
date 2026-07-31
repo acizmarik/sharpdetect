@@ -2,6 +2,7 @@ set(SOURCES
 	"Client.cpp"
 	"CommandDispatcher.cpp"
 	"EventDispatcher.cpp"
+	"FixedEvents.cpp"
 	"IpqConsumer.cpp"
 	"IpqLibrary.cpp"
 	"IpqProducer.cpp"

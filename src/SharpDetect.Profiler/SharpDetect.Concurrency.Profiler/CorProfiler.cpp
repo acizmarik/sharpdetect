@@ -27,7 +27,25 @@
 #include "CorProfiler.h"
 
 Profiler::CorProfiler* ProfilerInstance;
-thread_local std::stack<std::vector<UINT_PTR>> ArgsCallStack;
+
+namespace
+{
+    // Per-thread scratch state of the ELT callbacks. Keeping it in a single thread_local object
+    // costs one TLS lookup per callback instead of one per buffer
+    struct EltThreadScratch
+    {
+        std::stack<std::vector<UINT_PTR>> argsCallStack;
+        std::vector<BYTE> rawArgumentInfos;
+        std::vector<UINT_PTR> indirects;
+        std::vector<BYTE> argumentValues;
+        std::vector<BYTE> argumentOffsets;
+        std::vector<BYTE> stackFramesBlob;
+        std::vector<BYTE> returnValue;
+        std::vector<char> fixedEventBuffer;
+    };
+
+    thread_local EltThreadScratch EltScratch;
+}
 
 Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
     _configuration(configuration),
@@ -651,41 +669,51 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     if (decision->descriptor == nullptr || !decision->hasArguments)
     {
         // Notify about method enter without arguments
-        _client.Send(LibIPC::Helpers::CreateMethodEnterMsg(
-            CreateMetadataMsg(),
-            moduleId,
-            methodDef,
-            decision->enterEventId));
+        SendMethodEnter(moduleId, methodDef, decision->enterEventId);
         return S_OK;
     }
 
     // Retrieve information about arguments
     const auto& descriptor = *decision->descriptor;
+    auto& scratch = EltScratch;
 
     // Retrieve arguments data
+    constexpr ULONG argumentInfosBufferSize = 1024;
     COR_PRF_FRAME_INFO frameInfo { };
-    ULONG argumentsLength = 0;
-    HRESULT hr = _corProfilerInfo->GetFunctionEnter3Info(decision->functionId, eltInfo, &frameInfo, &argumentsLength, nullptr);
-    if (hr != HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER))
+    auto& rawArgumentInfos = scratch.rawArgumentInfos;
+    if (rawArgumentInfos.size() < argumentInfosBufferSize)
+        rawArgumentInfos.resize(argumentInfosBufferSize);
+
+    auto argumentsLength = static_cast<ULONG>(rawArgumentInfos.size());
+    HRESULT hr = _corProfilerInfo->GetFunctionEnter3Info(
+        decision->functionId,
+        eltInfo,
+        &frameInfo,
+        &argumentsLength,
+        reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
+    if (hr == HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER))
     {
-        LOG_F(ERROR, "Could not retrieve arguments info for method %d. Error: 0x%x", methodDef, hr);
-        return E_FAIL;
+        rawArgumentInfos.resize(argumentsLength);
+        hr = _corProfilerInfo->GetFunctionEnter3Info(
+            decision->functionId,
+            eltInfo,
+            &frameInfo,
+            &argumentsLength,
+            reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
     }
 
-    thread_local std::vector<UINT_PTR> indirects;
-    indirects.clear();
-    thread_local std::vector<BYTE> rawArgumentInfos;
-    rawArgumentInfos.resize(argumentsLength);
-    hr = _corProfilerInfo->GetFunctionEnter3Info(decision->functionId, eltInfo, &frameInfo, &argumentsLength, reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data()));
     if (FAILED(hr))
     {
         LOG_F(ERROR, "Could not retrieve arguments data for method %d. Error: 0x%x.", methodDef, hr);
         return E_FAIL;
     }
 
+    auto& indirects = scratch.indirects;
+    indirects.clear();
+
     const auto& argumentInfos = *reinterpret_cast<COR_PRF_FUNCTION_ARGUMENT_INFO *>(rawArgumentInfos.data());
-    thread_local std::vector<BYTE> argumentValues;
-    thread_local std::vector<BYTE> argumentOffsets;
+    auto& argumentValues = scratch.argumentValues;
+    auto& argumentOffsets = scratch.argumentOffsets;
     argumentValues.clear();
     argumentOffsets.clear();
 
@@ -711,10 +739,10 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     if (descriptor.rewritingDescriptor.returnValue.has_value() || !indirects.empty())
-        ArgsCallStack.push(indirects);
+        scratch.argsCallStack.push(indirects);
 
     // Capture stack trace if required
-    thread_local std::vector<BYTE> stackFramesBlob;
+    auto& stackFramesBlob = scratch.stackFramesBlob;
     bool hasStackFrames = false;
     if (decision->captureStackTraceOnEnter)
     {
@@ -727,8 +755,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     }
 
     // Notify about method enter with arguments
-    _client.Send(LibIPC::Helpers::CreateMethodEnterWithArgumentsMsg(
-        CreateMetadataMsg(),
+    SendMethodEnterWithArguments(
         moduleId,
         methodDef,
         decision->enterWithArgsEventId,
@@ -736,7 +763,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() },
         hasStackFrames
             ? std::make_optional(LibIPC::ByteSpanView { stackFramesBlob.data(), stackFramesBlob.size() })
-            : std::nullopt));
+            : std::nullopt);
     return S_OK;
 }
 
@@ -758,11 +785,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     if (decision->descriptor == nullptr || (!decision->hasReturnValue && !decision->hasIndirects))
     {
         // Notify about method leave without arguments
-        _client.Send(LibIPC::Helpers::CreateMethodExitMsg(
-            CreateMetadataMsg(),
-            moduleId,
-            methodDef,
-            decision->exitEventId));
+        SendMethodExit(moduleId, methodDef, decision->exitEventId);
         return S_OK;
     }
 
@@ -770,6 +793,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     const auto& descriptor = *decision->descriptor;
     auto const hasIndirects = decision->hasIndirects;
     auto const hasReturnValue = decision->hasReturnValue;
+    auto& scratch = EltScratch;
 
     // Retrieve return value data
     COR_PRF_FRAME_INFO frameInfo;
@@ -780,7 +804,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         LOG_F(ERROR, "Could not retrieve return value info for method %d. Error: 0x%x", methodDef, hr);
         return E_FAIL;
     }
-    thread_local std::vector<BYTE> returnValue;
+    auto& returnValue = scratch.returnValue;
     returnValue.assign(returnValueInfo.length, 0);
     if (hasReturnValue)
     {
@@ -796,13 +820,13 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     }
 
     // Retrieve by-ref arguments data
-    thread_local std::vector<BYTE> argumentValues;
-    thread_local std::vector<BYTE> argumentOffsets;
+    auto& argumentValues = scratch.argumentValues;
+    auto& argumentOffsets = scratch.argumentOffsets;
     argumentValues.clear();
     argumentOffsets.clear();
     if (hasIndirects)
     {
-        auto& indirects = ArgsCallStack.top();
+        auto& indirects = scratch.argsCallStack.top();
         if (!indirects.empty())
         {
             auto const argumentValuesLength = std::accumulate(
@@ -828,22 +852,21 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
             if (FAILED(hr))
             {
                 LOG_F(ERROR, "Could not parse by-ref arguments data for method %d. Error: 0x%x.", methodDef, hr);
-                ArgsCallStack.pop();
+                scratch.argsCallStack.pop();
                 return E_FAIL;
             }
         }
-        ArgsCallStack.pop();
+        scratch.argsCallStack.pop();
     }
 
     // Notify about method leave with arguments
-    _client.Send(LibIPC::Helpers::CreateMethodExitWithArgumentsMsg(
-        CreateMetadataMsg(),
+    SendMethodExitWithArguments(
         moduleId,
         methodDef,
         decision->exitWithArgsEventId,
         LibIPC::ByteSpanView { returnValue.data(), returnValue.size() },
         LibIPC::ByteSpanView { argumentValues.data(), argumentValues.size() },
-        LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() }));
+        LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() });
 
     return S_OK;
 }
@@ -880,8 +903,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionEnter(co
     if (descriptorPointer)
     {
         const auto& descriptor = *descriptorPointer.get();
-        if ((descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor)) && !ArgsCallStack.empty())
-            ArgsCallStack.pop();
+        auto& argsCallStack = EltScratch.argsCallStack;
+        if ((descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor)) && !argsCallStack.empty())
+            argsCallStack.pop();
     }
 
     auto const interpretation = hasCustomMethodExitEvent ? customMethodExitEvent : customMethodExitWithArgumentsEvent;
@@ -948,6 +972,58 @@ UINT64 Profiler::CorProfiler::GetCurrentThreadIdCached() const
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg() const
 {
     return LibIPC::Helpers::CreateMetadataMsg(_pid, GetCurrentThreadIdCached());
+}
+
+void Profiler::CorProfiler::SendMethodEnter(const UINT64 moduleId, const UINT32 methodToken, const USHORT interpretation)
+{
+    LibIPC::FixedEvents::WriteMethodEnter(EltScratch.fixedEventBuffer, GetCurrentThreadIdCached(), moduleId, methodToken, interpretation);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
+}
+
+void Profiler::CorProfiler::SendMethodExit(const UINT64 moduleId, const UINT32 methodToken, const USHORT interpretation)
+{
+    LibIPC::FixedEvents::WriteMethodExit(EltScratch.fixedEventBuffer, GetCurrentThreadIdCached(), moduleId, methodToken, interpretation);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
+}
+
+void Profiler::CorProfiler::SendMethodEnterWithArguments(
+    const UINT64 moduleId,
+    const UINT32 methodToken,
+    const USHORT interpretation,
+    const LibIPC::ByteSpanView argumentValues,
+    const LibIPC::ByteSpanView argumentInfos,
+    const std::optional<LibIPC::ByteSpanView> stackFrames)
+{
+    LibIPC::FixedEvents::WriteMethodEnterWithArguments(
+        EltScratch.fixedEventBuffer,
+        GetCurrentThreadIdCached(),
+        moduleId,
+        methodToken,
+        interpretation,
+        argumentValues,
+        argumentInfos,
+        stackFrames);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
+}
+
+void Profiler::CorProfiler::SendMethodExitWithArguments(
+    const UINT64 moduleId,
+    const UINT32 methodToken,
+    const USHORT interpretation,
+    const LibIPC::ByteSpanView returnValue,
+    const LibIPC::ByteSpanView byRefArgumentValues,
+    const LibIPC::ByteSpanView byRefArgumentInfos)
+{
+    LibIPC::FixedEvents::WriteMethodExitWithArguments(
+        EltScratch.fixedEventBuffer,
+        GetCurrentThreadIdCached(),
+        moduleId,
+        methodToken,
+        interpretation,
+        returnValue,
+        byRefArgumentValues,
+        byRefArgumentInfos);
+    _client.SendRaw(EltScratch.fixedEventBuffer.data(), EltScratch.fixedEventBuffer.size());
 }
 
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg(const UINT64 commandId) const

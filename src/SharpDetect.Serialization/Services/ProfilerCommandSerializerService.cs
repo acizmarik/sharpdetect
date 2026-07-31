@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using MessagePack;
-using MessagePack.Resolvers;
 using SharpDetect.Core.Commands;
 using SharpDetect.Core.Serialization;
 using SharpDetect.Serialization.Formatters;
@@ -15,13 +14,8 @@ internal sealed class ProfilerCommandSerializerService : IProfilerCommandSeriali
 
     public ProfilerCommandSerializerService()
     {
-        var resolver = CompositeResolver.Create(
-            CustomFormatResolver.Instance,
-            StandardResolver.Instance
-        );
-        
         _serializerOptions = MessagePackSerializerOptions.Standard
-            .WithResolver(resolver);
+            .WithResolver(CompositeFormatResolver.Instance);
     }
 
     public byte[] Serialize(ProfilerCommand command)

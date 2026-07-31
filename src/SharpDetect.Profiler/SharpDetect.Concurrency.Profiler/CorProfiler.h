@@ -8,6 +8,7 @@
 #include <functional>
 #include <mutex>
 #include <unordered_map>
+#include <optional>
 #include <vector>
 
 #include "cor.h"
@@ -83,6 +84,22 @@ namespace Profiler
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;
 		[[nodiscard]] UINT64 GetCurrentThreadIdCached() const;
 		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
+		void SendMethodEnter(UINT64 moduleId, UINT32 methodToken, USHORT interpretation);
+		void SendMethodExit(UINT64 moduleId, UINT32 methodToken, USHORT interpretation);
+		void SendMethodEnterWithArguments(
+			UINT64 moduleId,
+			UINT32 methodToken,
+			USHORT interpretation,
+			LibIPC::ByteSpanView argumentValues,
+			LibIPC::ByteSpanView argumentInfos,
+			std::optional<LibIPC::ByteSpanView> stackFrames);
+		void SendMethodExitWithArguments(
+			UINT64 moduleId,
+			UINT32 methodToken,
+			USHORT interpretation,
+			LibIPC::ByteSpanView returnValue,
+			LibIPC::ByteSpanView byRefArgumentValues,
+			LibIPC::ByteSpanView byRefArgumentInfos);
 		HRESULT PatchMethodBody(const LibProfiler::ModuleDef& moduleDef, mdTypeDef mdTypeDef, mdMethodDef mdMethodDef);
 		[[nodiscard]] GenericCaptureState ClassifyGenericValueCapture(FunctionID functionId, COR_PRF_FRAME_INFO frameInfo, const MethodDescriptor& descriptor);
 		[[nodiscard]] COR_PRF_FRAME_INFO GetFrameInfo(const EltDecision& decision, COR_PRF_ELT_INFO eltInfo, EltCallbackKind callback) const;

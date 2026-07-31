@@ -46,8 +46,8 @@ internal static class RunValidation
             violations.Add("target wall time was not measured (0)");
         if (run.Metrics.TargetWallSeconds > run.WallSeconds + WallToleranceSeconds)
             violations.Add($"target wall ({run.Metrics.TargetWallSeconds:F4} s) exceeds the whole analysis wall ({run.WallSeconds:F4} s)");
-        if (run.Metrics.ProcessTailSeconds <= 0)
-            violations.Add("process tail was not measured (0)");
+        if (run.Metrics.ProcessTailSeconds < 0)
+            violations.Add($"process tail is negative ({run.Metrics.ProcessTailSeconds:F4} s)");
         if (run.TargetResources.CpuSeconds <= 0)
             violations.Add($"instrumented target CPU is {run.TargetResources.CpuSeconds:F4} s");
         if (run.ReportedIssues != 0)

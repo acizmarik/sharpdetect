@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
@@ -16,97 +15,93 @@ namespace SharpDetect.Communication.Services;
 
 internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposable
 {
-    private readonly IRecordedEventParser _recordedEventParser;
+    private readonly EventBatchReader _reader;
     private readonly ILogger<IProfilerEventReceiver> _logger;
     private readonly Consumer _consumer;
     private readonly string? _queueFilePath;
+    private QueueMessage _pendingMessage;
+    private bool _hasPendingMessage;
     private bool _disposed;
 
     public ProfilerEventReceiver(
         ConsumerMemoryMappedQueueOptions options,
+        uint pid,
         IRecordedEventParser recordedEventParser,
         ILogger<IProfilerEventReceiver> logger)
     {
         var semaphore = InterProcessSemaphore.CreateOrOpen(options.SemaphoreName, isOwner: true);
         _consumer = new Consumer(options, semaphore, ArrayPool<byte>.Shared);
-        _recordedEventParser = recordedEventParser;
+        _reader = new EventBatchReader(recordedEventParser, pid);
         _logger = logger;
         _queueFilePath = options.File;
-        
+
         _logger.LogInformation("Started event receiver of IPC queue with name: \"{Name}\", file: \"{File}\", capacity: {Capacity} bytes.",
             options.Name,
             options.File,
             options.Capacity);
     }
-    
-    public bool TryReceiveNotification([NotNullWhen(true)] out RecordedEvent? recordedEvent)
+
+    public int TryReceiveNotifications(Span<RecordedEvent> destination, out int failedRecordsCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfZero(destination.Length);
+        failedRecordsCount = 0;
+
+        if (!_hasPendingMessage && !TryDequeueMessage())
+            return 0;
+
+        var result = _reader.ReadInto(destination);
+        if (!_reader.HasPendingRecords)
+            ReleasePendingMessage();
+
+        if (result.Corrupted)
+            _logger.LogError("Discarding the remainder of a malformed profiler event batch.");
+
+        if (result.FailedRecords > 0)
+        {
+            failedRecordsCount = result.FailedRecords;
+            _logger.LogError(
+                result.LastFailure,
+                "Discarded {FailedRecords} unparsable profiler event(s); the most recent failure is attached.",
+                result.FailedRecords);
+        }
+
+        return result.Count;
+    }
+
+    private bool TryDequeueMessage()
     {
         var result = _consumer.TryDequeue();
         if (result.IsError)
-        {
-            recordedEvent = null;
             return false;
-        }
 
-        if (!TryParseEvent(result.Value, _recordedEventParser, out var parsedEvent))
-        {
-            recordedEvent = null;
-            return false;
-        }
-
-        recordedEvent = parsedEvent;
+        _pendingMessage = result.Value;
+        _hasPendingMessage = true;
+        _reader.SetBatch(_pendingMessage.Memory);
         return true;
     }
 
-    public bool TryReceiveNotification(TimeSpan timeout, [NotNullWhen(true)] out RecordedEvent? recordedEvent)
+    private void ReleasePendingMessage()
     {
-        var result = _consumer.TryDequeue(timeout);
-        if (result.IsError)
-        {
-            recordedEvent = null;
-            return false;
-        }
+        if (!_hasPendingMessage)
+            return;
 
-        if (!TryParseEvent(result.Value, _recordedEventParser, out var parsedEvent))
-        {
-            recordedEvent = null;
-            return false;
-        }
+        var message = _pendingMessage;
+        _pendingMessage = default;
+        _hasPendingMessage = false;
 
-        recordedEvent = parsedEvent;
-        return true;
-    }
-    
-    private bool TryParseEvent(
-        QueueMessage message,
-        IRecordedEventParser parser,
-        [NotNullWhen(true)] out RecordedEvent? recordedEvent)
-    {
-        try
-        {
-            recordedEvent = parser.Parse(message.Memory);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unhandled exception while parsing recorded event.");
-            recordedEvent = null;
-            return false;
-        }
-        finally
-        {
-            message.Dispose();
-        }
+        _reader.Reset();
+        message.Dispose();
     }
 
     public void Dispose()
     {
         if (_disposed)
             return;
-        
+
         _disposed = true;
+        ReleasePendingMessage();
         _consumer.Dispose();
-        
+
         if (_queueFilePath is not null && File.Exists(_queueFilePath))
         {
             try

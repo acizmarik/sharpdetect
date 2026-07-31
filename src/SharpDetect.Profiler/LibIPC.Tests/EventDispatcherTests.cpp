@@ -22,6 +22,13 @@ namespace
 		{
 			std::lock_guard guard(_mutex);
 			_records.emplace_back(buffer.begin(), buffer.end());
+			++_unflushedRecords;
+		}
+
+		void Flush() override
+		{
+			std::lock_guard guard(_mutex);
+			_unflushedRecords = 0;
 		}
 
 		std::vector<std::vector<char>> Records()
@@ -30,9 +37,16 @@ namespace
 			return _records;
 		}
 
+		std::size_t UnflushedRecords()
+		{
+			std::lock_guard guard(_mutex);
+			return _unflushedRecords;
+		}
+
 	private:
 		std::mutex _mutex;
 		std::vector<std::vector<char>> _records;
+		std::size_t _unflushedRecords = 0;
 	};
 
 	std::vector<char> MakePayload(const std::int32_t a, const std::int32_t b, const std::size_t totalSize = 8)
@@ -117,6 +131,23 @@ TEST_CASE("EventDispatcher routes oversized records through overflow in sequence
 	CHECK(FieldA(records[1]) == 1);
 	CHECK(FieldA(records[2]) == 2);
 	CHECK(records[1].size() == 300 * 1024);
+}
+
+TEST_CASE("EventDispatcher leaves no record unflushed in the sink")
+{
+	RecordingSink sink;
+	EventDispatcher dispatcher(sink, 8 * 1024 * 1024);
+	dispatcher.Start();
+
+	for (std::int32_t i = 0; i < 100; ++i)
+	{
+		const auto payload = MakePayload(i, 0);
+		dispatcher.Enqueue(payload.data(), payload.size());
+	}
+	dispatcher.Stop();
+
+	CHECK(sink.Records().size() == 100);
+	CHECK(sink.UnflushedRecords() == 0);
 }
 
 TEST_CASE("EventDispatcher loses nothing and preserves per-thread order under contention")

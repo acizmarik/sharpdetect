@@ -91,6 +91,10 @@ void LibIPC::Client::Shutdown()
 		Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), 0));
 	msgpack::sbuffer sbuf;
 	msgpack::pack(sbuf, destroyMsg);
-	std::vector<char> buffer(sbuf.data(), sbuf.data() + sbuf.size());
+	std::vector<char> buffer;
+	buffer.reserve(sizeof(BYTE) + sbuf.size());
+	buffer.push_back(static_cast<char>(FixedEvents::MsgPackFormat));
+	buffer.insert(buffer.end(), sbuf.data(), sbuf.data() + sbuf.size());
 	_producer->Send(buffer);
+	_producer->Flush();
 }
