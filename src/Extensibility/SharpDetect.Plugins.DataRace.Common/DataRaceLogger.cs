@@ -42,11 +42,6 @@ public static class DataRaceLogger
     {
         return $"{fieldId.FieldDef.DeclaringType.FullName}.{fieldId.FieldDef.Name}";
     }
-    
-    public static string GetFieldTitle(FieldId fieldId)
-    {
-        return $"{fieldId.FieldDef.DeclaringType.Name}.{fieldId.FieldDef.Name}";
-    }
 
     public static string GetThreadDisplayName(AccessInfo access)
     {

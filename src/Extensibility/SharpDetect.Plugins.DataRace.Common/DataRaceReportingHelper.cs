@@ -15,7 +15,7 @@ public abstract class DataRaceReportingHelper
     private readonly ISymbolResolver _symbolResolver;
     private readonly List<DataRaceInfo> _detectedRaces;
 
-    protected int DetectedRaceCount => _detectedRaces.Count;
+    protected int RaceOccurrenceCount => _detectedRaces.Count;
 
     protected DataRaceReportingHelper(
         SummaryBuilder reporter,
@@ -30,42 +30,187 @@ public abstract class DataRaceReportingHelper
         _reportCategory = reportCategory;
         _detectedRaces = detectedRaces;
     }
-    
-    protected abstract string GetViolationTitle(int raceCount);
+
+    protected abstract string GetViolationTitle(int raceCount, int fieldCount);
     protected abstract string FormatAccessReason(DataRaceInfo race, AccessInfo access, RaceRole role);
-    protected abstract void AddStatisticsToReport(SummaryBuilder reporter);
-    
+    protected abstract void AddStatisticsToReport(SummaryBuilder reporter, int raceCount, int fieldCount);
+
     public Summary CreateDiagnostics()
     {
-        if (_detectedRaces.Count != 0)
-            PrepareViolationDiagnostics();
-        else
-            PrepareNoViolationDiagnostics();
-
-        AddStatisticsToReport(_reporter);
+        var (raceCount, fieldCount) = PrepareViolationDiagnostics();
+        AddStatisticsToReport(_reporter, raceCount, fieldCount);
         return _reporter.Build();
     }
 
-    private const int MaxObjectLabels = 5;
+    private sealed record ResolvedRace(
+        RaceGroup Group,
+        IReadOnlyList<StackFrame> EarlierFrames,
+        IReadOnlyList<StackFrame> LaterFrames)
+    {
+        public bool HasUserCode =>
+            EarlierFrames.Concat(LaterFrames).Any(frame => !WellKnownModules.IsSystemModule(frame.SourceMapping));
+    }
 
-    public static IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports)
+    private (int RaceCount, int FieldCount) PrepareViolationDiagnostics()
+    {
+        if (_detectedRaces.Count == 0)
+        {
+            _reporter.SetTitle("No data races detected");
+            _reporter.SetDescription("All analyzed field accesses appear properly synchronized.");
+            return (0, 0);
+        }
+
+        var (races, fieldCount) = Rank([.. RaceAggregator.Aggregate(_detectedRaces).Select(Resolve)]);
+
+        _reporter.SetTitle(GetViolationTitle(races.Count, fieldCount));
+        _reporter.SetDescription(races.Count == RaceOccurrenceCount
+            ? "Each race is a pair of conflicting accesses on one field."
+            : $"Each race is a pair of conflicting accesses on one field, folded from {RaceOccurrenceCount} raw detector events.");
+
+        var index = 0;
+        foreach (var race in races)
+            _reporter.AddReport(CreateReport(index++, race));
+
+        return (races.Count, fieldCount);
+    }
+
+    private ResolvedRace Resolve(RaceGroup group)
+    {
+        return new ResolvedRace(
+            group,
+            ResolveFrames(group.Representative.ProcessId, group.Earlier),
+            ResolveFrames(group.Representative.ProcessId, group.Later));
+    }
+
+    private IReadOnlyList<StackFrame> ResolveFrames(uint processId, AccessInfo access)
+        => DataRaceStackTraceResolver.ResolveFrames(processId, access, _metadataContext, _symbolResolver);
+
+    private static (List<ResolvedRace> Races, int FieldCount) Rank(List<ResolvedRace> races)
+    {
+        var fields = races
+            .GroupBy(GetFieldKey)
+            .Select(group => new
+            {
+                Name = group.Key.Name,
+                HasUserCode = group.Any(race => race.HasUserCode),
+                RaceCount = group.Count(),
+                Races = group.OrderByDescending(race => race.Group.OccurrenceCount).ToArray()
+            })
+            .OrderByDescending(field => field.HasUserCode)
+            .ThenByDescending(field => field.RaceCount)
+            .ThenBy(field => field.Name, StringComparer.Ordinal)
+            .ToArray();
+
+        return ([.. fields.SelectMany(field => field.Races)], fields.Length);
+    }
+
+    private static (uint ProcessId, string Name) GetFieldKey(ResolvedRace race)
+        => (race.Group.Representative.ProcessId, DataRaceLogger.GetFieldDisplayName(race.Group.FieldId));
+
+    private Report CreateReport(int index, ResolvedRace race)
+    {
+        var group = race.Group;
+        var representative = group.Representative;
+        var reportBuilder = new ReportBuilder(index, _reportCategory, representative.ProcessId, representative.Timestamp);
+
+        reportBuilder.SetTarget(DataRaceLogger.GetFieldDisplayName(group.FieldId));
+        reportBuilder.SetTitle(FormatRaceTitle(race));
+        reportBuilder.SetDescription(FormatEvidenceSummary(group));
+
+        AddAccessToReport(reportBuilder, race, RaceRole.Earlier);
+        AddAccessToReport(reportBuilder, race, RaceRole.Later);
+
+        return reportBuilder.Build();
+    }
+
+    private void AddAccessToReport(ReportBuilder reportBuilder, ResolvedRace race, RaceRole role)
+    {
+        var isEarlier = role == RaceRole.Earlier;
+        var access = isEarlier ? race.Group.Earlier : race.Group.Later;
+        var frames = isEarlier ? race.EarlierFrames : race.LaterFrames;
+
+        var threadInfo = new ThreadInfo(
+            access.ProcessThreadId.ThreadId.Value,
+            DataRaceLogger.GetThreadDisplayName(access),
+            isEarlier ? 0 : 1);
+
+        reportBuilder.AddThread(threadInfo);
+        reportBuilder.AddReportReason(threadInfo, FormatAccessReason(race.Group.Representative, access, role));
+        reportBuilder.AddStackTrace(new StackTrace(threadInfo, [.. frames]));
+    }
+
+    private static string FormatRaceTitle(ResolvedRace race)
+    {
+        var earlier = FormatSite(race.Group.Earlier, race.EarlierFrames);
+        var later = FormatSite(race.Group.Later, race.LaterFrames);
+        return $"{earlier} ↔ {later}";
+    }
+
+    private static string FormatSite(AccessInfo access, IReadOnlyList<StackFrame> frames)
+    {
+        var methodName = frames.Count > 0 ? frames[0].MethodName : "<unresolved-method>";
+        return $"{access.AccessType} {methodName}";
+    }
+
+    private static string FormatEvidenceSummary(RaceGroup group)
+    {
+        var parts = new List<string>
+        {
+            group.OccurrenceCount == 1 ? "1 occurrence" : $"{group.OccurrenceCount} occurrences"
+        };
+
+        if (group.ObjectIds.Length > 0)
+            parts.Add(group.ObjectIds.Length == 1 ? "1 object" : $"{group.ObjectIds.Length} objects");
+
+        parts.Add(group.FieldId.FieldDef.IsStatic ? "static field" : "instance field");
+
+        if (group.BothOrderingsObserved)
+            parts.Add("both orderings observed");
+
+        return string.Join(" · ", parts);
+    }
+
+    public static IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports, int stackTraceMaxDepth)
     {
         return reports
             .GroupBy(report => (report.ProcessId, Key: report.Target ?? report.Title))
-            .Select(group =>
+            .Select(group => new
             {
-                var isGrouped = group.Any(r => r.Target != null);
-                var children = BuildMergedChildren(group).ToArray();
-                return new
-                {
-                    target = group.Key.Key,
-                    shortTarget = ComputeShortTarget(group.Key.Key),
-                    processId = group.Key.ProcessId.ToString(),
-                    isGrouped,
-                    instanceCount = group.Count(),
-                    children
-                };
+                target = group.Key.Key,
+                shortTarget = ComputeShortTarget(group.Key.Key),
+                processId = group.Key.ProcessId.ToString(),
+                raceCountLabel = group.Count() == 1 ? "1 race" : $"{group.Count()} races",
+                children = group.Select(report => BuildRaceCard(report, stackTraceMaxDepth)).ToArray()
             });
+    }
+
+    private static object BuildRaceCard(Report report, int stackTraceMaxDepth)
+    {
+        return new
+        {
+            processId = report.ProcessId.ToString(),
+            title = report.Title,
+            description = report.Description,
+            timestamp = report.DetectionTime,
+            threads = report.GetReportedThreads()
+                .OrderBy(threadInfo => threadInfo.AccessIndex)
+                .Select(threadInfo =>
+                {
+                    report.TryGetReportReason(threadInfo, out var reason);
+                    report.TryGetStackTrace(threadInfo, out var stackTrace);
+                    var frameCount = stackTrace?.Frames.Length ?? 0;
+                    return new
+                    {
+                        name = threadInfo.Name,
+                        role = threadInfo.AccessIndex == 0 ? "Earlier" : "Later",
+                        isEarlier = threadInfo.AccessIndex == 0,
+                        reason = reason ?? "Unknown",
+                        isStackAtDepthLimit = frameCount > 1 && frameCount >= stackTraceMaxDepth,
+                        stackTraceMaxDepth,
+                        stacktrace = BuildStackTraceSegments(stackTrace)
+                    };
+                }).ToArray()
+        };
     }
 
     private static string ComputeShortTarget(string fullTarget)
@@ -89,74 +234,6 @@ public abstract class DataRaceReportingHelper
             : fullTarget;
     }
 
-    private static string ComputeChildFingerprint(Report report)
-    {
-        var parts = report.GetReportedThreads()
-            .SelectMany(t =>
-            {
-                report.TryGetStackTrace(t, out var st);
-                return st?.Frames.Select(f => $"{f.MethodToken}@{f.MethodOffset}")
-                       ?? [];
-            })
-            .OrderBy(s => s)
-            .Distinct();
-        return $"{report.ProcessId}:{string.Join("|", parts)}";
-    }
-
-    private static IEnumerable<object> BuildMergedChildren(IEnumerable<Report> reports)
-    {
-        return reports
-            .GroupBy(ComputeChildFingerprint)
-            .Select(fg =>
-            {
-                var representative = fg.First();
-                var objectCount = fg.Count();
-
-                var allLabels = fg
-                    .Where(r => r.Target is not null)
-                    .Select(r =>
-                    {
-                        var desc = r.Description;
-                        var parenIdx = desc.IndexOf('(');
-                        return parenIdx > 0 ? desc[..parenIdx].TrimEnd() : desc;
-                    })
-                    .ToArray();
-
-                var displayLabels = allLabels.Take(MaxObjectLabels).ToArray();
-                var extraObjectCount = allLabels.Length - displayLabels.Length;
-
-                var accessCount = representative.GetReportedThreads().Count();
-                var summaryText = objectCount > 1
-                    ? $"{objectCount} objects · {accessCount} distinct access locations"
-                    : representative.Description;
-
-                return (object)new
-                {
-                    reportId = $"report-{representative.Identifier}",
-                    processId = representative.ProcessId.ToString(),
-                    description = representative.Description,
-                    summaryText,
-                    objectCount,
-                    hasObjectLabels = displayLabels.Length > 0,
-                    objectLabels = displayLabels,
-                    hasExtraObjects = extraObjectCount > 0,
-                    extraObjectCount,
-                    timestamp = representative.DetectionTime,
-                    threads = representative.GetReportedThreads().Select(threadInfo =>
-                    {
-                        representative.TryGetReportReason(threadInfo, out var reason);
-                        representative.TryGetStackTrace(threadInfo, out var st);
-                        return new
-                        {
-                            name = threadInfo.Name,
-                            reason = reason ?? "Unknown",
-                            stacktrace = BuildStackTraceSegments(st)
-                        };
-                    }).ToArray()
-                };
-            });
-    }
-    
     public static IReadOnlyList<object> BuildStackTraceSegments(StackTrace? stackTrace)
     {
         if (stackTrace is null || stackTrace.Frames.IsDefaultOrEmpty)
@@ -197,99 +274,4 @@ public abstract class DataRaceReportingHelper
 
         return segments;
     }
-
-    private void PrepareNoViolationDiagnostics()
-    {
-        _reporter.SetTitle("No data races detected");
-        _reporter.SetDescription("All field accesses appear properly synchronized.");
-    }
-
-    private void PrepareViolationDiagnostics()
-    {
-        _reporter.SetTitle(GetViolationTitle(_detectedRaces.Count));
-        _reporter.SetDescription("See details below.");
-
-        var racesByFieldAndObject = _detectedRaces
-            .GroupBy(r => (r.FieldId, r.ObjectId));
-        CreateReportsForRaces(racesByFieldAndObject);
-    }
-
-    private void CreateReportsForRaces(IEnumerable<IGrouping<(FieldId FieldId, ProcessTrackedObjectId? ObjectId), DataRaceInfo>> racesByFieldAndObject)
-    {
-        var index = 0;
-        foreach (var group in racesByFieldAndObject)
-        {
-            var report = CreateReportForFieldAndObject(index++, group);
-            _reporter.AddReport(report);
-        }
-    }
-
-    private Report CreateReportForFieldAndObject(int index, IGrouping<(FieldId FieldId, ProcessTrackedObjectId? ObjectId), DataRaceInfo> group)
-    {
-        var firstRace = group.First();
-        var fieldTitle = DataRaceLogger.GetFieldTitle(group.Key.FieldId);
-        var fieldName = DataRaceLogger.GetFieldDisplayName(group.Key.FieldId);
-
-        var reportBuilder = new ReportBuilder(index, _reportCategory, firstRace.ProcessId, firstRace.Timestamp);
-        if (group.Key.ObjectId is not null)
-        {
-            reportBuilder.SetTitle(fieldTitle);
-            reportBuilder.SetTarget(fieldName);
-        }
-        else
-        {
-            reportBuilder.SetTitle(fieldName);
-        }
-
-        var accessCollector = CollectThreadAccesses(group);
-
-        // Count distinct access locations (after field-level deduplication)
-        var distinctAccessCount = accessCollector.GetThreads()
-            .Sum(t => accessCollector.GetDistinctAccesses(t).Count());
-        
-        reportBuilder.SetDescription(group.Key.ObjectId is { } objectId
-            ? $"Object {objectId.ObjectId.Value} ({distinctAccessCount} distinct access locations)"
-            : $"{distinctAccessCount} distinct access locations");
-
-        AddThreadsToReport(reportBuilder, accessCollector);
-
-        return reportBuilder.Build();
-    }
-
-    private static ThreadAccessCollector CollectThreadAccesses(IEnumerable<DataRaceInfo> races)
-    {
-        var collector = new ThreadAccessCollector();
-        foreach (var race in races)
-            collector.AddRace(race);
-
-        return collector;
-    }
-
-    private void AddThreadsToReport(ReportBuilder reportBuilder, ThreadAccessCollector accessCollector)
-    {
-        var accessIndex = 0;
-        foreach (var threadId in accessCollector.GetThreads())
-        {
-            foreach (var (race, access, role) in accessCollector.GetDistinctAccesses(threadId))
-            {
-                var displayName = DataRaceLogger.GetThreadDisplayName(access);
-                var threadInfo = new ThreadInfo(threadId.ThreadId.Value, displayName, accessIndex++);
-                reportBuilder.AddThread(threadInfo);
-
-                var reason = FormatAccessReason(race, access, role);
-                reportBuilder.AddReportReason(threadInfo, reason);
-
-                var frames = DataRaceStackTraceResolver.ResolveFrames(
-                    threadId.ProcessId,
-                    access,
-                    _metadataContext,
-                    _symbolResolver);
-                var stackTrace = new StackTrace(threadInfo, [.. frames]);
-                reportBuilder.AddStackTrace(stackTrace);
-            }
-        }
-    }
-
 }
-
-

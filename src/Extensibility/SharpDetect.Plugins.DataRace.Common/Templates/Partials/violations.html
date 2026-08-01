@@ -9,11 +9,10 @@
 
 <div id="violationsContainer">
 {{#reports}}
-{{#if isGrouped}}
 <details class="violation-group" data-searchable>
     <summary>
         <span class="card-title">{{shortTarget}}</span>
-        <span class="card-desc">{{instanceCount}} instance(s)</span>
+        <span class="card-desc">{{raceCountLabel}}</span>
         <span class="card-pid-badge">PID {{processId}}</span>
     </summary>
     <div class="violation-group-body">
@@ -21,22 +20,18 @@
         {{#children}}
         <details class="violation-card">
             <summary>
-                <span class="card-title">{{summaryText}}</span>
+                <span class="card-title">{{title}}</span>
+                <span class="card-desc">{{description}}</span>
                 <span class="card-pid-badge">PID {{processId}}</span>
                 <span class="card-timestamp">{{timestamp}}</span>
             </summary>
             <div class="violation-card-body">
-                {{#if hasObjectLabels}}
-                <div class="affected-objects">
-                    {{#objectLabels}}<span class="object-label">{{this}}</span>{{/objectLabels}}
-                    {{#if hasExtraObjects}}<span class="object-label object-label-more">+{{extraObjectCount}} more</span>{{/if}}
-                </div>
-                {{/if}}
                 <div class="thread-grid">
                     {{#threads}}
                     <div class="thread-panel">
                         <div class="thread-panel-header">
                             <span class="thread-name">{{name}}</span>
+                            <span class="thread-role {{#if isEarlier}}thread-role-earlier{{else}}thread-role-later{{/if}}">{{role}}</span>
                         </div>
                         <div class="thread-panel-reason">{{reason}}</div>
                         {{#if stacktrace}}
@@ -51,6 +46,9 @@
                             {{#frames}}{{> stacktrace-frame}}{{/frames}}
                             {{/if}}
                             {{/stacktrace}}
+                            {{#if isStackAtDepthLimit}}
+                            <div class="stacktrace-truncated">Stack reached the configured collection limit of {{stackTraceMaxDepth}} frames and may be incomplete.</div>
+                            {{/if}}
                         </div>
                         {{/if}}
                     </div>
@@ -61,50 +59,12 @@
         {{/children}}
     </div>
 </details>
-{{else}}
-{{#children}}
-<details class="violation-card" data-searchable>
-    <summary>
-        <span class="card-title">{{../shortTarget}}</span>
-        <span class="card-desc">{{description}}</span>
-        <span class="card-pid-badge">PID {{processId}}</span>
-    </summary>
-    <div class="violation-card-body">
-        <span class="metadata-fullname">{{../target}}</span>
-        <div class="thread-grid">
-            {{#threads}}
-            <div class="thread-panel">
-                <div class="thread-panel-header">
-                    <span class="thread-name">{{name}}</span>
-                </div>
-                <div class="thread-panel-reason">{{reason}}</div>
-                {{#if stacktrace}}
-                <div class="stacktrace-block">
-                    {{#stacktrace}}
-                    {{#if isCollapsed}}
-                    <details class="stacktrace-collapse">
-                        <summary>{{count}} runtime frames</summary>
-                        {{#frames}}{{> stacktrace-frame}}{{/frames}}
-                    </details>
-                    {{else}}
-                    {{#frames}}{{> stacktrace-frame}}{{/frames}}
-                    {{/if}}
-                    {{/stacktrace}}
-                </div>
-                {{/if}}
-            </div>
-            {{/threads}}
-        </div>
-    </div>
-</details>
-{{/children}}
-{{/if}}
 {{/reports}}
 </div>
 
 {{else}}
 <div class="no-violations-message">
     <div class="message-title">No data races detected</div>
-    <div class="message-desc">All field accesses appear properly synchronized.</div>
+    <div class="message-desc">All analyzed field accesses appear properly synchronized.</div>
 </div>
 {{/if}}

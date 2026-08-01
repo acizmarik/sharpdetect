@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace SharpDetect.Core.Plugins;
 
-public record PluginConfiguration(
+public record ProfilerConfiguration(
     uint EventMask,
     string SharedMemoryName,
     string? SharedMemoryFile,
@@ -32,7 +32,7 @@ public record PluginConfiguration(
     public static string GetConfigurationFileName(string sessionId)
         => $"SharpDetect_Configuration_{sessionId}.json";
 
-    public static PluginConfiguration Create(
+    public static ProfilerConfiguration Create(
         COR_PRF_MONITOR eventMask,
         string? temporaryFilesFolder,
         object? additionalData,
@@ -40,7 +40,7 @@ public record PluginConfiguration(
     {
         var id = sessionId ?? Guid.NewGuid().ToString("N");
         var tempFolder = temporaryFilesFolder ?? Path.GetTempPath();
-        return new PluginConfiguration(
+        return new ProfilerConfiguration(
             EventMask: (uint)eventMask,
             SharedMemoryName: $"SharpDetect_NotificationsQueue_{id}",
             SharedMemoryFile: Path.Combine(tempFolder, $"SharpDetect_NotificationsQueue_{id}.data"),

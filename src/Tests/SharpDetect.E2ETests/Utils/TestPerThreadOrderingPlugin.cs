@@ -21,7 +21,7 @@ public sealed class TestPerThreadOrderingPlugin : PerThreadOrderingPluginBase, I
 {
     public string ReportCategory => "Test";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public override PluginConfiguration Configuration { get; }
+    public override ProfilerConfiguration ProfilerConfiguration { get; }
     public DirectoryInfo ReportTemplates => throw new NotSupportedException();
     public Summary CreateDiagnostics() => throw new NotSupportedException();
     public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports) => throw new NotSupportedException();
@@ -74,7 +74,7 @@ public sealed class TestPerThreadOrderingPlugin : PerThreadOrderingPluginBase, I
             logger)
     {
         _metadataContext = metadataContext;
-        Configuration = PluginConfiguration.Create(
+        ProfilerConfiguration = ProfilerConfiguration.Create(
             eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |

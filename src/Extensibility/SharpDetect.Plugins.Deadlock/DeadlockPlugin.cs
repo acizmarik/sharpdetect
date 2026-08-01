@@ -22,7 +22,7 @@ public partial class DeadlockPlugin : PerThreadOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "Deadlock";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public override PluginConfiguration Configuration { get; }
+    public override ProfilerConfiguration ProfilerConfiguration { get; }
     public DirectoryInfo ReportTemplates { get; }
     
     private readonly ICallstackResolver _callStackResolver;
@@ -54,7 +54,7 @@ public partial class DeadlockPlugin : PerThreadOrderingPluginBase, IPlugin
         _callStackResolver = callstackResolver;
         _timeProvider = timeProvider;
 
-        Configuration = PluginConfiguration.Create(
+        ProfilerConfiguration = ProfilerConfiguration.Create(
             eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |

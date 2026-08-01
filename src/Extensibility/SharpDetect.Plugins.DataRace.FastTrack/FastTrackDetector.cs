@@ -47,7 +47,7 @@ internal sealed class FastTrackDetector
         _methodResolver = new MethodResolver(metadataContext, logger);
     }
 
-    public int GetTrackedFieldCount() => _shadowMemory.Count;
+    public int GetShadowVariableCount() => _shadowMemory.Count;
     public int GetTrackedThreadCount() => _threadClocks.Count;
     public int GetTrackedPublicationCount() => _publicationClocks.Count;
     internal int GetIndexedPublicationParticipantCount() => _publicationSlotsByParticipant.Count;
