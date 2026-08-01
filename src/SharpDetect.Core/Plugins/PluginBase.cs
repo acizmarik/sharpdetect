@@ -168,7 +168,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         if (TracksCallstackFrame(args.Interpretation))
             _callstacks[id].Push(args.ModuleId, args.MethodToken);
-        Reporter.IncrementMethodEnterExitCounter();
+        Reporter.IncrementMethodEnterCounter();
         base.Visit(metadata, args);
     }
 
@@ -177,7 +177,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         if (TracksCallstackFrame(args.Interpretation))
             _callstacks[id].Push(args.ModuleId, args.MethodToken);
-        Reporter.IncrementMethodEnterExitCounter();
+        Reporter.IncrementMethodEnterCounter();
         base.Visit(metadata, args);
     }
 

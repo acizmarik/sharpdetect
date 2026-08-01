@@ -19,7 +19,7 @@ namespace SharpDetect.Core.Plugins
         private ulong _rewrittenMethodsCount;
         private ulong _analyzedMethodsCount;
         private ulong _garbageCollectionsCount;
-        private ulong _methodEnterExitCount;
+        private ulong _methodEnterCount;
         private DateTimeOffset _startTime;
         private string? _title;
         private string? _description;
@@ -113,9 +113,9 @@ namespace SharpDetect.Core.Plugins
             return this;
         }
 
-        public SummaryBuilder IncrementMethodEnterExitCounter()
+        public SummaryBuilder IncrementMethodEnterCounter()
         {
-            _methodEnterExitCount++;
+            _methodEnterCount++;
             return this;
         }
 
@@ -131,7 +131,7 @@ namespace SharpDetect.Core.Plugins
                 AnalysisDuration: endTime - _startTime);
 
             _collectionProperties.Add(("Garbage Collections Count", _garbageCollectionsCount.ToString()));
-            _collectionProperties.Add(("Method Enter/Exit Count", _methodEnterExitCount.ToString()));
+            _collectionProperties.Add(("Method Enter Count", _methodEnterCount.ToString()));
 
             foreach (var (pid, info) in _runtimeInfos)
             {
