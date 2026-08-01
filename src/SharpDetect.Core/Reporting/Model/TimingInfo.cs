@@ -4,7 +4,7 @@
 namespace SharpDetect.Core.Reporting.Model;
 
 public record TimingInfo(
-    DateTime AnalysisStartTime,
-    DateTime AnalysisEndTime,
+    DateTimeOffset AnalysisStartTime,
+    DateTimeOffset AnalysisEndTime,
     TimeSpan AnalysisDuration);
 
