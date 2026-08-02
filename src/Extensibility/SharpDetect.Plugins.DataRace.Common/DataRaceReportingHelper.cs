@@ -3,6 +3,8 @@
 
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
+using SharpDetect.Core.Reporting;
+using SharpDetect.Core.Reporting.Formatters;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Plugins.DataRace.Common;
@@ -48,7 +50,7 @@ public abstract class DataRaceReportingHelper
         IReadOnlyList<StackFrame> LaterFrames)
     {
         public bool HasUserCode =>
-            EarlierFrames.Concat(LaterFrames).Any(frame => !WellKnownModules.IsSystemModule(frame.SourceMapping));
+            EarlierFrames.Concat(LaterFrames).Any(frame => !WellKnownModules.IsSystemModule(frame.ModulePath));
     }
 
     private (int RaceCount, int FieldCount) PrepareViolationDiagnostics()
@@ -247,19 +249,29 @@ public abstract class DataRaceReportingHelper
             for (var i = 0; i < run.Frames.Count; i++)
             {
                 var frame = run.Frames[i];
+                var snippet = frame.Source?.Snippet ?? SourceCodeSnippet.None;
                 projected[i] = new
                 {
                     metadataName = frame.MethodName,
-                    metadataToken = $"0x{frame.MethodToken:X8}",
-                    methodOffset = frame.MethodOffset is { } offset ? $"IL_{offset:X4}" : null,
-                    instruction = frame.Instruction,
-                    assemblyPath = frame.SourceMapping,
-                    assemblyFileName = Path.GetFileName(frame.SourceMapping),
-                    sourceFileName = frame.SourceFileName,
-                    sourceLine = frame.SourceLine,
-                    sourceCode = frame.SourceCode,
+                    metadataToken = TokenFormatters.FormatMethodToken(frame.MethodToken),
+                    methodOffset = frame.Il is { } il ? InstructionsFormatter.FormatIlOffset(il.Offset) : null,
+                    instruction = frame.Il?.Instruction,
+                    assemblyPath = frame.ModulePath,
+                    assemblyFileName = Path.GetFileName(frame.ModulePath),
+                    sourceFileName = frame.Source?.DocumentPath,
+                    sourceLine = frame.Source?.Line,
+                    hasSourceLines = snippet.Lines.Length > 0,
+                    sourceLines = snippet.Lines
+                        .Select(line => new
+                        {
+                            number = line.LineNumber,
+                            text = line.Text,
+                            isHighlighted = line.IsHighlighted
+                        })
+                        .ToArray(),
+                    isSourceOutOfDate = snippet.IsOutOfDate,
                     isTopFrame = globalIndex == 0,
-                    isSystemFrame = WellKnownModules.IsSystemModule(frame.SourceMapping)
+                    isSystemFrame = WellKnownModules.IsSystemModule(frame.ModulePath)
                 };
                 globalIndex++;
             }

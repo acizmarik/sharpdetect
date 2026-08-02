@@ -9,6 +9,3 @@ public interface ISymbolResolver
 {
     SequencePointInfo? ResolveSequencePoint(uint pid, ModuleId moduleId, int methodToken, uint ilOffset);
 }
-
-public record SequencePointInfo(string DocumentUrl, int StartLine);
-

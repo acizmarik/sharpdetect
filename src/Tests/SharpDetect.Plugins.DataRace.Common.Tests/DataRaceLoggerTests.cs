@@ -37,8 +37,7 @@ public class DataRaceLoggerTests
             methodName: "Program.<>c.<<Main>$>b__0_0()",
             methodOffset: 2,
             sourceFileName: "/app/Program.cs",
-            sourceLine: 8,
-            sourceCode: "        Test.Field = 1;");
+            sourceLine: 8);
 
         var lines = DataRaceLogger.FormatStackTraceLines([frame]);
 
@@ -108,18 +107,16 @@ public class DataRaceLoggerTests
         string methodName,
         uint? methodOffset = null,
         string? sourceFileName = null,
-        int? sourceLine = null,
-        string? sourceCode = null)
+        int? sourceLine = null)
     {
         return new StackFrame(
             MethodName: methodName,
-            SourceMapping: modulePath,
-            MethodToken: 0x06000001,
-            MethodOffset: methodOffset,
-            Instruction: null,
-            SourceFileName: sourceFileName,
-            SourceLine: sourceLine,
-            SourceCode: sourceCode);
+            ModulePath: modulePath,
+            MethodToken: new MdMethodDef(0x06000001),
+            Il: methodOffset is { } offset ? new IlLocation(offset, "nop") : null,
+            Source: sourceFileName is not null && sourceLine is not null
+                ? new SourceLocation(sourceFileName, sourceLine.Value, SourceCodeSnippet.None)
+                : null);
     }
 
     private static AccessInfo CreateAccess(nuint threadId, string? threadName)

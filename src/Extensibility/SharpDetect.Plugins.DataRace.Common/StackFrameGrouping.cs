@@ -15,9 +15,9 @@ public static class StackFrameGrouping
         var index = 0;
         while (index < frames.Count)
         {
-            var isSystemRun = index > 0 && WellKnownModules.IsSystemModule(frames[index].SourceMapping);
+            var isSystemRun = index > 0 && WellKnownModules.IsSystemModule(frames[index].ModulePath);
             var end = index + 1;
-            while (isSystemRun && end < frames.Count && WellKnownModules.IsSystemModule(frames[end].SourceMapping))
+            while (isSystemRun && end < frames.Count && WellKnownModules.IsSystemModule(frames[end].ModulePath))
                 end++;
 
             var runFrames = new List<StackFrame>(end - index);

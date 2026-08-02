@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Reporting.Formatters;
 using Xunit;
 
 namespace SharpDetect.Plugins.DataRace.Common.Tests;
@@ -13,7 +14,7 @@ public class DataRaceStackTraceResolverTests
     [InlineData("System.Void Test::Method()", "Test.Method()")]
     public void GetDisplayMethodName_MetadataName_IsPrettified(string metadataName, string expected)
     {
-        Assert.Equal(expected, DataRaceStackTraceResolver.GetDisplayMethodName(metadataName));
+        Assert.Equal(expected, MethodFormatter.ToDisplayName(metadataName));
     }
 
     [Theory]
@@ -21,7 +22,7 @@ public class DataRaceStackTraceResolverTests
     [InlineData("<unable-to-resolve-method>")]
     public void GetDisplayMethodName_UnresolvedPlaceholder_IsUnchanged(string placeholder)
     {
-        Assert.Equal(placeholder, DataRaceStackTraceResolver.GetDisplayMethodName(placeholder));
+        Assert.Equal(placeholder, MethodFormatter.ToDisplayName(placeholder));
     }
 
     [Theory]

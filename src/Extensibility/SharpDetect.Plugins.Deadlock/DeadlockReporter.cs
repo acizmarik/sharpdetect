@@ -3,6 +3,7 @@
 
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Plugins.Models;
+using SharpDetect.Core.Reporting.Formatters;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Plugins.Deadlock;
@@ -107,12 +108,11 @@ public partial class DeadlockPlugin
                     stacktrace = st!.Frames.Select(frame => new
                     {
                         metadataName = frame.MethodName,
-                        metadataToken = frame.MethodToken,
-                        methodOffset = frame.MethodOffset.HasValue ? $"IL_{frame.MethodOffset:X4}" : null,
-                        sourceFile = frame.SourceMapping,
-                        sourceFileName = frame.SourceFileName,
-                        sourceLine = frame.SourceLine,
-                        sourceCode = frame.SourceCode,
+                        metadataToken = TokenFormatters.FormatMethodToken(frame.MethodToken),
+                        methodOffset = frame.Il is { } il ? InstructionsFormatter.FormatIlOffset(il.Offset) : null,
+                        assemblyPath = frame.ModulePath,
+                        sourceFileName = frame.Source?.DocumentPath,
+                        sourceLine = frame.Source?.Line,
                     }).ToArray()
                 };
             }).ToArray()
