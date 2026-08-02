@@ -7,6 +7,7 @@
 }
 
 :root {
+    color-scheme: light;
     /* Neutral palette */
     --color-bg: #f8f9fb;
     --color-surface: #ffffff;
@@ -604,6 +605,7 @@ body {
 }
 
 [data-theme="dark"] {
+    color-scheme: dark;
     --color-bg: #0f1117;
     --color-surface: #1a1d27;
     --color-border: #2e3244;
@@ -640,6 +642,14 @@ body {
     border-radius: 999px;
     padding: 0.4rem 0.75rem;
     box-shadow: var(--shadow-md);
+}
+
+.theme-toggle-to-light,
+[data-theme="dark"] .theme-toggle-to-dark {
+    display: none;
+}
+[data-theme="dark"] .theme-toggle-to-light {
+    display: inline;
 }
 
 @media (max-width: 768px) {

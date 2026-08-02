@@ -1,3 +1,17 @@
-﻿<title>{{title}} — SharpDetect Report</title>
+<title>{{title}} — SharpDetect Report</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+    (function() {
+        var stored = null;
+        try {
+            stored = localStorage.getItem('sharpdetect-theme');
+        } catch (e) {
+            // Storage can be unavailable - fall back to the system preference
+        }
+
+        var dark = stored === 'dark' || (stored !== 'light' &&
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    })();
+</script>
