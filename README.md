@@ -1,4 +1,4 @@
-# SharpDetect
+<img src="docs/assets/logo/sharpdetect-logo.svg" alt="SharpDetect">
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/acizmarik/sharpdetect/blob/main/LICENSE)
 [![GitHub Actions](https://github.com/acizmarik/sharpdetect/actions/workflows/main.yml/badge.svg)](https://github.com/acizmarik/sharpdetect/actions)
