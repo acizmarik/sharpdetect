@@ -6,10 +6,12 @@ if (NOT (CMAKE_SIZEOF_VOID_P EQUAL 8))
     message(FATAL_ERROR "Unsupported architecture. Expected 64 bit.")
 endif()
 
+option(SHARPDETECT_KEEP_SYMBOLS "Keep symbols in Release builds" OFF)
+
 function(apply_profiler_compile_options target_name)
     if (UNIX AND NOT APPLE)
         target_compile_options(${target_name} PRIVATE
-            $<$<NOT:$<CONFIG:Release>>:-g>
+            $<$<OR:$<NOT:$<CONFIG:Release>>,$<BOOL:${SHARPDETECT_KEEP_SYMBOLS}>>:-g>
             -fPIC
             -fms-extensions
             -Wno-pragma-pack)
@@ -18,7 +20,9 @@ function(apply_profiler_compile_options target_name)
             HOST_64BIT
             PLATFORM_UNIX
             PAL_STDCPP_COMPAT)
-        target_link_options(${target_name} PRIVATE $<$<CONFIG:Release>:LINKER:-s>)
+        if (NOT SHARPDETECT_KEEP_SYMBOLS)
+            target_link_options(${target_name} PRIVATE $<$<CONFIG:Release>:LINKER:-s>)
+        endif()
     endif()
 endfunction()
 
