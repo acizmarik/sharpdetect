@@ -22,7 +22,12 @@ void Profiler::from_json(const nlohmann::json& json, MethodRewritingDescriptor& 
 {
     descriptor.injectHooks = json.at("injectHooks");
     descriptor.injectManagedWrapper = json.at("injectManagedWrapper");
-    descriptor.arguments = json.at("arguments");
+    auto const argumentsIt = json.find("arguments");
+    if (argumentsIt != json.cend() && !argumentsIt->is_null())
+        descriptor.arguments = *argumentsIt;
+    else
+        descriptor.arguments = std::vector<CapturedArgumentDescriptor>{};
+
 
     auto const emitExitEventIt = json.find("emitExitEvent");
     if (emitExitEventIt != json.cend() && !emitExitEventIt->is_null())
