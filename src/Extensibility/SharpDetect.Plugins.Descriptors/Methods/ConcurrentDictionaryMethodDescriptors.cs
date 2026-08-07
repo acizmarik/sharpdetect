@@ -12,6 +12,9 @@ public static class ConcurrentDictionaryMethodDescriptors
     private const string FuncTypeName = "System.Func`2";
     private const string Func3TypeName = "System.Func`3";
 
+    private static readonly CapturedArgumentDescriptor ContainerArg =
+        new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference));
+
     private static readonly CapturedArgumentDescriptor ValueArg =
         new(2, new((byte)nint.Size, CapturedValue.CaptureAsReference));
 
@@ -49,7 +52,7 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [ValueArg],
+                Arguments: [ContainerArg, ValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
                 MethodExitInterpretation: null,
@@ -67,7 +70,7 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [ValueArg],
+                Arguments: [ContainerArg, ValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
                 MethodExitInterpretation: null,
@@ -85,9 +88,9 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [],
+                Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoad));
 
         GetOrAddValue = new MethodDescriptor(
@@ -102,9 +105,9 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [],
+                Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationMaybeStoreLoad));
 
         GetOrAddFactory = new MethodDescriptor(
@@ -123,9 +126,9 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [],
+                Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationMaybeStoreLoad));
         
         TryGetValue = new MethodDescriptor(
@@ -140,9 +143,9 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [OutValueArg],
+                Arguments: [ContainerArg, OutValueArg],
                 ReturnValue: null,
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef));
 
         TryRemove = new MethodDescriptor(
@@ -157,9 +160,9 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [OutValueArg],
+                Arguments: [ContainerArg, OutValueArg],
                 ReturnValue: null,
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef));
 
         TryUpdate = new MethodDescriptor(
@@ -174,7 +177,7 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [ValueArg],
+                Arguments: [ContainerArg, ValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
                 MethodExitInterpretation: null,
@@ -197,9 +200,9 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [],
+                Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationStoreLoad));
 
         AddOrUpdateFactory = new MethodDescriptor(
@@ -219,9 +222,9 @@ public static class ConcurrentDictionaryMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [],
+                Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationStoreLoad));
     }
 

@@ -310,18 +310,18 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         switch (args.Kind)
         {
             case ValuePublicationKind.Store:
-                _detector.RecordValuePublished(args.ProcessThreadId, args.Value);
+                _detector.RecordValuePublished(args.ProcessThreadId, args.Container, args.Value);
                 break;
             case ValuePublicationKind.Load:
-                _detector.RecordValueObserved(args.ProcessThreadId, args.Value);
+                _detector.RecordValueObserved(args.ProcessThreadId, args.Container, args.Value);
                 break;
             case ValuePublicationKind.StoreLoad:
-                _detector.RecordValuePublished(args.ProcessThreadId, args.Value);
-                _detector.RecordValueObserved(args.ProcessThreadId, args.Value);
+                _detector.RecordValuePublished(args.ProcessThreadId, args.Container, args.Value);
+                _detector.RecordValueObserved(args.ProcessThreadId, args.Container, args.Value);
                 break;
             case ValuePublicationKind.MaybeStoreLoad:
-                _detector.RecordValuePublished(args.ProcessThreadId, args.Value, onlyIfAbsent: true);
-                _detector.RecordValueObserved(args.ProcessThreadId, args.Value);
+                _detector.RecordValuePublished(args.ProcessThreadId, args.Container, args.Value, onlyIfAbsent: true);
+                _detector.RecordValueObserved(args.ProcessThreadId, args.Container, args.Value);
                 break;
         }
     }

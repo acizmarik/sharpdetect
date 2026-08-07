@@ -128,7 +128,7 @@ public class LockOrderingTests
         Assert.False(_harness.WriteIsRace(successor, field, instance: null));
     }
     
-    [Fact(Skip = "RecordLockReleased overwrites the lock clock with VectorClock.CopyFrom instead of joining into it")]
+    [Fact]
     public void ExitWithoutMatchingEnter_PreservesTheLockClock()
     {
         // Arrange

@@ -16,6 +16,7 @@ public class PublicationClassificationTests
     private static readonly ProcessThreadId Publisher = new(TestMetadata.ProcessId, new ThreadId(1));
     private static readonly ProcessThreadId Observer = new(TestMetadata.ProcessId, new ThreadId(2));
     private static readonly ProcessThreadId Mutator = new(TestMetadata.ProcessId, new ThreadId(3));
+    private static readonly ProcessTrackedObjectId Container = new(TestMetadata.ProcessId, new TrackedObjectId(99));
     private static readonly ProcessTrackedObjectId Value = new(TestMetadata.ProcessId, new TrackedObjectId(100));
     private readonly MdToken _field;
 
@@ -68,8 +69,8 @@ public class PublicationClassificationTests
 
         // Act
         Write(Publisher, init);
-        _detector.RecordValuePublished(Publisher, Value);
-        _detector.RecordValueObserved(Observer, Value);
+        _detector.RecordValuePublished(Publisher, Container, Value);
+        _detector.RecordValueObserved(Observer, Container, Value);
 
         // Assert
         Assert.False(ReadIsRace(Observer, read));
@@ -84,7 +85,7 @@ public class PublicationClassificationTests
 
         // Act
         Write(Publisher, init);
-        _detector.RecordValueObserved(Observer, Value);
+        _detector.RecordValueObserved(Observer, Container, Value);
 
         // Assert
         Assert.True(ReadIsRace(Observer, read));
@@ -100,8 +101,8 @@ public class PublicationClassificationTests
 
         // Act & Assert
         Write(Publisher, init);
-        _detector.RecordValuePublished(Publisher, Value);
-        _detector.RecordValueObserved(Observer, Value);
+        _detector.RecordValuePublished(Publisher, Container, Value);
+        _detector.RecordValueObserved(Observer, Container, Value);
         Assert.False(ReadIsRace(Observer, read));
         // Unsynchronized post-publication write
         Write(Mutator, mutate);
@@ -117,10 +118,10 @@ public class PublicationClassificationTests
 
         // Act
         Write(Publisher, init);
-        _detector.RecordValuePublished(Publisher, Value, onlyIfAbsent: true);
-        _detector.RecordValueObserved(Publisher, Value);
-        _detector.RecordValuePublished(Observer, Value, onlyIfAbsent: true);
-        _detector.RecordValueObserved(Observer, Value);
+        _detector.RecordValuePublished(Publisher, Container, Value, onlyIfAbsent: true);
+        _detector.RecordValueObserved(Publisher, Container, Value);
+        _detector.RecordValuePublished(Observer, Container, Value, onlyIfAbsent: true);
+        _detector.RecordValueObserved(Observer, Container, Value);
 
         // Assert
         Assert.False(ReadIsRace(Observer, read));
@@ -135,10 +136,10 @@ public class PublicationClassificationTests
         var unrelated = new ProcessTrackedObjectId(TestMetadata.ProcessId, new TrackedObjectId(200));
 
         // Act
-        _detector.RecordValuePublished(Publisher, Value);
+        _detector.RecordValuePublished(Publisher, Container, Value);
         _detector.RecordWrite(Mutator, methodOffset: 0, _field, unrelated, Stack(mutate));
-        _detector.RecordValuePublished(Mutator, Value);
-        _detector.RecordValueObserved(Observer, Value);
+        _detector.RecordValuePublished(Mutator, Container, Value);
+        _detector.RecordValueObserved(Observer, Container, Value);
 
         // Assert
         Assert.Null(_detector.RecordRead(Observer, methodOffset: 0, _field, unrelated, Stack(read)));
@@ -153,13 +154,13 @@ public class PublicationClassificationTests
         var unrelated = new ProcessTrackedObjectId(TestMetadata.ProcessId, new TrackedObjectId(200));
 
         // Act
-        _detector.RecordValuePublished(Publisher, Value, onlyIfAbsent: true);
-        _detector.RecordValueObserved(Publisher, Value);
+        _detector.RecordValuePublished(Publisher, Container, Value, onlyIfAbsent: true);
+        _detector.RecordValueObserved(Publisher, Container, Value);
         _detector.RecordWrite(Mutator, methodOffset: 0, _field, unrelated, Stack(mutate));
-        _detector.RecordValuePublished(Mutator, Value, onlyIfAbsent: true);
-        _detector.RecordValueObserved(Mutator, Value);
-        _detector.RecordValuePublished(Observer, Value, onlyIfAbsent: true);
-        _detector.RecordValueObserved(Observer, Value);
+        _detector.RecordValuePublished(Mutator, Container, Value, onlyIfAbsent: true);
+        _detector.RecordValueObserved(Mutator, Container, Value);
+        _detector.RecordValuePublished(Observer, Container, Value, onlyIfAbsent: true);
+        _detector.RecordValueObserved(Observer, Container, Value);
 
         // Assert
         Assert.NotNull(_detector.RecordRead(Observer, methodOffset: 0, _field, unrelated, Stack(read)));
@@ -175,8 +176,8 @@ public class PublicationClassificationTests
 
         // Act
         Write(Publisher, init);
-        _detector.RecordValuePublished(Publisher, Value);
-        _detector.RecordValueObserved(Observer, Value);
+        _detector.RecordValuePublished(Publisher, Container, Value);
+        _detector.RecordValueObserved(Observer, Container, Value);
         // Publisher mutates the already-published object synchronization.
         Write(Publisher, mutate);
 

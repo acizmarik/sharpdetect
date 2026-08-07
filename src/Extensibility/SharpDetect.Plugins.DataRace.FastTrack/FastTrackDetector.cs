@@ -27,9 +27,11 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _forkClocks = [];
     private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _publicationClocks = [];
+    private readonly Dictionary<PublicationSlot, VectorClock> _publicationClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, HashSet<PublicationSlot>> _publicationSlotsByParticipant = [];
     private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
     private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, bool Escaped);
+    private readonly record struct PublicationSlot(ProcessTrackedObjectId Container, ProcessTrackedObjectId Value);
     
     public FastTrackDetector(
         FastTrackPluginConfiguration configuration,
@@ -47,6 +49,8 @@ internal sealed class FastTrackDetector
 
     public int GetTrackedFieldCount() => _shadowMemory.Count;
     public int GetTrackedThreadCount() => _threadClocks.Count;
+    public int GetTrackedPublicationCount() => _publicationClocks.Count;
+    internal int GetIndexedPublicationParticipantCount() => _publicationSlotsByParticipant.Count;
 
     public void RecordThreadCreated(ProcessThreadId threadId)
     {
@@ -79,8 +83,55 @@ internal sealed class FastTrackDetector
             _forkClocks.Remove(processObjectId);
             _escapeStates.Remove(processObjectId);
             _instanceVolatileClocks.Remove(processObjectId);
-            _publicationClocks.Remove(processObjectId);
         }
+
+        RemoveCollectedPublicationSlots(processId, removedObjectIds);
+    }
+
+    private void RemoveCollectedPublicationSlots(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
+    {
+        if (_publicationClocks.Count == 0)
+            return;
+
+        foreach (var objectId in removedObjectIds)
+        {
+            var participant = new ProcessTrackedObjectId(processId, objectId);
+            if (!_publicationSlotsByParticipant.Remove(participant, out var slots))
+                continue;
+
+            foreach (var slot in slots)
+            {
+                _publicationClocks.Remove(slot);
+                UnindexPublicationSlot(slot.Container == participant ? slot.Value : slot.Container, participant, slot);
+            }
+        }
+    }
+
+    private void IndexPublicationSlot(ProcessTrackedObjectId participant, PublicationSlot slot)
+    {
+        if (!_publicationSlotsByParticipant.TryGetValue(participant, out var slots))
+        {
+            slots = [];
+            _publicationSlotsByParticipant[participant] = slots;
+        }
+
+        slots.Add(slot);
+    }
+
+    private void UnindexPublicationSlot(
+        ProcessTrackedObjectId participant,
+        ProcessTrackedObjectId collectedParticipant,
+        PublicationSlot slot)
+    {
+        if (participant == collectedParticipant ||
+            !_publicationSlotsByParticipant.TryGetValue(participant, out var slots))
+        {
+            return;
+        }
+
+        slots.Remove(slot);
+        if (slots.Count == 0)
+            _publicationSlotsByParticipant.Remove(participant);
     }
     
     public void RecordThreadForkRequested(ProcessThreadId parentThreadId, ProcessTrackedObjectId threadObjectId)
@@ -148,9 +199,14 @@ internal sealed class FastTrackDetector
     {
         var threadVc = GetOrCreateThreadClock(threadId);
         if (_lockClocks.TryGetValue(lockId, out var lockVc))
-            lockVc.CopyFrom(threadVc);
+        {
+            lockVc.Join(threadVc);
+        }
         else
+        {
             _lockClocks[lockId] = threadVc.Clone();
+        }
+
         threadVc.Increment(threadId);
     }
 
@@ -264,27 +320,38 @@ internal sealed class FastTrackDetector
         threadVc.Increment(threadId);
     }
 
-    public void RecordValuePublished(ProcessThreadId threadId, ProcessTrackedObjectId valueId, bool onlyIfAbsent = false)
+    public void RecordValuePublished(
+        ProcessThreadId threadId,
+        ProcessTrackedObjectId containerId,
+        ProcessTrackedObjectId valueId,
+        bool onlyIfAbsent = false)
     {
+        var slot = new PublicationSlot(containerId, valueId);
         var threadVc = GetOrCreateThreadClock(threadId);
-        if (_publicationClocks.TryGetValue(valueId, out var publicationVc))
+        if (_publicationClocks.TryGetValue(slot, out var publicationVc))
         {
             if (onlyIfAbsent)
                 return;
 
-            publicationVc.Join(threadVc);
+            publicationVc.CopyFrom(threadVc);
         }
         else
         {
-            _publicationClocks[valueId] = threadVc.Clone();
+            _publicationClocks[slot] = threadVc.Clone();
+            IndexPublicationSlot(containerId, slot);
+            if (containerId != valueId)
+                IndexPublicationSlot(valueId, slot);
         }
 
         threadVc.Increment(threadId);
     }
 
-    public void RecordValueObserved(ProcessThreadId threadId, ProcessTrackedObjectId valueId)
+    public void RecordValueObserved(
+        ProcessThreadId threadId,
+        ProcessTrackedObjectId containerId,
+        ProcessTrackedObjectId valueId)
     {
-        if (!_publicationClocks.TryGetValue(valueId, out var publicationVc))
+        if (!_publicationClocks.TryGetValue(new PublicationSlot(containerId, valueId), out var publicationVc))
             return;
 
         var threadVc = GetOrCreateThreadClock(threadId);

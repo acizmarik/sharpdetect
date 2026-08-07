@@ -451,6 +451,14 @@ static BOOL HasIndirects(const Profiler::MethodDescriptor& descriptor)
     return indirectIt != descriptor.rewritingDescriptor.arguments.cend();
 }
 
+static BOOL PushesArgumentsFrame(const Profiler::MethodDescriptor& descriptor)
+{
+    if (descriptor.rewritingDescriptor.arguments.empty())
+        return FALSE;
+
+    return descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor);
+}
+
 static Profiler::GenericCaptureState CombineGenericCaptureStates(
     const Profiler::GenericCaptureState left,
     const Profiler::GenericCaptureState right)
@@ -642,6 +650,7 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     decision.hasArguments = !descriptor.rewritingDescriptor.arguments.empty();
     decision.hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
     decision.hasIndirects = HasIndirects(descriptor);
+    decision.pushesArgumentsFrame = PushesArgumentsFrame(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
     decision.captureStackTraceOnEnter = descriptor.rewritingDescriptor.captureStackTraceOnEnter;
     decision.genericCapture.store(genericCapture, std::memory_order_relaxed);
@@ -738,7 +747,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         return E_FAIL;
     }
 
-    if (descriptor.rewritingDescriptor.returnValue.has_value() || !indirects.empty())
+    if (decision->pushesArgumentsFrame)
         scratch.argsCallStack.push(indirects);
 
     // Capture stack trace if required
@@ -793,6 +802,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     const auto& descriptor = *decision->descriptor;
     auto const hasIndirects = decision->hasIndirects;
     auto const hasReturnValue = decision->hasReturnValue;
+    auto const pushesArgumentsFrame = decision->pushesArgumentsFrame;
     auto& scratch = EltScratch;
 
     // Retrieve return value data
@@ -824,39 +834,43 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     auto& argumentOffsets = scratch.argumentOffsets;
     argumentValues.clear();
     argumentOffsets.clear();
-    if (hasIndirects)
+    if (pushesArgumentsFrame && !scratch.argsCallStack.empty())
     {
-        auto& indirects = scratch.argsCallStack.top();
-        if (!indirects.empty())
+        hr = S_OK;
+        if (hasIndirects)
         {
-            auto const argumentValuesLength = std::accumulate(
-                descriptor.rewritingDescriptor.arguments.cbegin(),
-                descriptor.rewritingDescriptor.arguments.cend(),
-                0, [](const INT sum, const CapturedArgumentDescriptor& d)
-                {
-                    auto const flags = static_cast<UINT>(d.value.flags);
-                    constexpr auto indirect = static_cast<UINT>(CapturedValueFlags::IndirectLoad);
-                    if ((flags & indirect) == 0)
-                        return sum;
-
-                    return sum + d.value.size;
-                });
-            auto const argumentOffsetsLength = indirects.size() * sizeof(UINT);
-            argumentValues.resize(argumentValuesLength);
-            argumentOffsets.resize(argumentOffsetsLength);
-            hr = _argumentCapture.GetByRefArguments(
-                descriptor,
-                indirects,
-                std::span(argumentValues.data(), argumentValues.size()),
-                std::span(argumentOffsets.data(), argumentOffsets.size()));
-            if (FAILED(hr))
+            const auto& indirects = scratch.argsCallStack.top();
+            if (!indirects.empty())
             {
-                LOG_F(ERROR, "Could not parse by-ref arguments data for method %d. Error: 0x%x.", methodDef, hr);
-                scratch.argsCallStack.pop();
-                return E_FAIL;
+                auto const argumentValuesLength = std::accumulate(
+                    descriptor.rewritingDescriptor.arguments.cbegin(),
+                    descriptor.rewritingDescriptor.arguments.cend(),
+                    0, [](const INT sum, const CapturedArgumentDescriptor& d)
+                    {
+                        auto const flags = static_cast<UINT>(d.value.flags);
+                        constexpr auto indirect = static_cast<UINT>(CapturedValueFlags::IndirectLoad);
+                        if ((flags & indirect) == 0)
+                            return sum;
+
+                        return sum + d.value.size;
+                    });
+                auto const argumentOffsetsLength = indirects.size() * sizeof(UINT);
+                argumentValues.resize(argumentValuesLength);
+                argumentOffsets.resize(argumentOffsetsLength);
+                hr = _argumentCapture.GetByRefArguments(
+                    descriptor,
+                    indirects,
+                    std::span(argumentValues.data(), argumentValues.size()),
+                    std::span(argumentOffsets.data(), argumentOffsets.size()));
             }
         }
+
         scratch.argsCallStack.pop();
+        if (FAILED(hr))
+        {
+            LOG_F(ERROR, "Could not parse by-ref arguments data for method %d. Error: 0x%x.", methodDef, hr);
+            return E_FAIL;
+        }
     }
 
     // Notify about method leave with arguments
@@ -904,7 +918,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionEnter(co
     {
         const auto& descriptor = *descriptorPointer.get();
         auto& argsCallStack = EltScratch.argsCallStack;
-        if ((descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor)) && !argsCallStack.empty())
+        if (PushesArgumentsFrame(descriptor) && !argsCallStack.empty())
             argsCallStack.pop();
     }
 

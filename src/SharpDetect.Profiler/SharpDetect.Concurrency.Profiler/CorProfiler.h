@@ -46,6 +46,7 @@ namespace Profiler
 		bool hasArguments;
 		bool hasReturnValue;
 		bool hasIndirects;
+		bool pushesArgumentsFrame;
 		bool emitExitEvent;
 		bool captureStackTraceOnEnter;
 		std::atomic<GenericCaptureState> genericCapture;

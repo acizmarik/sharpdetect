@@ -124,4 +124,5 @@ public enum RecordedEventType : ushort
     ValuePublicationStoreLoad = 222,
     ValuePublicationLoadByRef = 223,
     ValuePublicationMaybeStoreLoad = 224,
+    ValuePublicationContainerEnter = 225,
 }

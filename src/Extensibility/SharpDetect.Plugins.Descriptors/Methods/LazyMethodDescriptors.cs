@@ -10,6 +10,9 @@ public static class LazyMethodDescriptors
 {
     private const string LazyTypeName = "System.Lazy`1";
 
+    private static readonly CapturedArgumentDescriptor ContainerArg =
+        new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference));
+
     private static readonly MethodDescriptor GetValue;
 
     static LazyMethodDescriptors()
@@ -26,9 +29,9 @@ public static class LazyMethodDescriptors
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: true,
                 InjectManagedWrapper: false,
-                Arguments: [],
+                Arguments: [ContainerArg],
                 ReturnValue: new CapturedValueDescriptor((byte)nint.Size, CapturedValue.CaptureAsReference),
-                MethodEnterInterpretation: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
                 MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationMaybeStoreLoad));
     }
 

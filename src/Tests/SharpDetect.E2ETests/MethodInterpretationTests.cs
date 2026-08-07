@@ -459,13 +459,15 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Act && Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var publishedValues = events
+        var publications = events
             .Where(e => e.Type == RecordedEventType.ValuePublicationMaybeStoreLoad)
-            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args.Value)
+            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args)
             .ToList();
+        var publishedValues = publications.Select(args => args.Value).ToList();
         Assert.True(
             publishedValues.GroupBy(value => value).Any(group => group.Count() >= 2),
             $"Expected a value published by both accesses, observed {publishedValues.Count} publication(s).");
+        AssertPublishedThroughASingleContainer(publications);
     }
 
     [Theory]
@@ -526,14 +528,22 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Act && Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var publishedValues = events
+        var publications = events
             .Where(e => e.Type == eventType)
-            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args.Value)
-            .Distinct()
+            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args)
             .ToList();
+        var publishedValues = publications.Select(args => args.Value).Distinct().ToList();
         Assert.True(
             publishedValues.Count >= expectedCount,
             $"Expected at least {expectedCount} distinct {eventType} value(s), observed {publishedValues.Count}.");
+        AssertPublishedThroughASingleContainer(publications);
+    }
+
+    private static void AssertPublishedThroughASingleContainer(IReadOnlyList<ValuePublicationArgs> publications)
+    {
+        var containers = publications.Select(args => args.Container).Distinct().ToList();
+        Assert.All(containers, container => Assert.NotEqual(0ul, (ulong)container.ObjectId.Value));
+        Assert.Single(containers);
     }
 
     private async Task MonitorAcquireReleaseBalanced(string subjectArgs, string sdk)

@@ -37,6 +37,7 @@ public partial class FastTrackPlugin
         {
             reporter.AddCollectionProperty("Tracked Threads", _detector.GetTrackedThreadCount().ToString());
             reporter.AddCollectionProperty("Tracked Fields", _detector.GetTrackedFieldCount().ToString());
+            reporter.AddCollectionProperty("Tracked Publications", _detector.GetTrackedPublicationCount().ToString());
             reporter.AddCollectionProperty("Data Races", DetectedRaceCount.ToString());
         }
 

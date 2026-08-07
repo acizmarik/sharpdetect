@@ -97,17 +97,79 @@ public class TrackedObjectCleanupTests
         // Arrange
         var producer = _harness.NewThread();
         var consumer = _harness.NewThread();
+        var container = _harness.NewObject();
         var value = DetectorHarness.ObjectWithId(504);
         var field = _harness.NewStaticField("Shared");
 
         // Act
         _harness.Write(producer, field, instance: null);
-        _harness.Detector.RecordValuePublished(producer, value);
+        _harness.Detector.RecordValuePublished(producer, container, value);
         _harness.CollectObjects(value);
-        _harness.Detector.RecordValueObserved(consumer, DetectorHarness.ObjectWithId(504));
+        _harness.Detector.RecordValueObserved(consumer, container, DetectorHarness.ObjectWithId(504));
 
         // Assert
         Assert.True(_harness.WriteIsRace(consumer, field, instance: null));
+    }
+
+    [Fact]
+    public void CollectedContainer_DoesNotPublishThroughAReusedId()
+    {
+        // Arrange
+        var producer = _harness.NewThread();
+        var consumer = _harness.NewThread();
+        var container = DetectorHarness.ObjectWithId(505);
+        var value = _harness.NewObject();
+        var field = _harness.NewStaticField("SharedByContainer");
+
+        // Act
+        _harness.Write(producer, field, instance: null);
+        _harness.Detector.RecordValuePublished(producer, container, value);
+        _harness.CollectObjects(container);
+        _harness.Detector.RecordValueObserved(consumer, DetectorHarness.ObjectWithId(505), value);
+
+        // Assert
+        Assert.True(_harness.WriteIsRace(consumer, field, instance: null));
+    }
+
+    [Fact]
+    public void ValuesChurningThroughALongLivedContainer_DoNotAccumulateInThePublicationIndex()
+    {
+        // Arrange
+        var producer = _harness.NewThread();
+        var container = _harness.NewObject();
+
+        // Act
+        for (var i = 0; i < 100; i++)
+        {
+            var value = _harness.NewObject();
+            _harness.Detector.RecordValuePublished(producer, container, value);
+            _harness.CollectObjects(value);
+        }
+
+        // Assert
+        // The container outlives every value it held, so nothing may be left listed under either side
+        Assert.Equal(0, _harness.Detector.GetTrackedPublicationCount());
+        Assert.Equal(0, _harness.Detector.GetIndexedPublicationParticipantCount());
+    }
+
+    [Fact]
+    public void CollectedContainer_ReleasesTheIndexEntriesOfTheValuesItHeld()
+    {
+        // Arrange
+        var producer = _harness.NewThread();
+        var container = _harness.NewObject();
+        var firstValue = _harness.NewObject();
+        var secondValue = _harness.NewObject();
+
+        // Act
+        _harness.Detector.RecordValuePublished(producer, container, firstValue);
+        _harness.Detector.RecordValuePublished(producer, container, secondValue);
+        _harness.CollectObjects(container);
+
+        // Assert
+        // Both values outlive the container, but neither may keep a slot that no longer exists
+        Assert.Equal(0, _harness.Detector.GetTrackedPublicationCount());
+        Assert.Equal(0, _harness.Detector.GetIndexedPublicationParticipantCount());
     }
 
     [Fact]
