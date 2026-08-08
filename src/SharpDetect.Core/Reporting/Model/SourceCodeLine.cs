@@ -3,8 +3,4 @@
 
 namespace SharpDetect.Core.Reporting.Model;
 
-public record TimingInfo(
-    DateTimeOffset AnalysisStartTime,
-    DateTimeOffset AnalysisEndTime,
-    TimeSpan AnalysisDuration);
-
+public readonly record struct SourceCodeLine(int LineNumber, string Text, bool IsHighlighted);

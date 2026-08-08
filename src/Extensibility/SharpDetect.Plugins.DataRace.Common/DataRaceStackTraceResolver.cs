@@ -3,6 +3,7 @@
 
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Reporting;
+using SharpDetect.Core.Reporting.Formatters;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Plugins.DataRace.Common;
@@ -18,17 +19,6 @@ public static class DataRaceStackTraceResolver
         var frames = new List<StackFrame> { ResolveTopFrame(processId, access, metadataContext, symbolResolver) };
         frames.AddRange(ResolveDeepFrames(processId, access, metadataContext));
         return frames;
-    }
-
-    public static string GetDisplayMethodName(string metadataName)
-    {
-        var name = metadataName;
-        var doubleColonIndex = name.IndexOf("::", StringComparison.Ordinal);
-        var spaceIndex = name.IndexOf(' ');
-        if (spaceIndex >= 0 && spaceIndex < doubleColonIndex)
-            name = name[(spaceIndex + 1)..];
-
-        return name.Replace("::", ".").Replace('/', '.');
     }
 
     public static bool IsSystemModule(string modulePath)
@@ -48,30 +38,37 @@ public static class DataRaceStackTraceResolver
             ? moduleResolveResult.Value.Location
             : "<unresolved-module>";
         var methodName = methodResolveResult.IsSuccess
-            ? GetDisplayMethodName(methodResolveResult.Value.FullName)
+            ? MethodFormatter.ToDisplayName(methodResolveResult.Value.FullName)
             : $"<unresolved-method>({top.MethodToken.Value})";
         var instruction = methodResolveResult.IsSuccess
             ? methodResolveResult.Value.Body.Instructions
                 .SingleOrDefault(instr => instr.Offset == access.MethodOffset)?
                 .ToString()
             : null;
-        instruction ??= $"<unresolved-instruction>(IL_{access.MethodOffset:X4})";
+        instruction ??= $"<unresolved-instruction>({InstructionsFormatter.FormatIlOffset(access.MethodOffset)})";
         var symbolInfo = symbolResolver.ResolveSequencePoint(
             processId,
             top.ModuleId,
             top.MethodToken.Value,
             access.MethodOffset);
-        var sourceCode = TryReadSourceLine(symbolInfo?.DocumentUrl, symbolInfo?.StartLine);
+
+        SourceLocation? source = symbolInfo is not null
+            ? new SourceLocation(
+                symbolInfo.DocumentUrl,
+                symbolInfo.StartLine,
+                SourceCodeReader.TryRead(
+                    symbolInfo.DocumentUrl,
+                    symbolInfo.StartLine,
+                    symbolInfo.DocumentHashAlgorithm,
+                    symbolInfo.DocumentHash))
+            : null;
 
         return new StackFrame(
             MethodName: methodName,
-            SourceMapping: moduleName,
-            MethodToken: top.MethodToken.Value,
-            MethodOffset: access.MethodOffset,
-            Instruction: instruction,
-            SourceFileName: symbolInfo?.DocumentUrl,
-            SourceLine: symbolInfo?.StartLine,
-            SourceCode: sourceCode);
+            ModulePath: moduleName,
+            MethodToken: top.MethodToken,
+            Il: new IlLocation(access.MethodOffset, instruction),
+            Source: source);
     }
 
     private static List<StackFrame> ResolveDeepFrames(
@@ -89,29 +86,8 @@ public static class DataRaceStackTraceResolver
             resolver,
             processId,
             frame.ModuleId,
-            frame.MethodToken,
-            GetDisplayMethodName)));
+            frame.MethodToken)));
 
         return frames;
-    }
-
-    private static string? TryReadSourceLine(string? documentUrl, int? line)
-    {
-        if (documentUrl is null || line is null || line.Value < 1)
-            return null;
-
-        try
-        {
-            if (!File.Exists(documentUrl))
-                return null;
-
-            return File.ReadLines(documentUrl)
-                .Skip(line.Value - 1)
-                .FirstOrDefault();
-        }
-        catch
-        {
-            return null;
-        }
     }
 }

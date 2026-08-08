@@ -19,15 +19,15 @@ namespace SharpDetect.Core.Plugins
         private ulong _rewrittenMethodsCount;
         private ulong _analyzedMethodsCount;
         private ulong _garbageCollectionsCount;
-        private ulong _methodEnterExitCount;
-        private DateTime _startTime;
+        private ulong _methodEnterCount;
+        private DateTimeOffset _startTime;
         private string? _title;
         private string? _description;
 
         public SummaryBuilder(TimeProvider timeProvider)
         {
             _timeProvider = timeProvider;
-            _startTime = timeProvider.GetUtcNow().DateTime;
+            _startTime = timeProvider.GetUtcNow();
             _runtimeProperties = [];
             _collectionProperties = [];
             _modules = [];
@@ -61,7 +61,7 @@ namespace SharpDetect.Core.Plugins
         
         public SummaryBuilder SetStartTime()
         {
-            _startTime = _timeProvider.GetUtcNow().DateTime;
+            _startTime = _timeProvider.GetUtcNow();
             return this;
         }
 
@@ -113,9 +113,9 @@ namespace SharpDetect.Core.Plugins
             return this;
         }
 
-        public SummaryBuilder IncrementMethodEnterExitCounter()
+        public SummaryBuilder IncrementMethodEnterCounter()
         {
-            _methodEnterExitCount++;
+            _methodEnterCount++;
             return this;
         }
 
@@ -124,14 +124,14 @@ namespace SharpDetect.Core.Plugins
             Guard.IsNotNullOrWhiteSpace(_title);
             Guard.IsNotNullOrWhiteSpace(_description);
 
-            var endTime = DateTime.UtcNow;
+            var endTime = _timeProvider.GetUtcNow();
             var timingInfo = new TimingInfo(
                 AnalysisStartTime: _startTime,
                 AnalysisEndTime: endTime,
                 AnalysisDuration: endTime - _startTime);
 
             _collectionProperties.Add(("Garbage Collections Count", _garbageCollectionsCount.ToString()));
-            _collectionProperties.Add(("Method Enter/Exit Count", _methodEnterExitCount.ToString()));
+            _collectionProperties.Add(("Method Enter Count", _methodEnterCount.ToString()));
 
             foreach (var (pid, info) in _runtimeInfos)
             {

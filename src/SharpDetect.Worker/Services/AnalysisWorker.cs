@@ -55,7 +55,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
         try
         {
-            _plugin.Configuration.SerializeToFile(configurationPath);
+            _plugin.ProfilerConfiguration.SerializeToFile(configurationPath);
             _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
 
             var targetStartTimestamp = Stopwatch.GetTimestamp();
@@ -379,15 +379,15 @@ public sealed class AnalysisWorker : IAnalysisWorker
     
     private string GetFullConfigurationPath()
     {
-        var tempFolder = _plugin.Configuration.TemporaryFilesFolder ?? Path.GetTempPath();
-        return Path.Combine(tempFolder, PluginConfiguration.GetConfigurationFileName(_plugin.Configuration.SessionId));
+        var tempFolder = _plugin.ProfilerConfiguration.TemporaryFilesFolder ?? Path.GetTempPath();
+        return Path.Combine(tempFolder, ProfilerConfiguration.GetConfigurationFileName(_plugin.ProfilerConfiguration.SessionId));
     }
 
     private void CleanupRegistrationQueueFile()
     {
         _registrationTable.Dispose();
 
-        var registrationFile = _plugin.Configuration.RegistrationQueueFile;
+        var registrationFile = _plugin.ProfilerConfiguration.RegistrationQueueFile;
         if (registrationFile is null || !File.Exists(registrationFile))
             return;
 

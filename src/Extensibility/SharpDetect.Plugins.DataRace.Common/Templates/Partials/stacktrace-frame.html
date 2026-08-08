@@ -1,21 +1,27 @@
 <div class="stacktrace-line{{#if isTopFrame}} stacktrace-line-top{{/if}}{{#if isSystemFrame}} stacktrace-line-system{{/if}}">
     <span class="frame-method">{{metadataName}}</span>
-    {{#if sourceCode}}
+    {{#if hasSourceLines}}
     <div class="frame-source">
-        <span class="frame-source-line">{{sourceLine}}</span>
-        <code class="frame-source-code">{{sourceCode}}</code>
+        {{#each sourceLines}}
+        <div class="frame-source-row{{#if isHighlighted}} frame-source-row-current{{/if}}">
+            <span class="frame-source-line">{{number}}</span>
+            <code class="frame-source-code">{{text}}</code>
+        </div>
+        {{/each}}
     </div>
     {{else}}
     {{#if instruction}}
     <div class="frame-source">
-        <span class="frame-source-line">{{methodOffset}}</span>
-        <code class="frame-source-code">{{instruction}}</code>
+        <div class="frame-source-row frame-source-row-current">
+            <span class="frame-source-line">{{methodOffset}}</span>
+            <code class="frame-source-code">{{instruction}}</code>
+        </div>
     </div>
     {{/if}}
     {{/if}}
     <div class="frame-details">
         {{#if sourceFileName}}
-        <span class="frame-detail"><span class="frame-detail-label">File</span> {{sourceFileName}}:{{sourceLine}}</span>
+        <span class="frame-detail"><span class="frame-detail-label">File</span> {{sourceFileName}}:{{sourceLine}}{{#if isSourceOutOfDate}} <span class="frame-source-stale" title="The file on disk was modified after the analyzed binaries were built, so its contents are not shown.">modified since build</span>{{/if}}</span>
         {{/if}}
         <span class="frame-detail"><span class="frame-detail-label">Assembly</span> <span title="{{assemblyPath}}">{{assemblyFileName}}</span></span>
         <span class="frame-detail"><span class="frame-detail-label">Token</span> {{metadataToken}}</span>

@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Metadata;
+using SharpDetect.Core.Reporting.Formatters;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Plugins.DataRace.Common;
@@ -41,11 +42,6 @@ public static class DataRaceLogger
     public static string GetFieldDisplayName(FieldId fieldId)
     {
         return $"{fieldId.FieldDef.DeclaringType.FullName}.{fieldId.FieldDef.Name}";
-    }
-    
-    public static string GetFieldTitle(FieldId fieldId)
-    {
-        return $"{fieldId.FieldDef.DeclaringType.Name}.{fieldId.FieldDef.Name}";
     }
 
     public static string GetThreadDisplayName(AccessInfo access)
@@ -96,13 +92,11 @@ public static class DataRaceLogger
 
     private static string FormatFrameLocation(StackFrame frame)
     {
-        if (frame.SourceFileName is null || frame.SourceLine is null)
-        {
-            return frame.MethodOffset is { } offset
-                ? $"{frame.MethodName}:IL_{offset:X4}"
-                : frame.MethodName;
-        }
-        
-        return $"{frame.MethodName} in {frame.SourceFileName}:{frame.SourceLine}";
+        if (frame.Source is { } source)
+            return $"{frame.MethodName} in {source.DocumentPath}:{source.Line}";
+
+        return frame.Il is { } il
+            ? $"{frame.MethodName}:{InstructionsFormatter.FormatIlOffset(il.Offset)}"
+            : frame.MethodName;
     }
 }

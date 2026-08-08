@@ -23,10 +23,11 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 {
     public string ReportCategory => "DataRace";
     public RecordedEventActionVisitorBase EventsVisitor => this;
-    public override PluginConfiguration Configuration { get; }
+    public override ProfilerConfiguration ProfilerConfiguration { get; }
     public DirectoryInfo ReportTemplates { get; }
 
     private readonly FastTrackDetector _detector;
+    private readonly FastTrackPluginConfiguration _pluginConfiguration;
     private readonly HashSet<FieldId> _reportedRacyFields = [];
     private readonly List<DataRaceInfo> _detectedRaces = [];
     private readonly HashSet<ProcessThreadId> _trackedThreads = [];
@@ -51,10 +52,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
             timeProvider,
             logger)
     {
-        var configuration = pluginOptionsConfiguration.ParseConfigurationOrDefault<FastTrackPluginConfiguration>();
-        _detector = new FastTrackDetector(configuration, metadataContext, timeProvider, logger, GetThreadName);
+        _pluginConfiguration = pluginOptionsConfiguration.ParseConfigurationOrDefault<FastTrackPluginConfiguration>();
+        _detector = new FastTrackDetector(_pluginConfiguration, metadataContext, timeProvider, logger, GetThreadName);
 
-        Configuration = PluginConfiguration.Create(
+        ProfilerConfiguration = ProfilerConfiguration.Create(
             eventMask: COR_PRF_MONITOR.COR_PRF_MONITOR_ASSEMBLY_LOADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_MODULE_LOADS |
                        COR_PRF_MONITOR.COR_PRF_MONITOR_JIT_COMPILATION |
@@ -83,13 +84,13 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
-                configuration.EnableFieldsAccessInstrumentation,
-                configuration.SkipInstrumentationForAssemblies,
-                configuration.EnableStackTraceCollection,
-                configuration.StackTraceCollectionMaxDepth,
-                StackTraceCollectionForFields = configuration.StackTraceCollectionForFields.IsDefault
+                _pluginConfiguration.EnableFieldsAccessInstrumentation,
+                _pluginConfiguration.SkipInstrumentationForAssemblies,
+                _pluginConfiguration.EnableStackTraceCollection,
+                _pluginConfiguration.StackTraceCollectionMaxDepth,
+                StackTraceCollectionForFields = _pluginConfiguration.StackTraceCollectionForFields.IsDefault
                     ? ImmutableArray<string>.Empty
-                    : configuration.StackTraceCollectionForFields
+                    : _pluginConfiguration.StackTraceCollectionForFields
             },
             temporaryFilesFolder: pathsConfiguration.TemporaryFilesFolder,
             sessionId: pathsConfiguration.SessionId);

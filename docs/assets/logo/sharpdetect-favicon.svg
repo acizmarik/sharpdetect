@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="SharpDetect">
+  <title>SharpDetect</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .stem, .bar { stroke: #6b9ef8 }
+      .slip { stroke: #f5bd6a }
+    }
+  </style>
+  <g fill="none" stroke-linecap="round" transform="translate(64,64) scale(1.24) translate(-64,-64)">
+    <g class="stem" stroke="#3b6fd4" stroke-width="13">
+      <path d="M50 26 L42 106"/>
+      <path d="M90 22 L82 102"/>
+    </g>
+    <g class="bar" stroke="#3b6fd4" stroke-width="15">
+      <path d="M22 88 L106 76"/>
+      <path d="M22 56 L58 51"/>
+    </g>
+    <path class="slip" stroke="#e59a2f" stroke-width="15" d="M68 60 L106 55"/>
+  </g>
+</svg>

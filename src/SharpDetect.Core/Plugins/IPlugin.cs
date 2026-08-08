@@ -10,7 +10,7 @@ public interface IPlugin
 {
     string ReportCategory { get; }
     DirectoryInfo ReportTemplates { get; }
-    PluginConfiguration Configuration { get; }
+    ProfilerConfiguration ProfilerConfiguration { get; }
     RecordedEventActionVisitorBase EventsVisitor { get; }
     IReadOnlyDictionary<RecordedEventHandlerType, RecordedEventHandler> CustomEventHandlers { get; }
 

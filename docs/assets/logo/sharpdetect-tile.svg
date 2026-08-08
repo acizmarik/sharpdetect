@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="SharpDetect">
+  <title>SharpDetect</title>
+  <rect width="128" height="128" rx="28" fill="#3b6fd4"/>
+  <g fill="none" stroke-linecap="round" transform="translate(64,64) scale(0.88) translate(-64,-64)">
+    <g stroke="#ffffff" stroke-width="12">
+      <path d="M50 26 L42 106"/>
+      <path d="M90 22 L82 102"/>
+    </g>
+    <g stroke="#ffffff" stroke-width="14">
+      <path d="M22 88 L106 76"/>
+      <path d="M22 56 L58 51"/>
+    </g>
+    <path stroke="#ffc46b" stroke-width="14" d="M68 60 L106 55"/>
+  </g>
+</svg>

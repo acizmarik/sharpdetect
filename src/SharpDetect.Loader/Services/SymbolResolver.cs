@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Immutable;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -11,24 +12,17 @@ using SharpDetect.Core.Metadata;
 
 namespace SharpDetect.Loader.Services;
 
-internal sealed class SymbolResolver : ISymbolResolver, IDisposable
+internal sealed class SymbolResolver(
+    IModuleBindContext moduleBindContext,
+    ILogger<SymbolResolver> logger)
+    : ISymbolResolver, IDisposable
 {
-    private readonly IModuleBindContext _moduleBindContext;
-    private readonly ILogger<SymbolResolver> _logger;
-    private readonly Dictionary<string, PdbReaderEntry> _pdbReaders = new();
-    private readonly HashSet<string> _failedModules = new();
-
-    public SymbolResolver(
-        IModuleBindContext moduleBindContext,
-        ILogger<SymbolResolver> logger)
-    {
-        _moduleBindContext = moduleBindContext;
-        _logger = logger;
-    }
+    private readonly Dictionary<string, PdbReaderEntry> _pdbReaders = [];
+    private readonly HashSet<string> _failedModules = [];
 
     public SequencePointInfo? ResolveSequencePoint(uint pid, ModuleId moduleId, int methodToken, uint ilOffset)
     {
-        var moduleResult = _moduleBindContext.TryGetModule(pid, moduleId);
+        var moduleResult = moduleBindContext.TryGetModule(pid, moduleId);
         if (moduleResult.IsError)
             return null;
 
@@ -37,10 +31,9 @@ internal sealed class SymbolResolver : ISymbolResolver, IDisposable
             return null;
 
         var entry = GetOrLoadPdbReader(modulePath);
-        if (entry is null)
-            return null;
-
-        return FindSequencePoint(entry.Reader, methodToken, ilOffset);
+        return entry is not null
+            ? FindSequencePoint(entry.Reader, methodToken, ilOffset)
+            : null;
     }
 
     private PdbReaderEntry? GetOrLoadPdbReader(string modulePath)
@@ -57,7 +50,7 @@ internal sealed class SymbolResolver : ISymbolResolver, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to load debug symbols for module: {Path}", modulePath);
+            logger.LogDebug(ex, "Failed to load debug symbols for module: {Path}", modulePath);
             _failedModules.Add(modulePath);
             return null;
         }
@@ -153,7 +146,18 @@ internal sealed class SymbolResolver : ISymbolResolver, IDisposable
             return null;
 
         var document = reader.GetDocument(bestMatch.Value.Document);
-        return new SequencePointInfo(reader.GetString(document.Name), bestMatch.Value.StartLine);
+        var hashAlgorithm = document.HashAlgorithm.IsNil
+            ? Guid.Empty
+            : reader.GetGuid(document.HashAlgorithm);
+        var hash = document.Hash.IsNil
+            ? ImmutableArray<byte>.Empty
+            : [.. reader.GetBlobBytes(document.Hash)];
+
+        return new SequencePointInfo(
+            reader.GetString(document.Name),
+            bestMatch.Value.StartLine,
+            hashAlgorithm,
+            hash);
     }
 
     public void Dispose()

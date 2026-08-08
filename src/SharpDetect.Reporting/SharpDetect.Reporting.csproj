@@ -27,6 +27,9 @@
     <None Update="Templates\Partials\head.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Templates\Partials\logo.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Templates\Partials\runtime.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

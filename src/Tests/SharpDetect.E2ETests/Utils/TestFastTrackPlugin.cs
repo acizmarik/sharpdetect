@@ -45,12 +45,12 @@ public sealed class TestFastTrackPlugin : FastTrackPlugin, ITestPlugin
 
     private static bool IsSubjectReport(Report report)
     {
-        var description = report.Description;
-        if (description.Contains("SharpDetect.E2ETests.Subject"))
+        var target = report.Target ?? report.Title;
+        if (target.Contains("SharpDetect.E2ETests.Subject"))
             return true;
 
-        return !(description.Contains("System.") || 
-                 description.Contains("Microsoft.") || 
-                 description.Contains("Internal."));
+        return !(target.StartsWith("System.") ||
+                 target.StartsWith("Microsoft.") ||
+                 target.StartsWith("Internal."));
     }
 }

@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Reporting.Model;
 using Xunit;
 
@@ -108,17 +109,14 @@ public class DataRaceReportingHelperTests
         string modulePath,
         int methodToken = 0x06000001,
         uint? methodOffset = null,
-        string? instruction = null)
+        string instruction = "nop")
     {
         return new StackFrame(
             MethodName: "System.Void Test::Method()",
-            SourceMapping: modulePath,
-            MethodToken: methodToken,
-            MethodOffset: methodOffset,
-            Instruction: instruction,
-            SourceFileName: null,
-            SourceLine: null,
-            SourceCode: null);
+            ModulePath: modulePath,
+            MethodToken: new MdMethodDef(methodToken),
+            Il: methodOffset is { } offset ? new IlLocation(offset, instruction) : null,
+            Source: null);
     }
 
     private static IReadOnlyList<object> GetFrames(object segment)

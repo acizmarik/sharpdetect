@@ -15,7 +15,7 @@ public partial class FastTrackPlugin
     public Summary CreateDiagnostics() => ReportingHelper.CreateDiagnostics();
 
     public IEnumerable<object> CreateReportDataContext(IEnumerable<Report> reports) =>
-        DataRaceReportingHelper.CreateReportDataContext(reports);
+        DataRaceReportingHelper.CreateReportDataContext(reports, _pluginConfiguration.StackTraceCollectionMaxDepth);
 
     private sealed class FastTrackReportingHelper : DataRaceReportingHelper
     {
@@ -33,34 +33,35 @@ public partial class FastTrackPlugin
             _detector = detector;
         }
 
-        protected override void AddStatisticsToReport(SummaryBuilder reporter)
+        protected override void AddStatisticsToReport(SummaryBuilder reporter, int raceCount, int fieldCount)
         {
             reporter.AddCollectionProperty("Tracked Threads", _detector.GetTrackedThreadCount().ToString());
-            reporter.AddCollectionProperty("Tracked Fields", _detector.GetTrackedFieldCount().ToString());
+            reporter.AddCollectionProperty("Tracked Shadow Variables", _detector.GetShadowVariableCount().ToString());
             reporter.AddCollectionProperty("Tracked Publications", _detector.GetTrackedPublicationCount().ToString());
-            reporter.AddCollectionProperty("Data Races", DetectedRaceCount.ToString());
+            reporter.AddCollectionProperty("Data Races", raceCount.ToString());
+            reporter.AddCollectionProperty("Racy Fields", fieldCount.ToString());
+            reporter.AddCollectionProperty("Raw Race Occurrences", RaceOccurrenceCount.ToString());
         }
 
-        protected override string GetViolationTitle(int raceCount) =>
-            raceCount == 1
-                ? "One data race detected"
-                : $"Several ({raceCount}) data races detected";
+        protected override string GetViolationTitle(int raceCount, int fieldCount)  
+        {
+            var races = raceCount == 1 ? "1 data race" : $"{raceCount} data races";
+            var fields = fieldCount == 1 ? "1 field" : $"{fieldCount} fields";
+            return $"{races} in {fields}";
+        }
 
         protected override string FormatAccessReason(DataRaceInfo race, AccessInfo access, RaceRole role)
         {
-            if (role == RaceRole.Triggering)
+            if (role == RaceRole.Later)
             {
-                var lastThreadName = DataRaceLogger.GetThreadDisplayName(race.LastAccess);
-                var lastAccess = race.LastAccess.AccessType;
-                return $"{access.AccessType} unordered after previous {lastAccess} by {lastThreadName}";
+                var earlierThreadName = DataRaceLogger.GetThreadDisplayName(race.LastAccess);
+                return $"{access.AccessType} unordered after previous {race.LastAccess.AccessType} by {earlierThreadName}";
             }
             else
             {
-                var otherThreadName = DataRaceLogger.GetThreadDisplayName(race.CurrentAccess);
-                return $"{access.AccessType} conflicts with later {race.CurrentAccess.AccessType} by {otherThreadName}";
+                var laterThreadName = DataRaceLogger.GetThreadDisplayName(race.CurrentAccess);
+                return $"{access.AccessType} conflicts with later {race.CurrentAccess.AccessType} by {laterThreadName}";
             }
         }
     }
 }
-
-

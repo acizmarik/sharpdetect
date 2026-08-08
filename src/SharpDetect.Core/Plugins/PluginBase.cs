@@ -14,7 +14,7 @@ namespace SharpDetect.Core.Plugins;
 
 public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 {
-    public abstract PluginConfiguration Configuration { get; }
+    public abstract ProfilerConfiguration ProfilerConfiguration { get; }
     public IReadOnlyDictionary<RecordedEventHandlerType, RecordedEventHandler> CustomEventHandlers => _customEventHandlers;
     protected SummaryBuilder Reporter { get; }
     protected ILogger Logger { get; }
@@ -168,7 +168,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         if (TracksCallstackFrame(args.Interpretation))
             _callstacks[id].Push(args.ModuleId, args.MethodToken);
-        Reporter.IncrementMethodEnterExitCounter();
+        Reporter.IncrementMethodEnterCounter();
         base.Visit(metadata, args);
     }
 
@@ -177,7 +177,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         if (TracksCallstackFrame(args.Interpretation))
             _callstacks[id].Push(args.ModuleId, args.MethodToken);
-        Reporter.IncrementMethodEnterExitCounter();
+        Reporter.IncrementMethodEnterCounter();
         base.Visit(metadata, args);
     }
 
@@ -247,12 +247,12 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     {
         // Initialize IPC queue for commands sending
         var sender = _profilerCommandSenderProvider.Create(
-            ipcQueueName: $"{Configuration.CommandQueueName}.{processId}",
-            ipcQueueFileName: Configuration.CommandQueueFile is not null
-                ? $"{Configuration.CommandQueueFile}.{processId}"
+            ipcQueueName: $"{ProfilerConfiguration.CommandQueueName}.{processId}",
+            ipcQueueFileName: ProfilerConfiguration.CommandQueueFile is not null
+                ? $"{ProfilerConfiguration.CommandQueueFile}.{processId}"
                 : null,
-            Configuration.CommandQueueSize,
-            semaphoreName: $"{Configuration.CommandSemaphoreName}.{processId}");
+            ProfilerConfiguration.CommandQueueSize,
+            semaphoreName: $"{ProfilerConfiguration.CommandSemaphoreName}.{processId}");
         _profilerCommandSenders = _profilerCommandSenders.Add((int)processId, sender);
     }
 

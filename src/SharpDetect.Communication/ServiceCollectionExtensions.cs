@@ -20,15 +20,15 @@ public static class ServiceCollectionExtensions
         {
             var plugin = provider.GetRequiredService<IPlugin>();
             return new ConsumerMemoryMappedQueueOptions(
-                plugin.Configuration.SharedMemoryName,
-                plugin.Configuration.SharedMemoryFile,
-                plugin.Configuration.SharedMemorySize,
-                plugin.Configuration.SharedMemorySemaphoreName);
+                plugin.ProfilerConfiguration.SharedMemoryName,
+                plugin.ProfilerConfiguration.SharedMemoryFile,
+                plugin.ProfilerConfiguration.SharedMemorySize,
+                plugin.ProfilerConfiguration.SharedMemorySemaphoreName);
         });
         services.AddSingleton<RegistrationTable>(provider =>
         {
             var plugin = provider.GetRequiredService<IPlugin>();
-            var configuration = plugin.Configuration;
+            var configuration = plugin.ProfilerConfiguration;
             return new RegistrationTable(
                 configuration.RegistrationQueueName,
                 configuration.RegistrationQueueFile,
