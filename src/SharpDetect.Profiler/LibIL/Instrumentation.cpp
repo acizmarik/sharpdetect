@@ -162,7 +162,18 @@ HRESULT LibProfiler::PatchMethodBody(
 
 			if (currentInstruction->m_opcode == CEE_CALL && !fieldAddressAccessTokens.empty())
 			{
-				auto const effectIt = fieldAddressAccessTokens.find(static_cast<mdToken>(currentInstruction->m_Arg32));
+				// All instantiations of a generic method share the parent that was resolved
+				auto callToken = static_cast<mdToken>(currentInstruction->m_Arg32);
+				if (TypeFromToken(callToken) == mdtMethodSpec)
+				{
+					mdToken parentToken = mdTokenNil;
+					if (FAILED(moduleDef.GetMethodSpecParent(callToken, &parentToken)))
+						parentToken = mdTokenNil;
+
+					callToken = parentToken;
+				}
+
+				auto const effectIt = fieldAddressAccessTokens.find(callToken);
 				if (effectIt != fieldAddressAccessTokens.cend())
 				{
 					const auto addressInstruction = currentInstruction->m_pArg0Producer;

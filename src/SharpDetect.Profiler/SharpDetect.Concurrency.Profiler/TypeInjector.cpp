@@ -186,6 +186,8 @@ static std::vector<COR_SIGNATURE> SerializeMethodSignatureDescriptor(
 {
     std::vector<COR_SIGNATURE> result;
     result.push_back(descriptor.callingConvention);
+    if ((descriptor.callingConvention & CorCallingConvention::IMAGE_CEE_CS_CALLCONV_GENERIC) != 0)
+        AppendCompressedData(descriptor.genericParametersCount, result);
     result.push_back(descriptor.parametersCount);
     if (FAILED(SerializeArgumentTypeDescriptor(descriptor.returnType, moduleDef, result)))
     {

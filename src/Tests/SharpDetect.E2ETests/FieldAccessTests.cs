@@ -296,6 +296,51 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_Read_IsAcquireOnly(string sdk)
+        => FieldAccess(
+            "Test_Field_Atomic_ValueType_Static_Read",
+            sdk,
+            RecordedEventType.StaticFieldRead,
+            FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_ReferenceType_CompareExchange(string sdk)
+        => FieldAccess(
+            "Test_Field_Atomic_ReferenceType_Static_CompareExchange",
+            sdk,
+            RecordedEventType.StaticFieldRead,
+            FieldAccessKind.Atomic);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_ReferenceType_CompareExchange(string sdk)
+        => FieldAccess(
+            "Test_Field_Atomic_ReferenceType_Instance_CompareExchange",
+            sdk,
+            RecordedEventType.InstanceFieldRead,
+            FieldAccessKind.Atomic);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task VolatileCallStaticField_ReferenceType_Read(string sdk)
+        => FieldAccess(
+            "Test_Field_VolatileCall_ReferenceType_Static_Read",
+            sdk,
+            RecordedEventType.StaticFieldRead,
+            FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task VolatileCallStaticField_ReferenceType_Write(string sdk)
+        => FieldAccess(
+            "Test_Field_VolatileCall_ReferenceType_Static_Write",
+            sdk,
+            RecordedEventType.StaticFieldWrite,
+            FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicInstanceField_Increment(string sdk)
         => FieldAccess(
             "Test_Field_Atomic_ValueType_Instance_Increment",

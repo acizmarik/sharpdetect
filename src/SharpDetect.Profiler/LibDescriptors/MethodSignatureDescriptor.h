@@ -15,6 +15,7 @@ namespace Profiler
 	{
 		CorCallingConvention callingConvention;
 		BYTE parametersCount;
+		BYTE genericParametersCount;
 		ArgumentTypeDescriptor returnType;
 		std::vector<ArgumentTypeDescriptor> argumentTypeElements;
 	};

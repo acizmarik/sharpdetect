@@ -5,7 +5,6 @@ using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.Descriptors.Methods;
 
-// FIXME: generic method overloads on Interlocked are not yet supported
 public static class VolatileMethodDescriptors
 {
     private const string VolatileTypeName = "System.Threading.Volatile";
@@ -29,35 +28,42 @@ public static class VolatileMethodDescriptors
 
     private static readonly MethodDescriptor[] AllMethods =
     [
-        .. PrimitiveTypes.Select(CreateRead),
-        .. PrimitiveTypes.Select(CreateWrite),
+        .. PrimitiveTypes.Select(type => CreateRead(ArgumentTypeDescriptor.CreateSimple(type), genericParametersCount: 0)),
+        .. PrimitiveTypes.Select(type => CreateWrite(ArgumentTypeDescriptor.CreateSimple(type), genericParametersCount: 0)),
+        CreateRead(ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0), genericParametersCount: 1),
+        CreateWrite(ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0), genericParametersCount: 1),
     ];
 
-    private static MethodDescriptor CreateRead(CorElementType elementType)
+    private static MethodDescriptor CreateRead(ArgumentTypeDescriptor valueType, byte genericParametersCount)
     {
-        var valueType = ArgumentTypeDescriptor.CreateSimple(elementType);
         return Create(
             methodName: "Read",
             signature: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                CallingConvention: GetCallingConvention(genericParametersCount),
                 ParametersCount: 1,
                 ReturnType: valueType,
-                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType)]),
+                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType)],
+                GenericParametersCount: genericParametersCount),
             interpretation: FieldAddressAccessInterpretation.VolatileRead);
     }
 
-    private static MethodDescriptor CreateWrite(CorElementType elementType)
+    private static MethodDescriptor CreateWrite(ArgumentTypeDescriptor valueType, byte genericParametersCount)
     {
-        var valueType = ArgumentTypeDescriptor.CreateSimple(elementType);
         return Create(
             methodName: "Write",
             signature: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                CallingConvention: GetCallingConvention(genericParametersCount),
                 ParametersCount: 2,
                 ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType), valueType]),
+                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType), valueType],
+                GenericParametersCount: genericParametersCount),
             interpretation: FieldAddressAccessInterpretation.VolatileWrite);
     }
+
+    private static CorCallingConvention GetCallingConvention(byte genericParametersCount)
+        => genericParametersCount != 0
+            ? CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT | CorCallingConvention.IMAGE_CEE_CS_CALLCONV_GENERIC
+            : CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT;
 
     private static MethodDescriptor Create(
         string methodName,

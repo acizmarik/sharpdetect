@@ -735,6 +735,32 @@ namespace SharpDetect.E2ETests.Subject
             Interlocked.Increment(ref local);
         }
 
+        public static void Test_Field_Atomic_ValueType_Static_Read()
+        {
+            _ = Interlocked.Read(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Long);
+        }
+
+        public static void Test_Field_Atomic_ReferenceType_Static_CompareExchange()
+        {
+            Interlocked.CompareExchange(ref StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static, "value", null);
+        }
+
+        public static void Test_Field_Atomic_ReferenceType_Instance_CompareExchange()
+        {
+            var instance = new InstanceFieldReferenceType();
+            Interlocked.CompareExchange(ref instance.Test_Field_Atomic_ReferenceType_Instance, "value", null);
+        }
+
+        public static void Test_Field_VolatileCall_ReferenceType_Static_Read()
+        {
+            _ = Volatile.Read(ref StaticFieldReferenceType.Test_Field_ReferenceType_Static);
+        }
+
+        public static void Test_Field_VolatileCall_ReferenceType_Static_Write()
+        {
+            Volatile.Write(ref StaticFieldReferenceType.Test_Field_ReferenceType_Static, new object());
+        }
+
         public static void Test_Field_Atomic_ValueType_Instance_Increment()
         {
             var instance = new InstanceFieldValueType();
@@ -1553,6 +1579,27 @@ namespace SharpDetect.E2ETests.Subject
             RunConcurrently(
                 () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static),
                 () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static));
+        }
+
+        public static void Test_NoDataRace_InterlockedReferenceFlag_PublishThenRead()
+        {
+            DataRace.Test_DataRace_ValueType_Static = 0;
+            DataRace.Test_Atomic_ReferenceType_Static = null;
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    Interlocked.Exchange(ref DataRace.Test_Atomic_ReferenceType_Static, "published");
+                },
+                () =>
+                {
+                    var spinner = new SpinWait();
+                    while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_ReferenceType_Static, null, null) is null)
+                        spinner.SpinOnce();
+
+                    _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_ReferenceType_Static, null, null);
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
         }
 
         public static void Test_NoDataRace_InterlockedFlag_Instance_PublishThenRead()

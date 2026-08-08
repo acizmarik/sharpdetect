@@ -5,7 +5,6 @@ using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.Descriptors.Methods;
 
-// FIXME: generic method overloads on Interlocked are not yet supported
 public static class InterlockedMethodDescriptors
 {
     private const string InterlockedTypeName = "System.Threading.Interlocked";
@@ -30,44 +29,74 @@ public static class InterlockedMethodDescriptors
 
     private static readonly MethodDescriptor[] AllMethods =
     [
-        .. CreateUnary("Increment", IntegralTypes),
-        .. CreateUnary("Decrement", IntegralTypes),
-        .. CreateUnary("Read", [CorElementType.ELEMENT_TYPE_I8, CorElementType.ELEMENT_TYPE_U8]),
-        .. CreateBinary("Add", IntegralTypes),
-        .. CreateBinary("And", IntegralTypes),
-        .. CreateBinary("Or", IntegralTypes),
-        .. CreateBinary("Exchange", ExchangeTypes),
-        .. CreateTernary("CompareExchange", ExchangeTypes),
+        .. CreateOverloads("Increment", IntegralTypes, additionalParametersCount: 0),
+        .. CreateOverloads("Decrement", IntegralTypes, additionalParametersCount: 0),
+        .. CreateOverloads(
+            "Read",
+            [CorElementType.ELEMENT_TYPE_I8, CorElementType.ELEMENT_TYPE_U8],
+            additionalParametersCount: 0,
+            FieldAddressAccessInterpretation.VolatileRead),
+        .. CreateOverloads("Add", IntegralTypes, additionalParametersCount: 1),
+        .. CreateOverloads("And", IntegralTypes, additionalParametersCount: 1),
+        .. CreateOverloads("Or", IntegralTypes, additionalParametersCount: 1),
+        .. CreateOverloads("Exchange", ExchangeTypes, additionalParametersCount: 1),
+        .. CreateOverloads("CompareExchange", ExchangeTypes, additionalParametersCount: 2),
+        CreateGenericOverload("Exchange", additionalParametersCount: 1),
+        CreateGenericOverload("CompareExchange", additionalParametersCount: 2),
     ];
 
-    private static MethodDescriptor[] CreateUnary(string methodName, CorElementType[] elementTypes)
-        => [.. elementTypes.Select(type => Create(methodName, type, additionalParametersCount: 0))];
+    private static MethodDescriptor[] CreateOverloads(
+        string methodName,
+        CorElementType[] elementTypes,
+        byte additionalParametersCount,
+        FieldAddressAccessInterpretation interpretation = FieldAddressAccessInterpretation.AtomicReadModifyWrite)
+    {
+        return
+        [
+            .. elementTypes.Select(type => Create(
+                methodName,
+                ArgumentTypeDescriptor.CreateSimple(type),
+                additionalParametersCount,
+                genericParametersCount: 0,
+                interpretation))
+        ];
+    }
 
-    private static MethodDescriptor[] CreateBinary(string methodName, CorElementType[] elementTypes)
-        => [.. elementTypes.Select(type => Create(methodName, type, additionalParametersCount: 1))];
-
-    private static MethodDescriptor[] CreateTernary(string methodName, CorElementType[] elementTypes)
-        => [.. elementTypes.Select(type => Create(methodName, type, additionalParametersCount: 2))];
+    private static MethodDescriptor CreateGenericOverload(string methodName, byte additionalParametersCount)
+    {
+        return Create(
+            methodName,
+            ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0),
+            additionalParametersCount,
+            genericParametersCount: 1,
+            FieldAddressAccessInterpretation.AtomicReadModifyWrite);
+    }
 
     private static MethodDescriptor Create(
         string methodName,
-        CorElementType elementType,
-        byte additionalParametersCount)
+        ArgumentTypeDescriptor valueType,
+        byte additionalParametersCount,
+        byte genericParametersCount,
+        FieldAddressAccessInterpretation interpretation)
     {
-        var valueType = ArgumentTypeDescriptor.CreateSimple(elementType);
+        var callingConvention = genericParametersCount != 0
+            ? CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT | CorCallingConvention.IMAGE_CEE_CS_CALLCONV_GENERIC
+            : CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT;
+
         return new MethodDescriptor(
             MethodName: methodName,
             DeclaringTypeFullName: InterlockedTypeName,
             VersionDescriptor: null,
             SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
+                CallingConvention: callingConvention,
                 ParametersCount: (byte)(additionalParametersCount + 1),
                 ReturnType: valueType,
                 ArgumentTypeElements:
                 [
                     ArgumentTypeDescriptor.CreateByRef(valueType),
                     .. Enumerable.Repeat(valueType, additionalParametersCount)
-                ]),
+                ],
+                GenericParametersCount: genericParametersCount),
             RewritingDescriptor: new MethodRewritingDescriptor(
                 InjectHooks: false,
                 InjectManagedWrapper: false,
@@ -75,7 +104,7 @@ public static class InterlockedMethodDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: null,
                 MethodExitInterpretation: null,
-                FieldAddressAccessInterpretation: FieldAddressAccessInterpretation.AtomicReadModifyWrite));
+                FieldAddressAccessInterpretation: interpretation));
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;

@@ -274,6 +274,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedReferenceFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedReferenceFlag_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_InterlockedFlag_Instance_PublishThenRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedFlag_Instance_PublishThenRead", sdk, plugin);
 
