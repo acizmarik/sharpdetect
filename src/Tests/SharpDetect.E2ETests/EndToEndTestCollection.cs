@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using SharpDetect.Worker.Configuration;
 using Xunit;
 
 namespace SharpDetect.E2ETests;
@@ -32,8 +31,4 @@ public sealed class TestProjectIntegrationTestsCollection : ICollectionFixture<E
 
 public sealed class EndToEndCollectionFixture
 {
-    public EndToEndCollectionFixture()
-    {
-        EnvironmentUtils.Initialize();
-    }
 }

@@ -188,7 +188,8 @@ Task("Build-Profiler")
     .IsDependentOn("Clean")
     .Does(() =>
 {
-    CMakeConfigure(profilerBuildDirectory);
+    var keepSymbols = HasArgument("keep-symbols") ? "ON" : "OFF";
+    CMakeConfigure(profilerBuildDirectory, $"-DSHARPDETECT_KEEP_SYMBOLS={keepSymbols}");
     CMakeBuild(profilerBuildDirectory);
 });
 
