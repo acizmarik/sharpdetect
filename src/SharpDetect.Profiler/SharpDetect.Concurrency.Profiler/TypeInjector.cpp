@@ -19,6 +19,7 @@ Profiler::TypeInjector::TypeInjector(
     const ModuleID& coreModule,
     MetadataStore& metadataStore,
     MethodDescriptorRegistry& methodDescriptorRegistry,
+    const std::vector<FieldAccessIntrinsicDescriptor>& fieldAccessIntrinsics,
     RewriteRegistry& rewriteRegistry) :
     _corProfilerInfo(corProfilerInfo),
     _client(client),
@@ -26,6 +27,7 @@ Profiler::TypeInjector::TypeInjector(
     _coreModule(coreModule),
     _metadataStore(metadataStore),
     _methodDescriptorRegistry(methodDescriptorRegistry),
+    _fieldAccessIntrinsics(fieldAccessIntrinsics),
     _rewriteRegistry(rewriteRegistry)
 {
 }
@@ -348,56 +350,52 @@ HRESULT Profiler::TypeInjector::ImportMethodWrapper(
     return S_OK;
 }
 
-static LibProfiler::FieldAddressAccessEffect ToFieldAddressAccessEffect(const Profiler::FieldAddressAccessInterpretation interpretation)
+static LibProfiler::FieldAccessIntrinsicEffect ToFieldAccessIntrinsicEffect(const Profiler::FieldAccessIntrinsicInterpretation interpretation)
 {
     switch (interpretation)
     {
-        case Profiler::FieldAddressAccessInterpretation::VolatileRead:
-            return { .direction = LibProfiler::FieldAddressAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Volatile };
+        case Profiler::FieldAccessIntrinsicInterpretation::VolatileRead:
+            return { .direction = LibProfiler::FieldAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Volatile };
 
-        case Profiler::FieldAddressAccessInterpretation::VolatileWrite:
-            return { .direction = LibProfiler::FieldAddressAccessDirection::Write, .accessKind = LibIPC::FieldAccessKind::Volatile };
+        case Profiler::FieldAccessIntrinsicInterpretation::VolatileWrite:
+            return { .direction = LibProfiler::FieldAccessDirection::Write, .accessKind = LibIPC::FieldAccessKind::Volatile };
 
-        case Profiler::FieldAddressAccessInterpretation::AtomicReadModifyWrite:
+        case Profiler::FieldAccessIntrinsicInterpretation::AtomicReadModifyWrite:
         default:
-            return { .direction = LibProfiler::FieldAddressAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Atomic };
+            return { .direction = LibProfiler::FieldAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Atomic };
     }
 }
 
-HRESULT Profiler::TypeInjector::ResolveFieldAddressAccessMethods(
+HRESULT Profiler::TypeInjector::ResolveFieldAccessIntrinsics(
     const LibProfiler::AssemblyDef& assemblyDef,
     const LibProfiler::ModuleDef& moduleDef) const
 {
-    LibProfiler::FieldAddressAccessTokens tokens;
+    LibProfiler::FieldAccessIntrinsicsMap intrinsics;
 
     std::unordered_map<std::string, mdTypeRef> typeRefs;
     for (auto&& assemblyRef : assemblyDef.GetOriginalReferences())
     {
         typeRefs.clear();
 
-        for (auto&& methodPointer : _methodDescriptorRegistry.Descriptors())
+        for (auto&& intrinsic : _fieldAccessIntrinsics)
         {
-            auto& method = *methodPointer.get();
-            if (!method.rewritingDescriptor.fieldAddressAccessInterpretation.has_value())
-                continue;
-
-            auto typeRefIt = typeRefs.find(method.declaringTypeFullName);
+            auto typeRefIt = typeRefs.find(intrinsic.declaringTypeFullName);
             if (typeRefIt == typeRefs.cend())
             {
                 mdTypeRef typeRef;
-                if (FAILED(moduleDef.FindTypeRef(assemblyRef.GetMdAssemblyRef(), method.declaringTypeFullName, &typeRef)))
+                if (FAILED(moduleDef.FindTypeRef(assemblyRef.GetMdAssemblyRef(), intrinsic.declaringTypeFullName, &typeRef)))
                     typeRef = mdTokenNil;
 
-                typeRefIt = typeRefs.emplace(method.declaringTypeFullName, typeRef).first;
+                typeRefIt = typeRefs.emplace(intrinsic.declaringTypeFullName, typeRef).first;
             }
 
             if (typeRefIt->second == mdTokenNil)
                 continue;
 
             mdMemberRef methodRef;
-            auto const signature = SerializeMethodSignatureDescriptor(method.signatureDescriptor, moduleDef);
+            auto const signature = SerializeMethodSignatureDescriptor(intrinsic.signatureDescriptor, moduleDef);
             if (FAILED(moduleDef.FindMethodRef(
-                method.methodName,
+                intrinsic.methodName,
                 signature.data(),
                 signature.size(),
                 typeRefIt->second,
@@ -406,20 +404,18 @@ HRESULT Profiler::TypeInjector::ResolveFieldAddressAccessMethods(
                 continue;
             }
 
-            tokens.emplace(
-                methodRef,
-                ToFieldAddressAccessEffect(method.rewritingDescriptor.fieldAddressAccessInterpretation.value()));
+            intrinsics.emplace(methodRef, ToFieldAccessIntrinsicEffect(intrinsic.interpretation));
 
-            LOG_F(INFO, "Recognized field address access %s::%s (%d) in module %s.",
-                method.declaringTypeFullName.c_str(),
-                method.methodName.c_str(),
+            LOG_F(INFO, "Recognized field access intrinsic %s::%s (%d) in module %s.",
+                intrinsic.declaringTypeFullName.c_str(),
+                intrinsic.methodName.c_str(),
                 methodRef,
                 moduleDef.GetName().c_str());
         }
     }
 
-    if (!tokens.empty())
-        _rewriteRegistry.AddFieldAddressAccessTokens(moduleDef.GetModuleId(), std::move(tokens));
+    if (!intrinsics.empty())
+        _rewriteRegistry.AddModuleFieldAccessIntrinsics(moduleDef.GetModuleId(), std::move(intrinsics));
 
     return S_OK;
 }

@@ -108,7 +108,7 @@ HRESULT LibProfiler::PatchMethodBody(
 	IN const mdMethodDef mdMethodDef,
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 	IN const InjectedMethodsMap& injectedMethods,
-	IN const FieldAddressAccessTokens& fieldAddressAccessTokens,
+	IN const FieldAccessIntrinsicsMap& fieldAccessIntrinsics,
 	IN const BOOL enableFieldsAccessInstrumentation,
 	IN const std::vector<std::string>& skipInstrumentationForAssemblies,
 	IN const BOOL enableStackTraceCollection,
@@ -160,7 +160,7 @@ HRESULT LibProfiler::PatchMethodBody(
 			if (ShouldSkipInstrumentation(moduleDef, skipInstrumentationForAssemblies))
 				continue;
 
-			if (currentInstruction->m_opcode == CEE_CALL && !fieldAddressAccessTokens.empty())
+			if (currentInstruction->m_opcode == CEE_CALL && !fieldAccessIntrinsics.empty())
 			{
 				// All instantiations of a generic method share the parent that was resolved
 				auto callToken = static_cast<mdToken>(currentInstruction->m_Arg32);
@@ -173,15 +173,15 @@ HRESULT LibProfiler::PatchMethodBody(
 					callToken = parentToken;
 				}
 
-				auto const effectIt = fieldAddressAccessTokens.find(callToken);
-				if (effectIt != fieldAddressAccessTokens.cend())
+				auto const effectIt = fieldAccessIntrinsics.find(callToken);
+				if (effectIt != fieldAccessIntrinsics.cend())
 				{
 					const auto addressInstruction = currentInstruction->m_pArg0Producer;
 					auto const addressOpcode = addressInstruction != nullptr ? addressInstruction->m_opcode : CEE_COUNT;
 					if (addressOpcode == CEE_LDSFLDA)
 					{
 						auto const mark = instrumentationMark.fetch_add(1);
-						if (SUCCEEDED(InstrumentStaticFieldAddressAccess(
+						if (SUCCEEDED(InstrumentStaticFieldAccessIntrinsic(
 							corProfilerInfo,
 							client,
 							rewriter,
@@ -212,7 +212,7 @@ HRESULT LibProfiler::PatchMethodBody(
 						}
 
 						auto const mark = instrumentationMark.fetch_add(1);
-						if (SUCCEEDED(InstrumentInstanceFieldAddressAccess(
+						if (SUCCEEDED(InstrumentInstanceFieldAccessIntrinsic(
 							corProfilerInfo,
 							client,
 							rewriter,
@@ -446,12 +446,12 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	return S_OK;
 }
 
-HRESULT LibProfiler::InstrumentStaticFieldAddressAccess(
+HRESULT LibProfiler::InstrumentStaticFieldAccessIntrinsic(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
 	IN ILRewriter& rewriter,
 	IN ILInstr* addressInstruction,
-	IN const FieldAddressAccessEffect& effect,
+	IN const FieldAccessIntrinsicEffect& effect,
 	IN const UINT64 instrumentationMark,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
@@ -466,7 +466,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAddressAccess(
 	corProfilerInfo.GetCurrentThreadID(&threadId);
 
 	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
-	const auto eventType = effect.direction == FieldAddressAccessDirection::Write
+	const auto eventType = effect.direction == FieldAccessDirection::Write
 		? LibIPC::RecordedEventType::StaticFieldWrite
 		: LibIPC::RecordedEventType::StaticFieldRead;
 	auto const methodIt = injectedMethods.find(eventType);
@@ -494,7 +494,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAddressAccess(
 	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
 	rewriter.InsertAfter(ldcInstruction, callInstruction);
 
-	LOG_F(INFO, "Instrumented static field address access in method %d with stub %d from module %s.",
+	LOG_F(INFO, "Instrumented static field access intrinsic in method %d with stub %d from module %s.",
 		mdMethodDef,
 		helperToken,
 		moduleDef.GetName().c_str());
@@ -512,12 +512,12 @@ HRESULT LibProfiler::InstrumentStaticFieldAddressAccess(
 	return S_OK;
 }
 
-HRESULT LibProfiler::InstrumentInstanceFieldAddressAccess(
+HRESULT LibProfiler::InstrumentInstanceFieldAccessIntrinsic(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
 	IN ILRewriter& rewriter,
 	IN ILInstr* addressInstruction,
-	IN const FieldAddressAccessEffect& effect,
+	IN const FieldAccessIntrinsicEffect& effect,
 	IN const UINT16 importedLocalsCount,
 	IN std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>& addedLocals,
 	IN const UINT64 instrumentationMark,
@@ -540,7 +540,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAddressAccess(
 	}
 
 	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
-	const auto eventType = effect.direction == FieldAddressAccessDirection::Write
+	const auto eventType = effect.direction == FieldAccessDirection::Write
 		? LibIPC::RecordedEventType::InstanceFieldWrite
 		: LibIPC::RecordedEventType::InstanceFieldRead;
 	auto const methodIt = injectedMethods.find(eventType);
@@ -598,7 +598,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAddressAccess(
 	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
 	rewriter.InsertAfter(tailInstruction, callInstruction);
 
-	LOG_F(INFO, "Instrumented instance field address access in method %d with stub %d from module %s.",
+	LOG_F(INFO, "Instrumented instance field access intrinsic in method %d with stub %d from module %s.",
 		mdMethodDef,
 		helperToken,
 		moduleDef.GetName().c_str());

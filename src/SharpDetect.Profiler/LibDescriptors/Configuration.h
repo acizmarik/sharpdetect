@@ -10,6 +10,7 @@
 #include "../lib/json/single_include/nlohmann/json.hpp"
 #include "cor.h"
 
+#include "FieldAccessIntrinsicDescriptor.h"
 #include "MethodDescriptor.h"
 #include "TypeInjectionDescriptor.h"
 
@@ -34,6 +35,7 @@ namespace Profiler
         UINT registrationQueueSize;
 
         std::vector<MethodDescriptor> methodDescriptors;
+        std::vector<FieldAccessIntrinsicDescriptor> fieldAccessIntrinsicDescriptors;
         std::vector<TypeInjectionDescriptor> typeInjectionDescriptors;
         BOOL enableFieldsAccessInstrumentation;
         std::vector<std::string> skipInstrumentationForAssemblies;

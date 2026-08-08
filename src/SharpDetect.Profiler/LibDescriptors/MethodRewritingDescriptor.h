@@ -15,13 +15,6 @@
 
 namespace Profiler
 {
-	enum class FieldAddressAccessInterpretation : UINT8
-	{
-		AtomicReadModifyWrite = 1,
-		VolatileRead = 2,
-		VolatileWrite = 3
-	};
-
 	struct MethodRewritingDescriptor
 	{
 		BOOL injectHooks;
@@ -32,7 +25,6 @@ namespace Profiler
 		std::optional<USHORT> methodExitInterpretation;
 		BOOL emitExitEvent;
 		BOOL captureStackTraceOnEnter;
-		std::optional<FieldAddressAccessInterpretation> fieldAddressAccessInterpretation;
 	};
 
     void to_json(nlohmann::json& json, const MethodRewritingDescriptor& descriptor);

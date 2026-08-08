@@ -12,6 +12,7 @@ using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Serialization;
 using SharpDetect.Plugins.DataRace.Common;
+using SharpDetect.Plugins.Descriptors.Intrinsics;
 using SharpDetect.Plugins.Descriptors.Methods;
 using SharpDetect.Plugins.Descriptors.Types;
 using SharpDetect.Plugins.PerThreadOrdering;
@@ -81,9 +82,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     WaitHandleMethodDescriptors.GetAllMethods()).Concat(
                     ConcurrentDictionaryMethodDescriptors.GetAllMethods()).Concat(
                     LazyMethodDescriptors.GetAllMethods()).Concat(
-                    InterlockedMethodDescriptors.GetAllMethods()).Concat(
-                    VolatileMethodDescriptors.GetAllMethods()).Concat(
                     FieldAccessDescriptors.GetAllMethods())
+                    .ToImmutableArray(),
+                FieldAccessIntrinsicDescriptors = InterlockedIntrinsicDescriptors.GetAllIntrinsics().Concat(
+                    VolatileIntrinsicDescriptors.GetAllIntrinsics())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
                 _pluginConfiguration.EnableFieldsAccessInstrumentation,

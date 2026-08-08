@@ -3,7 +3,7 @@
 
 namespace SharpDetect.Plugins.Descriptors;
 
-public enum FieldAddressAccessInterpretation : byte
+public enum FieldAccessIntrinsicInterpretation : byte
 {
     AtomicReadModifyWrite = 1,
     VolatileRead = 2,

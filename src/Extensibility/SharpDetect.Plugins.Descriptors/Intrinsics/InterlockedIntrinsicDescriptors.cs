@@ -3,9 +3,9 @@
 
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Descriptors.Methods;
+namespace SharpDetect.Plugins.Descriptors.Intrinsics;
 
-public static class InterlockedMethodDescriptors
+public static class InterlockedIntrinsicDescriptors
 {
     private const string InterlockedTypeName = "System.Threading.Interlocked";
     
@@ -27,7 +27,7 @@ public static class InterlockedMethodDescriptors
         CorElementType.ELEMENT_TYPE_OBJECT
     ];
 
-    private static readonly MethodDescriptor[] AllMethods =
+    private static readonly FieldAccessIntrinsicDescriptor[] AllIntrinsics =
     [
         .. CreateOverloads("Increment", IntegralTypes, additionalParametersCount: 0),
         .. CreateOverloads("Decrement", IntegralTypes, additionalParametersCount: 0),
@@ -35,7 +35,7 @@ public static class InterlockedMethodDescriptors
             "Read",
             [CorElementType.ELEMENT_TYPE_I8, CorElementType.ELEMENT_TYPE_U8],
             additionalParametersCount: 0,
-            FieldAddressAccessInterpretation.VolatileRead),
+            FieldAccessIntrinsicInterpretation.VolatileRead),
         .. CreateOverloads("Add", IntegralTypes, additionalParametersCount: 1),
         .. CreateOverloads("And", IntegralTypes, additionalParametersCount: 1),
         .. CreateOverloads("Or", IntegralTypes, additionalParametersCount: 1),
@@ -45,11 +45,11 @@ public static class InterlockedMethodDescriptors
         CreateGenericOverload("CompareExchange", additionalParametersCount: 2),
     ];
 
-    private static MethodDescriptor[] CreateOverloads(
+    private static FieldAccessIntrinsicDescriptor[] CreateOverloads(
         string methodName,
         CorElementType[] elementTypes,
         byte additionalParametersCount,
-        FieldAddressAccessInterpretation interpretation = FieldAddressAccessInterpretation.AtomicReadModifyWrite)
+        FieldAccessIntrinsicInterpretation interpretation = FieldAccessIntrinsicInterpretation.AtomicReadModifyWrite)
     {
         return
         [
@@ -62,28 +62,28 @@ public static class InterlockedMethodDescriptors
         ];
     }
 
-    private static MethodDescriptor CreateGenericOverload(string methodName, byte additionalParametersCount)
+    private static FieldAccessIntrinsicDescriptor CreateGenericOverload(string methodName, byte additionalParametersCount)
     {
         return Create(
             methodName,
             ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0),
             additionalParametersCount,
             genericParametersCount: 1,
-            FieldAddressAccessInterpretation.AtomicReadModifyWrite);
+            FieldAccessIntrinsicInterpretation.AtomicReadModifyWrite);
     }
 
-    private static MethodDescriptor Create(
+    private static FieldAccessIntrinsicDescriptor Create(
         string methodName,
         ArgumentTypeDescriptor valueType,
         byte additionalParametersCount,
         byte genericParametersCount,
-        FieldAddressAccessInterpretation interpretation)
+        FieldAccessIntrinsicInterpretation interpretation)
     {
         var callingConvention = genericParametersCount != 0
             ? CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT | CorCallingConvention.IMAGE_CEE_CS_CALLCONV_GENERIC
             : CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT;
 
-        return new MethodDescriptor(
+        return new FieldAccessIntrinsicDescriptor(
             MethodName: methodName,
             DeclaringTypeFullName: InterlockedTypeName,
             VersionDescriptor: null,
@@ -97,15 +97,8 @@ public static class InterlockedMethodDescriptors
                     .. Enumerable.Repeat(valueType, additionalParametersCount)
                 ],
                 GenericParametersCount: genericParametersCount),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: false,
-                InjectManagedWrapper: false,
-                Arguments: [],
-                ReturnValue: null,
-                MethodEnterInterpretation: null,
-                MethodExitInterpretation: null,
-                FieldAddressAccessInterpretation: interpretation));
+            Interpretation: interpretation);
     }
 
-    public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;
+    public static IEnumerable<FieldAccessIntrinsicDescriptor> GetAllIntrinsics() => AllIntrinsics;
 }

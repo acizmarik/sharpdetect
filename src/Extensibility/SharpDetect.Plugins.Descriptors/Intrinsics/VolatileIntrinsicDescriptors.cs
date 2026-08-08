@@ -3,9 +3,9 @@
 
 using SharpDetect.Core.Events.Profiler;
 
-namespace SharpDetect.Plugins.Descriptors.Methods;
+namespace SharpDetect.Plugins.Descriptors.Intrinsics;
 
-public static class VolatileMethodDescriptors
+public static class VolatileIntrinsicDescriptors
 {
     private const string VolatileTypeName = "System.Threading.Volatile";
 
@@ -26,7 +26,7 @@ public static class VolatileMethodDescriptors
         CorElementType.ELEMENT_TYPE_U
     ];
 
-    private static readonly MethodDescriptor[] AllMethods =
+    private static readonly FieldAccessIntrinsicDescriptor[] AllIntrinsics =
     [
         .. PrimitiveTypes.Select(type => CreateRead(ArgumentTypeDescriptor.CreateSimple(type), genericParametersCount: 0)),
         .. PrimitiveTypes.Select(type => CreateWrite(ArgumentTypeDescriptor.CreateSimple(type), genericParametersCount: 0)),
@@ -34,7 +34,7 @@ public static class VolatileMethodDescriptors
         CreateWrite(ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0), genericParametersCount: 1),
     ];
 
-    private static MethodDescriptor CreateRead(ArgumentTypeDescriptor valueType, byte genericParametersCount)
+    private static FieldAccessIntrinsicDescriptor CreateRead(ArgumentTypeDescriptor valueType, byte genericParametersCount)
     {
         return Create(
             methodName: "Read",
@@ -44,10 +44,10 @@ public static class VolatileMethodDescriptors
                 ReturnType: valueType,
                 ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType)],
                 GenericParametersCount: genericParametersCount),
-            interpretation: FieldAddressAccessInterpretation.VolatileRead);
+            interpretation: FieldAccessIntrinsicInterpretation.VolatileRead);
     }
 
-    private static MethodDescriptor CreateWrite(ArgumentTypeDescriptor valueType, byte genericParametersCount)
+    private static FieldAccessIntrinsicDescriptor CreateWrite(ArgumentTypeDescriptor valueType, byte genericParametersCount)
     {
         return Create(
             methodName: "Write",
@@ -57,7 +57,7 @@ public static class VolatileMethodDescriptors
                 ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
                 ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType), valueType],
                 GenericParametersCount: genericParametersCount),
-            interpretation: FieldAddressAccessInterpretation.VolatileWrite);
+            interpretation: FieldAccessIntrinsicInterpretation.VolatileWrite);
     }
 
     private static CorCallingConvention GetCallingConvention(byte genericParametersCount)
@@ -65,25 +65,18 @@ public static class VolatileMethodDescriptors
             ? CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT | CorCallingConvention.IMAGE_CEE_CS_CALLCONV_GENERIC
             : CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT;
 
-    private static MethodDescriptor Create(
+    private static FieldAccessIntrinsicDescriptor Create(
         string methodName,
         MethodSignatureDescriptor signature,
-        FieldAddressAccessInterpretation interpretation)
+        FieldAccessIntrinsicInterpretation interpretation)
     {
-        return new MethodDescriptor(
+        return new FieldAccessIntrinsicDescriptor(
             MethodName: methodName,
             DeclaringTypeFullName: VolatileTypeName,
             VersionDescriptor: null,
             SignatureDescriptor: signature,
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: false,
-                InjectManagedWrapper: false,
-                Arguments: [],
-                ReturnValue: null,
-                MethodEnterInterpretation: null,
-                MethodExitInterpretation: null,
-                FieldAddressAccessInterpretation: interpretation));
+            Interpretation: interpretation);
     }
 
-    public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;
+    public static IEnumerable<FieldAccessIntrinsicDescriptor> GetAllIntrinsics() => AllIntrinsics;
 }

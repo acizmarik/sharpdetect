@@ -11,17 +11,17 @@
 
 namespace LibProfiler
 {
-	enum class FieldAddressAccessDirection : UINT8
+	enum class FieldAccessDirection : UINT8
 	{
 		Read,
 		Write
 	};
 
-	struct FieldAddressAccessEffect
+	struct FieldAccessIntrinsicEffect
 	{
-		FieldAddressAccessDirection direction { FieldAddressAccessDirection::Read };
+		FieldAccessDirection direction { FieldAccessDirection::Read };
 		LibIPC::FieldAccessKind accessKind { LibIPC::FieldAccessKind::Regular };
 	};
 
-	using FieldAddressAccessTokens = std::unordered_map<mdToken, FieldAddressAccessEffect>;
+	using FieldAccessIntrinsicsMap = std::unordered_map<mdMemberRef, FieldAccessIntrinsicEffect>;
 }

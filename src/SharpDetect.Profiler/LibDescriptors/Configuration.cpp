@@ -26,6 +26,7 @@ void Profiler::to_json(nlohmann::json& json, const Configuration& descriptor)
     json["registrationQueueSize"] = descriptor.registrationQueueSize;
 
     json["additionalData"]["methodDescriptors"] = descriptor.methodDescriptors;
+    json["additionalData"]["fieldAccessIntrinsicDescriptors"] = descriptor.fieldAccessIntrinsicDescriptors;
     json["additionalData"]["typeInjectionDescriptors"] = descriptor.typeInjectionDescriptors;
     json["additionalData"]["enableFieldsAccessInstrumentation"] = descriptor.enableFieldsAccessInstrumentation;
     json["additionalData"]["skipInstrumentationForAssemblies"] = descriptor.skipInstrumentationForAssemblies;
@@ -79,6 +80,8 @@ void Profiler::from_json(const nlohmann::json& json, Configuration& descriptor)
 
     const auto& additionalData = json.at("additionalData");
     descriptor.methodDescriptors = additionalData.at("methodDescriptors").get<std::vector<MethodDescriptor>>();
+    if (additionalData.contains("fieldAccessIntrinsicDescriptors"))
+        descriptor.fieldAccessIntrinsicDescriptors = additionalData.at("fieldAccessIntrinsicDescriptors").get<std::vector<FieldAccessIntrinsicDescriptor>>();
     descriptor.typeInjectionDescriptors = additionalData.at("typeInjectionDescriptors").get<std::vector<TypeInjectionDescriptor>>();
     descriptor.enableFieldsAccessInstrumentation = additionalData.at("enableFieldsAccessInstrumentation");
     if (additionalData.contains("skipInstrumentationForAssemblies"))

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "cor.h"
 #include "../lib/json/single_include/nlohmann/json.hpp"
 
@@ -17,6 +19,12 @@ namespace Profiler
 		INT32 toMinorVersion;
 		INT32 toBuildVersion;
 	};
+
+	[[nodiscard]] BOOL IsApplicableToRuntimeVersion(
+		const std::optional<MethodVersionDescriptor>& versionDescriptor,
+		INT32 versionMajor,
+		INT32 versionMinor,
+		INT32 versionBuild);
 
 	void to_json(nlohmann::json& json, const MethodVersionDescriptor& descriptor);
 	void from_json(const nlohmann::json& json, MethodVersionDescriptor& descriptor);

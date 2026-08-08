@@ -12,7 +12,7 @@
 #include "cor.h"
 #include "corprof.h"
 
-#include "../LibIL/FieldAddressAccess.h"
+#include "../LibIL/FieldAccessIntrinsics.h"
 #include "../LibIL/InjectedMethods.h"
 #include "../LibIPC/Messages.h"
 #include "../LibDescriptors/HashingUtils.h"
@@ -31,14 +31,14 @@ namespace Profiler
 
 		void AddModuleInjectedMethods(ModuleID moduleId, LibProfiler::InjectedMethodsMap injectedMethods);
 
-		void AddFieldAddressAccessTokens(ModuleID moduleId, LibProfiler::FieldAddressAccessTokens tokens);
+		void AddModuleFieldAccessIntrinsics(ModuleID moduleId, LibProfiler::FieldAccessIntrinsicsMap intrinsics);
 
 		struct ModulePatchData
 		{
 			BOOL hasAny;
 			std::unordered_map<mdToken, mdToken> tokensToRewrite;
 			LibProfiler::InjectedMethodsMap injectedMethods;
-			LibProfiler::FieldAddressAccessTokens fieldAddressAccessTokens;
+			LibProfiler::FieldAccessIntrinsicsMap fieldAccessIntrinsics;
 		};
 		[[nodiscard]] ModulePatchData GetModulePatchData(ModuleID moduleId);
 
@@ -71,8 +71,8 @@ namespace Profiler
 		std::unordered_map<ModuleID, LibProfiler::InjectedMethodsMap> _injectedMethods;
 		std::mutex _injectedMethodsMutex;
 
-		std::unordered_map<ModuleID, LibProfiler::FieldAddressAccessTokens> _fieldAddressAccessTokens;
-		std::mutex _fieldAddressAccessTokensMutex;
+		std::unordered_map<ModuleID, LibProfiler::FieldAccessIntrinsicsMap> _fieldAccessIntrinsics;
+		std::mutex _fieldAccessIntrinsicsMutex;
 
 		std::unordered_map<MethodId, BOOL, MethodIdHasher> _methodStubs;
 		std::shared_mutex _methodStubsMutex;

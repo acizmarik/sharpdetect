@@ -92,6 +92,7 @@ public sealed class TestPerThreadOrderingPlugin : PerThreadOrderingPluginBase, I
             additionalData: new
             {
                 additionalData.MethodDescriptors,
+                additionalData.FieldAccessIntrinsicDescriptors,
                 additionalData.TypeInjectionDescriptors,
                 additionalData.EnableFieldsAccessInstrumentation
             },

@@ -1,6 +1,7 @@
 set(SOURCES
     "ArgumentTypeDescriptor.cpp"
     "Configuration.cpp"
+    "FieldAccessIntrinsicDescriptor.cpp"
     "MethodDescriptor.cpp"
     "MethodInjectionDescriptor.cpp"
     "MethodRewritingDescriptor.cpp"

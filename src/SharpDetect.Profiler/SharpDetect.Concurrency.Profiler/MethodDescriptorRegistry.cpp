@@ -15,39 +15,8 @@ void Profiler::MethodDescriptorRegistry::Import(
 {
 	for (auto&& item : configured)
 	{
-		if (!item.versionDescriptor.has_value())
-		{
+		if (IsApplicableToRuntimeVersion(item.versionDescriptor, versionMajor, versionMinor, versionBuild))
 			_descriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
-		}
-		else
-		{
-			const auto& [
-				fromMajorVersion,
-				fromMinorVersion,
-				fromBuildVersion,
-				toMajorVersion,
-				toMinorVersion,
-				toBuildVersion] = item.versionDescriptor.value();
-
-			const auto fromVersion = std::make_tuple(
-				fromMajorVersion,
-				fromMinorVersion,
-				fromBuildVersion);
-			const auto toVersion = std::make_tuple(
-				toMajorVersion,
-				toMinorVersion,
-				toBuildVersion);
-			const auto currentVersion = std::make_tuple(
-				versionMajor,
-				versionMinor,
-				versionBuild);
-
-			// Check if currentVersion is within [fromVersion, toVersion] range
-			if (currentVersion >= fromVersion && currentVersion <= toVersion)
-			{
-				_descriptors.emplace_back(std::make_shared<MethodDescriptor>(item));
-			}
-		}
 	}
 }
 
