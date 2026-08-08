@@ -16,6 +16,8 @@ void Profiler::to_json(nlohmann::json& json, const MethodRewritingDescriptor& de
         json["methodEnterInterpretation"] = descriptor.methodEnterInterpretation.value();
     if (descriptor.methodExitInterpretation.has_value())
         json["methodExitInterpretation"] = descriptor.methodExitInterpretation.value();
+    if (descriptor.fieldAddressAccessInterpretation.has_value())
+        json["fieldAddressAccessInterpretation"] = static_cast<UINT8>(descriptor.fieldAddressAccessInterpretation.value());
 }
 
 void Profiler::from_json(const nlohmann::json& json, MethodRewritingDescriptor& descriptor)
@@ -59,4 +61,8 @@ void Profiler::from_json(const nlohmann::json& json, MethodRewritingDescriptor& 
         if (!exitInterpretation.is_null())
             descriptor.methodExitInterpretation = exitInterpretation;
     }
+
+    auto const fieldAddressAccessIt = json.find("fieldAddressAccessInterpretation");
+    if (fieldAddressAccessIt != json.cend() && !fieldAddressAccessIt->is_null())
+        descriptor.fieldAddressAccessInterpretation = static_cast<FieldAddressAccessInterpretation>(fieldAddressAccessIt->get<UINT8>());
 }

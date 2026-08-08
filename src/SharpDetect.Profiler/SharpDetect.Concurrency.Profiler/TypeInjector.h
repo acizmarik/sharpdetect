@@ -37,6 +37,7 @@ namespace Profiler
 		HRESULT WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef);
 		HRESULT ImportMethodWrappers(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
 		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef);
+		HRESULT ResolveFieldAddressAccessMethods(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef) const;
 
 	private:
 		HRESULT ImportMethodWrapper(const LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);

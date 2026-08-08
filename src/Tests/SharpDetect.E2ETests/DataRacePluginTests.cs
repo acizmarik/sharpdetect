@@ -259,6 +259,21 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedFlag_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedCounter_ConcurrentIncrement(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedCounter_ConcurrentIncrement", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_InterlockedFlag_WriteAfterPublish(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_InterlockedFlag_WriteAfterPublish", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_VolatileExplicitAccess_Instance_ReadWriteNoRace", sdk, plugin);
 

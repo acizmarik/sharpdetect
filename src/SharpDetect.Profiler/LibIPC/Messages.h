@@ -229,8 +229,15 @@ namespace LibIPC
 	using StackTraceSnapshotsMsgArgs = msgpack::type::tuple<std::vector<StackTraceSnapshotMsgArgs>>;
 	using StackTraceSnapshotsMsgArgsInstance = msgpack::type::tuple<INT32, StackTraceSnapshotsMsgArgs>;
 	using StackTraceSnapshotsMsg = msgpack::type::tuple<MetadataMsg, StackTraceSnapshotsMsgArgsInstance>;
+	
+	enum class FieldAccessKind : UINT8
+	{
+		Regular = 0,
+		Volatile = 1,
+		Atomic = 2
+	};
 
-	using FieldAccessInstrumentationMsgArgs = msgpack::type::tuple<UINT64, UINT32, UINT32, UINT32, UINT64, bool>;
+	using FieldAccessInstrumentationMsgArgs = msgpack::type::tuple<UINT64, UINT32, UINT32, UINT32, UINT64, UINT8>;
 	using FieldAccessInstrumentationMsgArgsInstance = msgpack::type::tuple<INT32, FieldAccessInstrumentationMsgArgs>;
 	using FieldAccessInstrumentationMsg = msgpack::type::tuple<MetadataMsg, FieldAccessInstrumentationMsgArgsInstance>;
 
@@ -274,7 +281,7 @@ namespace LibIPC
 		StackTraceSnapshotMsg CreateStackTraceSnapshotMsg(MetadataMsg&& metadataMsg, UINT64 threadId, std::vector<UINT64>&& moduleIds, std::vector<UINT32>&& methodTokens);
 		StackTraceSnapshotsMsg CreateStackTraceSnapshotsMsg(MetadataMsg&& metadataMsg, std::vector<StackTraceSnapshotMsgArgs>&& snapshots);
 
-		FieldAccessInstrumentationMsg CreateFieldAccessInstrumentationMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, UINT32 methodOffset, UINT32 fieldToken, UINT64 instrumentationMark, bool isVolatile);
+		FieldAccessInstrumentationMsg CreateFieldAccessInstrumentationMsg(MetadataMsg&& metadataMsg, UINT64 moduleId, UINT32 mdMethodDef, UINT32 methodOffset, UINT32 fieldToken, UINT64 instrumentationMark, FieldAccessKind accessKind);
 	}
 }
 

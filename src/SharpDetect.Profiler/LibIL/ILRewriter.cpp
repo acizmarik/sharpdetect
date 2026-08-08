@@ -589,6 +589,10 @@ HRESULT ILRewriter::ComputeStackTypes()
     std::vector<StackSlotKind> stack;
     stack.reserve(m_maxStack);
 
+    // Kept in lockstep with `stack`: the instruction that pushed each slot, or nullptr when unknown.
+    std::vector<ILInstr*> producers;
+    producers.reserve(m_maxStack);
+
     // The scan is linear. After unconditional jump the state of stack is unknown. We need to keep track
     std::unordered_map<ILInstr*, std::vector<StackSlotKind>> branchTargetStates;
     auto stackKnown = true;
@@ -641,6 +645,8 @@ HRESULT ILRewriter::ComputeStackTypes()
         {
             stack.clear();
             stack.push_back(handlerIt->second);
+            producers.clear();
+            producers.push_back(nullptr);
             stackKnown = true;
         }
 
@@ -651,6 +657,7 @@ HRESULT ILRewriter::ComputeStackTypes()
             if (targetIt != branchTargetStates.end())
             {
                 stack = targetIt->second;
+                producers.assign(stack.size(), nullptr);
                 stackKnown = true;
             }
         }
@@ -661,12 +668,14 @@ HRESULT ILRewriter::ComputeStackTypes()
             opcode == CEE_RETHROW)
         {
             stack.clear();
+            producers.clear();
             stackKnown = false;
             continue;
         }
 
         // Annotate LDFLD/STFLD: is the object operand an object reference?
         pInstr->m_objOperandIsObjRef = false;
+        pInstr->m_pArg0Producer = nullptr;
         if (opcode == CEE_LDFLD || opcode == CEE_LDFLDA)
         {
             // Stack: [..., obj] — object operand is top
@@ -682,6 +691,7 @@ HRESULT ILRewriter::ComputeStackTypes()
         if (opcode == CEE_DUP)
         {
             stack.push_back(stack.empty() ? SlotOther : stack.back());
+            producers.push_back(pInstr);
             continue;
         }
 
@@ -693,6 +703,7 @@ HRESULT ILRewriter::ComputeStackTypes()
             if (opcode == CEE_RET)
             {
                 stack.clear();
+                producers.clear();
                 stackKnown = false;
                 continue;
             }
@@ -707,23 +718,35 @@ HRESULT ILRewriter::ComputeStackTypes()
                     // For newobj, 'this' is not on the stack (it is created by the instruction)
                     if (opcode != CEE_NEWOBJ && target.hasThis)
                         totalPop += 1;
+
+                    // Remember which instruction produced the deepest operand this call consumes
+                    if (totalPop > 0 && producers.size() >= static_cast<size_t>(totalPop))
+                        pInstr->m_pArg0Producer = producers[producers.size() - static_cast<size_t>(totalPop)];
+
                     for (int i = 0; i < totalPop && !stack.empty(); i++)
+                    {
                         stack.pop_back();
+                        if (!producers.empty())
+                            producers.pop_back();
+                    }
                 }
                 else
                 {
                     // Cannot resolve – conservatively clear
                     stack.clear();
+                    producers.clear();
                 }
 
                 // Push return value
                 if (opcode == CEE_NEWOBJ)
                 {
                     stack.push_back(SlotObjRef);
+                    producers.push_back(pInstr);
                 }
                 else if (!target.returnsVoid)
                 {
                     stack.push_back(target.returnsObjRef ? SlotObjRef : SlotOther);
+                    producers.push_back(pInstr);
                 }
                 continue;
             }
@@ -731,22 +754,29 @@ HRESULT ILRewriter::ComputeStackTypes()
             {
                 // Cannot easily resolve calli signature; conservatively clear
                 stack.clear();
+                producers.clear();
                 // VarPush: signature-dependent
                 // Push one unknown slot to be safe
                 stack.push_back(SlotOther);
+                producers.push_back(nullptr);
                 continue;
             }
             else
             {
                 // Unknown VarPop – clear
                 stack.clear();
+                producers.clear();
                 continue;
             }
         }
         else
         {
             for (int i = 0; i < popCount && !stack.empty(); i++)
+            {
                 stack.pop_back();
+                if (!producers.empty())
+                    producers.pop_back();
+            }
         }
 
         if ((s_OpCodeFlags[opcode] & OPCODEFLAGS_BranchTarget) != 0 && stackKnown && pInstr->m_pTarget != nullptr)
@@ -793,7 +823,10 @@ HRESULT ILRewriter::ComputeStackTypes()
             }
 
             for (int i = 0; i < pushCount; i++)
+            {
                 stack.push_back(kind);
+                producers.push_back(pInstr);
+            }
         }
 
         // Unconditional branches: for verifiable IL, we trust the merge.
@@ -801,6 +834,7 @@ HRESULT ILRewriter::ComputeStackTypes()
         if (opcode == CEE_BR || opcode == CEE_BR_S)
         {
             stack.clear();
+            producers.clear();
             stackKnown = false;
         }
     }

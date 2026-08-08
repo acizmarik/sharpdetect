@@ -74,6 +74,7 @@ HRESULT LibProfiler::PatchMethodBody(
 	IN const mdMethodDef mdMethodDef,
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 	IN const InjectedMethodsMap& injectedMethods,
+	IN const FieldAddressAccessTokens& fieldAddressAccessTokens,
 	IN const BOOL enableFieldsAccessInstrumentation,
 	IN const std::vector<std::string>& skipInstrumentationForAssemblies,
 	IN const BOOL enableStackTraceCollection,
@@ -124,6 +125,34 @@ HRESULT LibProfiler::PatchMethodBody(
 			auto const fieldToken = static_cast<mdToken>(currentInstruction->m_Arg32);
 			if (ShouldSkipInstrumentation(moduleDef, skipInstrumentationForAssemblies))
 				continue;
+
+			if (currentInstruction->m_opcode == CEE_CALL && !fieldAddressAccessTokens.empty())
+			{
+				auto const effectIt = fieldAddressAccessTokens.find(static_cast<mdToken>(currentInstruction->m_Arg32));
+				if (effectIt != fieldAddressAccessTokens.cend())
+				{
+					const auto addressInstruction = currentInstruction->m_pArg0Producer;
+					if (addressInstruction != nullptr && addressInstruction->m_opcode == CEE_LDSFLDA)
+					{
+						auto const mark = instrumentationMark.fetch_add(1);
+						if (SUCCEEDED(InstrumentStaticFieldAddressAccess(
+							corProfilerInfo,
+							client,
+							rewriter,
+							addressInstruction,
+							effectIt->second,
+							mark,
+							moduleDef,
+							mdMethodDef,
+							injectedMethods,
+							enableStackTraceCollection,
+							stackTraceFieldPatterns)))
+						{
+							isRewritten = true;
+						}
+					}
+				}
+			}
 
 			// Static field access
 			if (currentInstruction->m_opcode == CEE_LDSFLD || currentInstruction->m_opcode == CEE_STSFLD)
@@ -336,9 +365,75 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		originalOffset,
 		fieldToken,
 		instrumentationMark,
-		isVolatile));
+		isVolatile ? LibIPC::FieldAccessKind::Volatile : LibIPC::FieldAccessKind::Regular));
 
 	*nextInstruction = currentInstruction;
+	return S_OK;
+}
+
+HRESULT LibProfiler::InstrumentStaticFieldAddressAccess(
+	IN ICorProfilerInfo& corProfilerInfo,
+	IN LibIPC::Client& client,
+	IN ILRewriter& rewriter,
+	IN ILInstr* addressInstruction,
+	IN const FieldAddressAccessEffect& effect,
+	IN const UINT64 instrumentationMark,
+	IN const ModuleDef& moduleDef,
+	IN const mdMethodDef mdMethodDef,
+	IN const InjectedMethodsMap& injectedMethods,
+	IN const BOOL enableStackTraceCollection,
+	IN const std::vector<std::string>& stackTraceFieldPatterns)
+{
+	auto const moduleId = moduleDef.GetModuleId();
+	auto const fieldToken = static_cast<mdToken>(addressInstruction->m_Arg32);
+	auto const originalOffset = addressInstruction->m_offset;
+	ThreadID threadId;
+	corProfilerInfo.GetCurrentThreadID(&threadId);
+
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
+	const auto eventType = effect.direction == FieldAddressAccessDirection::Write
+		? LibIPC::RecordedEventType::StaticFieldWrite
+		: LibIPC::RecordedEventType::StaticFieldRead;
+	auto const methodIt = injectedMethods.find(eventType);
+	const auto helperToken = methodIt != injectedMethods.end()
+		? (captureStack ? methodIt->second.withStackCapture : methodIt->second.plain)
+		: mdTokenNil;
+	if (helperToken == mdTokenNil)
+	{
+		LOG_F(
+			ERROR,
+			"Could not find injected %s method for event type %d.",
+			captureStack ? "stack-capturing" : "plain",
+			static_cast<int>(eventType));
+		return E_FAIL;
+	}
+
+	// LDC.I8 <instrumentation-mark>
+	const auto ldcInstruction = rewriter.NewILInstr();
+	ldcInstruction->m_opcode = CEE_LDC_I8;
+	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+	rewriter.InsertAfter(addressInstruction, ldcInstruction);
+	// CALL <injected-method-handler>
+	const auto callInstruction = rewriter.NewILInstr();
+	callInstruction->m_opcode = CEE_CALL;
+	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+	rewriter.InsertAfter(ldcInstruction, callInstruction);
+
+	LOG_F(INFO, "Instrumented static field address access in method %d with stub %d from module %s.",
+		mdMethodDef,
+		helperToken,
+		moduleDef.GetName().c_str());
+
+	// Notify analysis of field access instrumentation point
+	client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
+		LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
+		moduleId,
+		mdMethodDef,
+		originalOffset,
+		fieldToken,
+		instrumentationMark,
+		effect.accessKind));
+
 	return S_OK;
 }
 
@@ -606,7 +701,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		originalOffset,
 		fieldToken,
 		instrumentationMark,
-		isVolatile));
+		isVolatile ? LibIPC::FieldAccessKind::Volatile : LibIPC::FieldAccessKind::Regular));
 
 	*nextInstruction = currentInstruction;
 	return S_OK;

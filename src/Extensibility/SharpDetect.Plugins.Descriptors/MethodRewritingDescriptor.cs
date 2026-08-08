@@ -11,4 +11,5 @@ public record MethodRewritingDescriptor(
     ushort? MethodEnterInterpretation,
     ushort? MethodExitInterpretation,
     bool EmitExitEvent = true,
-    bool CaptureStackTraceOnEnter = false);
+    bool CaptureStackTraceOnEnter = false,
+    FieldAddressAccessInterpretation? FieldAddressAccessInterpretation = null);

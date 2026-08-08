@@ -22,6 +22,9 @@ struct ILInstr
     // Only meaningful for LDFLD/STFLD instructions.
     bool            m_objOperandIsObjRef;
 
+    // Set during stack-type analysis: the instruction that produced the first argument consumed by this call
+    ILInstr *       m_pArg0Producer;
+
     union
     {
         ILInstr *   m_pTarget;

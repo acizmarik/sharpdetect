@@ -18,7 +18,7 @@ public static class EventMatchers
         string assemblyName,
         RecordedEventType type,
         IMetadataResolver plugin,
-        bool? requireVolatile = null)
+        FieldAccessKind? requireAccessKind = null)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(evt =>
         {
@@ -28,30 +28,30 @@ public static class EventMatchers
             RecordedEventMetadata metadata;
             ModuleId moduleId;
             MdMethodDef methodToken;
-            bool isVolatile;
+            FieldAccessKind accessKind;
             switch (type)
             {
                 case RecordedEventType.StaticFieldRead:
                     (metadata, var sr) = evt.Get<(RecordedEventMetadata, StaticFieldReadArgs)>();
-                    (moduleId, methodToken, isVolatile) = (sr.Stack.Top.ModuleId, sr.Stack.Top.MethodToken, sr.IsVolatile);
+                    (moduleId, methodToken, accessKind) = (sr.Stack.Top.ModuleId, sr.Stack.Top.MethodToken, sr.AccessKind);
                     break;
                 case RecordedEventType.StaticFieldWrite:
                     (metadata, var sw) = evt.Get<(RecordedEventMetadata, StaticFieldWriteArgs)>();
-                    (moduleId, methodToken, isVolatile) = (sw.Stack.Top.ModuleId, sw.Stack.Top.MethodToken, sw.IsVolatile);
+                    (moduleId, methodToken, accessKind) = (sw.Stack.Top.ModuleId, sw.Stack.Top.MethodToken, sw.AccessKind);
                     break;
                 case RecordedEventType.InstanceFieldRead:
                     (metadata, var ir) = evt.Get<(RecordedEventMetadata, InstanceFieldReadArgs)>();
-                    (moduleId, methodToken, isVolatile) = (ir.Stack.Top.ModuleId, ir.Stack.Top.MethodToken, ir.IsVolatile);
+                    (moduleId, methodToken, accessKind) = (ir.Stack.Top.ModuleId, ir.Stack.Top.MethodToken, ir.AccessKind);
                     break;
                 case RecordedEventType.InstanceFieldWrite:
                     (metadata, var iw) = evt.Get<(RecordedEventMetadata, InstanceFieldWriteArgs)>();
-                    (moduleId, methodToken, isVolatile) = (iw.Stack.Top.ModuleId, iw.Stack.Top.MethodToken, iw.IsVolatile);
+                    (moduleId, methodToken, accessKind) = (iw.Stack.Top.ModuleId, iw.Stack.Top.MethodToken, iw.AccessKind);
                     break;
                 default:
                     return false;
             }
 
-            if (requireVolatile is { } wantVolatile && isVolatile != wantVolatile)
+            if (requireAccessKind is { } wantAccessKind && accessKind != wantAccessKind)
                 return false;
 
             var resolveResult = plugin.Resolve(metadata, moduleId, methodToken);
@@ -59,7 +59,7 @@ public static class EventMatchers
                 return false;
 
             return resolveResult.Value.Module?.Assembly?.Name?.String == assemblyName;
-        }, description: $"FieldAccessInAssembly({type} in {assemblyName}, volatile={requireVolatile?.ToString() ?? "any"})");
+        }, description: $"FieldAccessInAssembly({type} in {assemblyName}, kind={requireAccessKind?.ToString() ?? "any"})");
     }
 
     public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, IMetadataResolver plugin)

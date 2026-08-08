@@ -40,22 +40,33 @@ void Profiler::RewriteRegistry::AddModuleInjectedMethods(const ModuleID moduleId
 	_injectedMethods.emplace(moduleId, std::move(injectedMethods));
 }
 
+void Profiler::RewriteRegistry::AddFieldAddressAccessTokens(const ModuleID moduleId, LibProfiler::FieldAddressAccessTokens tokens)
+{
+	auto guard = std::unique_lock(_fieldAddressAccessTokensMutex);
+	_fieldAddressAccessTokens.insert_or_assign(moduleId, std::move(tokens));
+}
+
 Profiler::RewriteRegistry::ModulePatchData Profiler::RewriteRegistry::GetModulePatchData(const ModuleID moduleId)
 {
 	auto guardRewritings = std::unique_lock(_rewritingsMutex);
 	auto guardInjections = std::unique_lock(_injectedMethodsMutex);
+	auto guardFieldAddressAccesses = std::unique_lock(_fieldAddressAccessTokensMutex);
 
 	const auto rewritingsIt = _rewritings.find(moduleId);
 	const auto injectedIt = _injectedMethods.find(moduleId);
+	const auto fieldAddressAccessesIt = _fieldAddressAccessTokens.find(moduleId);
 	const auto hasRewritings = rewritingsIt != _rewritings.cend();
 	const auto hasInjected = injectedIt != _injectedMethods.cend();
+	const auto hasFieldAddressAccesses = fieldAddressAccessesIt != _fieldAddressAccessTokens.cend();
 
 	ModulePatchData data{};
-	data.hasAny = hasRewritings || hasInjected;
+	data.hasAny = hasRewritings || hasInjected || hasFieldAddressAccesses;
 	if (hasRewritings)
 		data.tokensToRewrite = rewritingsIt->second;
 	if (hasInjected)
 		data.injectedMethods = injectedIt->second;
+	if (hasFieldAddressAccesses)
+		data.fieldAddressAccessTokens = fieldAddressAccessesIt->second;
 
 	return data;
 }

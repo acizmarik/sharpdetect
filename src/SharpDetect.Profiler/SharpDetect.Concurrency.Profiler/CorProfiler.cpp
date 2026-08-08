@@ -393,6 +393,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
     _typeInjector.WrapAnalyzedExternMethods(moduleDef);
     _typeInjector.ImportMethodWrappers(assemblyDef, moduleDef);
     _typeInjector.ImportCustomRecordedEventTypes(moduleDef);
+    _typeInjector.ResolveFieldAddressAccessMethods(assemblyDef, moduleDef);
 
     _client.Send(LibIPC::Helpers::CreateAssemblyLoadMsg(CreateMetadataMsg(), assemblyDef.GetAssemblyId(), assemblyDef.GetName()));
     _client.Send(LibIPC::Helpers::CreateModuleLoadMsg(CreateMetadataMsg(), moduleDef.GetModuleId(), assemblyDef.GetAssemblyId(), moduleDef.GetFullPath()));
@@ -413,6 +414,7 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
 
     const auto& tokensToRewrite = patchData.tokensToRewrite;
     const auto& injectedMethods = patchData.injectedMethods;
+    const auto& fieldAddressAccessTokens = patchData.fieldAddressAccessTokens;
 
     if (SUCCEEDED(LibProfiler::PatchMethodBody(
         *_corProfilerInfo,
@@ -421,6 +423,7 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
         mdMethodDef,
         tokensToRewrite,
         injectedMethods,
+        fieldAddressAccessTokens,
         _configuration.enableFieldsAccessInstrumentation,
         _configuration.skipInstrumentationForAssemblies,
         _configuration.enableStackTraceCollection,

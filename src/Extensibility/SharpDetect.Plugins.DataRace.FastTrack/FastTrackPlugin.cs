@@ -81,6 +81,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     WaitHandleMethodDescriptors.GetAllMethods()).Concat(
                     ConcurrentDictionaryMethodDescriptors.GetAllMethods()).Concat(
                     LazyMethodDescriptors.GetAllMethods()).Concat(
+                    InterlockedMethodDescriptors.GetAllMethods()).Concat(
+                    VolatileMethodDescriptors.GetAllMethods()).Concat(
                     FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 TypeInjectionDescriptors = SharpDetectHelperTypeDescriptors.GetAllTypes(),
@@ -165,98 +167,64 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     }
 
     private void OnStaticFieldRead(StaticFieldReadArgs args)
-    {
-        if (args.IsVolatile)
-        {
-            _detector.RecordVolatileRead(
-                args.ProcessThreadId,
-                args.Stack.Top.ModuleId,
-                args.FieldToken,
-                objectId: null);
-        }
-        else
-        {
-            if (_detector.RecordRead(
-                    args.ProcessThreadId,
-                    args.MethodOffset,
-                    args.FieldToken,
-                    objectId: null,
-                    args.Stack) is { } raceInfo)
-            {
-                RecordDataRace(raceInfo);
-            }
-        }
-    }
+        => OnFieldRead(args.ProcessThreadId, args.MethodOffset, args.FieldToken, objectId: null, args.AccessKind, args.Stack);
 
     private void OnInstanceFieldRead(InstanceFieldReadArgs args)
-    {
-        if (args.IsVolatile)
-        {
-            _detector.RecordVolatileRead(
-                args.ProcessThreadId,
-                args.Stack.Top.ModuleId,
-                args.FieldToken,
-                args.ObjectId);
-        }
-        else
-        {
-            if (_detector.RecordRead(
-                    args.ProcessThreadId,
-                    args.MethodOffset,
-                    args.FieldToken,
-                    args.ObjectId,
-                    args.Stack) is { } raceInfo)
-            {
-                RecordDataRace(raceInfo);
-            }
-        }
-    }
+        => OnFieldRead(args.ProcessThreadId, args.MethodOffset, args.FieldToken, args.ObjectId, args.AccessKind, args.Stack);
 
     private void OnStaticFieldWritten(StaticFieldWriteArgs args)
+        => OnFieldWritten(args.ProcessThreadId, args.MethodOffset, args.FieldToken, objectId: null, args.AccessKind, args.Stack);
+
+    private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
+        => OnFieldWritten(args.ProcessThreadId, args.MethodOffset, args.FieldToken, args.ObjectId, args.AccessKind, args.Stack);
+
+    private void OnFieldRead(
+        ProcessThreadId threadId,
+        uint methodOffset,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId,
+        FieldAccessKind accessKind,
+        CapturedStackTrace stack)
     {
-        if (args.IsVolatile)
+        switch (accessKind)
         {
-            _detector.RecordVolatileWrite(
-                args.ProcessThreadId,
-                args.Stack.Top.ModuleId,
-                args.FieldToken,
-                objectId: null);
-        }
-        else
-        {
-            if (_detector.RecordWrite(
-                    args.ProcessThreadId,
-                    args.MethodOffset,
-                    args.FieldToken,
-                    objectId: null,
-                    args.Stack) is { } raceInfo)
-            {
-                RecordDataRace(raceInfo);
-            }
+            case FieldAccessKind.Volatile:
+                _detector.RecordVolatileRead(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                break;
+
+            case FieldAccessKind.Atomic:
+                _detector.RecordAtomicReadModifyWrite(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                break;
+
+            default:
+                if (_detector.RecordRead(threadId, methodOffset, fieldToken, objectId, stack) is { } raceInfo)
+                    RecordDataRace(raceInfo);
+                break;
         }
     }
 
-    private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
+    private void OnFieldWritten(
+        ProcessThreadId threadId,
+        uint methodOffset,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId,
+        FieldAccessKind accessKind,
+        CapturedStackTrace stack)
     {
-        if (args.IsVolatile)
+        switch (accessKind)
         {
-            _detector.RecordVolatileWrite(
-                args.ProcessThreadId,
-                args.Stack.Top.ModuleId,
-                args.FieldToken,
-                args.ObjectId);
-        }
-        else
-        {
-            if (_detector.RecordWrite(
-                    args.ProcessThreadId,
-                    args.MethodOffset,
-                    args.FieldToken,
-                    args.ObjectId,
-                    args.Stack) is { } raceInfo)
-            {
-                RecordDataRace(raceInfo);
-            }
+            case FieldAccessKind.Volatile:
+                _detector.RecordVolatileWrite(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                break;
+
+            case FieldAccessKind.Atomic:
+                _detector.RecordAtomicReadModifyWrite(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                break;
+
+            default:
+                if (_detector.RecordWrite(threadId, methodOffset, fieldToken, objectId, stack) is { } raceInfo)
+                    RecordDataRace(raceInfo);
+                break;
         }
     }
     

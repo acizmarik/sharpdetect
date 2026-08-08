@@ -31,7 +31,7 @@ public abstract partial class PerThreadOrderingPluginBase
             id,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
-            fieldAccess.IsVolatile,
+            fieldAccess.AccessKind,
             BuildStack(fieldAccess, args.StackFrames)));
     }
 
@@ -43,7 +43,7 @@ public abstract partial class PerThreadOrderingPluginBase
             id,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
-            fieldAccess.IsVolatile,
+            fieldAccess.AccessKind,
             BuildStack(fieldAccess, args.StackFrames)));
     }
 
@@ -56,7 +56,7 @@ public abstract partial class PerThreadOrderingPluginBase
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
             instance,
-            fieldAccess.IsVolatile,
+            fieldAccess.AccessKind,
             BuildStack(fieldAccess, args.StackFrames)));
     }
 
@@ -69,7 +69,7 @@ public abstract partial class PerThreadOrderingPluginBase
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
             instance,
-            fieldAccess.IsVolatile,
+            fieldAccess.AccessKind,
             BuildStack(fieldAccess, args.StackFrames)));
     }
 

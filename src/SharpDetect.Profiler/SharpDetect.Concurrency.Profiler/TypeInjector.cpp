@@ -346,6 +346,82 @@ HRESULT Profiler::TypeInjector::ImportMethodWrapper(
     return S_OK;
 }
 
+static LibProfiler::FieldAddressAccessEffect ToFieldAddressAccessEffect(const Profiler::FieldAddressAccessInterpretation interpretation)
+{
+    switch (interpretation)
+    {
+        case Profiler::FieldAddressAccessInterpretation::VolatileRead:
+            return { .direction = LibProfiler::FieldAddressAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Volatile };
+
+        case Profiler::FieldAddressAccessInterpretation::VolatileWrite:
+            return { .direction = LibProfiler::FieldAddressAccessDirection::Write, .accessKind = LibIPC::FieldAccessKind::Volatile };
+
+        case Profiler::FieldAddressAccessInterpretation::AtomicReadModifyWrite:
+        default:
+            return { .direction = LibProfiler::FieldAddressAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Atomic };
+    }
+}
+
+HRESULT Profiler::TypeInjector::ResolveFieldAddressAccessMethods(
+    const LibProfiler::AssemblyDef& assemblyDef,
+    const LibProfiler::ModuleDef& moduleDef) const
+{
+    LibProfiler::FieldAddressAccessTokens tokens;
+
+    std::unordered_map<std::string, mdTypeRef> typeRefs;
+    for (auto&& assemblyRef : assemblyDef.GetOriginalReferences())
+    {
+        typeRefs.clear();
+
+        for (auto&& methodPointer : _methodDescriptorRegistry.Descriptors())
+        {
+            auto& method = *methodPointer.get();
+            if (!method.rewritingDescriptor.fieldAddressAccessInterpretation.has_value())
+                continue;
+
+            auto typeRefIt = typeRefs.find(method.declaringTypeFullName);
+            if (typeRefIt == typeRefs.cend())
+            {
+                mdTypeRef typeRef;
+                if (FAILED(moduleDef.FindTypeRef(assemblyRef.GetMdAssemblyRef(), method.declaringTypeFullName, &typeRef)))
+                    typeRef = mdTokenNil;
+
+                typeRefIt = typeRefs.emplace(method.declaringTypeFullName, typeRef).first;
+            }
+
+            if (typeRefIt->second == mdTokenNil)
+                continue;
+
+            mdMemberRef methodRef;
+            auto const signature = SerializeMethodSignatureDescriptor(method.signatureDescriptor, moduleDef);
+            if (FAILED(moduleDef.FindMethodRef(
+                method.methodName,
+                signature.data(),
+                signature.size(),
+                typeRefIt->second,
+                &methodRef)))
+            {
+                continue;
+            }
+
+            tokens.emplace(
+                methodRef,
+                ToFieldAddressAccessEffect(method.rewritingDescriptor.fieldAddressAccessInterpretation.value()));
+
+            LOG_F(INFO, "Recognized field address access %s::%s (%d) in module %s.",
+                method.declaringTypeFullName.c_str(),
+                method.methodName.c_str(),
+                methodRef,
+                moduleDef.GetName().c_str());
+        }
+    }
+
+    if (!tokens.empty())
+        _rewriteRegistry.AddFieldAddressAccessTokens(moduleDef.GetModuleId(), std::move(tokens));
+
+    return S_OK;
+}
+
 HRESULT Profiler::TypeInjector::ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef)
 {
     const auto moduleRewritings = _rewriteRegistry.GetModuleRewritings(moduleDef.GetModuleId());

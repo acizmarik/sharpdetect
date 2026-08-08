@@ -14,6 +14,7 @@
 #include "corprof.h"
 
 #include "../LibIPC/Client.h"
+#include "FieldAddressAccess.h"
 #include "ILRewriter.h"
 #include "InjectedMethods.h"
 #include "ModuleDef.h"
@@ -29,6 +30,7 @@ namespace LibProfiler
 		IN mdMethodDef mdMethodDef,
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 		IN const InjectedMethodsMap& injectedMethods,
+		IN const FieldAddressAccessTokens& fieldAddressAccessTokens,
 		IN BOOL enableFieldsAccessInstrumentation,
 		IN const std::vector<std::string>& skipInstrumentationForAssemblies,
 		IN BOOL enableStackTraceCollection,
@@ -54,6 +56,19 @@ namespace LibProfiler
 		IN BOOL enableStackTraceCollection,
 		IN const std::vector<std::string>& stackTraceFieldPatterns,
 		OUT ILInstr** nextInstruction);
+
+	HRESULT InstrumentStaticFieldAddressAccess(
+		IN ICorProfilerInfo& corProfilerInfo,
+		IN LibIPC::Client& client,
+		IN ILRewriter& rewriter,
+		IN ILInstr* addressInstruction,
+		IN const FieldAddressAccessEffect& effect,
+		IN UINT64 instrumentationMark,
+		IN const ModuleDef& moduleDef,
+		IN mdMethodDef mdMethodDef,
+		IN const InjectedMethodsMap& injectedMethods,
+		IN BOOL enableStackTraceCollection,
+		IN const std::vector<std::string>& stackTraceFieldPatterns);
 
 	HRESULT InstrumentInstanceFieldAccess(
 		IN ICorProfilerInfo& corProfilerInfo,

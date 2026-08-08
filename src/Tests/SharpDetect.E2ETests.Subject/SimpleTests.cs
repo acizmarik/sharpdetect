@@ -710,6 +710,41 @@ namespace SharpDetect.E2ETests.Subject
             _ = (Environment.CurrentManagedThreadId < 0 ? first : second).Test_Field_ReferenceType_Instance;
         }
 
+        public static void Test_Field_Atomic_ValueType_Static_Increment()
+        {
+            Interlocked.Increment(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static);
+        }
+
+        public static void Test_Field_Atomic_ValueType_Static_CompareExchange()
+        {
+            Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static, 1, 0);
+        }
+
+        public static void Test_Field_Atomic_ValueType_Static_CompareExchangeComputedArguments()
+        {
+            var value = Environment.CurrentManagedThreadId;
+            Interlocked.CompareExchange(
+                ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static,
+                value + 1,
+                value - 1);
+        }
+
+        public static void Test_Field_Atomic_ValueType_Local_Increment()
+        {
+            var local = 0;
+            Interlocked.Increment(ref local);
+        }
+
+        public static void Test_Field_VolatileCall_ValueType_Static_Read()
+        {
+            _ = Volatile.Read(ref StaticFieldValueType.Test_Field_ValueType_Static);
+        }
+
+        public static void Test_Field_VolatileCall_ValueType_Static_Write()
+        {
+            Volatile.Write(ref StaticFieldValueType.Test_Field_ValueType_Static, 123);
+        }
+
         public static void Test_Array_I_Read()
         {
             ArrayElement.Test_Array_I = new nuint[1];
@@ -1446,6 +1481,57 @@ namespace SharpDetect.E2ETests.Subject
             RunConcurrently(
                 () => Volatile.Read(ref dataRace.Test_DataRace_ValueType_InstanceField), 
                 () => Volatile.Write(ref dataRace.Test_DataRace_ValueType_InstanceField, 123));
+        }
+
+        public static void Test_NoDataRace_InterlockedFlag_PublishThenRead()
+        {
+            DataRace.Test_DataRace_ValueType_Static = 0;
+            DataRace.Test_Atomic_ValueType_Static = 0;
+            RunConcurrently(
+                () =>
+                {
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    Interlocked.Exchange(ref DataRace.Test_Atomic_ValueType_Static, 1);
+                },
+                () =>
+                {
+                    AcquireInterlockedFlag();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
+        }
+
+        public static void Test_DataRace_InterlockedFlag_WriteAfterPublish()
+        {
+            DataRace.Test_DataRace_ValueType_Static = 0;
+            DataRace.Test_Atomic_ValueType_Static = 0;
+            RunConcurrently(
+                () =>
+                {
+                    Interlocked.Exchange(ref DataRace.Test_Atomic_ValueType_Static, 1);
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                },
+                () =>
+                {
+                    AcquireInterlockedFlag();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                });
+        }
+
+        public static void Test_NoDataRace_InterlockedCounter_ConcurrentIncrement()
+        {
+            DataRace.Test_Atomic_ValueType_Static = 0;
+            RunConcurrently(
+                () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static),
+                () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static));
+        }
+
+        private static void AcquireInterlockedFlag()
+        {
+            var spinner = new SpinWait();
+            while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_ValueType_Static, 0, 0) == 0)
+                spinner.SpinOnce();
+
+            _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_ValueType_Static, 0, 0);
         }
 
         public static void Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses()

@@ -214,7 +214,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
             args.MethodToken,
             args.MethodOffset,
             args.FieldToken,
-            args.IsVolatile);
+            args.AccessKind);
         _instrumentedFieldAccesses.Add(instrumentationId, instrumentedFieldAccess);
         base.Visit(metadata, args);
     }
