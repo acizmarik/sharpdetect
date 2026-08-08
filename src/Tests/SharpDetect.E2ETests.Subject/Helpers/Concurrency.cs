@@ -25,6 +25,7 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public int Test_DataRace_ValueType_InstanceField;
         public int Test_DataRace_ValueType_InstanceProperty { get; set; }
         public volatile int Test_Volatile_ValueType_Instance;
+        public int Test_Atomic_ValueType_Instance;
 
         public DataRace()
         {

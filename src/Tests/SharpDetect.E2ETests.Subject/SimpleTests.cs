@@ -735,6 +735,36 @@ namespace SharpDetect.E2ETests.Subject
             Interlocked.Increment(ref local);
         }
 
+        public static void Test_Field_Atomic_ValueType_Instance_Increment()
+        {
+            var instance = new InstanceFieldValueType();
+            Interlocked.Increment(ref instance.Test_Field_Atomic_ValueType_Instance);
+        }
+
+        public static void Test_Field_Atomic_ValueType_Instance_CompareExchange()
+        {
+            var instance = new InstanceFieldValueType();
+            Interlocked.CompareExchange(ref instance.Test_Field_Atomic_ValueType_Instance, 1, 0);
+        }
+
+        public static void Test_Field_Atomic_ValueType_OnValueType_Instance_Increment()
+        {
+            var instance = new InstanceFieldOnValueType();
+            Interlocked.Increment(ref instance.ValueField);
+        }
+
+        public static void Test_Field_VolatileCall_ValueType_Instance_Read()
+        {
+            var instance = new InstanceFieldValueType();
+            _ = Volatile.Read(ref instance.Test_Field_ValueType_Instance);
+        }
+
+        public static void Test_Field_VolatileCall_ValueType_Instance_Write()
+        {
+            var instance = new InstanceFieldValueType();
+            Volatile.Write(ref instance.Test_Field_ValueType_Instance, 123);
+        }
+
         public static void Test_Field_VolatileCall_ValueType_Static_Read()
         {
             _ = Volatile.Read(ref StaticFieldValueType.Test_Field_ValueType_Static);
@@ -1523,6 +1553,52 @@ namespace SharpDetect.E2ETests.Subject
             RunConcurrently(
                 () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static),
                 () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static));
+        }
+
+        public static void Test_NoDataRace_InterlockedFlag_Instance_PublishThenRead()
+        {
+            var instance = new DataRace();
+            RunConcurrently(
+                () => PublishThroughInterlockedFlag(instance),
+                () => ConsumeAfterInterlockedFlag(instance));
+        }
+
+        public static void Test_DataRace_InterlockedFlag_Instance_WriteAfterPublish()
+        {
+            var instance = new DataRace();
+            RunConcurrently(
+                () => PublishThenWriteThroughInterlockedFlag(instance),
+                () => ConsumeAfterInterlockedFlag(instance));
+        }
+
+        public static void Test_NoDataRace_InterlockedCounter_Instance_ConcurrentIncrement()
+        {
+            var instance = new DataRace();
+            RunConcurrently(
+                () => Interlocked.Increment(ref instance.Test_Atomic_ValueType_Instance),
+                () => Interlocked.Increment(ref instance.Test_Atomic_ValueType_Instance));
+        }
+
+        private static void PublishThroughInterlockedFlag(DataRace instance)
+        {
+            instance.Test_DataRace_ValueType_InstanceField = 42;
+            Interlocked.Exchange(ref instance.Test_Atomic_ValueType_Instance, 1);
+        }
+
+        private static void PublishThenWriteThroughInterlockedFlag(DataRace instance)
+        {
+            Interlocked.Exchange(ref instance.Test_Atomic_ValueType_Instance, 1);
+            instance.Test_DataRace_ValueType_InstanceField = 42;
+        }
+
+        private static void ConsumeAfterInterlockedFlag(DataRace instance)
+        {
+            var spinner = new SpinWait();
+            while (Interlocked.CompareExchange(ref instance.Test_Atomic_ValueType_Instance, 0, 0) == 0)
+                spinner.SpinOnce();
+
+            _ = Interlocked.CompareExchange(ref instance.Test_Atomic_ValueType_Instance, 0, 0);
+            _ = instance.Test_DataRace_ValueType_InstanceField;
         }
 
         private static void AcquireInterlockedFlag()

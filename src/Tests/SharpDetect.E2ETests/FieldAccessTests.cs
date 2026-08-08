@@ -270,7 +270,11 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicLocal_Increment_NotInstrumented(string sdk)
-        => NoStaticFieldAccessOfKind("Test_Field_Atomic_ValueType_Local_Increment", sdk, FieldAccessKind.Atomic);
+        => NoFieldAccessOfKind(
+            "Test_Field_Atomic_ValueType_Local_Increment",
+            sdk,
+            RecordedEventType.StaticFieldRead,
+            FieldAccessKind.Atomic);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -288,6 +292,51 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
             "Test_Field_VolatileCall_ValueType_Static_Write",
             sdk,
             RecordedEventType.StaticFieldWrite,
+            FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_Increment(string sdk)
+        => FieldAccess(
+            "Test_Field_Atomic_ValueType_Instance_Increment",
+            sdk,
+            RecordedEventType.InstanceFieldRead,
+            FieldAccessKind.Atomic);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_CompareExchange(string sdk)
+        => FieldAccess(
+            "Test_Field_Atomic_ValueType_Instance_CompareExchange",
+            sdk,
+            RecordedEventType.InstanceFieldRead,
+            FieldAccessKind.Atomic);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_OnValueType_NotInstrumented(string sdk)
+        => NoFieldAccessOfKind(
+            "Test_Field_Atomic_ValueType_OnValueType_Instance_Increment",
+            sdk,
+            RecordedEventType.InstanceFieldRead,
+            FieldAccessKind.Atomic);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task VolatileCallInstanceField_Read(string sdk)
+        => FieldAccess(
+            "Test_Field_VolatileCall_ValueType_Instance_Read",
+            sdk,
+            RecordedEventType.InstanceFieldRead,
+            FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task VolatileCallInstanceField_Write(string sdk)
+        => FieldAccess(
+            "Test_Field_VolatileCall_ValueType_Instance_Write",
+            sdk,
+            RecordedEventType.InstanceFieldWrite,
             FieldAccessKind.Volatile);
 
     [Theory]
@@ -337,7 +386,11 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
 
-    private async Task NoStaticFieldAccessOfKind(string subjectArgs, string sdk, FieldAccessKind accessKind)
+    private async Task NoFieldAccessOfKind(
+        string subjectArgs,
+        string sdk,
+        RecordedEventType eventType,
+        FieldAccessKind accessKind)
     {
         // Arrange
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
@@ -357,9 +410,14 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        Assert.DoesNotContain(events, evt =>
-            evt.Type == RecordedEventType.StaticFieldRead &&
-            evt.Get<(RecordedEventMetadata, StaticFieldReadArgs)>().Item2.AccessKind == accessKind);
+        Assert.DoesNotContain(events, evt => evt.Type == eventType && eventType switch
+        {
+            RecordedEventType.StaticFieldRead => evt.Get<(RecordedEventMetadata, StaticFieldReadArgs)>().Item2.AccessKind,
+            RecordedEventType.StaticFieldWrite => evt.Get<(RecordedEventMetadata, StaticFieldWriteArgs)>().Item2.AccessKind,
+            RecordedEventType.InstanceFieldRead => evt.Get<(RecordedEventMetadata, InstanceFieldReadArgs)>().Item2.AccessKind,
+            RecordedEventType.InstanceFieldWrite => evt.Get<(RecordedEventMetadata, InstanceFieldWriteArgs)>().Item2.AccessKind,
+            _ => throw new ArgumentOutOfRangeException(nameof(eventType), eventType, "Not a field access event.")
+        } == accessKind);
     }
 
     private async Task FieldAccessNotInstrumented(string subjectArgs, string sdk, RecordedEventType eventType)
