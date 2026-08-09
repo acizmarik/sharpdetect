@@ -453,21 +453,65 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
             .Then(EventuallyEventType(RecordedEventType.ValuePublicationMaybeStoreLoad))
-            .Then(EventuallyEventType(RecordedEventType.ValuePublicationMaybeStoreLoad))
+            .Then(EventuallyEventType(RecordedEventType.ValuePublicationLoad))
+            .Then(EventuallyEventType(RecordedEventType.ValuePublicationLoad))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Act && Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var publications = events
-            .Where(e => e.Type == RecordedEventType.ValuePublicationMaybeStoreLoad)
+        var stores = ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad);
+        Assert.Single(stores);
+        var lazyContainer = stores[0].Container;
+        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad)
+            .Where(load => load.Container == lazyContainer)
+            .ToList();
+        Assert.True(loads.Count >= 2);
+        var publications = stores.Concat(loads).ToList();
+        var publishedValues = publications.Select(publication => publication.Value).Distinct().ToList();
+        Assert.True(publishedValues.Count == 1);
+        AssertPublishedThroughASingleContainer(publications);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Lazy_ValueConstructor(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_LazyMethods_ValueConstructor")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.ValuePublicationStore))
+            .Then(EventuallyEventType(RecordedEventType.ValuePublicationLoad))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act & Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        var stores = ValuePublications(events, RecordedEventType.ValuePublicationStore);
+        Assert.Single(stores);
+        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad)
+            .Where(load => load.Container == stores[0].Container)
+            .ToList();
+        Assert.NotEmpty(loads);
+        Assert.Empty(ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad));
+        Assert.All(loads, load => Assert.Equal(stores[0].Value, load.Value));
+    }
+
+    private static List<ValuePublicationArgs> ValuePublications(
+        TestEventsEnumerable events,
+        RecordedEventType type)
+    {
+        return events
+            .Where(e => e.Type == type)
             .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args)
             .ToList();
-        var publishedValues = publications.Select(args => args.Value).ToList();
-        Assert.True(
-            publishedValues.GroupBy(value => value).Any(group => group.Count() >= 2),
-            $"Expected a value published by both accesses, observed {publishedValues.Count} publication(s).");
-        AssertPublishedThroughASingleContainer(publications);
     }
 
     [Theory]

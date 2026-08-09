@@ -1640,6 +1640,12 @@ namespace SharpDetect.E2ETests.Subject
             _ = lazy.Value;
         }
 
+        public static void Test_LazyMethods_ValueConstructor()
+        {
+            var lazy = new Lazy<object>(new object());
+            _ = lazy.Value;
+        }
+
         private const int PublicationSpinLimit = 2000;
 
         public static void Test_NoDataRace_ConcurrentDictionaryLockFreeReaderObservesPublication()

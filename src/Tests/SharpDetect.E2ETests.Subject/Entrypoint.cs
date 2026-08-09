@@ -195,6 +195,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_LazyMethods_GetValue):
                     Test_LazyMethods_GetValue();
                     break;
+                case nameof(Test_LazyMethods_ValueConstructor):
+                    Test_LazyMethods_ValueConstructor();
+                    break;
                 case nameof(Test_ConcurrentDictionaryMethods_Store):
                     Test_ConcurrentDictionaryMethods_Store();
                     break;
