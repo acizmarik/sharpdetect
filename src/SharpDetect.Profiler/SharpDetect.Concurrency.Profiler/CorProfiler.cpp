@@ -75,6 +75,7 @@ Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
         _coreModule,
         _metadataStore,
         _methodDescriptorRegistry,
+        _fieldAccessIntrinsics,
         _rewriteRegistry)
 {
     _terminating = false;
@@ -123,6 +124,12 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
     }
 
     _methodDescriptorRegistry.Import(_configuration.methodDescriptors, majorVersion, minorVersion, buildVersion);
+
+    for (auto&& intrinsic : _configuration.fieldAccessIntrinsicDescriptors)
+    {
+        if (IsApplicableToRuntimeVersion(intrinsic.versionDescriptor, majorVersion, minorVersion, buildVersion))
+            _fieldAccessIntrinsics.emplace_back(intrinsic);
+    }
 
     _client.Send(LibIPC::Helpers::CreateProfilerLoadMsg(
         CreateMetadataMsg(), 
@@ -393,6 +400,7 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
     _typeInjector.WrapAnalyzedExternMethods(moduleDef);
     _typeInjector.ImportMethodWrappers(assemblyDef, moduleDef);
     _typeInjector.ImportCustomRecordedEventTypes(moduleDef);
+    _typeInjector.ResolveFieldAccessIntrinsics(assemblyDef, moduleDef);
 
     _client.Send(LibIPC::Helpers::CreateAssemblyLoadMsg(CreateMetadataMsg(), assemblyDef.GetAssemblyId(), assemblyDef.GetName()));
     _client.Send(LibIPC::Helpers::CreateModuleLoadMsg(CreateMetadataMsg(), moduleDef.GetModuleId(), assemblyDef.GetAssemblyId(), moduleDef.GetFullPath()));
@@ -413,6 +421,7 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
 
     const auto& tokensToRewrite = patchData.tokensToRewrite;
     const auto& injectedMethods = patchData.injectedMethods;
+    const auto& fieldAccessIntrinsics = patchData.fieldAccessIntrinsics;
 
     if (SUCCEEDED(LibProfiler::PatchMethodBody(
         *_corProfilerInfo,
@@ -421,6 +430,7 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
         mdMethodDef,
         tokensToRewrite,
         injectedMethods,
+        fieldAccessIntrinsics,
         _configuration.enableFieldsAccessInstrumentation,
         _configuration.skipInstrumentationForAssemblies,
         _configuration.enableStackTraceCollection,

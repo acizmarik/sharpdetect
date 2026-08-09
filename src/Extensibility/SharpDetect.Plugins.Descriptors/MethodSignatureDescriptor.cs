@@ -9,4 +9,5 @@ public record MethodSignatureDescriptor(
     CorCallingConvention CallingConvention,
     byte ParametersCount,
     ArgumentTypeDescriptor ReturnType,
-    ArgumentTypeDescriptor[] ArgumentTypeElements);
+    ArgumentTypeDescriptor[] ArgumentTypeElements,
+    byte GenericParametersCount = 0);

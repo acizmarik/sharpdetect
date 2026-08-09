@@ -20,6 +20,7 @@
 #include "../LibMetadata/TypeClassification.h"
 #include "../LibProfilerCore/ObjectsTracker.h"
 #include "../LibDescriptors/Configuration.h"
+#include "../LibDescriptors/FieldAccessIntrinsicDescriptor.h"
 #include "../LibDescriptors/MethodDescriptor.h"
 
 #include "ArgumentCapture.h"
@@ -118,6 +119,7 @@ namespace Profiler
 		MetadataStore _metadataStore;
 		LibProfiler::ObjectsTracker _objectsTracker;
 		MethodDescriptorRegistry _methodDescriptorRegistry;
+		std::vector<FieldAccessIntrinsicDescriptor> _fieldAccessIntrinsics;
 		RewriteRegistry _rewriteRegistry;
 		ArgumentCapture _argumentCapture;
 		TypeInjector _typeInjector;

@@ -111,6 +111,10 @@ namespace LibProfiler
 			IN mdTypeRef typeRef,
 			OUT mdMemberRef* methodRef) const;
 
+		HRESULT GetMethodSpecParent(
+			IN mdMethodSpec methodSpec,
+			OUT mdToken* parent) const;
+
 		HRESULT GetMethodProps(
 			IN mdMethodDef methodDef,
 			OUT mdTypeDef* typeDef,

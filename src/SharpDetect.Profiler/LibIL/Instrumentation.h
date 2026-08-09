@@ -14,6 +14,7 @@
 #include "corprof.h"
 
 #include "../LibIPC/Client.h"
+#include "FieldAccessIntrinsics.h"
 #include "ILRewriter.h"
 #include "InjectedMethods.h"
 #include "ModuleDef.h"
@@ -29,6 +30,7 @@ namespace LibProfiler
 		IN mdMethodDef mdMethodDef,
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 		IN const InjectedMethodsMap& injectedMethods,
+		IN const FieldAccessIntrinsicsMap& fieldAccessIntrinsics,
 		IN BOOL enableFieldsAccessInstrumentation,
 		IN const std::vector<std::string>& skipInstrumentationForAssemblies,
 		IN BOOL enableStackTraceCollection,
@@ -54,6 +56,34 @@ namespace LibProfiler
 		IN BOOL enableStackTraceCollection,
 		IN const std::vector<std::string>& stackTraceFieldPatterns,
 		OUT ILInstr** nextInstruction);
+
+	HRESULT InstrumentStaticFieldAccessIntrinsic(
+		IN ICorProfilerInfo& corProfilerInfo,
+		IN LibIPC::Client& client,
+		IN ILRewriter& rewriter,
+		IN ILInstr* addressInstruction,
+		IN const FieldAccessIntrinsicEffect& effect,
+		IN UINT64 instrumentationMark,
+		IN const ModuleDef& moduleDef,
+		IN mdMethodDef mdMethodDef,
+		IN const InjectedMethodsMap& injectedMethods,
+		IN BOOL enableStackTraceCollection,
+		IN const std::vector<std::string>& stackTraceFieldPatterns);
+
+	HRESULT InstrumentInstanceFieldAccessIntrinsic(
+		IN ICorProfilerInfo& corProfilerInfo,
+		IN LibIPC::Client& client,
+		IN ILRewriter& rewriter,
+		IN ILInstr* addressInstruction,
+		IN const FieldAccessIntrinsicEffect& effect,
+		IN UINT16 importedLocalsCount,
+		IN std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>& addedLocals,
+		IN UINT64 instrumentationMark,
+		IN const ModuleDef& moduleDef,
+		IN mdMethodDef mdMethodDef,
+		IN const InjectedMethodsMap& injectedMethods,
+		IN BOOL enableStackTraceCollection,
+		IN const std::vector<std::string>& stackTraceFieldPatterns);
 
 	HRESULT InstrumentInstanceFieldAccess(
 		IN ICorProfilerInfo& corProfilerInfo,

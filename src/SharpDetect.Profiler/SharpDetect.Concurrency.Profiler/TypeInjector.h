@@ -12,6 +12,7 @@
 #include "../LibMetadata/AssemblyRef.h"
 #include "../LibMetadata/ModuleDef.h"
 #include "../LibDescriptors/Configuration.h"
+#include "../LibDescriptors/FieldAccessIntrinsicDescriptor.h"
 #include "../LibDescriptors/MethodDescriptor.h"
 
 #include "MetadataStore.h"
@@ -30,6 +31,7 @@ namespace Profiler
 			const ModuleID& coreModule,
 			MetadataStore& metadataStore,
 			MethodDescriptorRegistry& methodDescriptorRegistry,
+			const std::vector<FieldAccessIntrinsicDescriptor>& fieldAccessIntrinsics,
 			RewriteRegistry& rewriteRegistry);
 
 		HRESULT InjectTypesForProfilingFeatures(LibProfiler::ModuleDef& moduleDef);
@@ -37,6 +39,7 @@ namespace Profiler
 		HRESULT WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef);
 		HRESULT ImportMethodWrappers(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
 		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef);
+		HRESULT ResolveFieldAccessIntrinsics(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef) const;
 
 	private:
 		HRESULT ImportMethodWrapper(const LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
@@ -48,6 +51,7 @@ namespace Profiler
 		const ModuleID& _coreModule;
 		MetadataStore& _metadataStore;
 		MethodDescriptorRegistry& _methodDescriptorRegistry;
+		const std::vector<FieldAccessIntrinsicDescriptor>& _fieldAccessIntrinsics;
 		RewriteRegistry& _rewriteRegistry;
 	};
 }

@@ -67,6 +67,40 @@ static bool ShouldCaptureFieldStack(
 	return false;
 }
 
+static HRESULT ImportLocalVariableSignature(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN const ILRewriter& rewriter,
+	IN const mdMethodDef mdMethodDef,
+	IN OUT BOOL& importedLocals,
+	IN OUT PCCOR_SIGNATURE& localSignature,
+	IN OUT ULONG& localSignatureVarsCount,
+	IN OUT ULONG& localSignatureByteLength)
+{
+	if (importedLocals)
+		return S_OK;
+
+	auto const signatureToken = rewriter.GetLocalVarSigToken();
+	if (signatureToken != 0)
+	{
+		auto const hr = moduleDef.GetSignatureFromToken(signatureToken, &localSignature, &localSignatureByteLength);
+		if (FAILED(hr))
+		{
+			LOG_F(
+				ERROR,
+				"Could not obtain local variable signature %d for method %d from module %s. Error: 0x%x",
+				signatureToken,
+				mdMethodDef,
+				moduleDef.GetName().c_str(),
+				hr);
+			return E_FAIL;
+		}
+		CorSigUncompressData(localSignature + 1, &localSignatureVarsCount);
+	}
+
+	importedLocals = TRUE;
+	return S_OK;
+}
+
 HRESULT LibProfiler::PatchMethodBody(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
@@ -74,6 +108,7 @@ HRESULT LibProfiler::PatchMethodBody(
 	IN const mdMethodDef mdMethodDef,
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
 	IN const InjectedMethodsMap& injectedMethods,
+	IN const FieldAccessIntrinsicsMap& fieldAccessIntrinsics,
 	IN const BOOL enableFieldsAccessInstrumentation,
 	IN const std::vector<std::string>& skipInstrumentationForAssemblies,
 	IN const BOOL enableStackTraceCollection,
@@ -125,6 +160,79 @@ HRESULT LibProfiler::PatchMethodBody(
 			if (ShouldSkipInstrumentation(moduleDef, skipInstrumentationForAssemblies))
 				continue;
 
+			if (currentInstruction->m_opcode == CEE_CALL && !fieldAccessIntrinsics.empty())
+			{
+				// All instantiations of a generic method share the parent that was resolved
+				auto callToken = static_cast<mdToken>(currentInstruction->m_Arg32);
+				if (TypeFromToken(callToken) == mdtMethodSpec)
+				{
+					mdToken parentToken = mdTokenNil;
+					if (FAILED(moduleDef.GetMethodSpecParent(callToken, &parentToken)))
+						parentToken = mdTokenNil;
+
+					callToken = parentToken;
+				}
+
+				auto const effectIt = fieldAccessIntrinsics.find(callToken);
+				if (effectIt != fieldAccessIntrinsics.cend())
+				{
+					const auto addressInstruction = currentInstruction->m_pArg0Producer;
+					auto const addressOpcode = addressInstruction != nullptr ? addressInstruction->m_opcode : CEE_COUNT;
+					if (addressOpcode == CEE_LDSFLDA)
+					{
+						auto const mark = instrumentationMark.fetch_add(1);
+						if (SUCCEEDED(InstrumentStaticFieldAccessIntrinsic(
+							corProfilerInfo,
+							client,
+							rewriter,
+							addressInstruction,
+							effectIt->second,
+							mark,
+							moduleDef,
+							mdMethodDef,
+							injectedMethods,
+							enableStackTraceCollection,
+							stackTraceFieldPatterns)))
+						{
+							isRewritten = true;
+						}
+					}
+					else if (addressOpcode == CEE_LDFLDA)
+					{
+						if (FAILED(ImportLocalVariableSignature(
+							moduleDef,
+							rewriter,
+							mdMethodDef,
+							importedLocals,
+							localSignature,
+							localSignatureVarsCount,
+							localSignatureByteLength)))
+						{
+							return E_FAIL;
+						}
+
+						auto const mark = instrumentationMark.fetch_add(1);
+						if (SUCCEEDED(InstrumentInstanceFieldAccessIntrinsic(
+							corProfilerInfo,
+							client,
+							rewriter,
+							addressInstruction,
+							effectIt->second,
+							localSignatureVarsCount,
+							addedLocals,
+							mark,
+							moduleDef,
+							mdMethodDef,
+							injectedMethods,
+							enableStackTraceCollection,
+							stackTraceFieldPatterns)))
+						{
+							isRewritten = true;
+						}
+					}
+				}
+			}
+
 			// Static field access
 			if (currentInstruction->m_opcode == CEE_LDSFLD || currentInstruction->m_opcode == CEE_STSFLD)
 			{
@@ -158,20 +266,16 @@ HRESULT LibProfiler::PatchMethodBody(
 					continue;
 
 				// Import local variable signature if not done yet
-				if (!importedLocals)
+				if (FAILED(ImportLocalVariableSignature(
+					moduleDef,
+					rewriter,
+					mdMethodDef,
+					importedLocals,
+					localSignature,
+					localSignatureVarsCount,
+					localSignatureByteLength)))
 				{
-					auto const signatureToken = rewriter.GetLocalVarSigToken();
-					if (signatureToken != 0)
-					{
-						hr = moduleDef.GetSignatureFromToken(rewriter.GetLocalVarSigToken(), &localSignature, &localSignatureByteLength);
-						if (FAILED(hr))
-						{
-							LOG_F(ERROR, "Could not obtain local variable signature %d for method %d from module %s. Error: 0x%x", rewriter.GetLocalVarSigToken(), mdMethodDef, moduleDef.GetName().c_str(), hr);
-							return E_FAIL;
-						}
-						CorSigUncompressData(localSignature + 1, &localSignatureVarsCount);
-					}
-					importedLocals = TRUE;
+					return E_FAIL;
 				}
 
 				auto const mark = instrumentationMark.fetch_add(1);
@@ -336,9 +440,179 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		originalOffset,
 		fieldToken,
 		instrumentationMark,
-		isVolatile));
+		isVolatile ? LibIPC::FieldAccessKind::Volatile : LibIPC::FieldAccessKind::Regular));
 
 	*nextInstruction = currentInstruction;
+	return S_OK;
+}
+
+HRESULT LibProfiler::InstrumentStaticFieldAccessIntrinsic(
+	IN ICorProfilerInfo& corProfilerInfo,
+	IN LibIPC::Client& client,
+	IN ILRewriter& rewriter,
+	IN ILInstr* addressInstruction,
+	IN const FieldAccessIntrinsicEffect& effect,
+	IN const UINT64 instrumentationMark,
+	IN const ModuleDef& moduleDef,
+	IN const mdMethodDef mdMethodDef,
+	IN const InjectedMethodsMap& injectedMethods,
+	IN const BOOL enableStackTraceCollection,
+	IN const std::vector<std::string>& stackTraceFieldPatterns)
+{
+	auto const moduleId = moduleDef.GetModuleId();
+	auto const fieldToken = static_cast<mdToken>(addressInstruction->m_Arg32);
+	auto const originalOffset = addressInstruction->m_offset;
+	ThreadID threadId;
+	corProfilerInfo.GetCurrentThreadID(&threadId);
+
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
+	const auto eventType = effect.direction == FieldAccessDirection::Write
+		? LibIPC::RecordedEventType::StaticFieldWrite
+		: LibIPC::RecordedEventType::StaticFieldRead;
+	auto const methodIt = injectedMethods.find(eventType);
+	const auto helperToken = methodIt != injectedMethods.end()
+		? (captureStack ? methodIt->second.withStackCapture : methodIt->second.plain)
+		: mdTokenNil;
+	if (helperToken == mdTokenNil)
+	{
+		LOG_F(
+			ERROR,
+			"Could not find injected %s method for event type %d.",
+			captureStack ? "stack-capturing" : "plain",
+			static_cast<int>(eventType));
+		return E_FAIL;
+	}
+
+	// LDC.I8 <instrumentation-mark>
+	const auto ldcInstruction = rewriter.NewILInstr();
+	ldcInstruction->m_opcode = CEE_LDC_I8;
+	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+	rewriter.InsertAfter(addressInstruction, ldcInstruction);
+	// CALL <injected-method-handler>
+	const auto callInstruction = rewriter.NewILInstr();
+	callInstruction->m_opcode = CEE_CALL;
+	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+	rewriter.InsertAfter(ldcInstruction, callInstruction);
+
+	LOG_F(INFO, "Instrumented static field access intrinsic in method %d with stub %d from module %s.",
+		mdMethodDef,
+		helperToken,
+		moduleDef.GetName().c_str());
+
+	// Notify analysis of field access instrumentation point
+	client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
+		LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
+		moduleId,
+		mdMethodDef,
+		originalOffset,
+		fieldToken,
+		instrumentationMark,
+		effect.accessKind));
+
+	return S_OK;
+}
+
+HRESULT LibProfiler::InstrumentInstanceFieldAccessIntrinsic(
+	IN ICorProfilerInfo& corProfilerInfo,
+	IN LibIPC::Client& client,
+	IN ILRewriter& rewriter,
+	IN ILInstr* addressInstruction,
+	IN const FieldAccessIntrinsicEffect& effect,
+	IN const UINT16 importedLocalsCount,
+	IN std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>& addedLocals,
+	IN const UINT64 instrumentationMark,
+	IN const ModuleDef& moduleDef,
+	IN const mdMethodDef mdMethodDef,
+	IN const InjectedMethodsMap& injectedMethods,
+	IN const BOOL enableStackTraceCollection,
+	IN const std::vector<std::string>& stackTraceFieldPatterns)
+{
+	auto const moduleId = moduleDef.GetModuleId();
+	auto const fieldToken = static_cast<mdToken>(addressInstruction->m_Arg32);
+	auto const originalOffset = addressInstruction->m_offset;
+	ThreadID threadId;
+	corProfilerInfo.GetCurrentThreadID(&threadId);
+
+	if (!addressInstruction->m_objOperandIsObjRef)
+	{
+		// The object operand is a managed pointer or value type address
+		return E_FAIL;
+	}
+
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
+	const auto eventType = effect.direction == FieldAccessDirection::Write
+		? LibIPC::RecordedEventType::InstanceFieldWrite
+		: LibIPC::RecordedEventType::InstanceFieldRead;
+	auto const methodIt = injectedMethods.find(eventType);
+	const auto helperToken = methodIt != injectedMethods.end()
+		? (captureStack ? methodIt->second.withStackCapture : methodIt->second.plain)
+		: mdTokenNil;
+	if (helperToken == mdTokenNil)
+	{
+		LOG_F(ERROR, "Could not find injected %s method for event type %d.",
+			captureStack ? "stack-capturing" : "plain",
+			static_cast<int>(eventType));
+		return E_FAIL;
+	}
+
+	addressInstruction->m_opcode = CEE_NOP;
+	auto tailInstruction = addressInstruction;
+
+	// Add a local to capture the object instance for the handler call
+	PCCOR_SIGNATURE instanceSignature = g_ObjectTypeSignature;
+	addedLocals.emplace_back(instanceSignature, 1);
+	const auto instanceLocalIndex = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
+
+	// DUP (duplicate object reference)
+	const auto dupInstruction = rewriter.NewILInstr();
+	dupInstruction->m_opcode = CEE_DUP;
+	rewriter.InsertAfter(tailInstruction, dupInstruction);
+	tailInstruction = dupInstruction;
+	// STLOC <instance-local> (save object reference copy)
+	const auto stlocInstanceInstruction = rewriter.NewILInstr();
+	stlocInstanceInstruction->m_opcode = CEE_STLOC;
+	stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
+	rewriter.InsertAfter(tailInstruction, stlocInstanceInstruction);
+	tailInstruction = stlocInstanceInstruction;
+	// LDFLDA <field> — re-emit the original address load; its node became the head
+	const auto newAddressInstruction = rewriter.NewILInstr();
+	newAddressInstruction->m_opcode = CEE_LDFLDA;
+	newAddressInstruction->m_Arg32 = static_cast<INT32>(fieldToken);
+	rewriter.InsertAfter(tailInstruction, newAddressInstruction);
+	tailInstruction = newAddressInstruction;
+	// LDC.I8 <instrumentation-mark>
+	const auto ldcInstruction = rewriter.NewILInstr();
+	ldcInstruction->m_opcode = CEE_LDC_I8;
+	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+	rewriter.InsertAfter(tailInstruction, ldcInstruction);
+	tailInstruction = ldcInstruction;
+	// LDLOC <instance-local> (restore object reference)
+	const auto ldlocInstanceInstruction = rewriter.NewILInstr();
+	ldlocInstanceInstruction->m_opcode = CEE_LDLOC;
+	ldlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
+	rewriter.InsertAfter(tailInstruction, ldlocInstanceInstruction);
+	tailInstruction = ldlocInstanceInstruction;
+	// CALL <injected-method-handler>
+	const auto callInstruction = rewriter.NewILInstr();
+	callInstruction->m_opcode = CEE_CALL;
+	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+	rewriter.InsertAfter(tailInstruction, callInstruction);
+
+	LOG_F(INFO, "Instrumented instance field access intrinsic in method %d with stub %d from module %s.",
+		mdMethodDef,
+		helperToken,
+		moduleDef.GetName().c_str());
+
+	// Notify analysis of field access instrumentation point
+	client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
+		LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
+		moduleId,
+		mdMethodDef,
+		originalOffset,
+		fieldToken,
+		instrumentationMark,
+		effect.accessKind));
+
 	return S_OK;
 }
 
@@ -606,7 +880,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		originalOffset,
 		fieldToken,
 		instrumentationMark,
-		isVolatile));
+		isVolatile ? LibIPC::FieldAccessKind::Volatile : LibIPC::FieldAccessKind::Regular));
 
 	*nextInstruction = currentInstruction;
 	return S_OK;

@@ -148,7 +148,7 @@ internal static class SyncEventBuilder
             MethodOffset: 0,
             FieldToken: new MdToken(0x04000001),
             InstrumentationId: instrumentationId,
-            IsVolatile: false));
+            AccessKind: FieldAccessKind.Regular));
 
     public static RecordedEvent ProfilerDestroy(uint tid)
         => new(Meta(tid), new ProfilerDestroyRecordedEvent());

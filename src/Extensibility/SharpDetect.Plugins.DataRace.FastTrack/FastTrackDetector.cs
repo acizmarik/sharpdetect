@@ -320,6 +320,16 @@ internal sealed class FastTrackDetector
         threadVc.Increment(threadId);
     }
 
+    public void RecordAtomicReadModifyWrite(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
+    {
+        RecordVolatileRead(threadId, moduleId, fieldToken, objectId);
+        RecordVolatileWrite(threadId, moduleId, fieldToken, objectId);
+    }
+
     public void RecordValuePublished(
         ProcessThreadId threadId,
         ProcessTrackedObjectId containerId,

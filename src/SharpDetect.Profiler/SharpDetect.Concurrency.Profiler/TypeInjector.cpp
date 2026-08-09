@@ -19,6 +19,7 @@ Profiler::TypeInjector::TypeInjector(
     const ModuleID& coreModule,
     MetadataStore& metadataStore,
     MethodDescriptorRegistry& methodDescriptorRegistry,
+    const std::vector<FieldAccessIntrinsicDescriptor>& fieldAccessIntrinsics,
     RewriteRegistry& rewriteRegistry) :
     _corProfilerInfo(corProfilerInfo),
     _client(client),
@@ -26,6 +27,7 @@ Profiler::TypeInjector::TypeInjector(
     _coreModule(coreModule),
     _metadataStore(metadataStore),
     _methodDescriptorRegistry(methodDescriptorRegistry),
+    _fieldAccessIntrinsics(fieldAccessIntrinsics),
     _rewriteRegistry(rewriteRegistry)
 {
 }
@@ -186,6 +188,8 @@ static std::vector<COR_SIGNATURE> SerializeMethodSignatureDescriptor(
 {
     std::vector<COR_SIGNATURE> result;
     result.push_back(descriptor.callingConvention);
+    if ((descriptor.callingConvention & CorCallingConvention::IMAGE_CEE_CS_CALLCONV_GENERIC) != 0)
+        AppendCompressedData(descriptor.genericParametersCount, result);
     result.push_back(descriptor.parametersCount);
     if (FAILED(SerializeArgumentTypeDescriptor(descriptor.returnType, moduleDef, result)))
     {
@@ -342,6 +346,76 @@ HRESULT Profiler::TypeInjector::ImportMethodWrapper(
         method.declaringTypeFullName.c_str(),
         method.methodName.c_str(),
         moduleDef.GetName().c_str());
+
+    return S_OK;
+}
+
+static LibProfiler::FieldAccessIntrinsicEffect ToFieldAccessIntrinsicEffect(const Profiler::FieldAccessIntrinsicInterpretation interpretation)
+{
+    switch (interpretation)
+    {
+        case Profiler::FieldAccessIntrinsicInterpretation::VolatileRead:
+            return { .direction = LibProfiler::FieldAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Volatile };
+
+        case Profiler::FieldAccessIntrinsicInterpretation::VolatileWrite:
+            return { .direction = LibProfiler::FieldAccessDirection::Write, .accessKind = LibIPC::FieldAccessKind::Volatile };
+
+        case Profiler::FieldAccessIntrinsicInterpretation::AtomicReadModifyWrite:
+        default:
+            return { .direction = LibProfiler::FieldAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Atomic };
+    }
+}
+
+HRESULT Profiler::TypeInjector::ResolveFieldAccessIntrinsics(
+    const LibProfiler::AssemblyDef& assemblyDef,
+    const LibProfiler::ModuleDef& moduleDef) const
+{
+    LibProfiler::FieldAccessIntrinsicsMap intrinsics;
+
+    std::unordered_map<std::string, mdTypeRef> typeRefs;
+    for (auto&& assemblyRef : assemblyDef.GetOriginalReferences())
+    {
+        typeRefs.clear();
+
+        for (auto&& intrinsic : _fieldAccessIntrinsics)
+        {
+            auto typeRefIt = typeRefs.find(intrinsic.declaringTypeFullName);
+            if (typeRefIt == typeRefs.cend())
+            {
+                mdTypeRef typeRef;
+                if (FAILED(moduleDef.FindTypeRef(assemblyRef.GetMdAssemblyRef(), intrinsic.declaringTypeFullName, &typeRef)))
+                    typeRef = mdTokenNil;
+
+                typeRefIt = typeRefs.emplace(intrinsic.declaringTypeFullName, typeRef).first;
+            }
+
+            if (typeRefIt->second == mdTokenNil)
+                continue;
+
+            mdMemberRef methodRef;
+            auto const signature = SerializeMethodSignatureDescriptor(intrinsic.signatureDescriptor, moduleDef);
+            if (FAILED(moduleDef.FindMethodRef(
+                intrinsic.methodName,
+                signature.data(),
+                signature.size(),
+                typeRefIt->second,
+                &methodRef)))
+            {
+                continue;
+            }
+
+            intrinsics.emplace(methodRef, ToFieldAccessIntrinsicEffect(intrinsic.interpretation));
+
+            LOG_F(INFO, "Recognized field access intrinsic %s::%s (%d) in module %s.",
+                intrinsic.declaringTypeFullName.c_str(),
+                intrinsic.methodName.c_str(),
+                methodRef,
+                moduleDef.GetName().c_str());
+        }
+    }
+
+    if (!intrinsics.empty())
+        _rewriteRegistry.AddModuleFieldAccessIntrinsics(moduleDef.GetModuleId(), std::move(intrinsics));
 
     return S_OK;
 }

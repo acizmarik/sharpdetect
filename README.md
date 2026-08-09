@@ -99,9 +99,8 @@ The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanaga
 - `System.Threading.Mutex` (unnamed)
 - `System.Threading.Semaphore` (unnamed)
 - `System.Threading.EventWaitHandle` (`AutoResetEvent`, `ManualResetEvent`)
-- `System.Threading.Volatile` (including `volatile` field modifier)
 
-#### Supported Threading Primitives
+#### Supported Thread and Task Lifecycle
 - `System.Threading.Thread`
 - `System.Threading.Tasks.Task`
 
@@ -110,8 +109,13 @@ The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanaga
 - `System.Collections.Concurrent.ConcurrentDictionary<TKey, TValue>`
 
 #### Supported Memory Accesses
-- Static fields (`LDSFLD`, `STSFLD`)
-- Instance fields (`LDFLD`, `STFLD`)
+- Regular field access
+   - Statics (`LDSFLD`, `STSFLD`); Instance (`LDFLD`, `STFLD`)
+- Volatile field access
+   - Statics and instance using `volatile` keyword (`LDSFLD`, `STSFLD`, `LDFLD`, `STFLD`) 
+   - Statics and instance using `Volatile` class and some methods from `Interlocked` class (`LDSFLDA`, `LDFLDA`)
+- Atomic field access
+   - Statics and instance using some methods from `Interlocked` class (`LDSFLDA`, `LDFLDA`)
 
 #### Configuration
 
@@ -132,7 +136,7 @@ The `Deadlock` plugin detects deadlocks by tracking lock acquisition order acros
 - `System.Threading.Monitor`
 - `System.Threading.Lock`
 
-#### Supported Threading Primitives
+#### Supported Thread Lifecycle
 - `System.Threading.Thread`
 
 #### Configuration
@@ -153,6 +157,7 @@ sharpdetect init \
 - **False positives**:
    - Memory accesses guarded by unsupported synchronization primitives may report data races.
    - Value publication is tracked by the identity of the published object, so it covers reference types only.
+   - `Interlocked` and `Volatile` calls are recognized only when their `ref` argument is a direct field address.
 - **False negatives**: 
    - Array element accesses are not analyzed.
    - Heuristics for determining object publication is responsible for missing some data races.

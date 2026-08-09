@@ -3,6 +3,7 @@
 
 using System.Collections.Immutable;
 using SharpDetect.Plugins.Descriptors;
+using SharpDetect.Plugins.Descriptors.Intrinsics;
 using SharpDetect.Plugins.Descriptors.Methods;
 using SharpDetect.Plugins.Descriptors.Types;
 
@@ -10,9 +11,16 @@ namespace SharpDetect.E2ETests.Utils;
 
 public record TestPluginAdditionalData(
     ImmutableArray<MethodDescriptor> MethodDescriptors,
+    ImmutableArray<FieldAccessIntrinsicDescriptor> FieldAccessIntrinsicDescriptors,
     ImmutableArray<TypeInjectionDescriptor> TypeInjectionDescriptors,
     bool EnableFieldsAccessInstrumentation)
 {
+    private static ImmutableArray<FieldAccessIntrinsicDescriptor> GetAllFieldAccessIntrinsics() =>
+    [
+        ..InterlockedIntrinsicDescriptors.GetAllIntrinsics()
+            .Concat(VolatileIntrinsicDescriptors.GetAllIntrinsics())
+    ];
+
     public static TestPluginAdditionalData CreateWithFieldsAccessInstrumentationDisabled() =>
         new(
             MethodDescriptors: 
@@ -28,6 +36,7 @@ public record TestPluginAdditionalData(
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
+            FieldAccessIntrinsicDescriptors: GetAllFieldAccessIntrinsics(),
             TypeInjectionDescriptors: ImmutableArray<TypeInjectionDescriptor>.Empty,
             EnableFieldsAccessInstrumentation: false);
     
@@ -46,6 +55,7 @@ public record TestPluginAdditionalData(
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
+            FieldAccessIntrinsicDescriptors: GetAllFieldAccessIntrinsics(),
             TypeInjectionDescriptors:
             [
                 ..SharpDetectHelperTypeDescriptors.GetAllTypes()

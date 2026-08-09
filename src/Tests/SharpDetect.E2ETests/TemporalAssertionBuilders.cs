@@ -18,9 +18,9 @@ public static class TemporalAssertionBuilders
         string assemblyName,
         RecordedEventType type,
         IMetadataResolver plugin,
-        bool? requireVolatile = null)
+        FieldAccessKind? requireAccessKind = null)
     {
-        return new(EventMatchers.FieldAccessInAssembly(assemblyName, type, plugin, requireVolatile));
+        return new(EventMatchers.FieldAccessInAssembly(assemblyName, type, plugin, requireAccessKind));
     }
 
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodEnter(

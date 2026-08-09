@@ -7,6 +7,8 @@ namespace SharpDetect.E2ETests.Subject.Helpers.Fields
     {
         public static int Test_Field_ValueType_Static;
         public static volatile int Test_Field_Volatile_ValueType_Static;
+        public static int Test_Field_Atomic_ValueType_Static;
+        public static long Test_Field_Atomic_ValueType_Static_Long;
         public static int Test_Property_ValueType_Static { get; set; }
     }
 }

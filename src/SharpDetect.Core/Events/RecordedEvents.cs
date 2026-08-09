@@ -178,4 +178,4 @@ public sealed record FieldAccessInstrumentationRecordedEvent(
     [property: Key(2)] uint MethodOffset,
     [property: Key(3)] MdToken FieldToken,
     [property: Key(4)] ulong InstrumentationId,
-    [property: Key(5)] bool IsVolatile) : IRecordedEventArgs;
+    [property: Key(5)] FieldAccessKind AccessKind) : IRecordedEventArgs;

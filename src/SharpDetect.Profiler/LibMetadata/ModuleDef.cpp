@@ -266,6 +266,14 @@ HRESULT LibProfiler::ModuleDef::FindMethodRef(
 	return metadataImport.FindMemberRef(typeRef, nameWstring.c_str(), signature, signatureLength, methodRef);
 }
 
+HRESULT LibProfiler::ModuleDef::GetMethodSpecParent(
+	IN const mdMethodSpec methodSpec,
+	OUT mdToken* parent) const
+{
+	auto& metadataImport = GetMetadataImport();
+	return metadataImport.GetMethodSpecProps(methodSpec, parent, nullptr, nullptr);
+}
+
 HRESULT LibProfiler::ModuleDef::AddMethodRef(
 	IN const std::string& name,
 	IN const mdTypeRef typeRef,

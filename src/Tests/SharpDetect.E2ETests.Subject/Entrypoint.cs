@@ -374,6 +374,54 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Volatile_ValueType_Static_TernaryWrite):
                     Test_Field_Volatile_ValueType_Static_TernaryWrite();
                     break;
+                case nameof(Test_Field_Atomic_ValueType_Static_Increment):
+                    Test_Field_Atomic_ValueType_Static_Increment();
+                    break;
+                case nameof(Test_Field_Atomic_ValueType_Static_CompareExchange):
+                    Test_Field_Atomic_ValueType_Static_CompareExchange();
+                    break;
+                case nameof(Test_Field_Atomic_ValueType_Static_CompareExchangeComputedArguments):
+                    Test_Field_Atomic_ValueType_Static_CompareExchangeComputedArguments();
+                    break;
+                case nameof(Test_Field_Atomic_ValueType_Local_Increment):
+                    Test_Field_Atomic_ValueType_Local_Increment();
+                    break;
+                case nameof(Test_Field_VolatileCall_ValueType_Static_Read):
+                    Test_Field_VolatileCall_ValueType_Static_Read();
+                    break;
+                case nameof(Test_Field_VolatileCall_ValueType_Static_Write):
+                    Test_Field_VolatileCall_ValueType_Static_Write();
+                    break;
+                case nameof(Test_Field_Atomic_ValueType_Instance_Increment):
+                    Test_Field_Atomic_ValueType_Instance_Increment();
+                    break;
+                case nameof(Test_Field_Atomic_ValueType_Instance_CompareExchange):
+                    Test_Field_Atomic_ValueType_Instance_CompareExchange();
+                    break;
+                case nameof(Test_Field_Atomic_ValueType_OnValueType_Instance_Increment):
+                    Test_Field_Atomic_ValueType_OnValueType_Instance_Increment();
+                    break;
+                case nameof(Test_Field_VolatileCall_ValueType_Instance_Read):
+                    Test_Field_VolatileCall_ValueType_Instance_Read();
+                    break;
+                case nameof(Test_Field_VolatileCall_ValueType_Instance_Write):
+                    Test_Field_VolatileCall_ValueType_Instance_Write();
+                    break;
+                case nameof(Test_Field_Atomic_ValueType_Static_Read):
+                    Test_Field_Atomic_ValueType_Static_Read();
+                    break;
+                case nameof(Test_Field_Atomic_ReferenceType_Static_CompareExchange):
+                    Test_Field_Atomic_ReferenceType_Static_CompareExchange();
+                    break;
+                case nameof(Test_Field_Atomic_ReferenceType_Instance_CompareExchange):
+                    Test_Field_Atomic_ReferenceType_Instance_CompareExchange();
+                    break;
+                case nameof(Test_Field_VolatileCall_ReferenceType_Static_Read):
+                    Test_Field_VolatileCall_ReferenceType_Static_Read();
+                    break;
+                case nameof(Test_Field_VolatileCall_ReferenceType_Static_Write):
+                    Test_Field_VolatileCall_ReferenceType_Static_Write();
+                    break;
                 case nameof(Test_Field_ReferenceType_Instance_TernaryValueWrite):
                     Test_Field_ReferenceType_Instance_TernaryValueWrite();
                     break;
@@ -625,6 +673,27 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses):
                     Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedFlag_PublishThenRead();
+                    break;
+                case nameof(Test_DataRace_InterlockedFlag_WriteAfterPublish):
+                    Test_DataRace_InterlockedFlag_WriteAfterPublish();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedCounter_ConcurrentIncrement):
+                    Test_NoDataRace_InterlockedCounter_ConcurrentIncrement();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedFlag_Instance_PublishThenRead):
+                    Test_NoDataRace_InterlockedFlag_Instance_PublishThenRead();
+                    break;
+                case nameof(Test_DataRace_InterlockedFlag_Instance_WriteAfterPublish):
+                    Test_DataRace_InterlockedFlag_Instance_WriteAfterPublish();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedCounter_Instance_ConcurrentIncrement):
+                    Test_NoDataRace_InterlockedCounter_Instance_ConcurrentIncrement();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedReferenceFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedReferenceFlag_PublishThenRead();
                     break;
                 case nameof(Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin):
                     Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin();
