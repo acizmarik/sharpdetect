@@ -140,7 +140,7 @@ public class TaskOrderingTests
 
         // Act
         _harness.Write(completer, field, instance: null);
-        _harness.Detector.RecordTaskCompleted(completer, promise);
+        _harness.Detector.RecordTaskPromiseCompleted(completer, promise);
         _harness.Detector.RecordTaskJoinFinished(waiter, promise);
 
         // Assert
@@ -148,7 +148,7 @@ public class TaskOrderingTests
     }
 
     [Fact]
-    public void RepeatedCompletion_ReplacesTheFirstCompletersRelease()
+    public void RepeatedCompletion_PreservesTheFirstCompletersRelease()
     {
         // Arrange
         var winner = _harness.NewThread();
@@ -159,11 +159,11 @@ public class TaskOrderingTests
 
         // Act
         _harness.Write(winner, field, instance: null);
-        _harness.Detector.RecordTaskCompleted(winner, promise);
-        _harness.Detector.RecordTaskCompleted(loser, promise);
+        _harness.Detector.RecordTaskPromiseCompleted(winner, promise);
+        _harness.Detector.RecordTaskPromiseCompleted(loser, promise);
         _harness.Detector.RecordTaskJoinFinished(waiter, promise);
 
         // Assert
-        Assert.True(_harness.ReadIsRace(waiter, field, instance: null));
+        Assert.False(_harness.ReadIsRace(waiter, field, instance: null));
     }
 }

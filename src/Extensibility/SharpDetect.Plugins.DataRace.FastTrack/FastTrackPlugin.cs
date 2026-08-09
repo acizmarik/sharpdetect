@@ -279,7 +279,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnTaskPromiseCompleted(TaskPromiseCompleteArgs args)
     {
-        _detector.RecordTaskCompleted(args.ProcessThreadId, args.TaskObjectId);
+        _detector.RecordTaskPromiseCompleted(args.ProcessThreadId, args.TaskObjectId);
     }
 
     private void OnAsyncStateMachineSuspended(AsyncStateMachineSuspendArgs args)

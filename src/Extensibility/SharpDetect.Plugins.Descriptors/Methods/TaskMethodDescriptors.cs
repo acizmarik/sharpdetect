@@ -172,9 +172,10 @@ public static class TaskMethodDescriptors
                 InjectHooks: true,
                 InjectManagedWrapper: false,
                 Arguments: [ObjectRefArg],
-                ReturnValue: new CapturedValueDescriptor(sizeof(bool), CapturedValue.CaptureAsValue),
+                ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.TaskPromiseComplete,
-                MethodExitInterpretation: (ushort)RecordedEventType.TaskPromiseCompleteResult));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
     }
 
     private static MethodDescriptor CreateInnerInvokeMethodDescriptorForType(string typeName)

@@ -195,6 +195,17 @@ internal sealed class FastTrackDetector
         workerVc.Increment(workerThreadId);
     }
 
+    public void RecordTaskPromiseCompleted(ProcessThreadId completerThreadId, ProcessTrackedObjectId taskId)
+    {
+        var completerVc = GetOrCreateThreadClock(completerThreadId);
+        if (_taskClocks.TryGetValue(taskId, out var taskVc))
+            taskVc.Join(completerVc);
+        else
+            _taskClocks[taskId] = completerVc.Clone();
+
+        completerVc.Increment(completerThreadId);
+    }
+
     public void RecordTaskJoinFinished(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
     {
         var waiterVc = GetOrCreateThreadClock(waiterThreadId);

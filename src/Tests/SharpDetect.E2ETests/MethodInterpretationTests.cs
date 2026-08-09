@@ -208,7 +208,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyEventType(RecordedEventType.TaskPromiseCompleteResult))
+            .Then(EventuallyEventType(RecordedEventType.TaskPromiseComplete))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute

@@ -179,12 +179,6 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
                 break;
             }
 
-            case RecordedEventType.TaskPromiseCompleteResult:
-            {
-                // Without the return value there is no way to tell a winning completer from a losing one
-                break;
-            }
-
             case RecordedEventType.AsyncStateMachineSegmentComplete:
             {
                 var boxId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments![0].Value.AsTrackedObject);
