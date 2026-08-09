@@ -1703,6 +1703,102 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; }).Wait();
         }
 
+        public static void Test_TaskCompletionSource_TrySetResult()
+        {
+            var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            source.SetResult(true);
+            source.Task.Wait();
+        }
+
+        public static void Test_TaskCompletionSource_TrySetResultNonGeneric()
+        {
+            var source = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            source.SetResult();
+            source.Task.Wait();
+        }
+
+        public static void Test_TaskCompletionSource_TrySetException()
+        {
+            var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            source.SetException(new InvalidOperationException());
+            AwaitFaultedTask(source.Task);
+        }
+
+        public static void Test_TaskCompletionSource_TrySetCanceled()
+        {
+            var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            source.SetCanceled();
+            AwaitFaultedTask(source.Task);
+        }
+
+        private static void AwaitFaultedTask(Task task)
+        {
+            try
+            {
+                task.Wait();
+            }
+            catch (AggregateException)
+            {
+            
+            }
+        }
+
+        public static void Test_NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait()
+        {
+            WarmUpThreadPool();
+
+            var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var reader = ReadAfterCompletionAsync(source.Task);
+
+            Task.Run(() =>
+            {
+                DataRace.Test_TaskCompletionSource_ValueType_Static = 42;
+                source.SetResult(true);
+            }).Wait();
+
+            reader.Wait();
+        }
+
+        private static void WarmUpThreadPool()
+        {
+            const int workers = 8;
+            using var barrier = new Barrier(workers + 1);
+            var tasks = new Task[workers];
+            for (var i = 0; i < workers; i++)
+                tasks[i] = Task.Run(() => barrier.SignalAndWait());
+
+            barrier.SignalAndWait();
+            Task.WaitAll(tasks);
+        }
+
+        private static async Task ReadAfterCompletionAsync(Task gate)
+        {
+            await gate.ConfigureAwait(false);
+            _ = DataRace.Test_TaskCompletionSource_ValueType_Static;
+        }
+
+        public static void Test_DataRace_TaskCompletionSource_PostCompletionWrite()
+        {
+            WarmUpThreadPool();
+
+            var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var bothReady = new Barrier(participantCount: 2);
+            var continuation = WriteAfterCompletionAsync(source.Task, bothReady, 1);
+
+            source.SetResult(true);
+            bothReady.SignalAndWait(WaitTimeout);
+            DataRace.Test_TaskCompletionSource_ValueType_Static = 2;
+
+            continuation.Wait();
+        }
+
+        private static async Task WriteAfterCompletionAsync(Task gate, Barrier bothReady, int value)
+        {
+            await gate.ConfigureAwait(false);
+            bothReady.SignalAndWait(WaitTimeout);
+            DataRace.Test_TaskCompletionSource_ValueType_Static = value;
+        }
+
         public static void Test_SemaphoreSlimMethods_WaitRelease1()
         {
             var sem = new SemaphoreSlim(1, 1);

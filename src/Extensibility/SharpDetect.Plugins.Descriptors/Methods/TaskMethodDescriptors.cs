@@ -31,6 +31,11 @@ public static class TaskMethodDescriptors
     private static readonly MethodDescriptor TaskWait;
     private static readonly MethodDescriptor TaskResult;
     private static readonly MethodDescriptor TaskAwaiterValidateEnd;
+    private static readonly MethodDescriptor TaskTResultTrySetResult;
+    private static readonly MethodDescriptor TaskTrySetResult;
+    private static readonly MethodDescriptor TaskTrySetException;
+    private static readonly MethodDescriptor TaskTrySetCanceled;
+    private static readonly MethodDescriptor TaskTrySetCanceledWithException;
 
     static TaskMethodDescriptors()
     {
@@ -122,6 +127,54 @@ public static class TaskMethodDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
                 MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
+
+        TaskTResultTrySetResult = CreatePromiseCompletionMethodDescriptor(
+            TaskTResultTypeName,
+            "TrySetResult",
+            ArgumentTypeDescriptor.CreateGenericTypeParam(0));
+
+        TaskTrySetResult = CreatePromiseCompletionMethodDescriptor(
+            TaskTypeName,
+            "TrySetResult");
+
+        TaskTrySetException = CreatePromiseCompletionMethodDescriptor(
+            TaskTypeName,
+            "TrySetException",
+            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT));
+
+        TaskTrySetCanceled = CreatePromiseCompletionMethodDescriptor(
+            TaskTypeName,
+            "TrySetCanceled",
+            ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName));
+
+        TaskTrySetCanceledWithException = CreatePromiseCompletionMethodDescriptor(
+            TaskTypeName,
+            "TrySetCanceled",
+            ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName),
+            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT));
+    }
+
+    private static MethodDescriptor CreatePromiseCompletionMethodDescriptor(
+        string typeName,
+        string methodName,
+        params ArgumentTypeDescriptor[] parameters)
+    {
+        return new MethodDescriptor(
+            MethodName: methodName,
+            DeclaringTypeFullName: typeName,
+            VersionDescriptor: null,
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: (byte)parameters.Length,
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
+                ArgumentTypeElements: parameters),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ObjectRefArg],
+                ReturnValue: new CapturedValueDescriptor(sizeof(bool), CapturedValue.CaptureAsValue),
+                MethodEnterInterpretation: (ushort)RecordedEventType.TaskPromiseComplete,
+                MethodExitInterpretation: (ushort)RecordedEventType.TaskPromiseCompleteResult));
     }
 
     private static MethodDescriptor CreateInnerInvokeMethodDescriptorForType(string typeName)
@@ -155,6 +208,11 @@ public static class TaskMethodDescriptors
         yield return ContinuationTaskFromResultTaskInnerInvoke;
         yield return ContinuationResultTaskFromResultTaskInnerInvoke;
         yield return TaskAwaiterValidateEnd;
+        yield return TaskTResultTrySetResult;
+        yield return TaskTrySetResult;
+        yield return TaskTrySetException;
+        yield return TaskTrySetCanceled;
+        yield return TaskTrySetCanceledWithException;
 
         // Common public API
         yield return TaskWait;

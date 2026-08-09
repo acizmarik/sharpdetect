@@ -26,6 +26,7 @@ public readonly record struct TaskScheduleArgs(ProcessThreadId ProcessThreadId, 
 public readonly record struct TaskStartArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct TaskCompleteArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct TaskJoinFinishArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId, bool IsSuccess);
+public readonly record struct TaskPromiseCompleteArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct SemaphoreAcquireAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId);
 public readonly record struct SemaphoreAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, bool IsSuccess);
 public readonly record struct SemaphoreReleaseArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId SemaphoreId, int ReleaseCount);

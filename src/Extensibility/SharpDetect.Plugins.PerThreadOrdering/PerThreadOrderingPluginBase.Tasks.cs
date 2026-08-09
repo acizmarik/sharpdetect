@@ -14,6 +14,7 @@ public abstract partial class PerThreadOrderingPluginBase
     public event Action<TaskStartArgs>? TaskStarted;
     public event Action<TaskCompleteArgs>? TaskCompleted;
     public event Action<TaskJoinFinishArgs>? TaskJoinFinished;
+    public event Action<TaskPromiseCompleteArgs>? TaskPromiseCompleted;
 
     private void RegisterTaskBindings()
     {
@@ -23,6 +24,8 @@ public abstract partial class PerThreadOrderingPluginBase
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.TaskJoinStart, OnTaskJoinStart);
         Bind<MethodExitRecordedEvent>(RecordedEventType.TaskJoinFinish, OnTaskJoinFinish);
         Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.TaskJoinFinish, OnTaskJoinFinishWithArguments);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.TaskPromiseComplete, OnTaskPromiseComplete);
+        Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.TaskPromiseCompleteResult, OnTaskPromiseCompleteResult);
     }
 
     private void OnTaskSchedule(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
@@ -84,6 +87,20 @@ public abstract partial class PerThreadOrderingPluginBase
         }
     }
 
+    private void OnTaskPromiseComplete(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+        => PushArgumentsOnCallStack(metadata, args);
+
+    private void OnTaskPromiseCompleteResult(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        if (!MemoryMarshal.Read<bool>(args.ReturnValue))
+            return;
+
+        var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
+        ProcessTaskPromiseComplete(id, taskObjectId);
+    }
+
     protected virtual void ProcessTaskSchedule(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
     {
         TaskScheduled?.Invoke(new TaskScheduleArgs(id, taskObjectId));
@@ -102,5 +119,13 @@ public abstract partial class PerThreadOrderingPluginBase
     protected virtual void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId, bool isSuccess)
     {
         TaskJoinFinished?.Invoke(new TaskJoinFinishArgs(id, taskObjectId, isSuccess));
+    }
+
+    protected virtual void ProcessTaskPromiseComplete(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+    {
+        if (taskObjectId.ObjectId.Value == 0)
+            return;
+
+        TaskPromiseCompleted?.Invoke(new TaskPromiseCompleteArgs(id, taskObjectId));
     }
 }
