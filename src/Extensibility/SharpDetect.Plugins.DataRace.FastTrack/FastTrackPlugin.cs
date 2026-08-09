@@ -78,6 +78,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     LockMethodDescriptors.GetAllMethods()).Concat(
                     ThreadMethodDescriptors.GetAllMethods()).Concat(
                     TaskMethodDescriptors.GetAllMethods()).Concat(
+                    AsyncMethodBuilderMethodDescriptors.GetAllMethods()).Concat(
                     SemaphoreSlimMethodDescriptors.GetAllMethods()).Concat(
                     WaitHandleMethodDescriptors.GetAllMethods()).Concat(
                     ConcurrentDictionaryMethodDescriptors.GetAllMethods()).Concat(
@@ -115,6 +116,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         TaskCompleted += OnTaskCompleted;
         TaskJoinFinished += OnTaskJoinFinished;
         TaskPromiseCompleted += OnTaskPromiseCompleted;
+        AsyncStateMachineSuspended += OnAsyncStateMachineSuspended;
+        AsyncStateMachineResumed += OnAsyncStateMachineResumed;
+        AsyncStateMachineSegmentCompleted += OnAsyncStateMachineSegmentCompleted;
+        AsyncStateMachineCompleted += OnAsyncStateMachineCompleted;
         SemaphoreCreated += OnSemaphoreCreated;
         SemaphoreAcquireReturned += OnSemaphoreAcquireReturned;
         SemaphoreReleased += OnSemaphoreReleased;
@@ -274,7 +279,27 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnTaskPromiseCompleted(TaskPromiseCompleteArgs args)
     {
-        _detector.RecordTaskCompleted(args.ProcessThreadId, args.TaskObjectId);
+        _detector.RecordTaskPromiseCompleted(args.ProcessThreadId, args.TaskObjectId);
+    }
+
+    private void OnAsyncStateMachineSuspended(AsyncStateMachineSuspendArgs args)
+    {
+        _detector.RecordTaskScheduled(args.ProcessThreadId, args.StateMachineBoxId);
+    }
+
+    private void OnAsyncStateMachineResumed(AsyncStateMachineResumeArgs args)
+    {
+        _detector.RecordTaskStarted(args.ProcessThreadId, args.StateMachineBoxId);
+    }
+
+    private void OnAsyncStateMachineSegmentCompleted(AsyncStateMachineSegmentCompleteArgs args)
+    {
+        _detector.RecordTaskCompleted(args.ProcessThreadId, args.StateMachineBoxId);
+    }
+
+    private void OnAsyncStateMachineCompleted(AsyncStateMachineCompleteArgs args)
+    {
+        _detector.RecordTaskCompleted(args.ProcessThreadId, args.StateMachineBoxId);
     }
 
     private void OnSemaphoreCreated(SemaphoreCreatedArgs args)

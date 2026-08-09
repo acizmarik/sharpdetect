@@ -208,7 +208,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyEventType(RecordedEventType.TaskPromiseCompleteResult))
+            .Then(EventuallyEventType(RecordedEventType.TaskPromiseComplete))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute
@@ -216,6 +216,35 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_AsyncMethodBuilder_SuspendResume1(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_AsyncMethodBuilder_SuspendResume1")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineSuspend))
+            .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineResume))
+            .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineComplete))
+            .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineSegmentComplete));
+        var lifetimeAssert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        Assert.True(AssertStatus.Satisfied == lifetimeAssert.Evaluate(events), lifetimeAssert.GetDiagnosticInfo());
     }
 
     [Theory]

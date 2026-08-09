@@ -1702,6 +1702,93 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => { DataRace.Test_DataRace_ValueType_Static = 42; }).Wait();
             Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; }).Wait();
         }
+        public static void Test_AsyncMethodBuilder_SuspendResume1()
+        {
+            var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var task = SuspendOnceAsync(gate.Task);
+            gate.SetResult(true);
+            task.Wait();
+        }
+
+        private static async Task SuspendOnceAsync(Task gate)
+        {
+            await gate.ConfigureAwait(false);
+        }
+
+        public static void Test_NoDataRace_AsyncContinuation_WriteBeforeAwait_ReadAfterResume()
+        {
+            WarmUpThreadPool();
+
+            Task.Run(() =>
+            {
+                DataRace.Test_AsyncContinuation_ValueType_Static = 42;
+                ReadAfterResumeAsync().Wait();
+            }).Wait();
+        }
+
+        private static void WarmUpThreadPool()
+        {
+            const int workers = 8;
+            using var barrier = new Barrier(workers + 1);
+            var tasks = new Task[workers];
+            for (var i = 0; i < workers; i++)
+                tasks[i] = Task.Run(() => barrier.SignalAndWait());
+
+            barrier.SignalAndWait();
+            Task.WaitAll(tasks);
+        }
+
+        private static async Task ReadAfterResumeAsync()
+        {
+            await Task.Delay(50).ConfigureAwait(false);
+            _ = DataRace.Test_AsyncContinuation_ValueType_Static;
+        }
+
+        public static void Test_NoDataRace_AsyncContinuation_Instance_InitializeThenResume()
+        {
+            WarmUpThreadPool();
+
+            var execution = new AsyncExecution();
+            Task.Run(() =>
+            {
+                execution.Initialize(attemptNumber: 42, activeContext: new object());
+                execution.ExecutionTask!.Wait();
+            }).Wait();
+        }
+
+        public static void Test_NoDataRace_AsyncContinuation_WriteAfterResume_ReadAfterJoin()
+        {
+            WarmUpThreadPool();
+
+            var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var task = WriteAfterResumeAsync(gate.Task);
+            gate.SetResult(true);
+            task.Wait();
+            _ = DataRace.Test_AsyncContinuation_ValueType_Static;
+        }
+
+        private static async Task WriteAfterResumeAsync(Task gate)
+        {
+            await gate.ConfigureAwait(false);
+            DataRace.Test_AsyncContinuation_ValueType_Static = 42;
+        }
+
+        public static void Test_DataRace_AsyncContinuation_ConcurrentResumes_WriteWriteRace()
+        {
+            var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var bothResumed = new Barrier(participantCount: 2);
+            var first = WriteAfterResumeAsync(gate.Task, bothResumed, 1);
+            var second = WriteAfterResumeAsync(gate.Task, bothResumed, 2);
+            gate.SetResult(true);
+            Task.WaitAll(first, second);
+        }
+
+        private static async Task WriteAfterResumeAsync(Task gate, Barrier bothResumed, int value)
+        {
+            await gate.ConfigureAwait(false);
+            bothResumed.SignalAndWait(WaitTimeout);
+            DataRace.Test_DataRace_ValueType_Static = value;
+        }
 
         public static void Test_TaskCompletionSource_TrySetResult()
         {
@@ -1757,18 +1844,6 @@ namespace SharpDetect.E2ETests.Subject
             }).Wait();
 
             reader.Wait();
-        }
-
-        private static void WarmUpThreadPool()
-        {
-            const int workers = 8;
-            using var barrier = new Barrier(workers + 1);
-            var tasks = new Task[workers];
-            for (var i = 0; i < workers; i++)
-                tasks[i] = Task.Run(() => barrier.SignalAndWait());
-
-            barrier.SignalAndWait();
-            Task.WaitAll(tasks);
         }
 
         private static async Task ReadAfterCompletionAsync(Task gate)

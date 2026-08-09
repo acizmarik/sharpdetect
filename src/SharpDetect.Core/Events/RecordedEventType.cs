@@ -118,7 +118,12 @@ public enum RecordedEventType : ushort
     TaskJoinStart = 203,
     TaskJoinFinish = 204,
     TaskPromiseComplete = 205,
-    TaskPromiseCompleteResult = 206,
+
+    /* Async state-machine continuations */
+    AsyncStateMachineSuspend = 210,
+    AsyncStateMachineResume = 211,
+    AsyncStateMachineSegmentComplete = 212,
+    AsyncStateMachineComplete = 213,
 
     /* Value publication */
     ValuePublicationStore = 220,

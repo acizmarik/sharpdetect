@@ -34,6 +34,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
         RegisterWaitHandleBindings();
         RegisterThreadBindings();
         RegisterTaskBindings();
+        RegisterAsyncContinuationBindings();
         RegisterFieldAccessBindings();
         RegisterValuePublicationBindings();
     }
@@ -77,6 +78,13 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
     {
         // The instrumented method exited via an exception, so no method-exit event was produced
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+
+        if ((RecordedEventType)args.Interpretation == RecordedEventType.AsyncStateMachineSuspend)
+        {
+            // Carries an exit interpretation only, so nothing was pushed on the shadow call stack on enter
+            return;
+        }
+
         using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
         var frame = frameLease.Frame;
 
@@ -171,9 +179,10 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
                 break;
             }
 
-            case RecordedEventType.TaskPromiseCompleteResult:
+            case RecordedEventType.AsyncStateMachineSegmentComplete:
             {
-                // Without the return value there is no way to tell a winning completer from a losing one
+                var boxId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments![0].Value.AsTrackedObject);
+                ProcessAsyncStateMachineSegmentComplete(id, boxId);
                 break;
             }
         }

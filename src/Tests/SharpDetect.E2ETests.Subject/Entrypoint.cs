@@ -722,6 +722,21 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_TaskCompletionSource_PostCompletionWrite):
                     Test_DataRace_TaskCompletionSource_PostCompletionWrite();
                     break;
+                case nameof(Test_AsyncMethodBuilder_SuspendResume1):
+                    Test_AsyncMethodBuilder_SuspendResume1();
+                    break;
+                case nameof(Test_NoDataRace_AsyncContinuation_WriteBeforeAwait_ReadAfterResume):
+                    Test_NoDataRace_AsyncContinuation_WriteBeforeAwait_ReadAfterResume();
+                    break;
+                case nameof(Test_NoDataRace_AsyncContinuation_Instance_InitializeThenResume):
+                    Test_NoDataRace_AsyncContinuation_Instance_InitializeThenResume();
+                    break;
+                case nameof(Test_NoDataRace_AsyncContinuation_WriteAfterResume_ReadAfterJoin):
+                    Test_NoDataRace_AsyncContinuation_WriteAfterResume_ReadAfterJoin();
+                    break;
+                case nameof(Test_DataRace_AsyncContinuation_ConcurrentResumes_WriteWriteRace):
+                    Test_DataRace_AsyncContinuation_ConcurrentResumes_WriteWriteRace();
+                    break;
                 case nameof(Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace):
                     Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace();
                     break;

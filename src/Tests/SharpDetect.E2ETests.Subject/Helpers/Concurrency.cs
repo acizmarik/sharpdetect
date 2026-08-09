@@ -14,6 +14,7 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static volatile int Test_Volatile_ValueType_Static;
         public static volatile int Test_Volatile_ValueType_Static_Back;
         public static int Test_TaskCompletionSource_ValueType_Static;
+        public static int Test_AsyncContinuation_ValueType_Static;
         public static int Test_Atomic_ValueType_Static;
         public static string? Test_Atomic_ReferenceType_Static;
         [ThreadStatic]
@@ -96,6 +97,30 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public CrossObjectWriter(CrossObjectWriter other, int value)
         {
             other.Value = value;
+        }
+    }
+
+    public class AsyncExecution
+    {
+        private const int SuspendMilliseconds = 50;
+
+        private int _attemptNumber;
+        private object? _activeContext;
+        public Task? ExecutionTask { get; private set; }
+        public int ObservedAttemptNumber { get; private set; }
+
+        public void Initialize(int attemptNumber, object activeContext)
+        {
+            _attemptNumber = attemptNumber;
+            _activeContext = activeContext;
+            ExecutionTask = ExecuteAsync();
+        }
+        
+        private async Task ExecuteAsync()
+        {
+            await Task.Delay(SuspendMilliseconds).ConfigureAwait(false);
+            ObservedAttemptNumber = _attemptNumber;
+            _ = _activeContext;
         }
     }
 }
