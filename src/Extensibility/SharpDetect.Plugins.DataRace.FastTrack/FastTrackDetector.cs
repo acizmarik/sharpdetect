@@ -28,11 +28,20 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
     private readonly Dictionary<PublicationSlot, VectorClock> _publicationClocks = [];
+    private readonly Dictionary<PublicationSlot, PendingObservation> _publicationObservers = [];
+    private readonly LinkedList<PublicationSlot> _pendingObservationOrder = new();
     private readonly Dictionary<ProcessTrackedObjectId, HashSet<PublicationSlot>> _publicationSlotsByParticipant = [];
     private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
+    internal const int MaxPendingPublicationObservations = 1024;
     private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, bool Escaped);
     private readonly record struct PublicationSlot(ProcessTrackedObjectId Container, ProcessTrackedObjectId Value);
-    
+
+    private sealed class PendingObservation
+    {
+        public readonly HashSet<ProcessThreadId> Observers = [];
+        public LinkedListNode<PublicationSlot>? OrderNode;
+    }
+
     public FastTrackDetector(
         FastTrackPluginConfiguration configuration,
         IMetadataContext metadataContext,
@@ -51,6 +60,7 @@ internal sealed class FastTrackDetector
     public int GetTrackedThreadCount() => _threadClocks.Count;
     public int GetTrackedPublicationCount() => _publicationClocks.Count;
     internal int GetIndexedPublicationParticipantCount() => _publicationSlotsByParticipant.Count;
+    internal int GetPublicationObserverEntryCount() => _publicationObservers.Count;
 
     public void RecordThreadCreated(ProcessThreadId threadId)
     {
@@ -90,7 +100,7 @@ internal sealed class FastTrackDetector
 
     private void RemoveCollectedPublicationSlots(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
     {
-        if (_publicationClocks.Count == 0)
+        if (_publicationClocks.Count == 0 && _publicationObservers.Count == 0)
             return;
 
         foreach (var objectId in removedObjectIds)
@@ -102,6 +112,7 @@ internal sealed class FastTrackDetector
             foreach (var slot in slots)
             {
                 _publicationClocks.Remove(slot);
+                RemovePendingObservation(slot);
                 UnindexPublicationSlot(slot.Container == participant ? slot.Value : slot.Container, participant, slot);
             }
         }
@@ -123,11 +134,16 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId collectedParticipant,
         PublicationSlot slot)
     {
-        if (participant == collectedParticipant ||
-            !_publicationSlotsByParticipant.TryGetValue(participant, out var slots))
-        {
+        if (participant == collectedParticipant)
             return;
-        }
+
+        UnindexPublicationSlot(participant, slot);
+    }
+
+    private void UnindexPublicationSlot(ProcessTrackedObjectId participant, PublicationSlot slot)
+    {
+        if (!_publicationSlotsByParticipant.TryGetValue(participant, out var slots))
+            return;
 
         slots.Remove(slot);
         if (slots.Count == 0)
@@ -347,12 +363,14 @@ internal sealed class FastTrackDetector
         }
         else
         {
-            _publicationClocks[slot] = threadVc.Clone();
+            publicationVc = threadVc.Clone();
+            _publicationClocks[slot] = publicationVc;
             IndexPublicationSlot(containerId, slot);
             if (containerId != valueId)
                 IndexPublicationSlot(valueId, slot);
         }
 
+        ReleasePendingObservers(slot, publicationVc, threadId);
         threadVc.Increment(threadId);
     }
 
@@ -361,11 +379,83 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId containerId,
         ProcessTrackedObjectId valueId)
     {
-        if (!_publicationClocks.TryGetValue(new PublicationSlot(containerId, valueId), out var publicationVc))
+        var slot = new PublicationSlot(containerId, valueId);
+        if (!_publicationClocks.TryGetValue(slot, out var publicationVc))
+        {
+            RecordPendingObserver(slot, containerId, valueId, threadId);
             return;
+        }
 
         var threadVc = GetOrCreateThreadClock(threadId);
         threadVc.Join(publicationVc);
+    }
+
+    private void RecordPendingObserver(
+        PublicationSlot slot,
+        ProcessTrackedObjectId containerId,
+        ProcessTrackedObjectId valueId,
+        ProcessThreadId threadId)
+    {
+        if (!_publicationObservers.TryGetValue(slot, out var pending))
+        {
+            pending = new PendingObservation { OrderNode = _pendingObservationOrder.AddLast(slot) };
+            _publicationObservers[slot] = pending;
+
+            IndexPublicationSlot(containerId, slot);
+            if (containerId != valueId)
+                IndexPublicationSlot(valueId, slot);
+
+            EvictOldestPendingObservations();
+        }
+
+        pending.Observers.Add(threadId);
+    }
+
+    private void ReleasePendingObservers(
+        PublicationSlot slot,
+        VectorClock publicationVc,
+        ProcessThreadId publisherThreadId)
+    {
+        if (RemovePendingObservation(slot) is not { } pending)
+            return;
+
+        foreach (var observerThreadId in pending.Observers)
+        {
+            if (observerThreadId != publisherThreadId)
+                GetOrCreateThreadClock(observerThreadId).Join(publicationVc);
+        }
+    }
+
+    private PendingObservation? RemovePendingObservation(PublicationSlot slot)
+    {
+        if (!_publicationObservers.Remove(slot, out var pending))
+            return null;
+
+        if (pending.OrderNode is { } node)
+        {
+            _pendingObservationOrder.Remove(node);
+            pending.OrderNode = null;
+        }
+
+        return pending;
+    }
+
+    private void EvictOldestPendingObservations()
+    {
+        while (_publicationObservers.Count > MaxPendingPublicationObservations &&
+               _pendingObservationOrder.First is { } oldest)
+        {
+            var slot = oldest.Value;
+            if (RemovePendingObservation(slot) is null)
+            {
+                _pendingObservationOrder.Remove(oldest);
+                continue;
+            }
+
+            UnindexPublicationSlot(slot.Container, slot);
+            if (slot.Container != slot.Value)
+                UnindexPublicationSlot(slot.Value, slot);
+        }
     }
 
     public DataRaceInfo? RecordRead(
