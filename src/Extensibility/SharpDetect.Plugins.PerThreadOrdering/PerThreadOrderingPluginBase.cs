@@ -170,6 +170,12 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
                 ProcessTaskJoinFinish(id, taskObjectId, isSuccess: false);
                 break;
             }
+
+            case RecordedEventType.TaskPromiseCompleteResult:
+            {
+                // Without the return value there is no way to tell a winning completer from a losing one
+                break;
+            }
         }
     }
 

@@ -178,6 +178,48 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_TaskCompletionSource_TrySetResult(string sdk)
+        => AssertPromiseCompletionIsInterpreted("Test_TaskCompletionSource_TrySetResult", sdk);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_TaskCompletionSource_TrySetResultNonGeneric(string sdk)
+        => AssertPromiseCompletionIsInterpreted("Test_TaskCompletionSource_TrySetResultNonGeneric", sdk);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_TaskCompletionSource_TrySetException(string sdk)
+        => AssertPromiseCompletionIsInterpreted("Test_TaskCompletionSource_TrySetException", sdk);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_TaskCompletionSource_TrySetCanceled(string sdk)
+        => AssertPromiseCompletionIsInterpreted("Test_TaskCompletionSource_TrySetCanceled", sdk);
+
+    private async Task AssertPromiseCompletionIsInterpreted(string subject, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subject)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.TaskPromiseCompleteResult))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Task_InnerInvoke1(string sdk)
     {
         // Arrange

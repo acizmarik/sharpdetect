@@ -207,6 +207,18 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ConcurrentDictionaryMethods_AddOrUpdate):
                     Test_ConcurrentDictionaryMethods_AddOrUpdate();
                     break;
+                case nameof(Test_TaskCompletionSource_TrySetResult):
+                    Test_TaskCompletionSource_TrySetResult();
+                    break;
+                case nameof(Test_TaskCompletionSource_TrySetResultNonGeneric):
+                    Test_TaskCompletionSource_TrySetResultNonGeneric();
+                    break;
+                case nameof(Test_TaskCompletionSource_TrySetException):
+                    Test_TaskCompletionSource_TrySetException();
+                    break;
+                case nameof(Test_TaskCompletionSource_TrySetCanceled):
+                    Test_TaskCompletionSource_TrySetCanceled();
+                    break;
             }
 
             // Field events
@@ -703,6 +715,12 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_NoDataRace_Task_SequentialTasks_WriteRead):
                     Test_NoDataRace_Task_SequentialTasks_WriteRead();
+                    break;
+                case nameof(Test_NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait):
+                    Test_NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait();
+                    break;
+                case nameof(Test_DataRace_TaskCompletionSource_PostCompletionWrite):
+                    Test_DataRace_TaskCompletionSource_PostCompletionWrite();
                     break;
                 case nameof(Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace):
                     Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace();

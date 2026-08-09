@@ -128,4 +128,42 @@ public class TaskOrderingTests
         Assert.False(_harness.ReadIsRace(waiter, parentField, instance: null));
         Assert.True(_harness.ReadIsRace(waiter, bodyField, instance: null));
     }
+
+    [Fact]
+    public void CompletingPromise_OrdersTheCompleterBeforeEveryLaterJoiner()
+    {
+        // Arrange
+        var completer = _harness.NewThread();
+        var waiter = _harness.NewThread();
+        var promise = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Write(completer, field, instance: null);
+        _harness.Detector.RecordTaskCompleted(completer, promise);
+        _harness.Detector.RecordTaskJoinFinished(waiter, promise);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(waiter, field, instance: null));
+    }
+
+    [Fact]
+    public void RepeatedCompletion_ReplacesTheFirstCompletersRelease()
+    {
+        // Arrange
+        var winner = _harness.NewThread();
+        var loser = _harness.NewThread();
+        var waiter = _harness.NewThread();
+        var promise = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Write(winner, field, instance: null);
+        _harness.Detector.RecordTaskCompleted(winner, promise);
+        _harness.Detector.RecordTaskCompleted(loser, promise);
+        _harness.Detector.RecordTaskJoinFinished(waiter, promise);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(waiter, field, instance: null));
+    }
 }
