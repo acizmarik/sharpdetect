@@ -113,6 +113,14 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskJoinFinishArgs)>(GetNextId(), RecordedEventType.TaskJoinFinish, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.TaskPromiseCompleted += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskPromiseCompleteArgs)>(GetNextId(), RecordedEventType.TaskPromiseCompleteResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.AsyncStateMachineSuspended += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, AsyncStateMachineSuspendArgs)>(GetNextId(), RecordedEventType.AsyncStateMachineSuspend, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.AsyncStateMachineResumed += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, AsyncStateMachineResumeArgs)>(GetNextId(), RecordedEventType.AsyncStateMachineResume, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.AsyncStateMachineSegmentCompleted += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, AsyncStateMachineSegmentCompleteArgs)>(GetNextId(), RecordedEventType.AsyncStateMachineSegmentComplete, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.AsyncStateMachineCompleted += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, AsyncStateMachineCompleteArgs)>(GetNextId(), RecordedEventType.AsyncStateMachineComplete, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.SemaphoreAcquireAttempted += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, SemaphoreAcquireAttemptArgs)>(GetNextId(), RecordedEventType.SemaphoreAcquire, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.SemaphoreAcquireReturned += args

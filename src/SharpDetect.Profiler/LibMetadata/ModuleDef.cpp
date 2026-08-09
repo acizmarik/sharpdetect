@@ -150,14 +150,7 @@ HRESULT LibProfiler::ModuleDef::FindTypeWithNesting(
 		TToken nextToken;
 		const auto hr = findFunc(currentToken, currentTypeNameWstring.c_str(), &nextToken);
 		if (FAILED(hr))
-		{
-			LOG_F(ERROR, "Could not find type '%s' (part of '%s') in module=%" UINT_PTR_FORMAT ". Error: 0x%x.",
-				currentTypeName.c_str(),
-				name.c_str(),
-				_moduleId,
-				hr);
 			return hr;
-		}
 
 		currentToken = nextToken;
 		start = end + 1;
