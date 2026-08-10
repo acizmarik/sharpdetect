@@ -116,6 +116,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         TaskCompleted += OnTaskCompleted;
         TaskJoinFinished += OnTaskJoinFinished;
         TaskPromiseCompleted += OnTaskPromiseCompleted;
+        TaskContinuationRegistered += OnTaskContinuationRegistered;
         AsyncStateMachineSuspended += OnAsyncStateMachineSuspended;
         AsyncStateMachineResumed += OnAsyncStateMachineResumed;
         AsyncStateMachineSegmentCompleted += OnAsyncStateMachineSegmentCompleted;
@@ -280,6 +281,11 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     private void OnTaskPromiseCompleted(TaskPromiseCompleteArgs args)
     {
         _detector.RecordTaskPromiseCompleted(args.ProcessThreadId, args.TaskObjectId);
+    }
+
+    private void OnTaskContinuationRegistered(TaskContinuationRegisterArgs args)
+    {
+        _detector.RecordTaskContinuationRegistered(args.ProcessThreadId, args.ContinuationTaskObjectId);
     }
 
     private void OnAsyncStateMachineSuspended(AsyncStateMachineSuspendArgs args)

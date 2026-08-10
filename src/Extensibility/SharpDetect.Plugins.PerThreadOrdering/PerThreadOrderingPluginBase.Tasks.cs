@@ -15,6 +15,7 @@ public abstract partial class PerThreadOrderingPluginBase
     public event Action<TaskCompleteArgs>? TaskCompleted;
     public event Action<TaskJoinFinishArgs>? TaskJoinFinished;
     public event Action<TaskPromiseCompleteArgs>? TaskPromiseCompleted;
+    public event Action<TaskContinuationRegisterArgs>? TaskContinuationRegistered;
 
     private void RegisterTaskBindings()
     {
@@ -25,6 +26,7 @@ public abstract partial class PerThreadOrderingPluginBase
         Bind<MethodExitRecordedEvent>(RecordedEventType.TaskJoinFinish, OnTaskJoinFinish);
         Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.TaskJoinFinish, OnTaskJoinFinishWithArguments);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.TaskPromiseComplete, OnTaskPromiseComplete);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.TaskContinuationRegister, OnTaskContinuationRegister);
     }
 
     private void OnTaskSchedule(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
@@ -93,6 +95,13 @@ public abstract partial class PerThreadOrderingPluginBase
         ProcessTaskPromiseComplete(id, new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject));
     }
 
+    private void OnTaskContinuationRegister(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        using var arguments = ParseArguments(metadata, args);
+        ProcessTaskContinuationRegister(id, new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject));
+    }
+
     protected virtual void ProcessTaskSchedule(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
     {
         TaskScheduled?.Invoke(new TaskScheduleArgs(id, taskObjectId));
@@ -119,5 +128,13 @@ public abstract partial class PerThreadOrderingPluginBase
             return;
 
         TaskPromiseCompleted?.Invoke(new TaskPromiseCompleteArgs(id, taskObjectId));
+    }
+
+    protected virtual void ProcessTaskContinuationRegister(ProcessThreadId id, ProcessTrackedObjectId continuationTaskObjectId)
+    {
+        if (continuationTaskObjectId.ObjectId.Value == 0)
+            return;
+
+        TaskContinuationRegistered?.Invoke(new TaskContinuationRegisterArgs(id, continuationTaskObjectId));
     }
 }

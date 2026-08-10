@@ -15,6 +15,7 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static volatile int Test_Volatile_ValueType_Static_Back;
         public static int Test_TaskCompletionSource_ValueType_Static;
         public static int Test_AsyncContinuation_ValueType_Static;
+        public static int Test_TaskContinuation_ValueType_Static;
         public static int Test_Atomic_ValueType_Static;
         public static string? Test_Atomic_ReferenceType_Static;
         [ThreadStatic]

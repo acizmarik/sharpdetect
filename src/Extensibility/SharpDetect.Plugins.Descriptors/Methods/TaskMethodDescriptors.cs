@@ -17,9 +17,14 @@ public static class TaskMethodDescriptors
     private const string ContinuationResultTaskFromResultTaskTypeName = "System.Threading.Tasks.ContinuationResultTaskFromResultTask`2";
     private const string TaskAwaiterTypeName = "System.Runtime.CompilerServices.TaskAwaiter";
     private const string ConfigureAwaitOptionsTypeName = "System.Threading.Tasks.ConfigureAwaitOptions";
+    private const string TaskSchedulerTypeName = "System.Threading.Tasks.TaskScheduler";
+    private const string TaskContinuationOptionsTypeName = "System.Threading.Tasks.TaskContinuationOptions";
 
     private static readonly CapturedArgumentDescriptor ObjectRefArg =
         new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference));
+
+    private static readonly CapturedArgumentDescriptor ContinuationTaskArg =
+        new(1, new((byte)nint.Size, CapturedValue.CaptureAsReference));
 
     private static readonly MethodDescriptor TaskScheduleAndStart;
     private static readonly MethodDescriptor TaskInnerInvoke;
@@ -36,6 +41,7 @@ public static class TaskMethodDescriptors
     private static readonly MethodDescriptor TaskTrySetException;
     private static readonly MethodDescriptor TaskTrySetCanceled;
     private static readonly MethodDescriptor TaskTrySetCanceledWithException;
+    private static readonly MethodDescriptor TaskContinueWithCore;
 
     static TaskMethodDescriptors()
     {
@@ -152,6 +158,30 @@ public static class TaskMethodDescriptors
             "TrySetCanceled",
             ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName),
             ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT));
+
+        TaskContinueWithCore = new MethodDescriptor(
+            MethodName: "ContinueWithCore",
+            DeclaringTypeFullName: TaskTypeName,
+            VersionDescriptor: null,
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 4,
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
+                ArgumentTypeElements:
+                [
+                    ArgumentTypeDescriptor.CreateClass(TaskTypeName),
+                    ArgumentTypeDescriptor.CreateClass(TaskSchedulerTypeName),
+                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName),
+                    ArgumentTypeDescriptor.CreateValueType(TaskContinuationOptionsTypeName)
+                ]),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ContinuationTaskArg],
+                ReturnValue: null,
+                MethodEnterInterpretation: (ushort)RecordedEventType.TaskContinuationRegister,
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
     }
 
     private static MethodDescriptor CreatePromiseCompletionMethodDescriptor(
@@ -214,6 +244,7 @@ public static class TaskMethodDescriptors
         yield return TaskTrySetException;
         yield return TaskTrySetCanceled;
         yield return TaskTrySetCanceledWithException;
+        yield return TaskContinueWithCore;
 
         // Common public API
         yield return TaskWait;

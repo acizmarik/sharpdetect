@@ -329,6 +329,16 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_TaskContinuation_WriteBeforeContinueWith_ReadInContinuation(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_TaskContinuation_WriteBeforeContinueWith_ReadInContinuation", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_TaskContinuation_WriteAfterContinueWith_ReadInContinuation(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_TaskContinuation_WriteAfterContinueWith_ReadInContinuation", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_AsyncContinuation_WriteBeforeAwait_ReadAfterResume(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_AsyncContinuation_WriteBeforeAwait_ReadAfterResume", sdk, plugin);
 

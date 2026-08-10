@@ -113,6 +113,8 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskJoinFinishArgs)>(GetNextId(), RecordedEventType.TaskJoinFinish, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.TaskPromiseCompleted += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskPromiseCompleteArgs)>(GetNextId(), RecordedEventType.TaskPromiseComplete, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.TaskContinuationRegistered += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TaskContinuationRegisterArgs)>(GetNextId(), RecordedEventType.TaskContinuationRegister, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.AsyncStateMachineSuspended += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, AsyncStateMachineSuspendArgs)>(GetNextId(), RecordedEventType.AsyncStateMachineSuspend, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.AsyncStateMachineResumed += args
