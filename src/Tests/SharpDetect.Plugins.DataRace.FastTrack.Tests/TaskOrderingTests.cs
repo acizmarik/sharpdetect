@@ -166,4 +166,83 @@ public class TaskOrderingTests
         // Assert
         Assert.False(_harness.ReadIsRace(waiter, field, instance: null));
     }
+
+    [Fact]
+    public void RegisteringContinuation_OrdersRegistrarWritesBeforeTheContinuationBody()
+    {
+        // Arrange
+        var registrar = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var continuation = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Write(registrar, field, instance: null);
+        _harness.Detector.RecordTaskContinuationRegistered(registrar, continuation);
+        _harness.Detector.RecordTaskStarted(worker, continuation);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(worker, field, instance: null));
+    }
+
+    [Fact]
+    public void SchedulingContinuationFromTheCompleter_DoesNotDiscardTheRegistrarsRelease()
+    {
+        // Arrange
+        var registrar = _harness.NewThread();
+        var completer = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var continuation = _harness.NewObject();
+        var registrarField = _harness.NewStaticField("RegistrarShared");
+        var completerField = _harness.NewStaticField("CompleterShared");
+
+        // Act
+        _harness.Write(registrar, registrarField, instance: null);
+        _harness.Detector.RecordTaskContinuationRegistered(registrar, continuation);
+        _harness.Write(completer, completerField, instance: null);
+        _harness.Detector.RecordTaskScheduled(completer, continuation);
+        _harness.Detector.RecordTaskStarted(worker, continuation);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(worker, registrarField, instance: null));
+        Assert.False(_harness.ReadIsRace(worker, completerField, instance: null));
+    }
+
+    [Fact]
+    public void WritingAfterRegisteringContinuation_IsNotOrderedBeforeTheBody()
+    {
+        // Arrange
+        var registrar = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var continuation = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordTaskContinuationRegistered(registrar, continuation);
+        _harness.Write(registrar, field, instance: null);
+        _harness.Detector.RecordTaskStarted(worker, continuation);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(worker, field, instance: null));
+    }
+
+    [Fact]
+    public void RegisteredContinuationClock_IsNotReusedByLaterTaskWithTheSameId()
+    {
+        // Arrange
+        var registrar = _harness.NewThread();
+        var firstWorker = _harness.NewThread();
+        var secondWorker = _harness.NewThread();
+        var continuation = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordTaskContinuationRegistered(registrar, continuation);
+        _harness.Detector.RecordTaskStarted(firstWorker, continuation);
+        _harness.Write(registrar, field, instance: null);
+        _harness.Detector.RecordTaskStarted(secondWorker, continuation);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(secondWorker, field, instance: null));
+    }
 }

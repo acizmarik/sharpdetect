@@ -24,6 +24,7 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _eventClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
+    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskRegistrationClocks = [];
     private readonly HashSet<ProcessTrackedObjectId> _finalizationQueuedObjects = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _forkClocks = [];
     private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
@@ -91,6 +92,7 @@ internal sealed class FastTrackDetector
             _semaphoreClocks.Remove(processObjectId);
             _eventClocks.Remove(processObjectId);
             _taskClocks.Remove(processObjectId);
+            _taskRegistrationClocks.Remove(processObjectId);
             _finalizationQueuedObjects.Remove(processObjectId);
             _forkClocks.Remove(processObjectId);
             _escapeStates.Remove(processObjectId);
@@ -190,13 +192,27 @@ internal sealed class FastTrackDetector
         parentVc.Increment(parentThreadId);
     }
 
+    public void RecordTaskContinuationRegistered(
+        ProcessThreadId registeringThreadId,
+        ProcessTrackedObjectId continuationTaskId)
+    {
+        var registeringVc = GetOrCreateThreadClock(registeringThreadId);
+        _taskRegistrationClocks[continuationTaskId] = registeringVc.Clone();
+        registeringVc.Increment(registeringThreadId);
+    }
+
     public void RecordTaskStarted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
     {
-        if (_taskClocks.TryGetValue(taskId, out var taskVc))
-        {
-            var workerVc = GetOrCreateThreadClock(workerThreadId);
-            workerVc.Join(taskVc);
-        }
+        var hasScheduleClock = _taskClocks.TryGetValue(taskId, out var taskVc);
+        var hasRegistrationClock = _taskRegistrationClocks.Remove(taskId, out var registrationVc);
+        if (!hasScheduleClock && !hasRegistrationClock)
+            return;
+
+        var workerVc = GetOrCreateThreadClock(workerThreadId);
+        if (hasScheduleClock)
+            workerVc.Join(taskVc!);
+        if (hasRegistrationClock)
+            workerVc.Join(registrationVc!);
     }
 
     public void RecordTaskCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)

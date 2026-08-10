@@ -346,6 +346,16 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(async () => await Task.Run(() => { })).Wait();
         }
 
+        public static void Test_TaskMethods_ContinueWith1()
+        {
+            Task.Run(() => { }).ContinueWith(_ => { }).Wait();
+        }
+
+        public static void Test_TaskMethods_ContinueWith2()
+        {
+            Task.Run(() => 42).ContinueWith(_ => 0).Wait();
+        }
+
 #if NET9_0_OR_GREATER
         public static void Test_LockMethods_EnterExit1()
         {
@@ -1769,6 +1779,26 @@ namespace SharpDetect.E2ETests.Subject
         {
             await Task.Delay(50).ConfigureAwait(false);
             _ = DataRace.Test_AsyncContinuation_ValueType_Static;
+        }
+        
+        public static void Test_NoDataRace_TaskContinuation_WriteBeforeContinueWith_ReadInContinuation()
+        {
+            WarmUpThreadPool();
+
+            var antecedent = Task.Run(() => Thread.Sleep(200));
+            DataRace.Test_TaskContinuation_ValueType_Static = 42;
+            var continuation = antecedent.ContinueWith(t => { _ = DataRace.Test_TaskContinuation_ValueType_Static; });
+            continuation.Wait();
+        }
+
+        public static void Test_DataRace_TaskContinuation_WriteAfterContinueWith_ReadInContinuation()
+        {
+            WarmUpThreadPool();
+
+            var antecedent = Task.Run(() => Thread.Sleep(50));
+            var continuation = antecedent.ContinueWith(t => { _ = DataRace.Test_TaskContinuation_ValueType_Static; });
+            DataRace.Test_TaskContinuation_ValueType_Static = 7;
+            continuation.Wait();
         }
 
         public static void Test_NoDataRace_AsyncContinuation_Instance_InitializeThenResume()

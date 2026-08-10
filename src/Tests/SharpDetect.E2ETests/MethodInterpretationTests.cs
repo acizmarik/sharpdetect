@@ -196,6 +196,39 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public Task MethodInterpretation_TaskCompletionSource_TrySetCanceled(string sdk)
         => AssertPromiseCompletionIsInterpreted("Test_TaskCompletionSource_TrySetCanceled", sdk);
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_TaskContinueWith(string sdk)
+        => AssertContinuationRegistrationIsInterpreted("Test_TaskMethods_ContinueWith1", sdk);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_TaskContinueWithResult(string sdk)
+        => AssertContinuationRegistrationIsInterpreted("Test_TaskMethods_ContinueWith2", sdk);
+
+    private async Task AssertContinuationRegistrationIsInterpreted(string subject, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subject)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyEventType(RecordedEventType.TaskContinuationRegister))
+            .Then(EventuallyEventType(RecordedEventType.TaskStart))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
     private async Task AssertPromiseCompletionIsInterpreted(string subject, string sdk)
     {
         // Arrange

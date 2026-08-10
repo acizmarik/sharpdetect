@@ -121,6 +121,12 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_TaskMethods_Await2):
                     Test_TaskMethods_Await2();
                     break;
+                case nameof(Test_TaskMethods_ContinueWith1):
+                    Test_TaskMethods_ContinueWith1();
+                    break;
+                case nameof(Test_TaskMethods_ContinueWith2):
+                    Test_TaskMethods_ContinueWith2();
+                    break;
 #if NET9_0_OR_GREATER
                 case nameof(Test_LockMethods_EnterExit1):
                     Test_LockMethods_EnterExit1();
@@ -730,6 +736,12 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_AsyncMethodBuilder_SuspendResume1):
                     Test_AsyncMethodBuilder_SuspendResume1();
+                    break;
+                case nameof(Test_NoDataRace_TaskContinuation_WriteBeforeContinueWith_ReadInContinuation):
+                    Test_NoDataRace_TaskContinuation_WriteBeforeContinueWith_ReadInContinuation();
+                    break;
+                case nameof(Test_DataRace_TaskContinuation_WriteAfterContinueWith_ReadInContinuation):
+                    Test_DataRace_TaskContinuation_WriteAfterContinueWith_ReadInContinuation();
                     break;
                 case nameof(Test_NoDataRace_AsyncContinuation_WriteBeforeAwait_ReadAfterResume):
                     Test_NoDataRace_AsyncContinuation_WriteBeforeAwait_ReadAfterResume();
