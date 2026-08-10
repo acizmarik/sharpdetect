@@ -100,6 +100,15 @@ namespace LibProfiler
         return newTrackedObjectId;
     }
 
+    std::optional<TrackedObjectId> ObjectsTracker::TryGetTrackedObject(ObjectID objectId) {
+        std::lock_guard<std::mutex> guard(_allocationMutex);
+        auto const it = _allocations.find(objectId);
+        if (it == _allocations.cend())
+            return std::nullopt;
+
+        return it->second;
+    }
+
     UINT ObjectsTracker::GetTrackedObjectsCount() {
         std::lock_guard<std::mutex> guard(_allocationMutex);
         return _allocations.size();

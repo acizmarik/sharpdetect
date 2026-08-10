@@ -65,6 +65,7 @@ namespace Profiler
 
 		HRESULT STDMETHODCALLTYPE GarbageCollectionStarted(int cGenerations, BOOL generationCollected[], COR_PRF_GC_REASON reason) override;
 		HRESULT STDMETHODCALLTYPE GarbageCollectionFinished() override;
+		HRESULT STDMETHODCALLTYPE FinalizeableObjectQueued(DWORD finalizerFlags, ObjectID objectID) override;
 		HRESULT STDMETHODCALLTYPE JITCompilationStarted(FunctionID functionId, BOOL fIsSafeToBlock) override;
 		HRESULT STDMETHODCALLTYPE ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus) override;
 		HRESULT STDMETHODCALLTYPE MovedReferences2(ULONG cMovedObjectIDRanges, ObjectID oldObjectIDRangeStart[], ObjectID newObjectIDRangeStart[], SIZE_T cObjectIDRangeLength[]) override;
@@ -118,6 +119,8 @@ namespace Profiler
 
 		MetadataStore _metadataStore;
 		LibProfiler::ObjectsTracker _objectsTracker;
+		std::vector<UINT64> _finalizationQueuedTrackedObjects;
+		std::mutex _finalizationQueuedMutex;
 		MethodDescriptorRegistry _methodDescriptorRegistry;
 		std::vector<FieldAccessIntrinsicDescriptor> _fieldAccessIntrinsics;
 		RewriteRegistry _rewriteRegistry;

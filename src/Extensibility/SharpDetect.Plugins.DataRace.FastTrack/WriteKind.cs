@@ -6,5 +6,6 @@ namespace SharpDetect.Plugins.DataRace.FastTrack;
 internal enum WriteKind
 {
     Regular,
-    Instantiation
+    Instantiation,
+    Finalization
 }

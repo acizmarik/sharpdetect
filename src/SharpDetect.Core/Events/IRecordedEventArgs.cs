@@ -15,6 +15,7 @@ namespace SharpDetect.Core.Events;
 [Union((int)RecordedEventType.JITCompilation, typeof(JitCompilationRecordedEvent))]
 [Union((int)RecordedEventType.GarbageCollectionStart, typeof(GarbageCollectionStartRecordedEvent))]
 [Union((int)RecordedEventType.GarbageCollectedTrackedObjects, typeof(GarbageCollectedTrackedObjectsRecordedEvent))]
+[Union((int)RecordedEventType.FinalizationQueuedTrackedObjects, typeof(FinalizationQueuedTrackedObjectsRecordedEvent))]
 [Union((int)RecordedEventType.GarbageCollectionFinish, typeof(GarbageCollectionFinishRecordedEvent))]
 [Union((int)RecordedEventType.ThreadCreate, typeof(ThreadCreateRecordedEvent))]
 [Union((int)RecordedEventType.ThreadRename, typeof(ThreadRenameRecordedEvent))]
