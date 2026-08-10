@@ -76,6 +76,12 @@ GarbageCollectedTrackedObjectsMsg Helpers::CreateGarbageCollectedTrackedObjectsM
     return { std::move(metadataMsg), GarbageCollectedTrackedObjectsMsgArgsInstance(discriminator, GarbageCollectedTrackedObjectsMsgArgs(std::move(removedTrackedObjects)))};
 }
 
+FinalizationQueuedTrackedObjectsMsg Helpers::CreateFinalizationQueuedTrackedObjectsMsg(MetadataMsg&& metadataMsg, std::vector<UINT64>&& finalizationQueuedTrackedObjects)
+{
+    constexpr auto discriminator = static_cast<INT32>(RecordedEventType::FinalizationQueuedTrackedObjects);
+    return { std::move(metadataMsg), FinalizationQueuedTrackedObjectsMsgArgsInstance(discriminator, FinalizationQueuedTrackedObjectsMsgArgs(std::move(finalizationQueuedTrackedObjects)))};
+}
+
 GarbageCollectionFinishMsg Helpers::CreateGarbageCollectionFinishMsg(MetadataMsg&& metadataMsg, UINT64 oldTrackedObjectsCount, UINT64 newTrackedObjectsCount)
 {
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::GarbageCollectionFinish);

@@ -280,8 +280,32 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::GarbageCollectionStarted(
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::FinalizeableObjectQueued(const DWORD finalizerFlags, const ObjectID objectID)
+{
+    if (const auto trackedObjectId = _objectsTracker.TryGetTrackedObject(objectID))
+    {
+        auto guard = std::lock_guard(_finalizationQueuedMutex);
+        _finalizationQueuedTrackedObjects.push_back(*trackedObjectId);
+    }
+
+    return S_OK;
+}
+
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::GarbageCollectionFinished()
 {
+    std::vector<UINT64> finalizationQueuedTrackedObjects;
+    {
+        auto guard = std::lock_guard(_finalizationQueuedMutex);
+        finalizationQueuedTrackedObjects.swap(_finalizationQueuedTrackedObjects);
+    }
+
+    if (!finalizationQueuedTrackedObjects.empty())
+    {
+        _client.SendPriority(LibIPC::Helpers::CreateFinalizationQueuedTrackedObjectsMsg(
+            CreateMetadataMsg(),
+            std::move(finalizationQueuedTrackedObjects)));
+    }
+
     const auto oldSize = _objectsTracker.GetTrackedObjectsCount();
     const auto gcContext = _objectsTracker.ProcessGarbageCollectionFinished();
     auto& nextTrackedObjectIds = gcContext.GetNextTrackedObjects();

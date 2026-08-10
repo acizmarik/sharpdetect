@@ -66,6 +66,16 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Finalizer_ClearsHandleWrittenInConstructor(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_FinalizableObject_ConcurrentWrites(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_FinalizableObject_ConcurrentWrites", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Instance_SingleWriterWriteReadRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ReferenceType_Instance_SingleWriterWriteReadRace", sdk, plugin);
 

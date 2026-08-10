@@ -48,7 +48,7 @@ namespace LibIPC
 		GarbageCollectionStart = 20,
 		GarbageCollectionFinish = 21,
 		GarbageCollectedTrackedObjects = 22,
-		//Reserved = 23,
+		FinalizationQueuedTrackedObjects = 23,
 
 		/* Metadata modifications */
 		AssemblyReferenceInjection = 24,
@@ -149,6 +149,10 @@ namespace LibIPC
 	using GarbageCollectedTrackedObjectsMsgArgs = msgpack::type::tuple<std::vector<UINT64>>;
 	using GarbageCollectedTrackedObjectsMsgArgsInstance = msgpack::type::tuple<INT32, GarbageCollectedTrackedObjectsMsgArgs>;
 	using GarbageCollectedTrackedObjectsMsg = msgpack::type::tuple<MetadataMsg, GarbageCollectedTrackedObjectsMsgArgsInstance>;
+
+	using FinalizationQueuedTrackedObjectsMsgArgs = msgpack::type::tuple<std::vector<UINT64>>;
+	using FinalizationQueuedTrackedObjectsMsgArgsInstance = msgpack::type::tuple<INT32, FinalizationQueuedTrackedObjectsMsgArgs>;
+	using FinalizationQueuedTrackedObjectsMsg = msgpack::type::tuple<MetadataMsg, FinalizationQueuedTrackedObjectsMsgArgsInstance>;
 
 	using GarbageCollectionFinishMsgArgs = msgpack::type::tuple<UINT64, UINT64>;
 	using GarbageCollectionFinishMsgArgsInstance = msgpack::type::tuple<INT32, GarbageCollectionFinishMsgArgs>;
@@ -256,6 +260,7 @@ namespace LibIPC
 		
 		GarbageCollectionStartMsg CreateGarbageCollectionStartMsg(MetadataMsg&& metadataMsg);
 		GarbageCollectedTrackedObjectsMsg CreateGarbageCollectedTrackedObjectsMsg(MetadataMsg&& metadataMsg, std::vector<UINT64>&& removedTrackedObjects);
+		FinalizationQueuedTrackedObjectsMsg CreateFinalizationQueuedTrackedObjectsMsg(MetadataMsg&& metadataMsg, std::vector<UINT64>&& finalizationQueuedTrackedObjects);
 		GarbageCollectionFinishMsg CreateGarbageCollectionFinishMsg(MetadataMsg&& metadataMsg, UINT64 oldTrackedObjectsCount, UINT64 newTrackedObjectsCount);
 		
 		ThreadCreateMsg CreateThreadCreateMsg(MetadataMsg&& metadataMsg, UINT64 threadId);

@@ -67,6 +67,10 @@ public sealed record GarbageCollectedTrackedObjectsRecordedEvent(
     [property: Key(0)] TrackedObjectId[] RemovedTrackedObjectIds) : IRecordedEventArgs;
 
 [MessagePackObject]
+public sealed record FinalizationQueuedTrackedObjectsRecordedEvent(
+    [property: Key(0)] TrackedObjectId[] FinalizationQueuedTrackedObjectIds) : IRecordedEventArgs;
+
+[MessagePackObject]
 public sealed record GarbageCollectionFinishRecordedEvent(
     [property: Key(0)] ulong OldTrackedObjectsCount,
     [property: Key(1)] ulong NewTrackedObjectsCount) : IRecordedEventArgs;

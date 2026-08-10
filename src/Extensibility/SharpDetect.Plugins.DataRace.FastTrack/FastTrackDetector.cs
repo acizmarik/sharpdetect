@@ -24,6 +24,7 @@ internal sealed class FastTrackDetector
     private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _eventClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
+    private readonly HashSet<ProcessTrackedObjectId> _finalizationQueuedObjects = [];
     private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _forkClocks = [];
     private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
     private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
@@ -90,6 +91,7 @@ internal sealed class FastTrackDetector
             _semaphoreClocks.Remove(processObjectId);
             _eventClocks.Remove(processObjectId);
             _taskClocks.Remove(processObjectId);
+            _finalizationQueuedObjects.Remove(processObjectId);
             _forkClocks.Remove(processObjectId);
             _escapeStates.Remove(processObjectId);
             _instanceVolatileClocks.Remove(processObjectId);
@@ -171,6 +173,15 @@ internal sealed class FastTrackDetector
         joinerVc.Join(joinedVc);
         joinerVc.Increment(joinerThreadId);
     }
+
+    public void RecordFinalizationQueuedObjects(uint processId, ReadOnlySpan<TrackedObjectId> queuedObjectIds)
+    {
+        foreach (var objectId in queuedObjectIds)
+            _finalizationQueuedObjects.Add(new ProcessTrackedObjectId(processId, objectId));
+    }
+
+    private bool IsFinalizationQueued(ProcessTrackedObjectId? objectId)
+        => objectId is { } id && _finalizationQueuedObjects.Contains(id);
 
     public void RecordTaskScheduled(ProcessThreadId parentThreadId, ProcessTrackedObjectId taskId)
     {
@@ -489,7 +500,8 @@ internal sealed class FastTrackDetector
 
         _ = UpdateObjectPublicationState(threadId, objectId);
 
-        if (!shadow.WriteEpoch.IsNone &&
+        if (!IsFinalizationQueued(objectId) &&
+            !shadow.WriteEpoch.IsNone &&
             !shadow.WriteEpoch.HappensBefore(threadVc) &&
             shadow.LastWriteKind == WriteKind.Regular)
         {
@@ -537,8 +549,8 @@ internal sealed class FastTrackDetector
         var currentEpoch = threadVc.GetEpoch(threadId);
         var writeKind = ClassifyWrite(threadId, fieldDef!, objectId, stack);
 
-        var isInstantiationWrite = writeKind == WriteKind.Instantiation;
-        if (!isInstantiationWrite &&
+        var isExemptWrite = writeKind != WriteKind.Regular;
+        if (!isExemptWrite &&
             !shadow.WriteEpoch.IsNone &&
             shadow.WriteEpoch.ThreadId != threadId &&
             !shadow.WriteEpoch.HappensBefore(threadVc))
@@ -562,7 +574,7 @@ internal sealed class FastTrackDetector
             return null;
         }
 
-        var readWriteRace = isInstantiationWrite ? null : CheckReadWriteRace(threadId, shadow, threadVc);
+        var readWriteRace = isExemptWrite ? null : CheckReadWriteRace(threadId, shadow, threadVc);
         if (readWriteRace != null)
         {
             var hasLastAccess = _accessTracker.TryGetLastAccess(fieldId, objectId, out var lastAccess);
@@ -599,6 +611,9 @@ internal sealed class FastTrackDetector
         var processId = threadId.ProcessId;
         var declaringType = fieldDef.DeclaringType;
         var isInstantiatorExclusive = UpdateObjectPublicationState(threadId, objectId);
+
+        if (IsFinalizationQueued(objectId))
+            return WriteKind.Finalization;
 
         if (objectId == null)
         {

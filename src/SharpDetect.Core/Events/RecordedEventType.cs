@@ -32,7 +32,7 @@ public enum RecordedEventType : ushort
     GarbageCollectionStart = 20,
     GarbageCollectionFinish = 21,
     GarbageCollectedTrackedObjects = 22,
-    //Reserved = 23,
+    FinalizationQueuedTrackedObjects = 23,
 
     /* Metadata modifications */
     AssemblyReferenceInjection = 24,

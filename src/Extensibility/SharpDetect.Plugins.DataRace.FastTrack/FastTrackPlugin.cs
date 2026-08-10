@@ -390,6 +390,12 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         base.Visit(metadata, args);
     }
 
+    protected override void Visit(RecordedEventMetadata metadata, FinalizationQueuedTrackedObjectsRecordedEvent args)
+    {
+        _detector.RecordFinalizationQueuedObjects(metadata.Pid, args.FinalizationQueuedTrackedObjectIds);
+        base.Visit(metadata, args);
+    }
+
     private void RecordDataRace(DataRaceInfo raceInfo)
     {
         _detectedRaces.Add(raceInfo);

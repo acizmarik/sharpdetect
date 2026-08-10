@@ -100,6 +100,21 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         }
     }
 
+    public class NativeHandleOwner
+    {
+        public nint Handle;
+
+        public NativeHandleOwner(nint handle)
+        {
+            Handle = handle;
+        }
+
+        ~NativeHandleOwner()
+        {
+            Handle = 0;
+        }
+    }
+
     public class AsyncExecution
     {
         private const int SuspendMilliseconds = 50;

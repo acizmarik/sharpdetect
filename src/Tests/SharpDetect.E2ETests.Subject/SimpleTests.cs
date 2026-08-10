@@ -1293,6 +1293,33 @@ namespace SharpDetect.E2ETests.Subject
                 () => instance.Test_DataRace_ValueType_InstanceField = 456);
         }
 
+        public static void Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor()
+        {
+            AllocateAndDropHandleOwners();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void AllocateAndDropHandleOwners()
+        {
+            Task.Run(() =>
+            {
+                for (var i = 1; i <= 16; i++)
+                    _ = new NativeHandleOwner(i);
+            }).Wait();
+        }
+
+        public static void Test_DataRace_FinalizableObject_ConcurrentWrites()
+        {
+            var instance = new NativeHandleOwner(1);
+            RunConcurrently(
+                () => instance.Handle = 123,
+                () => instance.Handle = 456);
+            GC.KeepAlive(instance);
+        }
+
         public static void Test_DataRace_ReferenceType_Instance_SingleWriterWriteReadRace()
         {
             var instance = new DataRace();

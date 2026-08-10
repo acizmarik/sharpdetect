@@ -22,6 +22,7 @@ public abstract class RecordedEventActionVisitorBase
             case ThreadDestroyRecordedEvent threadDestroyArgs: Visit(metadata, threadDestroyArgs); break;
             case GarbageCollectionStartRecordedEvent gcStartedArgs: Visit(metadata, gcStartedArgs); break;
             case GarbageCollectedTrackedObjectsRecordedEvent gcTrackedObjectsArgs: Visit(metadata, gcTrackedObjectsArgs); break;
+            case FinalizationQueuedTrackedObjectsRecordedEvent finalizationQueuedArgs: Visit(metadata, finalizationQueuedArgs); break;
             case GarbageCollectionFinishRecordedEvent gcFinishedArgs: Visit(metadata, gcFinishedArgs); break;
             case MethodEnterRecordedEvent methodEnterArgs: Visit(metadata, methodEnterArgs); break;
             case MethodExitRecordedEvent methodExitArgs: Visit(metadata, methodExitArgs); break;
@@ -81,6 +82,9 @@ public abstract class RecordedEventActionVisitorBase
         => DefaultVisit(metadata, args);
 
     protected virtual void Visit(RecordedEventMetadata metadata, GarbageCollectedTrackedObjectsRecordedEvent args)
+        => DefaultVisit(metadata, args);
+
+    protected virtual void Visit(RecordedEventMetadata metadata, FinalizationQueuedTrackedObjectsRecordedEvent args)
         => DefaultVisit(metadata, args);
 
     protected virtual void Visit(RecordedEventMetadata metadata, GarbageCollectionFinishRecordedEvent args)

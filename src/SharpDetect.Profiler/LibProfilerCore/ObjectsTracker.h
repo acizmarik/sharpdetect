@@ -28,6 +28,7 @@ namespace LibProfiler
 		void ProcessSurvivingReferences(std::span<ObjectID> starts, std::span<SIZE_T> lengths);
 		void ProcessMovingReferences(std::span<ObjectID> oldStarts, std::span<ObjectID> newStarts, std::span<SIZE_T> lengths);
 		[[nodiscard]] TrackedObjectId GetTrackedObject(ObjectID objectId);
+		[[nodiscard]] std::optional<TrackedObjectId> TryGetTrackedObject(ObjectID objectId);
 		[[nodiscard]] UINT GetTrackedObjectsCount();
 
 	private:

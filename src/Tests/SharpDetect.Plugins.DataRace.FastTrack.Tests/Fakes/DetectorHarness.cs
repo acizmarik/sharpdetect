@@ -73,6 +73,12 @@ internal sealed class DetectorHarness
     public void VolatileRead(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Detector.RecordVolatileRead(thread, TestMetadata.ModuleId, field, instance);
 
+    public void QueueForFinalization(params ProcessTrackedObjectId[] objects)
+    {
+        var ids = objects.Select(o => o.ObjectId).ToArray();
+        Detector.RecordFinalizationQueuedObjects(TestMetadata.ProcessId, ids);
+    }
+
     public void CollectObjects(params ProcessTrackedObjectId[] objects)
     {
         var ids = objects.Select(o => o.ObjectId).ToArray();
