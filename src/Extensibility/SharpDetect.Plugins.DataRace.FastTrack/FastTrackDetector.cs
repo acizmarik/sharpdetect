@@ -1,7 +1,6 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using dnlib.DotNet;
 using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Metadata;
 using SharpDetect.Core.Plugins;
@@ -16,33 +15,19 @@ internal sealed class FastTrackDetector
     private readonly ShadowMemory _shadowMemory = new();
     private readonly AccessTracker _accessTracker;
     private readonly FieldResolver _fieldResolver;
-    private readonly MethodResolver _methodResolver;
     private readonly TimeProvider _timeProvider;
-    private readonly ThreadIndexTable _clockThreads = new();
-    private readonly Dictionary<ProcessThreadId, VectorClock> _threadClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _lockClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, Queue<VectorClock>> _semaphoreClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _eventClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _taskRegistrationClocks = [];
-    private readonly HashSet<ProcessTrackedObjectId> _finalizationQueuedObjects = [];
-    private readonly Dictionary<ProcessTrackedObjectId, VectorClock> _forkClocks = [];
-    private readonly Dictionary<FieldId, VectorClock> _staticVolatileClocks = [];
-    private readonly Dictionary<ProcessTrackedObjectId, Dictionary<FieldId, VectorClock>> _instanceVolatileClocks = [];
-    private readonly Dictionary<PublicationSlot, VectorClock> _publicationClocks = [];
-    private readonly Dictionary<PublicationSlot, PendingObservation> _publicationObservers = [];
-    private readonly LinkedList<PublicationSlot> _pendingObservationOrder = new();
-    private readonly Dictionary<ProcessTrackedObjectId, HashSet<PublicationSlot>> _publicationSlotsByParticipant = [];
-    private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
-    internal const int MaxPendingPublicationObservations = 1024;
-    private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, bool Escaped);
-    private readonly record struct PublicationSlot(ProcessTrackedObjectId Container, ProcessTrackedObjectId Value);
 
-    private sealed class PendingObservation
-    {
-        public readonly HashSet<ProcessThreadId> Observers = [];
-        public LinkedListNode<PublicationSlot>? OrderNode;
-    }
+    private readonly ThreadClockTable _threadClocks = new();
+    private readonly ObjectClockSlots _forkClocks;
+    private readonly ObjectClockSlots _taskClocks;
+    private readonly ObjectClockSlots _taskRegistrationClocks;
+    private readonly ObjectClockSlots _lockClocks;
+    private readonly ObjectClockSlots _eventClocks;
+    private readonly SemaphorePermitPools _semaphorePermits;
+    private readonly VolatileClockTable _volatileClocks;
+    private readonly PublicationTracker _publications;
+    private readonly WriteClassifier _writeClassifier;
+    private readonly ITrackedObjectState[] _objectKeyedState;
 
     public FastTrackDetector(
         FastTrackPluginConfiguration configuration,
@@ -55,29 +40,44 @@ internal sealed class FastTrackDetector
         _timeProvider = timeProvider;
         _accessTracker = new AccessTracker(threadNameResolver);
         _fieldResolver = new FieldResolver(metadataContext, logger);
-        _methodResolver = new MethodResolver(metadataContext, logger);
+
+        _forkClocks = new ObjectClockSlots(_threadClocks);
+        _taskClocks = new ObjectClockSlots(_threadClocks);
+        _taskRegistrationClocks = new ObjectClockSlots(_threadClocks);
+        _lockClocks = new ObjectClockSlots(_threadClocks);
+        _eventClocks = new ObjectClockSlots(_threadClocks);
+        _semaphorePermits = new SemaphorePermitPools(_threadClocks);
+        _volatileClocks = new VolatileClockTable(_threadClocks);
+        _publications = new PublicationTracker(_threadClocks);
+        _writeClassifier = new WriteClassifier(metadataContext, logger);
+
+        _objectKeyedState =
+        [
+            _forkClocks,
+            _taskClocks,
+            _taskRegistrationClocks,
+            _lockClocks,
+            _eventClocks,
+            _semaphorePermits,
+            _volatileClocks,
+            _publications,
+            _writeClassifier
+        ];
     }
 
     public int GetShadowVariableCount() => _shadowMemory.Count;
     public int GetTrackedThreadCount() => _threadClocks.Count;
-    public int GetTrackedPublicationCount() => _publicationClocks.Count;
-    internal int GetIndexedPublicationParticipantCount() => _publicationSlotsByParticipant.Count;
-    internal int GetPublicationObserverEntryCount() => _publicationObservers.Count;
+    public int GetTrackedPublicationCount() => _publications.PublicationCount;
+    internal int GetIndexedPublicationParticipantCount() => _publications.IndexedParticipantCount;
+    internal int GetPublicationObserverEntryCount() => _publications.PendingObservationCount;
 
     public void RecordThreadCreated(ProcessThreadId threadId)
-    {
-        if (!_threadClocks.ContainsKey(threadId))
-        {
-            var vc = new VectorClock(_clockThreads);
-            vc.SetClock(threadId, 1);
-            _threadClocks[threadId] = vc;
-        }
-    }
+        => _threadClocks.EnsureExists(threadId);
 
     public void RecordThreadDestroyed(ProcessThreadId threadId)
     {
         // Keep the clock around for join operations; it will be cleaned up naturally
-        // Its index in _clockThreads must not be given to a different thread either
+        // Its index in the thread index table must not be given to a different thread either
     }
 
     public void RecordGarbageCollectedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
@@ -88,258 +88,92 @@ internal sealed class FastTrackDetector
         foreach (var objectId in removedObjectIds)
         {
             var processObjectId = new ProcessTrackedObjectId(processId, objectId);
-            _lockClocks.Remove(processObjectId);
-            _semaphoreClocks.Remove(processObjectId);
-            _eventClocks.Remove(processObjectId);
-            _taskClocks.Remove(processObjectId);
-            _taskRegistrationClocks.Remove(processObjectId);
-            _finalizationQueuedObjects.Remove(processObjectId);
-            _forkClocks.Remove(processObjectId);
-            _escapeStates.Remove(processObjectId);
-            _instanceVolatileClocks.Remove(processObjectId);
+            foreach (var state in _objectKeyedState)
+                state.RemoveTrackedObject(processObjectId);
         }
-
-        RemoveCollectedPublicationSlots(processId, removedObjectIds);
-    }
-
-    private void RemoveCollectedPublicationSlots(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
-    {
-        if (_publicationClocks.Count == 0 && _publicationObservers.Count == 0)
-            return;
-
-        foreach (var objectId in removedObjectIds)
-        {
-            var participant = new ProcessTrackedObjectId(processId, objectId);
-            if (!_publicationSlotsByParticipant.Remove(participant, out var slots))
-                continue;
-
-            foreach (var slot in slots)
-            {
-                _publicationClocks.Remove(slot);
-                RemovePendingObservation(slot);
-                UnindexPublicationSlot(slot.Container == participant ? slot.Value : slot.Container, participant, slot);
-            }
-        }
-    }
-
-    private void IndexPublicationSlot(ProcessTrackedObjectId participant, PublicationSlot slot)
-    {
-        if (!_publicationSlotsByParticipant.TryGetValue(participant, out var slots))
-        {
-            slots = [];
-            _publicationSlotsByParticipant[participant] = slots;
-        }
-
-        slots.Add(slot);
-    }
-
-    private void UnindexPublicationSlot(
-        ProcessTrackedObjectId participant,
-        ProcessTrackedObjectId collectedParticipant,
-        PublicationSlot slot)
-    {
-        if (participant == collectedParticipant)
-            return;
-
-        UnindexPublicationSlot(participant, slot);
-    }
-
-    private void UnindexPublicationSlot(ProcessTrackedObjectId participant, PublicationSlot slot)
-    {
-        if (!_publicationSlotsByParticipant.TryGetValue(participant, out var slots))
-            return;
-
-        slots.Remove(slot);
-        if (slots.Count == 0)
-            _publicationSlotsByParticipant.Remove(participant);
-    }
-    
-    public void RecordThreadForkRequested(ProcessThreadId parentThreadId, ProcessTrackedObjectId threadObjectId)
-    {
-        var parentVc = GetOrCreateThreadClock(parentThreadId);
-        _forkClocks[threadObjectId] = parentVc.Clone();
-        parentVc.Increment(parentThreadId);
-    }
-
-    public void RecordThreadFork(ProcessTrackedObjectId threadObjectId, ProcessThreadId childThreadId)
-    {
-        var childVc = GetOrCreateThreadClock(childThreadId);
-        if (_forkClocks.Remove(threadObjectId, out var forkVc))
-            childVc.Join(forkVc);
-    }
-    
-    public void RecordThreadJoin(ProcessThreadId joinerThreadId, ProcessThreadId joinedThreadId)
-    {
-        var joinerVc = GetOrCreateThreadClock(joinerThreadId);
-        var joinedVc = GetOrCreateThreadClock(joinedThreadId);
-        joinerVc.Join(joinedVc);
-        joinerVc.Increment(joinerThreadId);
     }
 
     public void RecordFinalizationQueuedObjects(uint processId, ReadOnlySpan<TrackedObjectId> queuedObjectIds)
+        => _writeClassifier.RecordFinalizationQueued(processId, queuedObjectIds);
+
+    public void RecordThreadForkRequested(ProcessThreadId parentThreadId, ProcessTrackedObjectId threadObjectId)
+        => _forkClocks.ReleaseSnapshot(threadObjectId, parentThreadId);
+
+    public void RecordThreadFork(ProcessTrackedObjectId threadObjectId, ProcessThreadId childThreadId)
     {
-        foreach (var objectId in queuedObjectIds)
-            _finalizationQueuedObjects.Add(new ProcessTrackedObjectId(processId, objectId));
+        _threadClocks.EnsureExists(childThreadId);
+        _forkClocks.TryAcquireOnce(threadObjectId, childThreadId);
     }
 
-    private bool IsFinalizationQueued(ProcessTrackedObjectId? objectId)
-        => objectId is { } id && _finalizationQueuedObjects.Contains(id);
+    public void RecordThreadJoin(ProcessThreadId joinerThreadId, ProcessThreadId joinedThreadId)
+        => _threadClocks.AcquireFromThread(joinerThreadId, joinedThreadId);
 
     public void RecordTaskScheduled(ProcessThreadId parentThreadId, ProcessTrackedObjectId taskId)
-    {
-        var parentVc = GetOrCreateThreadClock(parentThreadId);
-        _taskClocks[taskId] = parentVc.Clone();
-        parentVc.Increment(parentThreadId);
-    }
+        => _taskClocks.ReleaseSnapshot(taskId, parentThreadId);
 
     public void RecordTaskContinuationRegistered(
         ProcessThreadId registeringThreadId,
         ProcessTrackedObjectId continuationTaskId)
-    {
-        var registeringVc = GetOrCreateThreadClock(registeringThreadId);
-        _taskRegistrationClocks[continuationTaskId] = registeringVc.Clone();
-        registeringVc.Increment(registeringThreadId);
-    }
+        => _taskRegistrationClocks.ReleaseSnapshot(continuationTaskId, registeringThreadId);
 
     public void RecordTaskStarted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
     {
-        var hasScheduleClock = _taskClocks.TryGetValue(taskId, out var taskVc);
-        var hasRegistrationClock = _taskRegistrationClocks.Remove(taskId, out var registrationVc);
-        if (!hasScheduleClock && !hasRegistrationClock)
-            return;
-
-        var workerVc = GetOrCreateThreadClock(workerThreadId);
-        if (hasScheduleClock)
-            workerVc.Join(taskVc!);
-        if (hasRegistrationClock)
-            workerVc.Join(registrationVc!);
+        // The scheduling clock is kept for later joins, but a registration is consumed by the run it enables
+        _taskClocks.TryAcquire(taskId, workerThreadId);
+        _taskRegistrationClocks.TryAcquireOnce(taskId, workerThreadId);
     }
 
     public void RecordTaskCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
-    {
-        var workerVc = GetOrCreateThreadClock(workerThreadId);
-        _taskClocks[taskId] = workerVc.Clone();
-        workerVc.Increment(workerThreadId);
-    }
+        => _taskClocks.ReleaseSnapshot(taskId, workerThreadId);
 
     public void RecordTaskPromiseCompleted(ProcessThreadId completerThreadId, ProcessTrackedObjectId taskId)
-    {
-        var completerVc = GetOrCreateThreadClock(completerThreadId);
-        if (_taskClocks.TryGetValue(taskId, out var taskVc))
-            taskVc.Join(completerVc);
-        else
-            _taskClocks[taskId] = completerVc.Clone();
-
-        completerVc.Increment(completerThreadId);
-    }
+        => _taskClocks.Release(taskId, completerThreadId);
 
     public void RecordTaskJoinFinished(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
     {
-        var waiterVc = GetOrCreateThreadClock(waiterThreadId);
-        if (_taskClocks.TryGetValue(taskId, out var taskVc))
-            waiterVc.Join(taskVc);
-
-        waiterVc.Increment(waiterThreadId);
+        _taskClocks.TryAcquire(taskId, waiterThreadId);
+        _threadClocks.Advance(waiterThreadId);
     }
-    
+
     public void RecordLockAcquired(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
-    {
-        var threadVc = GetOrCreateThreadClock(threadId);
-        var lockVc = GetOrCreateLockClock(lockId);
-        threadVc.Join(lockVc);
-    }
-    
-    public void RecordLockReleased(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
-    {
-        var threadVc = GetOrCreateThreadClock(threadId);
-        if (_lockClocks.TryGetValue(lockId, out var lockVc))
-        {
-            lockVc.Join(threadVc);
-        }
-        else
-        {
-            _lockClocks[lockId] = threadVc.Clone();
-        }
+        => _lockClocks.Acquire(lockId, threadId);
 
-        threadVc.Increment(threadId);
-    }
+    public void RecordLockReleased(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
+        => _lockClocks.Release(lockId, threadId);
+
+    public void RecordObjectWaitCalled(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
+        => RecordLockReleased(threadId, lockId);
+
+    public void RecordObjectWaitReturned(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
+        => RecordLockAcquired(threadId, lockId);
 
     public void RecordSemaphoreCreated(ProcessTrackedObjectId semaphoreId, int initialCount)
-    {
-        var pool = new Queue<VectorClock>(capacity: initialCount);
-        for (var i = 0; i < initialCount; i++)
-            pool.Enqueue(new VectorClock(_clockThreads));
-        _semaphoreClocks[semaphoreId] = pool;
-    }
+        => _semaphorePermits.Create(semaphoreId, initialCount);
 
     public void RecordSemaphoreAcquired(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId)
-    {
-        var pool = GetOrCreateSemaphorePool(semaphoreId);
-        if (pool.Count == 0)
-            return;
-
-        var threadVc = GetOrCreateThreadClock(threadId);
-        var slotVc = pool.Dequeue();
-        threadVc.Join(slotVc);
-    }
+        => _semaphorePermits.Acquire(semaphoreId, threadId);
 
     public void RecordSemaphoreReleased(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId, int releaseCount)
-    {
-        var threadVc = GetOrCreateThreadClock(threadId);
-        var pool = GetOrCreateSemaphorePool(semaphoreId);
-        for (var i = 0; i < releaseCount; i++)
-            pool.Enqueue(threadVc.Clone());
-        threadVc.Increment(threadId);
-    }
+        => _semaphorePermits.Release(semaphoreId, threadId, releaseCount);
 
     public void RecordEventCreated(ProcessTrackedObjectId eventId, bool initialState)
     {
         if (initialState)
-            _eventClocks[eventId] = new VectorClock(_clockThreads);
+            _eventClocks.SetEmpty(eventId);
         else
             _eventClocks.Remove(eventId);
     }
 
     public void RecordEventSignaled(ProcessThreadId threadId, ProcessTrackedObjectId eventId)
-    {
-        var threadVc = GetOrCreateThreadClock(threadId);
-        if (_eventClocks.TryGetValue(eventId, out var eventVc))
-        {
-            eventVc.Join(threadVc);
-        }
-        else
-        {
-            _eventClocks[eventId] = threadVc.Clone();
-        }
-
-        threadVc.Increment(threadId);
-    }
+        => _eventClocks.Release(eventId, threadId);
 
     public void RecordEventReset(ProcessTrackedObjectId eventId)
-    {
-        _eventClocks.Remove(eventId);
-    }
+        => _eventClocks.Remove(eventId);
 
     public void RecordEventWaitReturned(ProcessThreadId threadId, ProcessTrackedObjectId eventId, bool isAutoReset)
     {
-        if (!_eventClocks.TryGetValue(eventId, out var eventVc))
-            return;
-
-        var threadVc = GetOrCreateThreadClock(threadId);
-        threadVc.Join(eventVc);
-
-        if (isAutoReset)
+        if (_eventClocks.TryAcquire(eventId, threadId) && isAutoReset)
             _eventClocks.Remove(eventId);
-    }
-
-    public void RecordObjectWaitCalled(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
-    {
-        RecordLockReleased(threadId, lockId);
-    }
-    
-    public void RecordObjectWaitReturned(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
-    {
-        RecordLockAcquired(threadId, lockId);
     }
 
     public void RecordVolatileRead(
@@ -348,13 +182,8 @@ internal sealed class FastTrackDetector
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
-        if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out _))
-            return;
-
-        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
-        var threadVc = GetOrCreateThreadClock(threadId);
-        var volatileVc = GetOrCreateVolatileClock(fieldId, objectId);
-        threadVc.Join(volatileVc);
+        if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
+            _volatileClocks.Acquire(fieldId, objectId, threadId);
     }
 
     public void RecordVolatileWrite(
@@ -363,15 +192,8 @@ internal sealed class FastTrackDetector
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
-        if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out _))
-            return;
-
-        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
-        var threadVc = GetOrCreateThreadClock(threadId);
-        var volatileVc = GetOrCreateVolatileClock(fieldId, objectId);
-        volatileVc.Join(threadVc);
-        GetVolatileClockMap(objectId)[fieldId] = threadVc.Clone();
-        threadVc.Increment(threadId);
+        if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
+            _volatileClocks.Release(fieldId, objectId, threadId);
     }
 
     public void RecordAtomicReadModifyWrite(
@@ -389,112 +211,13 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId containerId,
         ProcessTrackedObjectId valueId,
         bool onlyIfAbsent = false)
-    {
-        var slot = new PublicationSlot(containerId, valueId);
-        var threadVc = GetOrCreateThreadClock(threadId);
-        if (_publicationClocks.TryGetValue(slot, out var publicationVc))
-        {
-            if (onlyIfAbsent)
-                return;
-
-            publicationVc.CopyFrom(threadVc);
-        }
-        else
-        {
-            publicationVc = threadVc.Clone();
-            _publicationClocks[slot] = publicationVc;
-            IndexPublicationSlot(containerId, slot);
-            if (containerId != valueId)
-                IndexPublicationSlot(valueId, slot);
-        }
-
-        ReleasePendingObservers(slot, publicationVc, threadId);
-        threadVc.Increment(threadId);
-    }
+        => _publications.RecordPublished(threadId, containerId, valueId, onlyIfAbsent);
 
     public void RecordValueObserved(
         ProcessThreadId threadId,
         ProcessTrackedObjectId containerId,
         ProcessTrackedObjectId valueId)
-    {
-        var slot = new PublicationSlot(containerId, valueId);
-        if (!_publicationClocks.TryGetValue(slot, out var publicationVc))
-        {
-            RecordPendingObserver(slot, containerId, valueId, threadId);
-            return;
-        }
-
-        var threadVc = GetOrCreateThreadClock(threadId);
-        threadVc.Join(publicationVc);
-    }
-
-    private void RecordPendingObserver(
-        PublicationSlot slot,
-        ProcessTrackedObjectId containerId,
-        ProcessTrackedObjectId valueId,
-        ProcessThreadId threadId)
-    {
-        if (!_publicationObservers.TryGetValue(slot, out var pending))
-        {
-            pending = new PendingObservation { OrderNode = _pendingObservationOrder.AddLast(slot) };
-            _publicationObservers[slot] = pending;
-
-            IndexPublicationSlot(containerId, slot);
-            if (containerId != valueId)
-                IndexPublicationSlot(valueId, slot);
-
-            EvictOldestPendingObservations();
-        }
-
-        pending.Observers.Add(threadId);
-    }
-
-    private void ReleasePendingObservers(
-        PublicationSlot slot,
-        VectorClock publicationVc,
-        ProcessThreadId publisherThreadId)
-    {
-        if (RemovePendingObservation(slot) is not { } pending)
-            return;
-
-        foreach (var observerThreadId in pending.Observers)
-        {
-            if (observerThreadId != publisherThreadId)
-                GetOrCreateThreadClock(observerThreadId).Join(publicationVc);
-        }
-    }
-
-    private PendingObservation? RemovePendingObservation(PublicationSlot slot)
-    {
-        if (!_publicationObservers.Remove(slot, out var pending))
-            return null;
-
-        if (pending.OrderNode is { } node)
-        {
-            _pendingObservationOrder.Remove(node);
-            pending.OrderNode = null;
-        }
-
-        return pending;
-    }
-
-    private void EvictOldestPendingObservations()
-    {
-        while (_publicationObservers.Count > MaxPendingPublicationObservations &&
-               _pendingObservationOrder.First is { } oldest)
-        {
-            var slot = oldest.Value;
-            if (RemovePendingObservation(slot) is null)
-            {
-                _pendingObservationOrder.Remove(oldest);
-                continue;
-            }
-
-            UnindexPublicationSlot(slot.Container, slot);
-            if (slot.Container != slot.Value)
-                UnindexPublicationSlot(slot.Value, slot);
-        }
-    }
+        => _publications.RecordObserved(threadId, containerId, valueId);
 
     public DataRaceInfo? RecordRead(
         ProcessThreadId threadId,
@@ -503,48 +226,23 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId? objectId,
         CapturedStackTrace stack)
     {
-        var moduleId = stack.Top.ModuleId;
-        if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out var fieldFlags) ||
-            FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration))
-        {
+        if (!TryResolveAnalyzedField(threadId, stack, fieldToken, out var fieldId))
             return null;
-        }
 
-        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
-        var threadVc = GetOrCreateThreadClock(threadId);
+        var threadVc = _threadClocks.GetOrCreate(threadId);
+        _writeClassifier.NoteAccess(threadId, objectId);
 
-        _ = UpdateObjectPublicationState(threadId, objectId);
+        // Write-read race: the last write does not happen-before this read
+        var conflict = HasUnorderedWrite(shadow, threadVc, objectId)
+            ? GetConflictingAccess(fieldId, objectId, threadId, writesOnly: true)
+            : null;
 
-        if (!IsFinalizationQueued(objectId) &&
-            !shadow.WriteEpoch.IsNone &&
-            !shadow.WriteEpoch.HappensBefore(threadVc) &&
-            shadow.LastWriteKind == WriteKind.Regular)
-        {
-            // Write-read race detected: last write does not happen-before this read
-            var hasLastWrite = _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var lastWrite);
-            var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Read, stack);
-            UpdateReadState(threadId, shadow, threadVc);
-
-            if (hasLastWrite && lastWrite.ProcessThreadId != threadId)
-            {
-                return new DataRaceInfo(
-                    threadId.ProcessId,
-                    fieldId,
-                    objectId,
-                    _accessTracker.Materialize(currentAccess),
-                    _accessTracker.Materialize(lastWrite),
-                    _timeProvider.GetUtcNow().DateTime);
-            }
-
-            return null;
-        }
-
-        _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Read, stack);
+        var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Read, stack);
         UpdateReadState(threadId, shadow, threadVc);
-        return null;
+        return CreateRaceInfo(threadId, fieldId, objectId, currentAccess, conflict);
     }
-    
+
     public DataRaceInfo? RecordWrite(
         ProcessThreadId threadId,
         uint methodOffset,
@@ -552,153 +250,91 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId? objectId,
         CapturedStackTrace stack)
     {
-        var moduleId = stack.Top.ModuleId;
-        if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out var fieldFlags) ||
-            FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration))
-        {
+        if (!TryResolveAnalyzedField(threadId, stack, fieldToken, out var fieldId))
             return null;
-        }
 
-        var fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
-        var threadVc = GetOrCreateThreadClock(threadId);
+        var threadVc = _threadClocks.GetOrCreate(threadId);
         var currentEpoch = threadVc.GetEpoch(threadId);
-        var writeKind = ClassifyWrite(threadId, fieldDef!, objectId, stack);
+        var writeKind = _writeClassifier.Classify(threadId, fieldId.FieldDef, objectId, stack);
 
-        var isExemptWrite = writeKind != WriteKind.Regular;
-        if (!isExemptWrite &&
-            !shadow.WriteEpoch.IsNone &&
+        var conflict = writeKind == WriteKind.Regular
+            ? FindWriteConflict(fieldId, objectId, threadId, shadow, threadVc)
+            : null;
+
+        var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Write, stack);
+        shadow.SetWrite(currentEpoch, writeKind);
+        shadow.SetRead(Epoch.None);
+        return CreateRaceInfo(threadId, fieldId, objectId, currentAccess, conflict);
+    }
+
+    private bool HasUnorderedWrite(ShadowVariable shadow, VectorClock threadVc, ProcessTrackedObjectId? objectId)
+        => !_writeClassifier.IsFinalizationQueued(objectId) &&
+           !shadow.WriteEpoch.IsNone &&
+           !shadow.WriteEpoch.HappensBefore(threadVc) &&
+           shadow.LastWriteKind == WriteKind.Regular;
+
+    private AccessRecord? FindWriteConflict(
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        ProcessThreadId threadId,
+        ShadowVariable shadow,
+        VectorClock threadVc)
+    {
+        // Write-write race: the last write by another thread does not happen-before this write
+        if (!shadow.WriteEpoch.IsNone &&
             shadow.WriteEpoch.ThreadId != threadId &&
             !shadow.WriteEpoch.HappensBefore(threadVc))
         {
-            var hasLastWrite = _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var lastWrite);
-            var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Write, stack);
-            shadow.SetWrite(currentEpoch, writeKind);
-            shadow.SetRead(Epoch.None);
-
-            if (hasLastWrite && lastWrite.ProcessThreadId != threadId)
-            {
-                return new DataRaceInfo(
-                    threadId.ProcessId,
-                    fieldId,
-                    objectId,
-                    _accessTracker.Materialize(currentAccess),
-                    _accessTracker.Materialize(lastWrite),
-                    _timeProvider.GetUtcNow().DateTime);
-            }
-
-            return null;
+            return GetConflictingAccess(fieldId, objectId, threadId, writesOnly: true);
         }
 
-        var readWriteRace = isExemptWrite ? null : CheckReadWriteRace(threadId, shadow, threadVc);
-        if (readWriteRace != null)
-        {
-            var hasLastAccess = _accessTracker.TryGetLastAccess(fieldId, objectId, out var lastAccess);
-            var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Write, stack);
-            shadow.SetWrite(currentEpoch, writeKind);
-            shadow.SetRead(Epoch.None);
-
-            if (hasLastAccess && lastAccess.ProcessThreadId != threadId)
-            {
-                return new DataRaceInfo(
-                    threadId.ProcessId,
-                    fieldId,
-                    objectId,
-                    _accessTracker.Materialize(currentAccess),
-                    _accessTracker.Materialize(lastAccess),
-                    _timeProvider.GetUtcNow().DateTime);
-            }
-
-            return null;
-        }
-
-        _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Write, stack);
-        shadow.SetWrite(currentEpoch, writeKind);
-        shadow.SetRead(Epoch.None);
-        return null;
+        // Read-write race: an earlier read does not happen-before this write
+        return HasUnorderedRead(threadId, shadow, threadVc)
+            ? GetConflictingAccess(fieldId, objectId, threadId, writesOnly: false)
+            : null;
     }
-    
-    private WriteKind ClassifyWrite(
-        ProcessThreadId threadId,
-        FieldDef fieldDef,
+
+    private static bool HasUnorderedRead(ProcessThreadId writerThreadId, ShadowVariable shadow, VectorClock writerVc)
+    {
+        if (shadow.HasReadVectorClock)
+            return shadow.ReadVectorClock!.FindRacingReader(writerVc) != null;
+
+        return !shadow.ReadEpoch.IsNone &&
+               shadow.ReadEpoch.ThreadId != writerThreadId &&
+               !shadow.ReadEpoch.HappensBefore(writerVc);
+    }
+
+    private AccessRecord? GetConflictingAccess(
+        FieldId fieldId,
         ProcessTrackedObjectId? objectId,
-        CapturedStackTrace stack)
+        ProcessThreadId threadId,
+        bool writesOnly)
     {
-        var processId = threadId.ProcessId;
-        var declaringType = fieldDef.DeclaringType;
-        var isInstantiatorExclusive = UpdateObjectPublicationState(threadId, objectId);
+        var found = writesOnly
+            ? _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var previous)
+            : _accessTracker.TryGetLastAccess(fieldId, objectId, out previous);
 
-        if (IsFinalizationQueued(objectId))
-            return WriteKind.Finalization;
-
-        if (objectId == null)
-        {
-            return IsInitializedByStaticConstructor(processId, declaringType, stack)
-                ? WriteKind.Instantiation
-                : WriteKind.Regular;
-        }
-
-        if (!isInstantiatorExclusive)
-            return WriteKind.Regular;
-
-        return IsInitializedByInstanceConstructor(processId, declaringType, stack)
-            ? WriteKind.Instantiation
-            : WriteKind.Regular;
+        return found && previous.ProcessThreadId != threadId ? previous : null;
     }
 
-    private bool IsInitializedByStaticConstructor(
-        uint processId,
-        TypeDef declaringType,
-        CapturedStackTrace stack)
+    private DataRaceInfo? CreateRaceInfo(
+        ProcessThreadId threadId,
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        in AccessRecord currentAccess,
+        AccessRecord? conflictingAccess)
     {
-        if (_methodResolver.IsStaticConstructorOf(processId, stack.Top.ModuleId, stack.Top.MethodToken, declaringType))
-            return true;
+        if (conflictingAccess is not { } conflict)
+            return null;
 
-        foreach (var frame in stack.GetDeeperFrames())
-        {
-            if (_methodResolver.IsStaticConstructorOf(processId, frame.ModuleId, frame.MethodToken, declaringType))
-                return true;
-        }
-
-        return false;
-    }
-
-    private bool IsInitializedByInstanceConstructor(
-        uint processId,
-        TypeDef declaringType,
-        CapturedStackTrace stack)
-    {
-        if (_methodResolver.IsInstanceConstructorOf(processId, stack.Top.ModuleId, stack.Top.MethodToken, declaringType))
-            return true;
-
-        foreach (var frame in stack.GetDeeperFrames())
-        {
-            if (_methodResolver.IsInstanceConstructorOf(processId, frame.ModuleId, frame.MethodToken, declaringType))
-                return true;
-        }
-
-        return false;
-    }
-    
-    private bool UpdateObjectPublicationState(ProcessThreadId threadId, ProcessTrackedObjectId? objectId)
-    {
-        if (objectId is not { } objId)
-            return false;
-
-        if (!_escapeStates.TryGetValue(objId, out var state))
-        {
-            _escapeStates[objId] = new ObjectEscapeState(threadId, Escaped: false);
-            return true;
-        }
-
-        if (state.Escaped)
-            return false;
-
-        if (state.Instantiator == threadId)
-            return true;
-
-        _escapeStates[objId] = state with { Escaped = true };
-        return false;
+        return new DataRaceInfo(
+            threadId.ProcessId,
+            fieldId,
+            objectId,
+            _accessTracker.Materialize(currentAccess),
+            _accessTracker.Materialize(conflict),
+            _timeProvider.GetUtcNow().DateTime);
     }
 
     private void UpdateReadState(ProcessThreadId threadId, ShadowVariable shadow, VectorClock threadVc)
@@ -715,91 +351,40 @@ internal sealed class FastTrackDetector
         }
         else
         {
-            var readVc = new VectorClock(_clockThreads);
+            var readVc = _threadClocks.CreateClock();
             readVc.SetClock(shadow.ReadEpoch.ThreadId, shadow.ReadEpoch.Clock);
             readVc.SetClock(threadId, threadVc.GetClock(threadId));
             shadow.ExpandReadToVectorClock(readVc);
         }
     }
-    
-    private static ProcessThreadId? CheckReadWriteRace(
-        ProcessThreadId writerThreadId,
-        ShadowVariable shadow,
-        VectorClock writerVc)
-    {
-        if (shadow.HasReadVectorClock)
-            return shadow.ReadVectorClock!.FindRacingReader(writerVc);
 
-        if (!shadow.ReadEpoch.IsNone &&
-            shadow.ReadEpoch.ThreadId != writerThreadId &&
-            !shadow.ReadEpoch.HappensBefore(writerVc))
+    private bool TryResolveAnalyzedField(
+        ProcessThreadId threadId,
+        CapturedStackTrace stack,
+        MdToken fieldToken,
+        out FieldId fieldId)
+    {
+        var moduleId = stack.Top.ModuleId;
+        if (!_fieldResolver.TryResolve(threadId.ProcessId, moduleId, fieldToken, out var fieldDef, out var fieldFlags) ||
+            FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration))
         {
-            return shadow.ReadEpoch.ThreadId;
+            fieldId = default;
+            return false;
         }
 
-        return null;
+        fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
+        return true;
     }
 
-    private VectorClock GetOrCreateThreadClock(ProcessThreadId threadId)
+    private bool TryResolveField(uint processId, ModuleId moduleId, MdToken fieldToken, out FieldId fieldId)
     {
-        if (!_threadClocks.TryGetValue(threadId, out var vc))
+        if (!_fieldResolver.TryResolve(processId, moduleId, fieldToken, out var fieldDef, out _))
         {
-            vc = new VectorClock(_clockThreads);
-            vc.SetClock(threadId, 1);
-            _threadClocks[threadId] = vc;
+            fieldId = default;
+            return false;
         }
 
-        return vc;
-    }
-
-    private Queue<VectorClock> GetOrCreateSemaphorePool(ProcessTrackedObjectId semaphoreId)
-    {
-        if (!_semaphoreClocks.TryGetValue(semaphoreId, out var pool))
-        {
-            pool = new Queue<VectorClock>();
-            _semaphoreClocks[semaphoreId] = pool;
-        }
-
-        return pool;
-    }
-
-    private VectorClock GetOrCreateLockClock(ProcessTrackedObjectId lockId)
-    {
-        if (!_lockClocks.TryGetValue(lockId, out var vc))
-        {
-            vc = new VectorClock(_clockThreads);
-            _lockClocks[lockId] = vc;
-        }
-
-        return vc;
-    }
-
-
-    private VectorClock GetOrCreateVolatileClock(FieldId fieldId, ProcessTrackedObjectId? objectId)
-    {
-        var clocks = GetVolatileClockMap(objectId);
-        if (!clocks.TryGetValue(fieldId, out var vc))
-        {
-            vc = new VectorClock(_clockThreads);
-            clocks[fieldId] = vc;
-        }
-
-        return vc;
-    }
-
-    private Dictionary<FieldId, VectorClock> GetVolatileClockMap(ProcessTrackedObjectId? objectId)
-    {
-        if (objectId is not { } objId)
-            return _staticVolatileClocks;
-
-        if (!_instanceVolatileClocks.TryGetValue(objId, out var clocks))
-        {
-            clocks = [];
-            _instanceVolatileClocks[objId] = clocks;
-        }
-
-        return clocks;
+        fieldId = new FieldId(processId, moduleId, fieldToken, fieldDef!);
+        return true;
     }
 }
-
-

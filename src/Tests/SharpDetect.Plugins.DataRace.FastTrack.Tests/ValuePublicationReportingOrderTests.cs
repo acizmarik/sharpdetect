@@ -116,15 +116,15 @@ public class ValuePublicationReportingOrderTests
         var observer = _harness.NewThread();
 
         // Act
-        for (var i = 0; i < FastTrackDetector.MaxPendingPublicationObservations * 2; i++)
+        for (var i = 0; i < PublicationTracker.MaxPendingObservations * 2; i++)
             _harness.Detector.RecordValueObserved(observer, _harness.NewObject(), _harness.NewObject());
 
         // Assert
         Assert.Equal(
-            FastTrackDetector.MaxPendingPublicationObservations,
+            PublicationTracker.MaxPendingObservations,
             _harness.Detector.GetPublicationObserverEntryCount());
         Assert.Equal(
-            FastTrackDetector.MaxPendingPublicationObservations * 2,
+            PublicationTracker.MaxPendingObservations * 2,
             _harness.Detector.GetIndexedPublicationParticipantCount());
     }
 
@@ -141,7 +141,7 @@ public class ValuePublicationReportingOrderTests
         // Act
         _harness.Write(publisher, field, value);
         _harness.Detector.RecordValueObserved(observer, container, value);
-        for (var i = 0; i <= FastTrackDetector.MaxPendingPublicationObservations; i++)
+        for (var i = 0; i <= PublicationTracker.MaxPendingObservations; i++)
             _harness.Detector.RecordValueObserved(observer, _harness.NewObject(), _harness.NewObject());
 
         _harness.Detector.RecordValuePublished(publisher, container, value, onlyIfAbsent: true);
