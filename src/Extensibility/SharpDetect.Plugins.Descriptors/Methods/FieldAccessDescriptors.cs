@@ -50,7 +50,7 @@ public static class FieldAccessDescriptors
             VersionDescriptor: null,
             SignatureDescriptor: FieldAccessHelperSignature.Create(isInstance),
             RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
+                InjectHooks: false,
                 InjectManagedWrapper: false,
                 Arguments: arguments,
                 ReturnValue: null,

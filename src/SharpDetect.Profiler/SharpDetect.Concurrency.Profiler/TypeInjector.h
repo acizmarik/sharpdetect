@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <deque>
+
 #include "cor.h"
 #include "corprof.h"
 
@@ -15,6 +17,7 @@
 #include "../LibDescriptors/FieldAccessIntrinsicDescriptor.h"
 #include "../LibDescriptors/MethodDescriptor.h"
 
+#include "FieldAccessDispatch.h"
 #include "MetadataStore.h"
 #include "MethodDescriptorRegistry.h"
 #include "RewriteRegistry.h"
@@ -43,6 +46,12 @@ namespace Profiler
 
 	private:
 		HRESULT ImportMethodWrapper(const LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
+		HRESULT CreateFieldAccessHelperBody(
+			LibProfiler::ModuleDef& moduleDef,
+			mdMethodDef methodDef,
+			LibIPC::RecordedEventType eventType,
+			BOOL captureStackTrace,
+			std::vector<BYTE>& body);
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
 
 		ICorProfilerInfo10*& _corProfilerInfo;
@@ -53,5 +62,8 @@ namespace Profiler
 		MethodDescriptorRegistry& _methodDescriptorRegistry;
 		const std::vector<FieldAccessIntrinsicDescriptor>& _fieldAccessIntrinsics;
 		RewriteRegistry& _rewriteRegistry;
+		std::deque<FieldAccessHelperInfo> _fieldAccessHelpers;
+		mdSignature _fieldAccessCallSignature { mdTokenNil };
+		mdSignature _fieldAccessStackCallSignature { mdTokenNil };
 	};
 }

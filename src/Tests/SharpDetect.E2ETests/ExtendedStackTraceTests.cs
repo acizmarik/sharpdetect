@@ -15,6 +15,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
 {
     private const string DeepStackSubject = "Test_DataRace_DeepStack_HelperWriteRace";
     private const string DeepStackCallerName = "DeepStackCaller";
+    private const string DeepStackWriteHelperName = "DeepStackWriteHelper";
     private const string RacyFieldPattern =
         "SharpDetect.E2ETests.Subject.Helpers.DataRaces.DataRace.Test_DataRace_ReferenceType_Static";
     private const string RacyFieldPrefix =
@@ -39,6 +40,11 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
         Assert.Contains(
             stackTraces.SelectMany(st => st.Frames),
             frame => frame.MethodName.Contains(DeepStackCallerName));
+
+        var writerStack = Assert.Single(stackTraces, st => st.Frames[0].MethodName.Contains(DeepStackWriteHelperName));
+        Assert.Contains(DeepStackCallerName, writerStack.Frames[1].MethodName);
+        Assert.Single(writerStack.Frames, frame => frame.MethodName.Contains(DeepStackWriteHelperName));
+        Assert.DoesNotContain(writerStack.Frames, frame => frame.MethodName.Contains("FieldWithStack"));
     }
 
     [Theory]

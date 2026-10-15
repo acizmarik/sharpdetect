@@ -1370,6 +1370,38 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = instance.Test_DataRace_ValueType_InstanceProperty);
         }
 
+        public static void Test_NoDataRace_ThreadLocalObjects_UnderCompactingGc()
+        {
+            RunConcurrently(
+                AccessThreadLocalObjects,
+                AccessThreadLocalObjects,
+                () =>
+                {
+                    for (var i = 0; i < 200; i++)
+                    {
+                        _ = new byte[1024];
+                        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+                    }
+                });
+        }
+
+        private static void AccessThreadLocalObjects()
+        {
+            GcStressHolder? previous = null;
+            for (var i = 0; i < 20_000; i++)
+            {
+                var holder = new GcStressHolder { Value = i, Next = previous };
+                holder.Value += holder.Next?.Value ?? 0;
+                previous = i % 16 == 0 ? null : holder;
+            }
+        }
+
+        private sealed class GcStressHolder
+        {
+            public int Value;
+            public GcStressHolder? Next;
+        }
+
         public static void Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess()
         {
             RunConcurrently(

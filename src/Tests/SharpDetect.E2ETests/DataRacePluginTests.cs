@@ -110,6 +110,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ThreadLocalObjects_UnderCompactingGc(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ThreadLocalObjects_UnderCompactingGc", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task StaticCctorHelperWrite_WithoutStackTraces_IsReportedAsRace(string sdk, string plugin)
         => AssertDetectsDataRace(
