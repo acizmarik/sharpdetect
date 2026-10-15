@@ -700,7 +700,6 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     decision.hasIndirects = HasIndirects(descriptor);
     decision.pushesArgumentsFrame = PushesArgumentsFrame(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
-    decision.captureStackTraceOnEnter = descriptor.rewritingDescriptor.captureStackTraceOnEnter;
     decision.genericCapture.store(genericCapture, std::memory_order_relaxed);
 
     auto* stored = &decision;
@@ -798,19 +797,6 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     if (decision->pushesArgumentsFrame)
         scratch.argsCallStack.push(indirects);
 
-    // Capture stack trace if required
-    auto& stackFramesBlob = scratch.stackFramesBlob;
-    bool hasStackFrames = false;
-    if (decision->captureStackTraceOnEnter)
-    {
-        hasStackFrames = SUCCEEDED(LibProfiler::StackWalker::CaptureCurrentStackTrace(
-                _corProfilerInfo,
-                1,
-                _configuration.stackTraceCollectionMaxDepth,
-                stackFramesBlob))
-            && !stackFramesBlob.empty();
-    }
-
     // Notify about method enter with arguments
     SendMethodEnterWithArguments(
         moduleId,
@@ -818,9 +804,7 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         decision->enterWithArgsEventId,
         LibIPC::ByteSpanView { argumentValues.data(), argumentValues.size() },
         LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() },
-        hasStackFrames
-            ? std::make_optional(LibIPC::ByteSpanView { stackFramesBlob.data(), stackFramesBlob.size() })
-            : std::nullopt);
+        std::nullopt);
     return S_OK;
 }
 

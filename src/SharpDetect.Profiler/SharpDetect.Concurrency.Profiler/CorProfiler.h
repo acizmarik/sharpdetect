@@ -49,7 +49,6 @@ namespace Profiler
 		bool hasIndirects;
 		bool pushesArgumentsFrame;
 		bool emitExitEvent;
-		bool captureStackTraceOnEnter;
 		std::atomic<GenericCaptureState> genericCapture;
 	};
 

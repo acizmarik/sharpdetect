@@ -24,7 +24,6 @@ namespace Profiler
 		std::optional<USHORT> methodEnterInterpretation;
 		std::optional<USHORT> methodExitInterpretation;
 		BOOL emitExitEvent;
-		BOOL captureStackTraceOnEnter;
 	};
 
     void to_json(nlohmann::json& json, const MethodRewritingDescriptor& descriptor);

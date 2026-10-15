@@ -22,16 +22,15 @@ public static class FieldAccessDescriptors
     {
         return
         [
-            Create(methodName, isInstance, enterInterpretation, captureStackTraceOnEnter: false),
-            Create(methodName + "WithStack", isInstance, enterInterpretation, captureStackTraceOnEnter: true),
+            Create(methodName, isInstance, enterInterpretation),
+            Create(methodName + "WithStack", isInstance, enterInterpretation),
         ];
     }
 
     private static MethodDescriptor Create(
         string methodName,
         bool isInstance,
-        RecordedEventType enterInterpretation,
-        bool captureStackTraceOnEnter)
+        RecordedEventType enterInterpretation)
     {
         CapturedArgumentDescriptor[] arguments = isInstance
             ?
@@ -56,8 +55,7 @@ public static class FieldAccessDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)enterInterpretation,
                 MethodExitInterpretation: null,
-                EmitExitEvent: false,
-                CaptureStackTraceOnEnter: captureStackTraceOnEnter));
+                EmitExitEvent: false));
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;
