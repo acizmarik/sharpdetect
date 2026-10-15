@@ -107,4 +107,45 @@ public class SemaphoreOrderingTests
         // Assert
         Assert.True(_harness.WriteIsRace(successor, field, instance: null));
     }
+
+    [Fact]
+    public void MaximalInitialCount_IsTracked_AndInitialPermitsAreReported()
+    {
+        // Arrange
+        var writer = _harness.NewThread();
+        var successor = _harness.NewThread();
+        var semaphore = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordSemaphoreCreated(semaphore, initialCount: int.MaxValue);
+        _harness.Write(writer, field, instance: null);
+        _harness.Detector.RecordSemaphoreReleased(writer, semaphore, releaseCount: 1);
+        _harness.Detector.RecordSemaphoreAcquired(successor, semaphore);
+
+        // Assert
+        Assert.True(_harness.WriteIsRace(successor, field, instance: null));
+    }
+
+    [Fact]
+    public void InitialPermitsAreConsumedBeforeReleasedPermits()
+    {
+        // Arrange
+        var writer = _harness.NewThread();
+        var firstAcquirer = _harness.NewThread();
+        var secondAcquirer = _harness.NewThread();
+        var semaphore = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordSemaphoreCreated(semaphore, initialCount: 1);
+        _harness.Write(writer, field, instance: null);
+        _harness.Detector.RecordSemaphoreReleased(writer, semaphore, releaseCount: 1);
+
+        // Assert
+        _harness.Detector.RecordSemaphoreAcquired(firstAcquirer, semaphore);
+        Assert.True(_harness.ReadIsRace(firstAcquirer, field, instance: null));
+        _harness.Detector.RecordSemaphoreAcquired(secondAcquirer, semaphore);
+        Assert.False(_harness.ReadIsRace(secondAcquirer, field, instance: null));
+    }
 }
