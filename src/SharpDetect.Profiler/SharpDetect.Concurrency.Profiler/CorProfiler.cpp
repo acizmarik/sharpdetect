@@ -40,6 +40,7 @@ namespace
         std::vector<BYTE> argumentValues;
         std::vector<BYTE> argumentOffsets;
         std::vector<BYTE> stackFramesBlob;
+        bool hasPendingFieldAccessStack = false;
         std::vector<BYTE> returnValue;
         std::vector<char> fixedEventBuffer;
     };
@@ -207,6 +208,19 @@ PROFILER_STUB LeaveStub(const FunctionIDOrClientID functionId, const COR_PRF_ELT
 PROFILER_STUB TailcallStub(const FunctionIDOrClientID functionId, const COR_PRF_ELT_INFO eltInfo)
 {
     ProfilerInstance->TailcallMethod(functionId, eltInfo);
+}
+
+EXTERN_C void STDMETHODCALLTYPE FieldAccessStub(
+    const Profiler::FieldAccessHelperInfo* helper,
+    const UINT64 instrumentationMark,
+    const ObjectID* instanceSlot)
+{
+    ProfilerInstance->OnFieldAccess(*helper, instrumentationMark, instanceSlot);
+}
+
+EXTERN_C void STDMETHODCALLTYPE FieldAccessStackStub()
+{
+    ProfilerInstance->CaptureFieldAccessStack();
 }
 
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Shutdown()
@@ -686,7 +700,6 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     decision.hasIndirects = HasIndirects(descriptor);
     decision.pushesArgumentsFrame = PushesArgumentsFrame(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
-    decision.captureStackTraceOnEnter = descriptor.rewritingDescriptor.captureStackTraceOnEnter;
     decision.genericCapture.store(genericCapture, std::memory_order_relaxed);
 
     auto* stored = &decision;
@@ -784,19 +797,6 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
     if (decision->pushesArgumentsFrame)
         scratch.argsCallStack.push(indirects);
 
-    // Capture stack trace if required
-    auto& stackFramesBlob = scratch.stackFramesBlob;
-    bool hasStackFrames = false;
-    if (decision->captureStackTraceOnEnter)
-    {
-        hasStackFrames = SUCCEEDED(LibProfiler::StackWalker::CaptureCurrentStackTrace(
-                _corProfilerInfo,
-                1,
-                _configuration.stackTraceCollectionMaxDepth,
-                stackFramesBlob))
-            && !stackFramesBlob.empty();
-    }
-
     // Notify about method enter with arguments
     SendMethodEnterWithArguments(
         moduleId,
@@ -804,10 +804,61 @@ HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOr
         decision->enterWithArgsEventId,
         LibIPC::ByteSpanView { argumentValues.data(), argumentValues.size() },
         LibIPC::ByteSpanView { argumentOffsets.data(), argumentOffsets.size() },
-        hasStackFrames
-            ? std::make_optional(LibIPC::ByteSpanView { stackFramesBlob.data(), stackFramesBlob.size() })
-            : std::nullopt);
+        std::nullopt);
     return S_OK;
+}
+
+void Profiler::CorProfiler::CaptureFieldAccessStack()
+{
+    if (_terminating)
+        return;
+
+    auto& scratch = EltScratch;
+    scratch.hasPendingFieldAccessStack = SUCCEEDED(LibProfiler::StackWalker::CaptureCurrentStackTrace(
+            _corProfilerInfo,
+            1,
+            _configuration.stackTraceCollectionMaxDepth,
+            scratch.stackFramesBlob))
+        && !scratch.stackFramesBlob.empty();
+}
+
+void Profiler::CorProfiler::OnFieldAccess(
+    const FieldAccessHelperInfo& helper,
+    const UINT64 instrumentationMark,
+    const ObjectID* instanceSlot)
+{
+    auto& scratch = EltScratch;
+    const auto hasStackFrames = helper.captureStackTrace && scratch.hasPendingFieldAccessStack;
+    scratch.hasPendingFieldAccessStack = false;
+    if (_terminating)
+        return;
+
+    // Same layout as arguments captured through ELT: values are packed and each one is described by (index << 16 | size)
+    BYTE argumentValues[sizeof(UINT64) + sizeof(LibProfiler::TrackedObjectId)];
+    UINT argumentOffsets[2];
+    std::memcpy(argumentValues, &instrumentationMark, sizeof(UINT64));
+    argumentOffsets[0] = (0 << 16) | sizeof(UINT64);
+    auto argumentsCount = 1;
+    if (helper.isInstance)
+    {
+        // Tracking object id 0 (null reference) would be problematic - there could be aliases
+        const auto instance = *instanceSlot;
+        const LibProfiler::TrackedObjectId trackedObjectId = instance != 0 ? _objectsTracker.GetTrackedObject(instance) : 0;
+        std::memcpy(argumentValues + sizeof(UINT64), &trackedObjectId, sizeof(LibProfiler::TrackedObjectId));
+        argumentOffsets[1] = (1 << 16) | sizeof(ObjectID);
+        argumentsCount = 2;
+    }
+
+    const auto argumentValuesLength = sizeof(UINT64) + (helper.isInstance ? sizeof(LibProfiler::TrackedObjectId) : 0);
+    SendMethodEnterWithArguments(
+        helper.moduleId,
+        helper.methodDef,
+        helper.interpretation,
+        LibIPC::ByteSpanView { argumentValues, argumentValuesLength },
+        LibIPC::ByteSpanView { reinterpret_cast<BYTE*>(argumentOffsets), argumentsCount * sizeof(UINT) },
+        hasStackFrames
+            ? std::make_optional(LibIPC::ByteSpanView { scratch.stackFramesBlob.data(), scratch.stackFramesBlob.size() })
+            : std::nullopt);
 }
 
 HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOrClientId, const COR_PRF_ELT_INFO eltInfo)

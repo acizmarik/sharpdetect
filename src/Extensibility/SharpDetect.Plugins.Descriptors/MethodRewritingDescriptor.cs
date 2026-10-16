@@ -10,5 +10,4 @@ public record MethodRewritingDescriptor(
     CapturedValueDescriptor? ReturnValue,
     ushort? MethodEnterInterpretation,
     ushort? MethodExitInterpretation,
-    bool EmitExitEvent = true,
-    bool CaptureStackTraceOnEnter = false);
+    bool EmitExitEvent = true);

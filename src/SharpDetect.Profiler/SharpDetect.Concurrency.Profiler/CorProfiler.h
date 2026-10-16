@@ -49,7 +49,6 @@ namespace Profiler
 		bool hasIndirects;
 		bool pushesArgumentsFrame;
 		bool emitExitEvent;
-		bool captureStackTraceOnEnter;
 		std::atomic<GenericCaptureState> genericCapture;
 	};
 
@@ -78,6 +77,8 @@ namespace Profiler
 		HRESULT EnterMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT TailcallMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
+		void OnFieldAccess(const FieldAccessHelperInfo& helper, UINT64 instrumentationMark, const ObjectID* instanceSlot);
+		void CaptureFieldAccessStack();
 		[[nodiscard]] std::shared_ptr<MethodDescriptor> FindMethodDescriptor(FunctionID functionId);
 		[[nodiscard]] EltDecision* GetEltDecision(FunctionID functionId, BOOL* pbHookFunction);
 

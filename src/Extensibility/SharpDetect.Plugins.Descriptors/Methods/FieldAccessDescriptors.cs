@@ -22,16 +22,15 @@ public static class FieldAccessDescriptors
     {
         return
         [
-            Create(methodName, isInstance, enterInterpretation, captureStackTraceOnEnter: false),
-            Create(methodName + "WithStack", isInstance, enterInterpretation, captureStackTraceOnEnter: true),
+            Create(methodName, isInstance, enterInterpretation),
+            Create(methodName + "WithStack", isInstance, enterInterpretation),
         ];
     }
 
     private static MethodDescriptor Create(
         string methodName,
         bool isInstance,
-        RecordedEventType enterInterpretation,
-        bool captureStackTraceOnEnter)
+        RecordedEventType enterInterpretation)
     {
         CapturedArgumentDescriptor[] arguments = isInstance
             ?
@@ -50,14 +49,13 @@ public static class FieldAccessDescriptors
             VersionDescriptor: null,
             SignatureDescriptor: FieldAccessHelperSignature.Create(isInstance),
             RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
+                InjectHooks: false,
                 InjectManagedWrapper: false,
                 Arguments: arguments,
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)enterInterpretation,
                 MethodExitInterpretation: null,
-                EmitExitEvent: false,
-                CaptureStackTraceOnEnter: captureStackTraceOnEnter));
+                EmitExitEvent: false));
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;

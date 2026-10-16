@@ -614,6 +614,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead):
                     Test_NoDataRace_ConstructorAutoPropertyWrite_PublishThenRead();
                     break;
+                case nameof(Test_NoDataRace_ThreadLocalObjects_UnderCompactingGc):
+                    Test_NoDataRace_ThreadLocalObjects_UnderCompactingGc();
+                    break;
                 case nameof(Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess):
                     Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess();
                     break;

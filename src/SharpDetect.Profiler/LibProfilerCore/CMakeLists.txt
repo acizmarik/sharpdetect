@@ -15,7 +15,9 @@ if (UNIX AND NOT APPLE)
         "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
     list(APPEND SOURCES "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/idl/corprof_i.cpp")
 elseif (WIN32)
-    list(APPEND INCLUDE_DIRECTORIES "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
+    list(APPEND INCLUDE_DIRECTORIES
+        "${PROFILER_LIB_DIR}/coreclr/inc"
+        "${PROFILER_LIB_DIR}/coreclr/pal/prebuilt/inc")
 endif()
 
 add_library (LibProfilerCore STATIC ${SOURCES})

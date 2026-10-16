@@ -59,7 +59,6 @@ TEST_CASE("MethodRewritingDescriptor defaults optional fields")
     })");
 
     CHECK(descriptor.emitExitEvent == TRUE);
-    CHECK(descriptor.captureStackTraceOnEnter == FALSE);
     CHECK_FALSE(descriptor.returnValue.has_value());
     CHECK_FALSE(descriptor.methodEnterInterpretation.has_value());
     CHECK_FALSE(descriptor.methodExitInterpretation.has_value());

@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+#include <cstring>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -11,6 +12,47 @@
 #include "../LibProfilerCore/PAL.h"
 
 #include "TypeInjector.h"
+
+namespace
+{
+    bool IsFieldAccessEvent(const LibIPC::RecordedEventType eventType)
+    {
+        return eventType == LibIPC::RecordedEventType::StaticFieldRead ||
+            eventType == LibIPC::RecordedEventType::StaticFieldWrite ||
+            eventType == LibIPC::RecordedEventType::InstanceFieldRead ||
+            eventType == LibIPC::RecordedEventType::InstanceFieldWrite;
+    }
+
+    bool IsInstanceFieldAccessEvent(const LibIPC::RecordedEventType eventType)
+    {
+        return eventType == LibIPC::RecordedEventType::InstanceFieldRead ||
+            eventType == LibIPC::RecordedEventType::InstanceFieldWrite;
+    }
+
+    void EmitOpcode(std::vector<BYTE>& code, const BYTE opcode)
+    {
+        code.push_back(opcode);
+    }
+
+    void EmitPointer(std::vector<BYTE>& code, const void* pointer)
+    {
+        // LDC.I8 <pointer>; CONV.I
+        const auto value = static_cast<INT64>(reinterpret_cast<UINT_PTR>(pointer));
+        code.push_back(CEE_LDC_I8);
+        const auto offset = code.size();
+        code.resize(offset + sizeof(INT64));
+        std::memcpy(code.data() + offset, &value, sizeof(INT64));
+        code.push_back(CEE_CONV_I);
+    }
+
+    void EmitCalli(std::vector<BYTE>& code, const mdSignature signature)
+    {
+        code.push_back(CEE_CALLI);
+        const auto offset = code.size();
+        code.resize(offset + sizeof(mdSignature));
+        std::memcpy(code.data() + offset, &signature, sizeof(mdSignature));
+    }
+}
 
 Profiler::TypeInjector::TypeInjector(
     ICorProfilerInfo10*& corProfilerInfo,
@@ -571,8 +613,18 @@ HRESULT Profiler::TypeInjector::InjectTypesForProfilingFeatures(LibProfiler::Mod
                 continue;
             }
 
+            std::vector<BYTE> methodBody { static_cast<BYTE>(0b00000110), CEE_RET };
+            if (IsFieldAccessEvent(eventType) &&
+                FAILED(CreateFieldAccessHelperBody(moduleDef, injectedMethodDef, eventType, captureStackTrace, methodBody)))
+            {
+                LOG_F(ERROR, "Could not create body for injected field access helper %s in module %s. Its accesses will not be reported.",
+                    methodName.c_str(),
+                    moduleDef.GetName().c_str());
+                methodBody = { static_cast<BYTE>(0b00000110), CEE_RET };
+            }
+
             void* rawNewMethodBody;
-            if (FAILED(moduleDef.AllocMethodBody(2, &rawNewMethodBody)))
+            if (FAILED(moduleDef.AllocMethodBody(static_cast<ULONG>(methodBody.size()), &rawNewMethodBody)))
             {
                 LOG_F(ERROR, "Could not allocate memory for injected method %s in module %s.",
                     methodName.c_str(),
@@ -580,8 +632,7 @@ HRESULT Profiler::TypeInjector::InjectTypesForProfilingFeatures(LibProfiler::Mod
                 return E_FAIL;
             }
             const auto newMethodBody = static_cast<BYTE*>(rawNewMethodBody);
-            *newMethodBody = static_cast<BYTE>(0b00000110);
-            *(newMethodBody + 1) = CEE_RET;
+            std::memcpy(newMethodBody, methodBody.data(), methodBody.size());
             if (FAILED(_corProfilerInfo->SetILFunctionBody(moduleDef.GetModuleId(), injectedMethodDef, newMethodBody)))
             {
                 LOG_F(ERROR, "Could not set method body for injected method %s in module %s.",
@@ -604,6 +655,89 @@ HRESULT Profiler::TypeInjector::InjectTypesForProfilingFeatures(LibProfiler::Mod
         _rewriteRegistry.AddModuleInjectedMethods(moduleDef.GetModuleId(), injectedMethods);
     }
 
+    return S_OK;
+}
+
+HRESULT Profiler::TypeInjector::CreateFieldAccessHelperBody(
+    LibProfiler::ModuleDef& moduleDef,
+    const mdMethodDef methodDef,
+    const LibIPC::RecordedEventType eventType,
+    const BOOL captureStackTrace,
+    std::vector<BYTE>& body)
+{
+    if (_fieldAccessCallSignature == mdTokenNil)
+    {
+        mdTypeDef suppressGcTransitionTypeDef;
+        if (FAILED(moduleDef.FindTypeDef("System.Runtime.CompilerServices.CallConvSuppressGCTransition", &suppressGcTransitionTypeDef)))
+        {
+            LOG_F(ERROR, "Could not find CallConvSuppressGCTransition in module %s.", moduleDef.GetName().c_str());
+            return E_FAIL;
+        }
+
+        // unmanaged[SuppressGCTransition] void (FieldAccessHelperInfo*, UINT64, ObjectID)
+        std::vector<BYTE> signature { IMAGE_CEE_CS_CALLCONV_UNMANAGED, 3, ELEMENT_TYPE_CMOD_OPT };
+        BYTE compressedToken[4];
+        const auto compressedTokenLength = CorSigCompressToken(suppressGcTransitionTypeDef, compressedToken);
+        signature.insert(signature.end(), compressedToken, compressedToken + compressedTokenLength);
+        signature.insert(signature.end(), { ELEMENT_TYPE_VOID, ELEMENT_TYPE_I, ELEMENT_TYPE_U8, ELEMENT_TYPE_I });
+        if (FAILED(moduleDef.GetTokenFromSignature(signature.data(), static_cast<ULONG>(signature.size()), &_fieldAccessCallSignature)))
+        {
+            LOG_F(ERROR, "Could not create field access call signature in module %s.", moduleDef.GetName().c_str());
+            return E_FAIL;
+        }
+
+        // unmanaged void ()
+        constexpr BYTE stackSignature[] { IMAGE_CEE_CS_CALLCONV_UNMANAGED, 0, ELEMENT_TYPE_VOID };
+        if (FAILED(moduleDef.GetTokenFromSignature(stackSignature, sizeof(stackSignature), &_fieldAccessStackCallSignature)))
+        {
+            LOG_F(ERROR, "Could not create field access stack call signature in module %s.", moduleDef.GetName().c_str());
+            return E_FAIL;
+        }
+    }
+
+    const auto isInstance = IsInstanceFieldAccessEvent(eventType);
+    const auto& helper = _fieldAccessHelpers.emplace_back(FieldAccessHelperInfo {
+        moduleDef.GetModuleId(),
+        methodDef,
+        static_cast<USHORT>(eventType),
+        isInstance,
+        captureStackTrace != FALSE });
+
+    std::vector<BYTE> code;
+    if (captureStackTrace)
+    {
+        // CALLI unmanaged FieldAccessStackStub()
+        EmitPointer(code, reinterpret_cast<const void*>(&FieldAccessStackStub));
+        EmitCalli(code, _fieldAccessStackCallSignature);
+    }
+
+    // CALLI unmanaged[SuppressGCTransition] FieldAccessStub(&helper, instrumentationMark, &instance)
+    EmitPointer(code, &helper);
+    EmitOpcode(code, CEE_LDARG_0);
+    if (isInstance)
+    {
+        EmitOpcode(code, CEE_LDARGA_S);
+        EmitOpcode(code, 1);
+        EmitOpcode(code, CEE_CONV_U);
+    }
+    else
+    {
+        EmitOpcode(code, CEE_LDC_I4_0);
+        EmitOpcode(code, CEE_CONV_U);
+    }
+    EmitPointer(code, reinterpret_cast<const void*>(&FieldAccessStub));
+    EmitCalli(code, _fieldAccessCallSignature);
+    EmitOpcode(code, CEE_RET);
+
+    if (code.size() >= 64)
+    {
+        LOG_F(ERROR, "Field access helper body has %" SIZE_FORMAT " bytes and does not fit a tiny header.", code.size());
+        return E_FAIL;
+    }
+
+    body.clear();
+    body.push_back(static_cast<BYTE>((code.size() << 2) | CorILMethod_TinyFormat));
+    body.insert(body.end(), code.cbegin(), code.cend());
     return S_OK;
 }
 
