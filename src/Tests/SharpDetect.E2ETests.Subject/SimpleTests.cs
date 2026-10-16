@@ -2337,6 +2337,25 @@ namespace SharpDetect.E2ETests.Subject
                 sem.Release();
         }
 
+        public static void Test_DataRace_SemaphoreSlim_MaximalInitialCount_WriteReadRace()
+        {
+            // Initial permits carry no happens-before, so the semaphore does not order the accesses
+            var sem = new SemaphoreSlim(int.MaxValue, int.MaxValue);
+            RunConcurrently(
+                () =>
+                {
+                    sem.Wait();
+                    DataRace.Test_DataRace_ValueType_Static = 42;
+                    sem.Release();
+                },
+                () =>
+                {
+                    sem.Wait();
+                    _ = DataRace.Test_DataRace_ValueType_Static;
+                    sem.Release();
+                });
+        }
+
         public static void Test_NoDataRace_Monitor_HighContention_WriteRead()
         {
             const int iterations = 5000;
