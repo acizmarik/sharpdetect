@@ -761,6 +761,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_Task_WriteInsideFaultedTask_ReadAfterGetResult):
                     Test_NoDataRace_Task_WriteInsideFaultedTask_ReadAfterGetResult();
                     break;
+                case nameof(Test_NoDataRace_Thread_WriteInsideThread_ReadAfterJoinWithTimeout):
+                    Test_NoDataRace_Thread_WriteInsideThread_ReadAfterJoinWithTimeout();
+                    break;
                 case nameof(Test_DataRace_Task_WriteInsideTask_ReadAfterTimedOutWait):
                     Test_DataRace_Task_WriteInsideTask_ReadAfterTimedOutWait();
                     break;

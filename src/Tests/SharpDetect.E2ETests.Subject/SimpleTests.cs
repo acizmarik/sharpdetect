@@ -1881,6 +1881,15 @@ namespace SharpDetect.E2ETests.Subject
             _ = DataRace.Test_DataRace_ValueType_Static;
         }
 
+        public static void Test_NoDataRace_Thread_WriteInsideThread_ReadAfterJoinWithTimeout()
+        {
+            var thread = new Thread(() => { DataRace.Test_DataRace_ValueType_Static = 42; });
+            thread.Start();
+            if (!thread.Join(WaitTimeout))
+                throw new TimeoutException("The thread did not finish.");
+            _ = DataRace.Test_DataRace_ValueType_Static;
+        }
+
         public static void Test_DataRace_Task_WriteInsideTask_ReadAfterTimedOutWait()
         {
             using var release = new ManualResetEventSlim();

@@ -80,7 +80,7 @@ public abstract partial class PerThreadOrderingPluginBase
         var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
         if (!_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joinedThreadId))
         {
-            Logger.LogWarning("Thread join returned for an unknown thread object {ObjectId}.", joinedThreadObjectId.ObjectId.Value);
+            Logger.LogDebug("Thread join returned for an unknown thread object {ObjectId}.", joinedThreadObjectId.ObjectId.Value);
             return;
         }
 
