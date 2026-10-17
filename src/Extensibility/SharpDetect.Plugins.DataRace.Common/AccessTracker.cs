@@ -88,7 +88,8 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         ProcessThreadId threadId,
         uint methodOffset,
         AccessType accessType,
-        CapturedStackTrace stack)
+        CapturedStackTrace stack,
+        bool trackReadsByThread = false)
     {
         var record = new AccessRecord(threadId, methodOffset, accessType, stack);
 
@@ -101,35 +102,37 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
             }
 
             ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(fields, fieldId, out var exists);
-            UpdateSlots(ref slots, exists, record);
+            UpdateSlots(ref slots, exists, record, trackReadsByThread);
         }
         else
         {
             ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(_staticFieldSlots, fieldId, out var exists);
-            UpdateSlots(ref slots, exists, record);
+            UpdateSlots(ref slots, exists, record, trackReadsByThread);
         }
 
         return record;
     }
 
-    private static void UpdateSlots(ref AccessSlots slots, bool exists, in AccessRecord record)
+    private static void UpdateSlots(ref AccessSlots slots, bool exists, in AccessRecord record, bool trackReadsByThread)
     {
         if (record.AccessType == AccessType.Write)
         {
             slots.LastWrite = record;
             slots.HasWrite = true;
-            slots.ReadsByThread?.Clear();
+            slots.ReadsByThread = null;
         }
-        else if (slots.ReadsByThread is { Count: > 0 } reads)
+        else if (trackReadsByThread)
         {
-            reads[record.ProcessThreadId] = record;
-        }
-        else if (exists &&
-                 slots.Last.AccessType == AccessType.Read &&
-                 slots.Last.ProcessThreadId != record.ProcessThreadId)
-        {
-            reads = slots.ReadsByThread ??= [];
-            reads[slots.Last.ProcessThreadId] = slots.Last;
+            var reads = slots.ReadsByThread ??= [];
+
+            if (reads.Count == 0 &&
+                exists &&
+                slots.Last.AccessType == AccessType.Read &&
+                slots.Last.ProcessThreadId != record.ProcessThreadId)
+            {
+                reads[slots.Last.ProcessThreadId] = slots.Last;
+            }
+
             reads[record.ProcessThreadId] = record;
         }
 

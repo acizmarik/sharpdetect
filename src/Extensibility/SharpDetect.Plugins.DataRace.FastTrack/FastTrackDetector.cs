@@ -269,8 +269,9 @@ internal sealed class FastTrackDetector
             ? GetConflictingWrite(fieldId, objectId, threadId)
             : null;
 
-        var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Read, stack);
         UpdateReadState(threadId, shadow, threadVc);
+        var currentAccess = _accessTracker.RecordAccess(
+            fieldId, objectId, threadId, methodOffset, AccessType.Read, stack, trackReadsByThread: shadow.HasReadVectorClock);
         return CreateRaceInfo(threadId, fieldId, objectId, currentAccess, conflict);
     }
 
