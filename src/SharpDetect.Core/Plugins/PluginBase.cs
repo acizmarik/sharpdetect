@@ -202,7 +202,9 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         RecordedEventType.StaticFieldRead
             or RecordedEventType.StaticFieldWrite
             or RecordedEventType.InstanceFieldRead
-            or RecordedEventType.InstanceFieldWrite => false,
+            or RecordedEventType.InstanceFieldWrite
+            or RecordedEventType.TypeInitializerEnter
+            or RecordedEventType.TypeInitializerExit => false,
         _ => true
     };
     

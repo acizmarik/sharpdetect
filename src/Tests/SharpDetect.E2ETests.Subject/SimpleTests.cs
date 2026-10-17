@@ -1409,6 +1409,55 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = StaticCctorHelperInit.Value);
         }
 
+        public static void Test_NoDataRace_StaticReadonlyHierarchy_ConcurrentFirstAccess()
+        {
+            RunConcurrently(
+                () => _ = StaticReadonlyHierarchyInit.Root.Child!.Value,
+                () => _ = StaticReadonlyHierarchyInit.Root.Child!.Value,
+                () => _ = StaticReadonlyHierarchyInit.Root.Child!.Value);
+        }
+
+        public static void Test_NoDataRace_StaticMutableHierarchy_ConcurrentFirstAccess()
+        {
+            RunConcurrently(
+                () => _ = StaticMutableHierarchyInit.Root.Child!.Value,
+                () => _ = StaticMutableHierarchyInit.Root.Child!.Value,
+                () => _ = StaticMutableHierarchyInit.Root.Child!.Value);
+        }
+
+        public static void Test_DataRace_StaticHierarchy_PostInitializationWriteReadRace()
+        {
+            RunConcurrently(
+                () => StaticHierarchyPostInitWrite.Root.Child!.Value = 99,
+                () => _ = StaticHierarchyPostInitWrite.Root.Child!.Value);
+        }
+
+        public static void Test_DataRace_StaticFirstTouchWrite_WriteReadRace()
+        {
+            RunConcurrently(
+                () => FirstTouchStoreInit.Value = 99,
+                () =>
+                {
+                    _ = FirstTouchStoreInit.Value;
+                });
+        }
+
+        public static void Test_TypeInitializer_Completes()
+        {
+            _ = StaticReadonlyHierarchyInit.Root;
+        }
+
+        public static void Test_TypeInitializer_Throws()
+        {
+            try
+            {
+                _ = ThrowingTypeInitializer.Value;
+            }
+            catch (TypeInitializationException)
+            {
+            }
+        }
+
         public static void Test_NoDataRace_ConcurrentDictionaryPublishThenRead()
         {
             var dictionary = new ConcurrentDictionary<int, DataRace>();

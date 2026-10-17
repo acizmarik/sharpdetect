@@ -26,6 +26,7 @@ internal sealed class FastTrackDetector
     private readonly SemaphorePermitPools _semaphorePermits;
     private readonly VolatileClockTable _volatileClocks;
     private readonly PublicationTracker _publications;
+    private readonly TypeInitializationClocks _typeInitializations;
     private readonly WriteClassifier _writeClassifier;
     private readonly ITrackedObjectState[] _objectKeyedState;
 
@@ -49,7 +50,8 @@ internal sealed class FastTrackDetector
         _semaphorePermits = new SemaphorePermitPools(_threadClocks);
         _volatileClocks = new VolatileClockTable(_threadClocks);
         _publications = new PublicationTracker(_threadClocks);
-        _writeClassifier = new WriteClassifier(metadataContext, logger);
+        _typeInitializations = new TypeInitializationClocks(_threadClocks, _fieldResolver, new MethodResolver(metadataContext, logger));
+        _writeClassifier = new WriteClassifier(metadataContext, _typeInitializations, logger);
 
         _objectKeyedState =
         [
@@ -182,6 +184,7 @@ internal sealed class FastTrackDetector
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
+        AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
         if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
             _volatileClocks.Acquire(fieldId, objectId, threadId);
     }
@@ -192,6 +195,7 @@ internal sealed class FastTrackDetector
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId)
     {
+        AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
         if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
             _volatileClocks.Release(fieldId, objectId, threadId);
     }
@@ -219,6 +223,15 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId valueId)
         => _publications.RecordObserved(threadId, containerId, valueId);
 
+    public void RecordTypeInitializerEntered(ProcessThreadId threadId, ModuleId moduleId, MdMethodDef typeInitializerToken)
+        => _typeInitializations.Enter(threadId, moduleId, typeInitializerToken);
+
+    public void RecordTypeInitialized(ProcessThreadId threadId, ModuleId moduleId, MdMethodDef typeInitializerToken)
+        => _typeInitializations.Release(threadId, moduleId, typeInitializerToken);
+
+    public void RecordTypeInitializerFailed(ProcessThreadId threadId, ModuleId moduleId, MdMethodDef typeInitializerToken)
+        => _typeInitializations.Fail(threadId, moduleId, typeInitializerToken);
+
     public DataRaceInfo? RecordRead(
         ProcessThreadId threadId,
         uint methodOffset,
@@ -226,6 +239,7 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId? objectId,
         CapturedStackTrace stack)
     {
+        AcquireTypeInitialization(threadId, stack.Top.ModuleId, fieldToken, objectId);
         if (!TryResolveAnalyzedField(threadId, stack, fieldToken, out var fieldId))
             return null;
 
@@ -250,6 +264,7 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId? objectId,
         CapturedStackTrace stack)
     {
+        AcquireTypeInitialization(threadId, stack.Top.ModuleId, fieldToken, objectId);
         if (!TryResolveAnalyzedField(threadId, stack, fieldToken, out var fieldId))
             return null;
 
@@ -266,6 +281,16 @@ internal sealed class FastTrackDetector
         shadow.SetWrite(currentEpoch, writeKind);
         shadow.SetRead(Epoch.None);
         return CreateRaceInfo(threadId, fieldId, objectId, currentAccess, conflict);
+    }
+
+    private void AcquireTypeInitialization(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
+    {
+        if (objectId == null)
+            _typeInitializations.Acquire(threadId, moduleId, fieldToken);
     }
 
     private bool HasUnorderedWrite(ShadowVariable shadow, VectorClock threadVc, ProcessTrackedObjectId? objectId)

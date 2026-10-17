@@ -62,6 +62,26 @@ public static class EventMatchers
         }, description: $"FieldAccessInAssembly({type} in {assemblyName}, kind={requireAccessKind?.ToString() ?? "any"})");
     }
 
+    public static AtomicPredicate<ulong, RecordedEventType> TypeInitializerEvent(
+        RecordedEventType type,
+        string typeName,
+        IMetadataResolver plugin)
+    {
+        return new AtomicPredicate<ulong, RecordedEventType>(evt =>
+        {
+            if (evt.Type != type)
+                return false;
+
+            var (metadata, args) = evt.Get<(RecordedEventMetadata, TypeInitializerArgs)>();
+            var resolveResult = plugin.Resolve(metadata, args.ModuleId, args.TypeInitializerToken);
+            if (resolveResult.IsError)
+                return false;
+
+            var method = resolveResult.Value;
+            return method.IsStaticConstructor && method.DeclaringType.Name == typeName;
+        }, description: $"TypeInitializerEvent({type} of {typeName})");
+    }
+
     public static AtomicPredicate<ulong, RecordedEventType> MethodEnter(string methodName, IMetadataResolver plugin)
     {
         return new AtomicPredicate<ulong, RecordedEventType>(evt =>

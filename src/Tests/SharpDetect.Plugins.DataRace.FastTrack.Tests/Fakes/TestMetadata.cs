@@ -60,11 +60,13 @@ internal sealed class TestMetadata : IMetadataContext, IMetadataResolver
         return new MdMethodDef(token);
     }
 
-    public MdToken AddField(TypeDefUser type, string name, bool isStatic)
+    public MdToken AddField(TypeDefUser type, string name, bool isStatic, bool isReadOnly = false)
     {
         var attributes = isStatic
             ? FieldAttributes.Public | FieldAttributes.Static
             : FieldAttributes.Public;
+        if (isReadOnly)
+            attributes |= FieldAttributes.InitOnly;
         var field = new FieldDefUser(name, new FieldSig(_module.CorLibTypes.Int32), attributes);
         type.Fields.Add(field);
 

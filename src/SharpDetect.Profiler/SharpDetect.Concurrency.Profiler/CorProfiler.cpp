@@ -662,7 +662,13 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
     const auto shouldInjectHooks = descriptorPointer != nullptr && descriptorPointer->rewritingDescriptor.injectHooks;
     if (!shouldInjectHooks)
-        return nullptr;
+    {
+        if (!IsAnalyzedTypeInitializer(moduleId, methodDef))
+            return nullptr;
+
+        *pbHookFunction = TRUE;
+        return GetTypeInitializerEltDecision(functionId, moduleId, methodDef);
+    }
 
     const auto& descriptor = *descriptorPointer.get();
     auto const genericCapture = ClassifyGenericValueCapture(functionId, 0, descriptor);
@@ -705,6 +711,62 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     auto* stored = &decision;
     _eltDecisionLookup.emplace(functionId, stored);
     return stored;
+}
+
+bool Profiler::CorProfiler::IsAnalyzedTypeInitializer(const ModuleID moduleId, const mdMethodDef methodDef)
+{
+    // Type initialization orders field accesses - it is not needed where they are not analyzed
+    if (!_configuration.enableFieldsAccessInstrumentation || !_metadataStore.HasModuleDef(moduleId))
+        return false;
+
+    const auto moduleDef = _metadataStore.GetModuleDef(moduleId);
+    if (LibProfiler::ShouldSkipInstrumentation(*moduleDef, _configuration.skipInstrumentationForAssemblies))
+        return false;
+
+    mdTypeDef typeDef;
+    std::string methodName;
+    CorMethodAttr methodFlags;
+    if (FAILED(moduleDef->GetMethodProps(methodDef, &typeDef, methodName, &methodFlags, nullptr, nullptr)))
+        return false;
+
+    return IsMdStatic(methodFlags) && IsMdRTSpecialName(methodFlags) && methodName == COR_CCTOR_METHOD_NAME;
+}
+
+Profiler::EltDecision* Profiler::CorProfiler::GetTypeInitializerEltDecision(
+    const FunctionID functionId,
+    const ModuleID moduleId,
+    const mdMethodDef methodDef)
+{
+    auto guard = std::lock_guard(_eltDecisionMutex);
+    if (const auto it = _eltDecisionLookup.find(functionId); it != _eltDecisionLookup.cend())
+        return it->second;
+
+    auto& decision = _eltDecisions.emplace_back();
+    decision.functionId = functionId;
+    decision.moduleId = moduleId;
+    decision.methodDef = methodDef;
+    decision.descriptor = nullptr;
+    decision.enterEventId = static_cast<USHORT>(LibIPC::RecordedEventType::TypeInitializerEnter);
+    decision.enterWithArgsEventId = static_cast<USHORT>(LibIPC::RecordedEventType::MethodEnterWithArguments);
+    decision.exitEventId = static_cast<USHORT>(LibIPC::RecordedEventType::TypeInitializerExit);
+    decision.exitWithArgsEventId = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
+    decision.hasArguments = false;
+    decision.hasReturnValue = false;
+    decision.hasIndirects = false;
+    decision.pushesArgumentsFrame = false;
+    decision.emitExitEvent = true;
+    decision.genericCapture.store(GenericCaptureState::Allow, std::memory_order_relaxed);
+
+    auto* stored = &decision;
+    _eltDecisionLookup.emplace(functionId, stored);
+    return stored;
+}
+
+bool Profiler::CorProfiler::IsHookedTypeInitializer(const FunctionID functionId)
+{
+    auto guard = std::lock_guard(_eltDecisionMutex);
+    const auto it = _eltDecisionLookup.find(functionId);
+    return it != _eltDecisionLookup.cend() && it->second->descriptor == nullptr;
 }
 
 HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOrClientId, const COR_PRF_ELT_INFO eltInfo)
@@ -995,7 +1057,19 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionEnter(co
             originalMethodExitWithArgumentsEvent);
 
     if (!hasCustomMethodExitEvent && !hasCustomMethodExitWithArgumentsEvent)
+    {
+        // A type initializer that throws is reported, so that its enter is balanced without completing the type
+        if (IsHookedTypeInitializer(functionId))
+        {
+            _client.Send(LibIPC::Helpers::CreateMethodUnwoundMsg(
+                CreateMetadataMsg(),
+                moduleId,
+                methodDef,
+                static_cast<USHORT>(LibIPC::RecordedEventType::TypeInitializerExit)));
+        }
+
         return S_OK;
+    }
 
     // Balance the per-thread by-ref/return-value argument stack that EnterMethod pushed
     const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);

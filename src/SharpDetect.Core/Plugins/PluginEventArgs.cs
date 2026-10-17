@@ -41,4 +41,5 @@ public readonly record struct EventWaitHandleCreatedArgs(ProcessThreadId Process
 public readonly record struct EventWaitHandleSetArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId EventId, bool IsAutoReset);
 public readonly record struct EventWaitHandleWaitResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId EventId, bool IsAutoReset, bool IsSuccess);
 public readonly record struct EventWaitHandleResetArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId EventId);
+public readonly record struct TypeInitializerArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef TypeInitializerToken);
 public readonly record struct ValuePublicationArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId Container, ProcessTrackedObjectId Value, ValuePublicationKind Kind);

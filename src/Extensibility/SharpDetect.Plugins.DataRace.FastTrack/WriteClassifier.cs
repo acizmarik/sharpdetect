@@ -10,7 +10,10 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace SharpDetect.Plugins.DataRace.FastTrack;
 
-internal sealed class WriteClassifier(IMetadataContext metadataContext, ILogger logger) : ITrackedObjectState
+internal sealed class WriteClassifier(
+    IMetadataContext metadataContext,
+    TypeInitializationClocks typeInitializations,
+    ILogger logger) : ITrackedObjectState
 {
     private readonly MethodResolver _methodResolver = new(metadataContext, logger);
     private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
@@ -37,7 +40,7 @@ internal sealed class WriteClassifier(IMetadataContext metadataContext, ILogger 
 
         if (objectId == null)
         {
-            return IsInitializedByConstructor(processId, declaringType, stack, isStatic: true)
+            return typeInitializations.IsRunningInitializerOf(threadId, declaringType)
                 ? WriteKind.Instantiation
                 : WriteKind.Regular;
         }
@@ -45,7 +48,7 @@ internal sealed class WriteClassifier(IMetadataContext metadataContext, ILogger 
         if (!isInstantiatorExclusive)
             return WriteKind.Regular;
 
-        return IsInitializedByConstructor(processId, declaringType, stack, isStatic: false)
+        return IsInitializedByConstructor(processId, declaringType, stack)
             ? WriteKind.Instantiation
             : WriteKind.Regular;
     }
@@ -90,14 +93,12 @@ internal sealed class WriteClassifier(IMetadataContext metadataContext, ILogger 
     private bool IsInitializedByConstructor(
         uint processId,
         TypeDef declaringType,
-        CapturedStackTrace stack,
-        bool isStatic)
+        CapturedStackTrace stack)
     {
         return IsConstructor(stack.Top.ModuleId, stack.Top.MethodToken) ||
                stack.GetDeeperFrames().Any(frame => IsConstructor(frame.ModuleId, frame.MethodToken));
 
-        bool IsConstructor(ModuleId moduleId, MdMethodDef methodToken) => isStatic
-            ? _methodResolver.IsStaticConstructorOf(processId, moduleId, methodToken, declaringType)
-            : _methodResolver.IsInstanceConstructorOf(processId, moduleId, methodToken, declaringType);
+        bool IsConstructor(ModuleId moduleId, MdMethodDef methodToken)
+            => _methodResolver.IsInstanceConstructorOf(processId, moduleId, methodToken, declaringType);
     }
 }

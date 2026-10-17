@@ -13,20 +13,20 @@ public sealed class MethodResolver(IMetadataContext metadataContext, ILogger log
 {
     private readonly Dictionary<MethodDefOrRef, MethodDef?> _resolvedMethods = [];
 
-    public bool IsStaticConstructorOf(
+    public bool TryGetTypeInitializedBy(
         uint processId,
         ModuleId moduleId,
         MdMethodDef methodToken,
-        TypeDef declaringType)
+        out TypeDef? initializedType)
     {
-        if (!TryResolve(processId, moduleId, methodToken, out var methodDef))
+        if (!TryResolve(processId, moduleId, methodToken, out var methodDef) || !methodDef!.IsStaticConstructor)
+        {
+            initializedType = null;
             return false;
+        }
 
-        if (!methodDef!.IsStaticConstructor)
-            return false;
-
-        var comparer = new SigComparer();
-        return comparer.Equals(methodDef.DeclaringType, declaringType);
+        initializedType = methodDef.DeclaringType;
+        return initializedType is not null;
     }
 
     public bool IsInstanceConstructorOf(

@@ -37,6 +37,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
         RegisterAsyncContinuationBindings();
         RegisterFieldAccessBindings();
         RegisterValuePublicationBindings();
+        RegisterTypeInitializationBindings();
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadCreateRecordedEvent args)
@@ -82,6 +83,12 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
         if ((RecordedEventType)args.Interpretation == RecordedEventType.AsyncStateMachineSuspend)
         {
             // Carries an exit interpretation only, so nothing was pushed on the shadow call stack on enter
+            return;
+        }
+
+        if ((RecordedEventType)args.Interpretation == RecordedEventType.TypeInitializerExit)
+        {
+            OnTypeInitializerUnwound(id, args);
             return;
         }
 

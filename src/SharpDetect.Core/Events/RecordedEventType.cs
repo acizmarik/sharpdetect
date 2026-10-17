@@ -133,4 +133,8 @@ public enum RecordedEventType : ushort
     ValuePublicationLoadByRef = 223,
     ValuePublicationMaybeStoreLoad = 224,
     ValuePublicationContainerEnter = 225,
+
+    /* Type initialization */
+    TypeInitializerEnter = 230,
+    TypeInitializerExit = 231,
 }

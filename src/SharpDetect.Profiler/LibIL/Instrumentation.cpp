@@ -13,8 +13,8 @@
 #include "MetadataAnalysis.h"
 #include "SignatureUtils.h"
 
-static bool ShouldSkipInstrumentation(
-	IN const LibProfiler::ModuleDef& moduleDef,
+bool LibProfiler::ShouldSkipInstrumentation(
+	IN const ModuleDef& moduleDef,
 	IN const std::vector<std::string>& skipInstrumentationForAssemblies)
 {
 	for (auto&& skippedNamespacePrefix : skipInstrumentationForAssemblies)
@@ -380,9 +380,25 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		return E_FAIL;
 	}
 
-	if (isStore)
+	if (isStore && !isVolatile)
 	{
-		const auto headInstruction = isVolatile ? currentInstruction->m_pPrev : currentInstruction;
+		// LDC.I8 <instrumentation-mark>
+		const auto ldcInstruction = rewriter.NewILInstr();
+		ldcInstruction->m_opcode = CEE_LDC_I8;
+		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
+		rewriter.InsertAfter(currentInstruction, ldcInstruction);
+		// CALL <injected-method-handler>
+		const auto callInstruction = rewriter.NewILInstr();
+		callInstruction->m_opcode = CEE_CALL;
+		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
+		rewriter.InsertAfter(ldcInstruction, callInstruction);
+		// Skip to next non-injected instruction
+		currentInstruction = callInstruction;
+	}
+	else if (isStore)
+	{
+		// A volatile store releases, so it is reported before the store publishes anything
+		const auto headInstruction = currentInstruction->m_pPrev;
 		headInstruction->m_opcode = CEE_NOP;
 		// LDC.I8 <instrumentation-mark>
 		const auto ldcInstruction = rewriter.NewILInstr();
@@ -394,21 +410,10 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		callInstruction->m_opcode = CEE_CALL;
 		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
 		rewriter.InsertAfter(ldcInstruction, callInstruction);
-
-		if (isVolatile)
-		{
-			const auto volatileInstruction = rewriter.NewILInstr();
-			volatileInstruction->m_opcode = CEE_VOLATILE;
-			rewriter.InsertAfter(callInstruction, volatileInstruction);
-		}
-		else
-		{
-			const auto storeInstruction = rewriter.NewILInstr();
-			storeInstruction->m_opcode = CEE_STSFLD;
-			storeInstruction->m_Arg32 = static_cast<INT32>(fieldToken);
-			rewriter.InsertAfter(callInstruction, storeInstruction);
-			currentInstruction = storeInstruction;
-		}
+		// The prefix moves after the call, so it still applies to the store
+		const auto volatileInstruction = rewriter.NewILInstr();
+		volatileInstruction->m_opcode = CEE_VOLATILE;
+		rewriter.InsertAfter(callInstruction, volatileInstruction);
 	}
 	else
 	{
