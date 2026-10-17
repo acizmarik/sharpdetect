@@ -612,6 +612,28 @@ public class ReorderingPluginHostTests
     }
 
     [Fact]
+    public void ReorderingPluginHost_SyncWaitThroughNestedWaitAsync_TimedOut_IsNotDeferred()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 0, 1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T1, RecordedEventType.SemaphoreWaitAsyncResult, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T2, RecordedEventType.SemaphoreWaitAsyncResult, Task2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskJoinFinish));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, false));
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T2));
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.InstanceFieldRead));
+    }
+
+    [Fact]
     public void ReorderingPluginHost_WaitAsyncTimedOut_NoAcquire_NoDeadlock()
     {
         // Arrange

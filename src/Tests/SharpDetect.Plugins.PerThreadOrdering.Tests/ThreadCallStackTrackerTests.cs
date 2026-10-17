@@ -110,4 +110,28 @@ public class ThreadCallStackTrackerTests
 
         _tracker.RemoveCallStack(Thread);
     }
+
+    [Fact]
+    public void TryPeek_EmptyCallStack_ReturnsFalse()
+    {
+        Assert.False(_tracker.TryPeek(Thread, out _));
+    }
+
+    [Fact]
+    public void TryPeek_UnknownThread_ReturnsFalse()
+    {
+        Assert.False(_tracker.TryPeek(new ProcessThreadId(ProcessId: 1, new ThreadId(2)), out _));
+    }
+
+    [Fact]
+    public void TryPeek_ReturnsTheTopFrameWithoutPoppingIt()
+    {
+        var arguments = RentArguments();
+        _tracker.Push(Thread, Frame(Method, RentArguments()));
+        _tracker.Push(Thread, Frame(OtherMethod, arguments));
+
+        Assert.True(_tracker.TryPeek(Thread, out var frame));
+        Assert.Equal(OtherMethod, frame.MethodToken);
+        using var lease = _tracker.PopFrame(Thread, Module, OtherMethod);
+    }
 }

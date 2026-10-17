@@ -11,6 +11,7 @@ namespace SharpDetect.Plugins.PerThreadOrdering;
 public abstract partial class PerThreadOrderingPluginBase
 {
     private readonly Dictionary<ProcessTrackedObjectId, ProcessTrackedObjectId> _waitAsyncTaskToSemaphore = [];
+    private readonly HashSet<(ModuleId, MdMethodDef)> _semaphoreAcquireMethods = [];
 
     public event Action<SemaphoreCreatedArgs>? SemaphoreCreated;
     public event Action<SemaphoreAcquireAttemptArgs>? SemaphoreAcquireAttempted;
@@ -43,6 +44,7 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private void OnSemaphoreAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
+        _semaphoreAcquireMethods.Add((args.ModuleId, args.MethodToken));
         var (id, _, semaphoreId) = PushSynchronizationContext(metadata, args);
         SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId));
     }
@@ -89,6 +91,7 @@ public abstract partial class PerThreadOrderingPluginBase
     private bool IsInsideWaitOn(ProcessThreadId id, ProcessTrackedObjectId semaphoreId)
     {
         return _callStackTracker.TryPeek(id, out var frame) &&
+               _semaphoreAcquireMethods.Contains((frame.ModuleId, frame.MethodToken)) &&
                frame.Arguments is { Count: > 0 } arguments &&
                arguments[0].Value.IsTrackedObject &&
                arguments[0].Value.AsTrackedObject == semaphoreId.ObjectId;
