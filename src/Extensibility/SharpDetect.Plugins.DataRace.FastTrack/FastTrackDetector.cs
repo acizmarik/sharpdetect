@@ -148,7 +148,7 @@ internal sealed class FastTrackDetector
         _threadClocks.Advance(waiterThreadId);
     }
 
-    public void RecordTaskJoinFailed(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
+    public void RecordTaskJoinThrew(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
     {
         if (_completedTasks.Contains(taskId))
             RecordTaskJoinFinished(waiterThreadId, taskId);

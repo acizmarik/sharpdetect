@@ -277,10 +277,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnTaskJoinFinished(TaskJoinFinishArgs args)
     {
-        if (args.IsSuccess)
+        if (args.Outcome == TaskJoinOutcome.Completed)
             _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
-        else
-            _detector.RecordTaskJoinFailed(args.ProcessThreadId, args.TaskObjectId);
+        else if (args.Outcome == TaskJoinOutcome.Threw)
+            _detector.RecordTaskJoinThrew(args.ProcessThreadId, args.TaskObjectId);
     }
 
     private void OnTaskPromiseCompleted(TaskPromiseCompleteArgs args)

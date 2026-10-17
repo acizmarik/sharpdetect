@@ -59,32 +59,32 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private void OnTaskJoinFinish(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
-        HandleTaskJoinFinish(metadata, args.ModuleId, args.MethodToken, isSuccess: true);
+        HandleTaskJoinFinish(metadata, args.ModuleId, args.MethodToken, TaskJoinOutcome.Completed);
     }
 
     private void OnTaskJoinFinishWithArguments(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
-        var isSuccess = MemoryMarshal.Read<bool>(args.ReturnValue);
-        HandleTaskJoinFinish(metadata, args.ModuleId, args.MethodToken, isSuccess);
+        var outcome = MemoryMarshal.Read<bool>(args.ReturnValue) ? TaskJoinOutcome.Completed : TaskJoinOutcome.TimedOut;
+        HandleTaskJoinFinish(metadata, args.ModuleId, args.MethodToken, outcome);
     }
 
     private void HandleTaskJoinFinish(
         RecordedEventMetadata metadata,
         ModuleId moduleId,
         MdMethodDef methodToken,
-        bool isSuccess)
+        TaskJoinOutcome outcome)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         using var frameLease = _callStackTracker.PopFrame(id, moduleId, methodToken);
         var taskObjectId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
 
-        if (_waitAsyncTaskToSemaphore.Remove(taskObjectId, out var semaphoreId) && isSuccess)
+        if (_waitAsyncTaskToSemaphore.Remove(taskObjectId, out var semaphoreId) && outcome == TaskJoinOutcome.Completed)
         {
             SemaphoreWaitAsyncReturned?.Invoke(new(id, moduleId, methodToken, semaphoreId, taskObjectId));
         }
         else
         {
-            ProcessTaskJoinFinish(id, taskObjectId, isSuccess);
+            ProcessTaskJoinFinish(id, taskObjectId, outcome);
         }
     }
 
@@ -117,9 +117,9 @@ public abstract partial class PerThreadOrderingPluginBase
         TaskCompleted?.Invoke(new TaskCompleteArgs(id, taskObjectId));
     }
 
-    protected virtual void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId, bool isSuccess)
+    protected virtual void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId, TaskJoinOutcome outcome)
     {
-        TaskJoinFinished?.Invoke(new TaskJoinFinishArgs(id, taskObjectId, isSuccess));
+        TaskJoinFinished?.Invoke(new TaskJoinFinishArgs(id, taskObjectId, outcome));
     }
 
     protected virtual void ProcessTaskPromiseComplete(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)

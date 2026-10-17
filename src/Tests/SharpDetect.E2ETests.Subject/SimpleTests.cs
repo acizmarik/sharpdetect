@@ -1881,6 +1881,22 @@ namespace SharpDetect.E2ETests.Subject
             _ = DataRace.Test_DataRace_ValueType_Static;
         }
 
+        public static void Test_DataRace_Task_WriteInsideTask_ReadAfterTimedOutWait()
+        {
+            using var release = new ManualResetEventSlim();
+            var task = Task.Run(() =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                release.Wait();
+            });
+
+            // The task is still blocked, so the wait times out and must not order its write before the read
+            task.Wait(millisecondsTimeout: 500);
+            _ = DataRace.Test_DataRace_ValueType_Static;
+            release.Set();
+            task.Wait();
+        }
+
         public static void Test_DataRace_Thread_WriteInsideThread_ReadAfterTimedOutJoin()
         {
             using var release = new ManualResetEventSlim();

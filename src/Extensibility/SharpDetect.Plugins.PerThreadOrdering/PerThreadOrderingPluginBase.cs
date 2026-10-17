@@ -182,7 +182,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
                 if (_waitAsyncTaskToSemaphore.Remove(taskObjectId))
                     break;
 
-                ProcessTaskJoinFinish(id, taskObjectId, isSuccess: false);
+                ProcessTaskJoinFinish(id, taskObjectId, TaskJoinOutcome.Threw);
                 break;
             }
 

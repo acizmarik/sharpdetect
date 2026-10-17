@@ -25,7 +25,10 @@ public readonly record struct InstanceFieldWriteArgs(ProcessThreadId ProcessThre
 public readonly record struct TaskScheduleArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct TaskStartArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct TaskCompleteArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
-public readonly record struct TaskJoinFinishArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId, bool IsSuccess);
+public readonly record struct TaskJoinFinishArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId, TaskJoinOutcome Outcome)
+{
+    public bool IsSuccess => Outcome == TaskJoinOutcome.Completed;
+}
 public readonly record struct TaskPromiseCompleteArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId TaskObjectId);
 public readonly record struct TaskContinuationRegisterArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId ContinuationTaskObjectId);
 public readonly record struct AsyncStateMachineSuspendArgs(ProcessThreadId ProcessThreadId, ProcessTrackedObjectId StateMachineBoxId);

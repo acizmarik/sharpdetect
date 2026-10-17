@@ -354,6 +354,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_Task_WriteInsideTask_ReadAfterTimedOutWait(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_Task_WriteInsideTask_ReadAfterTimedOutWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_Thread_WriteInsideThread_ReadAfterTimedOutJoin(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_Thread_WriteInsideThread_ReadAfterTimedOutJoin", sdk, plugin);
 
