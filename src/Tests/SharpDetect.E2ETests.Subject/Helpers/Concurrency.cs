@@ -101,6 +101,16 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static readonly InitializedNode Root = new() { Child = new InitializedNode { Value = 42 } };
     }
 
+    public static class FirstTouchStoreInit
+    {
+        public static int Value;
+
+        static FirstTouchStoreInit()
+        {
+            Value = 1;
+        }
+    }
+
     public static class ThrowingTypeInitializer
     {
         public static readonly int Value = Throw();

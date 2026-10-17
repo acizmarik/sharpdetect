@@ -629,6 +629,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_StaticHierarchy_PostInitializationWriteReadRace):
                     Test_DataRace_StaticHierarchy_PostInitializationWriteReadRace();
                     break;
+                case nameof(Test_DataRace_StaticFirstTouchWrite_WriteReadRace):
+                    Test_DataRace_StaticFirstTouchWrite_WriteReadRace();
+                    break;
                 case nameof(Test_TypeInitializer_Completes):
                     Test_TypeInitializer_Completes();
                     break;

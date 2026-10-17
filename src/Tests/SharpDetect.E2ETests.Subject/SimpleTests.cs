@@ -1432,6 +1432,16 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = StaticHierarchyPostInitWrite.Root.Child!.Value);
         }
 
+        public static void Test_DataRace_StaticFirstTouchWrite_WriteReadRace()
+        {
+            RunConcurrently(
+                () => FirstTouchStoreInit.Value = 99,
+                () =>
+                {
+                    _ = FirstTouchStoreInit.Value;
+                });
+        }
+
         public static void Test_TypeInitializer_Completes()
         {
             _ = StaticReadonlyHierarchyInit.Root;

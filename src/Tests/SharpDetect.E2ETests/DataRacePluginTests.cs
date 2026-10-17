@@ -144,6 +144,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDetectsDataRace("Test_DataRace_StaticHierarchy_PostInitializationWriteReadRace", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_StaticFirstTouchWrite_WriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_StaticFirstTouchWrite_WriteReadRace", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_CtorSetterWrite_PublishThenRead_WithoutStackTraces(string sdk, string plugin)
         => AssertDoesNotDetectDataRace(
