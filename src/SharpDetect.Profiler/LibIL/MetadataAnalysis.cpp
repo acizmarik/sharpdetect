@@ -28,7 +28,7 @@ HRESULT LibProfiler::IsFieldExcludedFromRaceAnalysis(
 	if (FAILED(hr))
 		return hr;
 
-	if (IsFdInitOnly(attributes) || IsFdLiteral(attributes))
+	if ((IsFdInitOnly(attributes) && !IsFdStatic(attributes)) || IsFdLiteral(attributes))
 	{
 		*isExcluded = TRUE;
 		return S_OK;

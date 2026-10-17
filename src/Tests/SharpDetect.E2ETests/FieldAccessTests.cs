@@ -27,6 +27,11 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task StaticField_Readonly_Read_IsInstrumented(string sdk)
+        => FieldAccess("Test_TypeInitializer_Completes", sdk, RecordedEventType.StaticFieldRead);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task StaticField_ValueType_Write(string sdk)
         => FieldAccess("Test_Field_ValueType_Static_Write", sdk, RecordedEventType.StaticFieldWrite);
 
