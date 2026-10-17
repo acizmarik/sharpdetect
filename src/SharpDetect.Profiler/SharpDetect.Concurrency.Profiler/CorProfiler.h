@@ -83,6 +83,9 @@ namespace Profiler
 		[[nodiscard]] EltDecision* GetEltDecision(FunctionID functionId, BOOL* pbHookFunction);
 
 	private:
+		[[nodiscard]] bool IsAnalyzedTypeInitializer(ModuleID moduleId, mdMethodDef methodDef);
+		[[nodiscard]] EltDecision* GetTypeInitializerEltDecision(FunctionID functionId, ModuleID moduleId, mdMethodDef methodDef);
+		[[nodiscard]] bool IsHookedTypeInitializer(FunctionID functionId);
 		HRESULT AbortAttach(const std::string& reason);
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;

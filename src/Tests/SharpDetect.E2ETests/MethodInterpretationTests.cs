@@ -608,6 +608,92 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         Assert.All(loads, load => Assert.Equal(stores[0].Value, load.Value));
     }
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_TypeInitializer_Completes(string sdk)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject("Test_TypeInitializer_Completes")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput, additionalData);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "StaticReadonlyHierarchyInit", plugin))
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerExit, "StaticReadonlyHierarchyInit", plugin))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act & Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        Assert.Single(TypeInitializerEventTypeNames(events, RecordedEventType.TypeInitializerExit, plugin), name => name == "StaticReadonlyHierarchyInit");
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_TypeInitializer_Throws_RaisesNoCompletion(string sdk)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject("Test_TypeInitializer_Throws")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput, additionalData);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "ThrowingTypeInitializer", plugin))
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.MethodUnwound, "ThrowingTypeInitializer", plugin))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act & Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        Assert.DoesNotContain("ThrowingTypeInitializer", TypeInitializerEventTypeNames(events, RecordedEventType.TypeInitializerExit, plugin));
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_TypeInitializer_NotHookedWithoutFieldInstrumentation(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_TypeInitializer_Completes")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act & Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        Assert.DoesNotContain(events, e => e.Type is RecordedEventType.TypeInitializerEnter or RecordedEventType.TypeInitializerExit);
+    }
+
+    private static List<string> TypeInitializerEventTypeNames(
+        TestEventsEnumerable events,
+        RecordedEventType type,
+        TestPerThreadOrderingPlugin plugin)
+    {
+        return events
+            .Where(e => e.Type == type)
+            .Select(e => e.Get<(RecordedEventMetadata Metadata, TypeInitializerArgs Args)>())
+            .Select(e => plugin.Resolve(e.Metadata, e.Args.ModuleId, e.Args.TypeInitializerToken))
+            .Where(result => !result.IsError)
+            .Select(result => result.Value.DeclaringType.Name.String)
+            .ToList();
+    }
+
     private static List<ValuePublicationArgs> ValuePublications(
         TestEventsEnumerable events,
         RecordedEventType type)

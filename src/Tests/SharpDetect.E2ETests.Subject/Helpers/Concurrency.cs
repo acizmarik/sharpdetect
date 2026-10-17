@@ -67,6 +67,24 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         }
     }
 
+    public class InitializedNode
+    {
+        public InitializedNode? Child { get; set; }
+        public int Value { get; set; }
+    }
+
+    public static class StaticReadonlyHierarchyInit
+    {
+        public static readonly InitializedNode Root = new() { Child = new InitializedNode { Value = 42 } };
+    }
+
+    public static class ThrowingTypeInitializer
+    {
+        public static readonly int Value = Throw();
+
+        private static int Throw() => throw new InvalidOperationException("Type initializer failure");
+    }
+
     public class StaticHelperWrite
     {
         public static int Value;

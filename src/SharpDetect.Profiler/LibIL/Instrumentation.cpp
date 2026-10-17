@@ -13,8 +13,8 @@
 #include "MetadataAnalysis.h"
 #include "SignatureUtils.h"
 
-static bool ShouldSkipInstrumentation(
-	IN const LibProfiler::ModuleDef& moduleDef,
+bool LibProfiler::ShouldSkipInstrumentation(
+	IN const ModuleDef& moduleDef,
 	IN const std::vector<std::string>& skipInstrumentationForAssemblies)
 {
 	for (auto&& skippedNamespacePrefix : skipInstrumentationForAssemblies)

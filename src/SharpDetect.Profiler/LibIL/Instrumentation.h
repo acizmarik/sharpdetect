@@ -23,6 +23,10 @@ namespace LibProfiler
 {
 	static constexpr COR_SIGNATURE g_ObjectTypeSignature[] = { ELEMENT_TYPE_OBJECT };
 
+	bool ShouldSkipInstrumentation(
+		IN const ModuleDef& moduleDef,
+		IN const std::vector<std::string>& skipInstrumentationForAssemblies);
+
 	HRESULT PatchMethodBody(
 		IN ICorProfilerInfo& corProfilerInfo,
 		IN LibIPC::Client& client,

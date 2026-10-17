@@ -139,6 +139,12 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, EventWaitHandleWaitResultArgs)>(GetNextId(), RecordedEventType.WaitHandleWaitResult, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
         pluginBase.ValuePublication += args
             => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, ValuePublicationArgs)>(GetNextId(), GetValuePublicationEventType(args.Kind), (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.TypeInitializerEntered += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TypeInitializerArgs)>(GetNextId(), RecordedEventType.TypeInitializerEnter, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.TypeInitialized += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TypeInitializerArgs)>(GetNextId(), RecordedEventType.TypeInitializerExit, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
+        pluginBase.TypeInitializerFailed += args
+            => _queue.Enqueue(new Event<ulong, RecordedEventType, (RecordedEventMetadata, TypeInitializerArgs)>(GetNextId(), RecordedEventType.MethodUnwound, (new RecordedEventMetadata(args.ProcessThreadId.ProcessId, args.ProcessThreadId.ThreadId), args)));
     }
 
     private static RecordedEventType GetValuePublicationEventType(ValuePublicationKind kind) => kind switch

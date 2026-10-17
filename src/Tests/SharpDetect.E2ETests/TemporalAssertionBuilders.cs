@@ -23,6 +23,14 @@ public static class TemporalAssertionBuilders
         return new(EventMatchers.FieldAccessInAssembly(assemblyName, type, plugin, requireAccessKind));
     }
 
+    public static EventuallyOperator<ulong, RecordedEventType> EventuallyTypeInitializerEvent(
+        RecordedEventType type,
+        string typeName,
+        IMetadataResolver plugin)
+    {
+        return new(EventMatchers.TypeInitializerEvent(type, typeName, plugin));
+    }
+
     public static EventuallyOperator<ulong, RecordedEventType> EventuallyMethodEnter(
         string methodName,
         IMetadataResolver plugin)

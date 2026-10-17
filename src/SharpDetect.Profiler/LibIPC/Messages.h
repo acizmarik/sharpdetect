@@ -81,6 +81,10 @@ namespace LibIPC
 
 		/* Exceptions */
 		MethodUnwound = 90,
+
+		/* Type initialization */
+		TypeInitializerEnter = 230,
+		TypeInitializerExit = 231,
 	};
 
 	enum class ProfilerCommandType

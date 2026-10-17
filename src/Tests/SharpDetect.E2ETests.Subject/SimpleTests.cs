@@ -1409,6 +1409,22 @@ namespace SharpDetect.E2ETests.Subject
                 () => _ = StaticCctorHelperInit.Value);
         }
 
+        public static void Test_TypeInitializer_Completes()
+        {
+            _ = StaticReadonlyHierarchyInit.Root;
+        }
+
+        public static void Test_TypeInitializer_Throws()
+        {
+            try
+            {
+                _ = ThrowingTypeInitializer.Value;
+            }
+            catch (TypeInitializationException)
+            {
+            }
+        }
+
         public static void Test_NoDataRace_ConcurrentDictionaryPublishThenRead()
         {
             var dictionary = new ConcurrentDictionary<int, DataRace>();
