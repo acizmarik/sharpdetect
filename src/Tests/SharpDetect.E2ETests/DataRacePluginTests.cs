@@ -115,18 +115,33 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ThreadLocalObjects_UnderCompactingGc", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
-    public Task StaticCctorHelperWrite_WithoutStackTraces_IsReportedAsRace(string sdk, string plugin)
-        => AssertDetectsDataRace(
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_StaticCctorHelperWrite_WithoutStackTraces(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace(
             "Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess", sdk, plugin,
             enableStackTraceCollection: false);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
-    public Task StaticCctorHelperWrite_WithStackTraces_IsNotReported(string sdk, string plugin)
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_StaticCctorHelperWrite_WithStackTraces(string sdk, string plugin)
         => AssertDoesNotDetectDataRace(
             "Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess", sdk, plugin,
             enableStackTraceCollection: true);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_StaticReadonlyHierarchy_ConcurrentFirstAccess(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_StaticReadonlyHierarchy_ConcurrentFirstAccess", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_StaticMutableHierarchy_ConcurrentFirstAccess(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_StaticMutableHierarchy_ConcurrentFirstAccess", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_StaticHierarchy_PostInitializationWriteReadRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_StaticHierarchy_PostInitializationWriteReadRace", sdk, plugin);
 
     [Theory]
     [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]

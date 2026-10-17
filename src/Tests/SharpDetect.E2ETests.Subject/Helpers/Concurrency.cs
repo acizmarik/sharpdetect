@@ -78,6 +78,29 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static readonly InitializedNode Root = new() { Child = new InitializedNode { Value = 42 } };
     }
 
+    public static class StaticMutableHierarchyInit
+    {
+        public static InitializedNode Root;
+
+        static StaticMutableHierarchyInit()
+        {
+            Root = Build();
+        }
+
+        private static InitializedNode Build()
+        {
+            var root = new InitializedNode();
+            root.Child = new InitializedNode();
+            root.Child.Value = 42;
+            return root;
+        }
+    }
+
+    public static class StaticHierarchyPostInitWrite
+    {
+        public static readonly InitializedNode Root = new() { Child = new InitializedNode { Value = 42 } };
+    }
+
     public static class ThrowingTypeInitializer
     {
         public static readonly int Value = Throw();

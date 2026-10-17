@@ -52,6 +52,34 @@ internal sealed class DetectorHarness
     public MdToken NewInstanceField(string name)
         => _metadata.AddField(_fieldsType, name, isStatic: false);
 
+    public TypeDefUser NewType(string name)
+        => _metadata.AddType(name);
+
+    public TypeDefUser NewGenericType(string name)
+    {
+        var type = _metadata.AddType(name);
+        type.GenericParameters.Add(new GenericParamUser(0, GenericParamAttributes.NonVariant, "T"));
+        return type;
+    }
+
+    public MdToken NewStaticField(TypeDefUser type, string name, bool isReadOnly = false)
+        => _metadata.AddField(type, name, isStatic: true, isReadOnly);
+
+    public MdToken NewInstanceField(TypeDefUser type, string name)
+        => _metadata.AddField(type, name, isStatic: false);
+
+    public MdMethodDef NewTypeInitializer(TypeDefUser type)
+        => _metadata.AddStaticConstructor(type);
+
+    public void TypeInitializerEntered(ProcessThreadId thread, MdMethodDef typeInitializer)
+        => Detector.RecordTypeInitializerEntered(thread, TestMetadata.ModuleId, typeInitializer);
+
+    public void TypeInitialized(ProcessThreadId thread, MdMethodDef typeInitializer)
+        => Detector.RecordTypeInitialized(thread, TestMetadata.ModuleId, typeInitializer);
+
+    public void TypeInitializerFailed(ProcessThreadId thread, MdMethodDef typeInitializer)
+        => Detector.RecordTypeInitializerFailed(thread, TestMetadata.ModuleId, typeInitializer);
+
     public CapturedStackTrace NewStack()
         => new(new CapturedStackFrame(TestMetadata.ModuleId, _metadata.AddMethod(_methodsType, $"Step{_nextMethod++}")));
 

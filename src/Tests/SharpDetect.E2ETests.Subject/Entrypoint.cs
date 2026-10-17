@@ -620,6 +620,15 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess):
                     Test_NoDataRace_StaticCctorHelperWrite_ConcurrentFirstAccess();
                     break;
+                case nameof(Test_NoDataRace_StaticReadonlyHierarchy_ConcurrentFirstAccess):
+                    Test_NoDataRace_StaticReadonlyHierarchy_ConcurrentFirstAccess();
+                    break;
+                case nameof(Test_NoDataRace_StaticMutableHierarchy_ConcurrentFirstAccess):
+                    Test_NoDataRace_StaticMutableHierarchy_ConcurrentFirstAccess();
+                    break;
+                case nameof(Test_DataRace_StaticHierarchy_PostInitializationWriteReadRace):
+                    Test_DataRace_StaticHierarchy_PostInitializationWriteReadRace();
+                    break;
                 case nameof(Test_TypeInitializer_Completes):
                     Test_TypeInitializer_Completes();
                     break;

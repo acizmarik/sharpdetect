@@ -60,24 +60,13 @@ public class WriteClassificationTests
     }
 
     [Fact]
-    public void StaticField_WrittenByDeclaringTypeStaticConstructor_IsNotReported()
+    public void StaticField_WrittenByDeclaringTypeStaticConstructor_IsNotExemptedByTheStack()
     {
         var type = _metadata.AddType("Holder");
         var field = _metadata.AddField(type, "Value", isStatic: true);
         var cctor = _metadata.AddStaticConstructor(type);
 
-        Assert.False(IsReportedAsRace(field, objectId: null, CreateStack(cctor)));
-    }
-
-    [Fact]
-    public void StaticField_WrittenByUnrelatedTypeStaticConstructor_IsReported()
-    {
-        var holder = _metadata.AddType("Holder");
-        var other = _metadata.AddType("Other");
-        var field = _metadata.AddField(holder, "Value", isStatic: true);
-        var unrelatedCctor = _metadata.AddStaticConstructor(other);
-
-        Assert.True(IsReportedAsRace(field, objectId: null, CreateStack(unrelatedCctor)));
+        Assert.True(IsReportedAsRace(field, objectId: null, CreateStack(cctor)));
     }
 
     [Fact]
@@ -88,41 +77,6 @@ public class WriteClassificationTests
         var ctor = _metadata.AddInstanceConstructor(type);
 
         Assert.True(IsReportedAsRace(field, objectId: null, CreateStack(ctor)));
-    }
-
-    [Fact]
-    public void StaticField_WrittenByHelperCalledFromStaticConstructor_WithStack_IsNotReported()
-    {
-        var type = _metadata.AddType("Holder");
-        var field = _metadata.AddField(type, "Value", isStatic: true);
-        var helper = _metadata.AddMethod(type, "Initialize");
-        var cctor = _metadata.AddStaticConstructor(type);
-
-        Assert.False(IsReportedAsRace(field, objectId: null, CreateStack(helper, cctor)));
-    }
-
-    [Fact]
-    public void StaticField_WrittenByHelperCalledFromStaticConstructor_WithoutStack_IsReported()
-    {
-        var type = _metadata.AddType("Holder");
-        var field = _metadata.AddField(type, "Value", isStatic: true);
-        var helper = _metadata.AddMethod(type, "Initialize");
-        _ = _metadata.AddStaticConstructor(type);
-
-        // Documents the known gap: without captured frames the constructor is invisible
-        Assert.True(IsReportedAsRace(field, objectId: null, CreateStack(helper)));
-    }
-
-    [Fact]
-    public void StaticField_StaticConstructorDeeperInStack_IsNotReported()
-    {
-        var type = _metadata.AddType("Holder");
-        var field = _metadata.AddField(type, "Value", isStatic: true);
-        var inner = _metadata.AddMethod(type, "Inner");
-        var outer = _metadata.AddMethod(type, "Outer");
-        var cctor = _metadata.AddStaticConstructor(type);
-
-        Assert.False(IsReportedAsRace(field, objectId: null, CreateStack(inner, outer, cctor)));
     }
 
     [Fact]

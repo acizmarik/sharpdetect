@@ -130,6 +130,9 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         EventWaitHandleWasReset += OnEventWaitHandleWasReset;
         EventWaitHandleWaitReturned += OnEventWaitHandleWaitReturned;
         ValuePublication += OnValuePublication;
+        TypeInitializerEntered += OnTypeInitializerEntered;
+        TypeInitialized += OnTypeInitialized;
+        TypeInitializerFailed += OnTypeInitializerFailed;
 
         ReportTemplates = new DirectoryInfo(
             Path.Combine(
@@ -332,6 +335,21 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 _detector.RecordValueObserved(args.ProcessThreadId, args.Container, args.Value);
                 break;
         }
+    }
+
+    private void OnTypeInitializerEntered(TypeInitializerArgs args)
+    {
+        _detector.RecordTypeInitializerEntered(args.ProcessThreadId, args.ModuleId, args.TypeInitializerToken);
+    }
+
+    private void OnTypeInitialized(TypeInitializerArgs args)
+    {
+        _detector.RecordTypeInitialized(args.ProcessThreadId, args.ModuleId, args.TypeInitializerToken);
+    }
+
+    private void OnTypeInitializerFailed(TypeInitializerArgs args)
+    {
+        _detector.RecordTypeInitializerFailed(args.ProcessThreadId, args.ModuleId, args.TypeInitializerToken);
     }
 
     private void OnSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args)
