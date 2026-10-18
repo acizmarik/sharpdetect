@@ -249,7 +249,7 @@ internal sealed class FastTrackDetector
 
         // Write-read race: the last write does not happen-before this read
         var conflict = HasUnorderedWrite(shadow, threadVc, objectId)
-            ? GetConflictingAccess(fieldId, objectId, threadId, writesOnly: true)
+            ? GetConflictingWrite(fieldId, objectId, threadId)
             : null;
 
         var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Read, stack);
@@ -311,36 +311,36 @@ internal sealed class FastTrackDetector
             shadow.WriteEpoch.ThreadId != threadId &&
             !shadow.WriteEpoch.HappensBefore(threadVc))
         {
-            return GetConflictingAccess(fieldId, objectId, threadId, writesOnly: true);
+            return GetConflictingWrite(fieldId, objectId, threadId);
         }
 
         // Read-write race: an earlier read does not happen-before this write
-        return HasUnorderedRead(threadId, shadow, threadVc)
-            ? GetConflictingAccess(fieldId, objectId, threadId, writesOnly: false)
+        return FindUnorderedReader(threadId, shadow, threadVc) is { } reader &&
+               _accessTracker.TryGetLastReadAccess(fieldId, objectId, reader, out var racingRead)
+            ? racingRead
             : null;
     }
 
-    private static bool HasUnorderedRead(ProcessThreadId writerThreadId, ShadowVariable shadow, VectorClock writerVc)
+    private static ProcessThreadId? FindUnorderedReader(ProcessThreadId writerThreadId, ShadowVariable shadow, VectorClock writerVc)
     {
         if (shadow.HasReadVectorClock)
-            return shadow.ReadVectorClock!.FindRacingReader(writerVc) != null;
+            return shadow.ReadVectorClock!.FindRacingReader(writerVc);
 
         return !shadow.ReadEpoch.IsNone &&
                shadow.ReadEpoch.ThreadId != writerThreadId &&
-               !shadow.ReadEpoch.HappensBefore(writerVc);
+               !shadow.ReadEpoch.HappensBefore(writerVc)
+            ? shadow.ReadEpoch.ThreadId
+            : null;
     }
 
-    private AccessRecord? GetConflictingAccess(
+    private AccessRecord? GetConflictingWrite(
         FieldId fieldId,
         ProcessTrackedObjectId? objectId,
-        ProcessThreadId threadId,
-        bool writesOnly)
+        ProcessThreadId threadId)
     {
-        var found = writesOnly
-            ? _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var previous)
-            : _accessTracker.TryGetLastAccess(fieldId, objectId, out previous);
-
-        return found && previous.ProcessThreadId != threadId ? previous : null;
+        return _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var previous) && previous.ProcessThreadId != threadId
+            ? previous
+            : null;
     }
 
     private DataRaceInfo? CreateRaceInfo(

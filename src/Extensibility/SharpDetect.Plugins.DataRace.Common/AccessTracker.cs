@@ -17,6 +17,7 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         public AccessRecord Last;
         public AccessRecord LastWrite;
         public bool HasWrite;
+        public Dictionary<ProcessThreadId, AccessRecord>? ReadsByThread;
     }
 
     public bool TryGetLastAccess(FieldId fieldId, ProcessTrackedObjectId? objectId, out AccessRecord record)
@@ -59,6 +60,28 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         return false;
     }
 
+    public bool TryGetLastReadAccess(
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        ProcessThreadId readerThreadId,
+        out AccessRecord record)
+    {
+        if (TryGetSlots(fieldId, objectId, out var slots))
+        {
+            if (slots.ReadsByThread != null && slots.ReadsByThread.TryGetValue(readerThreadId, out record))
+                return true;
+
+            if (slots.Last.AccessType == AccessType.Read && slots.Last.ProcessThreadId == readerThreadId)
+            {
+                record = slots.Last;
+                return true;
+            }
+        }
+
+        record = default;
+        return false;
+    }
+
     public AccessRecord RecordAccess(
         FieldId fieldId,
         ProcessTrackedObjectId? objectId,
@@ -68,7 +91,6 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         CapturedStackTrace stack)
     {
         var record = new AccessRecord(threadId, methodOffset, accessType, stack);
-        var isWrite = accessType == AccessType.Write;
 
         if (objectId != null)
         {
@@ -78,26 +100,56 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
                 _instanceFieldSlots[objectId.Value] = fields;
             }
 
-            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(fields, fieldId, out _);
-            slots.Last = record;
-            if (isWrite)
-            {
-                slots.LastWrite = record;
-                slots.HasWrite = true;
-            }
+            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(fields, fieldId, out var exists);
+            UpdateSlots(ref slots, exists, record);
         }
         else
         {
-            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(_staticFieldSlots, fieldId, out _);
-            slots.Last = record;
-            if (isWrite)
-            {
-                slots.LastWrite = record;
-                slots.HasWrite = true;
-            }
+            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(_staticFieldSlots, fieldId, out var exists);
+            UpdateSlots(ref slots, exists, record);
         }
 
         return record;
+    }
+
+    private static void UpdateSlots(ref AccessSlots slots, bool exists, in AccessRecord record)
+    {
+        if (record.AccessType == AccessType.Write)
+        {
+            slots.LastWrite = record;
+            slots.HasWrite = true;
+            slots.ReadsByThread?.Clear();
+        }
+        else if (slots.ReadsByThread is { Count: > 0 } reads)
+        {
+            reads[record.ProcessThreadId] = record;
+        }
+        else if (exists &&
+                 slots.Last.AccessType == AccessType.Read &&
+                 slots.Last.ProcessThreadId != record.ProcessThreadId)
+        {
+            reads = slots.ReadsByThread ??= [];
+            reads[slots.Last.ProcessThreadId] = slots.Last;
+            reads[record.ProcessThreadId] = record;
+        }
+
+        slots.Last = record;
+    }
+
+    private bool TryGetSlots(FieldId fieldId, ProcessTrackedObjectId? objectId, out AccessSlots slots)
+    {
+        if (objectId != null)
+        {
+            if (_instanceFieldSlots.TryGetValue(objectId.Value, out var fields) && fields.TryGetValue(fieldId, out slots))
+                return true;
+        }
+        else if (_staticFieldSlots.TryGetValue(fieldId, out slots))
+        {
+            return true;
+        }
+
+        slots = default;
+        return false;
     }
     
     public AccessInfo Materialize(in AccessRecord record)
