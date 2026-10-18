@@ -13,6 +13,7 @@ public static class SemaphoreSlimMethodDescriptors
     private const string TaskTResultTypeName = "System.Threading.Tasks.Task`1";
 
     private static readonly Version Version8 = new(8, 0, 0);
+    private static readonly Version Version9Max = new(9, int.MaxValue, int.MaxValue);
     private static readonly Version Version10 = new(10, 0, 0);
     private static readonly Version Version10Max = new(10, int.MaxValue, int.MaxValue);
     
@@ -62,7 +63,7 @@ public static class SemaphoreSlimMethodDescriptors
         WaitV8 = new MethodDescriptor(
             MethodName: "Wait",
             DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: MethodVersionDescriptor.Create(Version8, Version10),
+            VersionDescriptor: MethodVersionDescriptor.Create(Version8, Version9Max),
             SignatureDescriptor: new MethodSignatureDescriptor(
                 CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
                 ParametersCount: 2,
@@ -104,7 +105,7 @@ public static class SemaphoreSlimMethodDescriptors
         WaitAsyncV8 = new MethodDescriptor(
             MethodName: "WaitAsync",
             DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: MethodVersionDescriptor.Create(Version8, Version10),
+            VersionDescriptor: MethodVersionDescriptor.Create(Version8, Version9Max),
             SignatureDescriptor: new MethodSignatureDescriptor(
                 CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
                 ParametersCount: 2,
