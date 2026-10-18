@@ -1855,6 +1855,22 @@ namespace SharpDetect.E2ETests.Subject
             _ = DataRace.Test_DataRace_ValueType_Static;
         }
 
+        public static void Test_DataRace_Thread_WriteInsideThread_ReadAfterTimedOutJoin()
+        {
+            using var release = new ManualResetEventSlim();
+            var thread = new Thread(() =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                release.Wait();
+            });
+            thread.Start();
+
+            // The thread is still blocked, so the join times out and must not order its write before the read
+            thread.Join(millisecondsTimeout: 500);
+            _ = DataRace.Test_DataRace_ValueType_Static;
+            release.Set();
+            thread.Join();
+        }
         public static void Test_AsyncMethodBuilder_SuspendResume1()
         {
             var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);

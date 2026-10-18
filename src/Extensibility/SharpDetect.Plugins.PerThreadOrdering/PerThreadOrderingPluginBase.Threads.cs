@@ -25,6 +25,7 @@ public abstract partial class PerThreadOrderingPluginBase
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.ThreadStartCallback, OnThreadStartCallback);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.ThreadJoinAttempt, OnThreadJoinAttempt);
         Bind<MethodExitRecordedEvent>(RecordedEventType.ThreadJoinResult, OnThreadJoinResult);
+        Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.ThreadJoinResult, OnThreadJoinResultWithArguments);
     }
 
     private void OnThreadStartCore(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
@@ -59,11 +60,31 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private void OnThreadJoinResult(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
     {
+        HandleThreadJoinResult(metadata, args.ModuleId, args.MethodToken, isSuccess: true);
+    }
+
+    private void OnThreadJoinResultWithArguments(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var isSuccess = MemoryMarshal.Read<bool>(args.ReturnValue);
+        HandleThreadJoinResult(metadata, args.ModuleId, args.MethodToken, isSuccess);
+    }
+
+    private void HandleThreadJoinResult(
+        RecordedEventMetadata metadata,
+        ModuleId moduleId,
+        MdMethodDef methodToken,
+        bool isSuccess)
+    {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        using var frameLease = _callStackTracker.PopFrame(id, moduleId, methodToken);
         var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
-        var joinedThreadId = _threadObjectRegistry.GetThreadId(joinedThreadObjectId);
-        ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: true));
+        if (!_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joinedThreadId))
+        {
+            Logger.LogWarning("Thread join returned for an unknown thread object {ObjectId}.", joinedThreadObjectId.ObjectId.Value);
+            return;
+        }
+
+        ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, moduleId, methodToken, isSuccess));
     }
 
     protected virtual void ProcessThreadStartCore(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)

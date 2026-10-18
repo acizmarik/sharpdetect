@@ -31,7 +31,7 @@ public static class ThreadMethodDescriptors
                 Arguments: [
                     new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)),
                     new(1, new(sizeof(int), CapturedValue.CaptureAsValue))],
-                ReturnValue: null,
+                ReturnValue: new CapturedValueDescriptor(sizeof(bool), CapturedValue.CaptureAsValue),
                 MethodEnterInterpretation: (ushort)RecordedEventType.ThreadJoinAttempt,
                 MethodExitInterpretation: (ushort)RecordedEventType.ThreadJoinResult));
 
