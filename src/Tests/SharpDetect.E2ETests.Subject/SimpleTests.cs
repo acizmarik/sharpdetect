@@ -2089,6 +2089,52 @@ namespace SharpDetect.E2ETests.Subject
             DataRace.Test_TaskCompletionSource_ValueType_Static = value;
         }
 
+        public static void Test_DataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_WriteAfterWait()
+        {
+            using var semaphore = new SemaphoreSlim(0);
+            var pending = semaphore.WaitAsync();
+            var waiter = new Thread(() =>
+            {
+                // An async waiter is queued, so this wait goes through WaitAsync and GetResult internally
+                semaphore.Wait();
+                DataRace.Test_DataRace_ValueType_Static = 42;
+            });
+            waiter.Start();
+
+            // Gives the waiter time to block before the permits are released
+            Thread.Sleep(500);
+            semaphore.Release(2);
+            pending.Wait();
+            _ = DataRace.Test_DataRace_ValueType_Static;
+            waiter.Join();
+        }
+
+        public static void Test_NoDataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_ReadsAfterRelease()
+        {
+            using var semaphore = new SemaphoreSlim(0);
+            var pending = semaphore.WaitAsync();
+            var waiter = new Thread(() =>
+            {
+                semaphore.Wait();
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+            var releaser = new Thread(() =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                semaphore.Release(2);
+            });
+            waiter.Start();
+
+            // The waiter blocks behind the async waiter, then takes its permit before the async waiter is joined
+            Thread.Sleep(500);
+            releaser.Start();
+            Thread.Sleep(500);
+            pending.Wait();
+            _ = DataRace.Test_DataRace_ValueType_Static;
+            waiter.Join();
+            releaser.Join();
+        }
+
         public static void Test_SemaphoreSlimMethods_WaitRelease1()
         {
             var sem = new SemaphoreSlim(1, 1);

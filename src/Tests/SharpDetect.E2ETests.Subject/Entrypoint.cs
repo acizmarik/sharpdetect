@@ -764,6 +764,12 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_Thread_WriteInsideThread_ReadAfterTimedOutJoin):
                     Test_DataRace_Thread_WriteInsideThread_ReadAfterTimedOutJoin();
                     break;
+                case nameof(Test_DataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_WriteAfterWait):
+                    Test_DataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_WriteAfterWait();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_ReadsAfterRelease):
+                    Test_NoDataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_ReadsAfterRelease();
+                    break;
                 case nameof(Test_NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait):
                     Test_NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait();
                     break;

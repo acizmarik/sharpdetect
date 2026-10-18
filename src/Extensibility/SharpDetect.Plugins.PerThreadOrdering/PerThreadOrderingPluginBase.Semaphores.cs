@@ -79,8 +79,19 @@ public abstract partial class PerThreadOrderingPluginBase
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
         var semaphoreId = new ProcessTrackedObjectId(id.ProcessId, frameLease.Frame.Arguments![0].Value.AsTrackedObject);
+        if (IsInsideWaitOn(id, semaphoreId))
+            return;
+
         var waiterTaskId = new ProcessTrackedObjectId(id.ProcessId, new TrackedObjectId(MemoryMarshal.Read<nuint>(args.ReturnValue)));
         _waitAsyncTaskToSemaphore[waiterTaskId] = semaphoreId;
+    }
+
+    private bool IsInsideWaitOn(ProcessThreadId id, ProcessTrackedObjectId semaphoreId)
+    {
+        return _callStackTracker.TryPeek(id, out var frame) &&
+               frame.Arguments is { Count: > 0 } arguments &&
+               arguments[0].Value.IsTrackedObject &&
+               arguments[0].Value.AsTrackedObject == semaphoreId.ObjectId;
     }
 
     private void HandleSemaphoreAcquireExit(

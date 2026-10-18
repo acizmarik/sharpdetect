@@ -42,6 +42,8 @@ public readonly struct ArgumentValue
         ? new PrimitiveArgument(_scalar, _primitiveKind)
         : throw new InvalidOperationException($"Argument value is {_kind}, not a primitive.");
 
+    public bool IsTrackedObject => _kind == ValueKind.TrackedObject;
+
     public TrackedObjectId AsTrackedObject => _kind == ValueKind.TrackedObject
         ? new TrackedObjectId((nuint)_scalar)
         : throw new InvalidOperationException($"Argument value is {_kind}, not a tracked object.");

@@ -31,6 +31,18 @@ public sealed class ThreadCallStackTracker
         return new FrameLease(callstack.Pop());
     }
 
+    public bool TryPeek(ProcessThreadId processThreadId, out StackFrame frame)
+    {
+        if (_callstacks.TryGetValue(processThreadId, out var callstack) && callstack.Count > 0)
+        {
+            frame = callstack.Peek();
+            return true;
+        }
+
+        frame = default;
+        return false;
+    }
+
     public void RemoveCallStack(ProcessThreadId processThreadId)
     {
         if (!_callstacks.Remove(processThreadId, out var callstack))

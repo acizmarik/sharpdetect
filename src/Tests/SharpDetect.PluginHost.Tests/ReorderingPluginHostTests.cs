@@ -584,6 +584,34 @@ public class ReorderingPluginHostTests
     }
 
     [Fact]
+    public void ReorderingPluginHost_SyncWaitThroughNestedWaitAsync_AcquiresOnce()
+    {
+        // Arrange
+        var host = Build(out var recorder);
+
+        // Act
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 0, 2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T1, RecordedEventType.SemaphoreWaitAsyncResult, Task1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreAcquire, S1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.SemaphoreWaitAsync, S1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithReturnedTarget(T2, RecordedEventType.SemaphoreWaitAsyncResult, Task2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndCount(T3, RecordedEventType.SemaphoreRelease, S1, 2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.SemaphoreReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task2));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.TaskJoinFinish, true));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.SemaphoreAcquireResult, true));
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T2));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskJoinStart, Task1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.TaskJoinFinish, true));
+        host.ProcessEvent(SyncEventBuilder.FieldRead(T1));
+
+        // Assert
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.InstanceFieldRead));
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T1, RecordedEventType.InstanceFieldRead));
+    }
+
+    [Fact]
     public void ReorderingPluginHost_WaitAsyncTimedOut_NoAcquire_NoDeadlock()
     {
         // Arrange

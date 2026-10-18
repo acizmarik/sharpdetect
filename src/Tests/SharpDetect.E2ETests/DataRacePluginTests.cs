@@ -358,6 +358,16 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDetectsDataRace("Test_DataRace_Thread_WriteInsideThread_ReadAfterTimedOutJoin", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_WriteAfterWait(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_WriteAfterWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_ReadsAfterRelease(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlim_SyncWaitBehindAsyncWaiter_ReadsAfterRelease", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net9AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_Lock_TryEnterWithTimeSpan(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Lock_TryEnterWithTimeSpan", sdk, plugin);

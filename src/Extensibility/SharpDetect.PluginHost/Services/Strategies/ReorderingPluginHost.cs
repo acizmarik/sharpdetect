@@ -310,7 +310,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         if (!TryPopTarget(thread, out var semaphoreId))
             return inner.ProcessEvent(recordedEvent);
 
-        if (TryReadTrackedObjectId(returnValue, tid.ProcessId, out var awaitedTaskId) &&
+        var isInsideWait = thread.SyncTargetStack.TryPeek(out var outerTarget) && outerTarget == semaphoreId;
+        if (!isInsideWait &&
+            TryReadTrackedObjectId(returnValue, tid.ProcessId, out var awaitedTaskId) &&
             _semaphores.ContainsKey(semaphoreId))
         {
             _waitAsyncTaskToSemaphore[awaitedTaskId] = semaphoreId;
