@@ -84,4 +84,60 @@ public class EventuallyTests
         // Assert
         Assert.Equal(AssertStatus.Satisfied, eventually.Status);
     }
+
+    [Fact]
+    public void EventuallyThen_Is_Violated_When_SameEventMatchesBoth()
+    {
+        // Arrange
+        var eventually = new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A"))
+            .Then(new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A")));
+
+        // Act
+        eventually.Evaluate(_testEvents);
+
+        // Assert
+        Assert.Equal(AssertStatus.Violated, eventually.Status);
+    }
+
+    [Fact]
+    public void EventuallyThenThen_Is_Satisfied_When_RepeatedEventsMatch()
+    {
+        // Arrange
+        var events = new List<IEvent<int, string>>
+        {
+            new Event<int, string, object>(1, "A", new object()),
+            new Event<int, string, object>(2, "B", new object()),
+            new Event<int, string, object>(3, "A", new object()),
+            new Event<int, string, object>(4, "A", new object()),
+        };
+        var eventually = new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A"))
+            .Then(new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A")))
+            .Then(new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A")));
+
+        // Act
+        eventually.Evaluate(events);
+
+        // Assert
+        Assert.Equal(AssertStatus.Satisfied, eventually.Status);
+    }
+
+    [Fact]
+    public void EventuallyThenThen_Is_Violated_When_TooFewRepeatedEvents()
+    {
+        // Arrange
+        var events = new List<IEvent<int, string>>
+        {
+            new Event<int, string, object>(1, "A", new object()),
+            new Event<int, string, object>(2, "A", new object()),
+        };
+        var eventually = new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A"))
+            .Then(new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A")))
+            .Then(new EventuallyOperator<int, string>(new AtomicPredicate<int, string>(evt => evt.Type == "A")));
+
+        // Act
+        eventually.Evaluate(events);
+
+        // Assert
+        Assert.Equal(AssertStatus.Violated, eventually.Status);
+    }
 }

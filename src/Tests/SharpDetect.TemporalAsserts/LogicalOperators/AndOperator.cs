@@ -19,10 +19,13 @@ public sealed class AndOperator<TId, TType> : AssertBase<TId, TType>
     public override void ProcessEvent(IEvent<TId, TType> @event)
     {
         if (_left.Status == AssertStatus.Unknown)
+        {
             _left.ProcessEvent(@event);
+            if (_left.Status == AssertStatus.Violated)
+                Status = AssertStatus.Violated;
 
-        if (_left.Status == AssertStatus.Unknown)
             return;
+        }
 
         if (_left.Status == AssertStatus.Violated)
         {

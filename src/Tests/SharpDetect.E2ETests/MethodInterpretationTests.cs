@@ -371,14 +371,14 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Task_Await1(string sdk)
     {
-        await TaskAwait("Test_TaskMethods_Await1", sdk);
+        await TaskAwait("Test_TaskMethods_Await1", expectedTasks: 1, sdk);
     }
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Task_Await2(string sdk)
     {
-        await TaskAwait("Test_TaskMethods_Await2", sdk);
+        await TaskAwait("Test_TaskMethods_Await2", expectedTasks: 2, sdk);
     }
 
     [Theory]
@@ -945,7 +945,7 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
 
-    private async Task TaskAwait(string subjectArgs, string sdk)
+    private async Task TaskAwait(string subjectArgs, int expectedTasks, string sdk)
     {
         // Arrange
         using var services = E2ETestBuilder
@@ -956,12 +956,12 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyEventType(RecordedEventType.TaskStart))
-            .Then(EventuallyEventType(RecordedEventType.TaskStart))
-            .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
-            .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        AssertBase<ulong, RecordedEventType> assert = EventuallyMethodEnter(args.Target.Args!, plugin);
+        for (var i = 0; i < expectedTasks; i++)
+            assert = assert.Then(EventuallyEventType(RecordedEventType.TaskStart));
+        for (var i = 0; i < expectedTasks; i++)
+            assert = assert.Then(EventuallyEventType(RecordedEventType.TaskJoinFinish));
+        assert = assert.Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
