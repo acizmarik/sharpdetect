@@ -344,6 +344,16 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WriteInsideFaultedTask_ReadAfterWait(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WriteInsideFaultedTask_ReadAfterWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WriteInsideFaultedTask_ReadAfterGetResult(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WriteInsideFaultedTask_ReadAfterGetResult", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait", sdk, plugin);
 

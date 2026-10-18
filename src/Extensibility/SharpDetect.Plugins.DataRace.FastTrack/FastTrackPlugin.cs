@@ -279,6 +279,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         if (args.IsSuccess)
             _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
+        else
+            _detector.RecordTaskJoinFailed(args.ProcessThreadId, args.TaskObjectId);
     }
 
     private void OnTaskPromiseCompleted(TaskPromiseCompleteArgs args)
@@ -303,7 +305,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnAsyncStateMachineSegmentCompleted(AsyncStateMachineSegmentCompleteArgs args)
     {
-        _detector.RecordTaskCompleted(args.ProcessThreadId, args.StateMachineBoxId);
+        _detector.RecordTaskSegmentCompleted(args.ProcessThreadId, args.StateMachineBoxId);
     }
 
     private void OnAsyncStateMachineCompleted(AsyncStateMachineCompleteArgs args)

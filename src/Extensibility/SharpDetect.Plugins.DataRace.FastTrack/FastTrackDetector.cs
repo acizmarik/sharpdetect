@@ -21,6 +21,7 @@ internal sealed class FastTrackDetector
     private readonly ObjectClockSlots _forkClocks;
     private readonly ObjectClockSlots _taskClocks;
     private readonly ObjectClockSlots _taskRegistrationClocks;
+    private readonly TrackedObjectSet _completedTasks = new();
     private readonly ObjectClockSlots _lockClocks;
     private readonly ObjectClockSlots _eventClocks;
     private readonly SemaphorePermitPools _semaphorePermits;
@@ -58,6 +59,7 @@ internal sealed class FastTrackDetector
             _forkClocks,
             _taskClocks,
             _taskRegistrationClocks,
+            _completedTasks,
             _lockClocks,
             _eventClocks,
             _semaphorePermits,
@@ -126,15 +128,30 @@ internal sealed class FastTrackDetector
     }
 
     public void RecordTaskCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
+    {
+        _taskClocks.ReleaseSnapshot(taskId, workerThreadId);
+        _completedTasks.Add(taskId);
+    }
+
+    public void RecordTaskSegmentCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
         => _taskClocks.ReleaseSnapshot(taskId, workerThreadId);
 
     public void RecordTaskPromiseCompleted(ProcessThreadId completerThreadId, ProcessTrackedObjectId taskId)
-        => _taskClocks.Release(taskId, completerThreadId);
+    {
+        _taskClocks.Release(taskId, completerThreadId);
+        _completedTasks.Add(taskId);
+    }
 
     public void RecordTaskJoinFinished(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
     {
         _taskClocks.TryAcquire(taskId, waiterThreadId);
         _threadClocks.Advance(waiterThreadId);
+    }
+
+    public void RecordTaskJoinFailed(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
+    {
+        if (_completedTasks.Contains(taskId))
+            RecordTaskJoinFinished(waiterThreadId, taskId);
     }
 
     public void RecordLockAcquired(ProcessThreadId threadId, ProcessTrackedObjectId lockId)

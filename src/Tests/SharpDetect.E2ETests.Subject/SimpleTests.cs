@@ -1820,6 +1820,41 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => { DataRace.Test_DataRace_ValueType_Static = 42; }).Wait();
             Task.Run(() => { _ = DataRace.Test_DataRace_ValueType_Static; }).Wait();
         }
+
+        public static void Test_NoDataRace_Task_WriteInsideFaultedTask_ReadAfterWait()
+        {
+            var task = Task.Run(() =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                throw new InvalidOperationException();
+            });
+
+            // Join an already completed task, so the wait does not block on a modeled primitive
+            while (!task.IsCompleted)
+                Thread.Sleep(1);
+
+            try { task.Wait(); }
+            catch (AggregateException) { }
+            _ = DataRace.Test_DataRace_ValueType_Static;
+        }
+
+        public static void Test_NoDataRace_Task_WriteInsideFaultedTask_ReadAfterGetResult()
+        {
+            var task = Task.Run(() =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                throw new InvalidOperationException();
+            });
+
+            // Join an already completed task, so the wait does not block on a modeled primitive
+            while (!task.IsCompleted)
+                Thread.Sleep(1);
+
+            try { task.GetAwaiter().GetResult(); }
+            catch (InvalidOperationException) { }
+            _ = DataRace.Test_DataRace_ValueType_Static;
+        }
+
         public static void Test_AsyncMethodBuilder_SuspendResume1()
         {
             var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);

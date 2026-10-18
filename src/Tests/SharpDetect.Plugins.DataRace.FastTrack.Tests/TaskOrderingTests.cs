@@ -245,4 +245,80 @@ public class TaskOrderingTests
         // Assert
         Assert.True(_harness.ReadIsRace(secondWorker, field, instance: null));
     }
+
+    [Fact]
+    public void FailedJoinOfACompletedTask_OrdersTheBodyBeforeTheWaiter()
+    {
+        // Arrange
+        var parent = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var task = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordTaskScheduled(parent, task);
+        _harness.Detector.RecordTaskStarted(worker, task);
+        _harness.Write(worker, field, instance: null);
+        _harness.Detector.RecordTaskCompleted(worker, task);
+        _harness.Detector.RecordTaskJoinFailed(parent, task);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(parent, field, instance: null));
+    }
+
+    [Fact]
+    public void FailedJoinOfAFaultedPromise_OrdersTheCompleterBeforeTheWaiter()
+    {
+        // Arrange
+        var completer = _harness.NewThread();
+        var waiter = _harness.NewThread();
+        var task = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Write(completer, field, instance: null);
+        _harness.Detector.RecordTaskPromiseCompleted(completer, task);
+        _harness.Detector.RecordTaskJoinFailed(waiter, task);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(waiter, field, instance: null));
+    }
+
+    [Fact]
+    public void FailedJoinOfARunningTask_AddsNoOrdering()
+    {
+        // Arrange
+        var parent = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var task = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordTaskScheduled(parent, task);
+        _harness.Detector.RecordTaskStarted(worker, task);
+        _harness.Write(worker, field, instance: null);
+        _harness.Detector.RecordTaskJoinFailed(parent, task);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(parent, field, instance: null));
+    }
+
+    [Fact]
+    public void FailedJoinAfterAnAsyncSegment_AddsNoOrdering()
+    {
+        // Arrange
+        var parent = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var box = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordTaskStarted(worker, box);
+        _harness.Write(worker, field, instance: null);
+        _harness.Detector.RecordTaskSegmentCompleted(worker, box);
+        _harness.Detector.RecordTaskJoinFailed(parent, box);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(parent, field, instance: null));
+    }
 }
