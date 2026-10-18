@@ -153,6 +153,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Lock_TryEnterExit3(string sdk)
+    {
+        await LockEnterExit("Test_LockMethods_TryEnterExit3", sdk);
+    }
+
+    [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Task_ScheduleAndStart1(string sdk)
     {

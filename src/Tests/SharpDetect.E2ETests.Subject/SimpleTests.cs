@@ -390,6 +390,32 @@ namespace SharpDetect.E2ETests.Subject
                 lockObj.Exit();
             }
         }
+
+        public static void Test_LockMethods_TryEnterExit3()
+        {
+            var lockObj = new Lock();
+            if (lockObj.TryEnter(timeout: TimeSpan.FromSeconds(1)))
+            {
+                lockObj.Exit();
+            }
+        }
+
+        public static void Test_NoDataRace_Lock_TryEnterWithTimeSpan()
+        {
+            var lockObj = new Lock();
+            var increment = () =>
+            {
+                for (var i = 0; i < 10; i++)
+                {
+                    if (!lockObj.TryEnter(timeout: WaitTimeout))
+                        throw new TimeoutException("Could not acquire the lock.");
+
+                    DataRace.Test_DataRace_ValueType_Static++;
+                    lockObj.Exit();
+                }
+            };
+            RunConcurrently(increment, increment);
+        }
 #endif
 
         public static void Test_Field_ValueType_Instance_Read()

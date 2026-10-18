@@ -11,6 +11,7 @@ public static class LockMethodDescriptors
     private const string LockTypeName = "System.Threading.Lock";
     private const string LockScopeTypeName = "System.Threading.Lock+Scope";
     private const string LockThreadIdTypeName = "System.Threading.Lock+ThreadId";
+    private const string TimeSpanTypeName = "System.TimeSpan";
     private static readonly Version Version9 = new(9, 0, 0);
     private static readonly Version Version10Max = new(10, int.MaxValue, int.MaxValue);
     private static readonly CapturedArgumentDescriptor ObjectRefArg = 
@@ -22,6 +23,7 @@ public static class LockMethodDescriptors
     private static readonly MethodDescriptor ExitThreadId;
     private static readonly MethodDescriptor TryEnter;
     private static readonly MethodDescriptor TryEnterTimeout;
+    private static readonly MethodDescriptor TryEnterTimeSpan;
 
     static LockMethodDescriptors()
     {
@@ -126,6 +128,23 @@ public static class LockMethodDescriptors
                 ReturnValue: new(sizeof(bool), CapturedValue.CaptureAsValue),
                 MethodEnterInterpretation: (ushort)RecordedEventType.LockTryAcquire,
                 MethodExitInterpretation: (ushort)RecordedEventType.LockAcquireResult));
+
+        TryEnterTimeSpan = new MethodDescriptor(
+            MethodName: "TryEnter",
+            DeclaringTypeFullName: LockTypeName,
+            VersionDescriptor: MethodVersionDescriptor.Create(Version9, Version10Max),
+            SignatureDescriptor: new MethodSignatureDescriptor(
+                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
+                ParametersCount: 1,
+                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
+                ArgumentTypeElements: [ ArgumentTypeDescriptor.CreateValueType(TimeSpanTypeName) ]),
+            RewritingDescriptor: new MethodRewritingDescriptor(
+                InjectHooks: true,
+                InjectManagedWrapper: false,
+                Arguments: [ ObjectRefArg ],
+                ReturnValue: new(sizeof(bool), CapturedValue.CaptureAsValue),
+                MethodEnterInterpretation: (ushort)RecordedEventType.LockTryAcquire,
+                MethodExitInterpretation: (ushort)RecordedEventType.LockAcquireResult));
     }
     
     public static IEnumerable<MethodDescriptor> GetAllMethods()
@@ -136,6 +155,7 @@ public static class LockMethodDescriptors
         yield return Exit;
         yield return TryEnter;
         yield return TryEnterTimeout;
+        yield return TryEnterTimeSpan;
         
         // Internal API
         yield return ExitThreadId;

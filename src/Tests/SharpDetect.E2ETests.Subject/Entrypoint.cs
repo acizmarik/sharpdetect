@@ -140,6 +140,12 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_LockMethods_TryEnterExit2):
                     Test_LockMethods_TryEnterExit2();
                     break;
+                case nameof(Test_LockMethods_TryEnterExit3):
+                    Test_LockMethods_TryEnterExit3();
+                    break;
+                case nameof(Test_NoDataRace_Lock_TryEnterWithTimeSpan):
+                    Test_NoDataRace_Lock_TryEnterWithTimeSpan();
+                    break;
 #endif
                 case nameof(Test_SemaphoreSlimMethods_WaitRelease1):
                     Test_SemaphoreSlimMethods_WaitRelease1();
