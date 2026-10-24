@@ -24,5 +24,5 @@ if (UNIX AND NOT APPLE)
 endif()
 
 if (WIN32)
-    target_compile_definitions(LibMetadata PRIVATE WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(LibMetadata PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
