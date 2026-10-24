@@ -10,6 +10,7 @@ namespace LibProfiler
 {
     using TypeArgs = std::vector<std::pair<const BYTE*, unsigned>>;
     unsigned SkipSigType(const BYTE* signature, unsigned length);
+    unsigned SkipCustomModifiers(const BYTE* signature, unsigned length);
 
     bool IsSigTypeObjectReference(
         const BYTE* signature,

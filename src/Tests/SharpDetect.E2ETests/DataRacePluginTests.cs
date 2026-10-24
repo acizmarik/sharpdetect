@@ -71,6 +71,16 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_VolatileStaticReceiver_Instance_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_VolatileStaticReceiver_Instance_WriteWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_VolatileReceiver_Instance_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_VolatileReceiver_Instance_WriteWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_Finalizer_ClearsHandleWrittenInConstructor(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor", sdk, plugin);
 

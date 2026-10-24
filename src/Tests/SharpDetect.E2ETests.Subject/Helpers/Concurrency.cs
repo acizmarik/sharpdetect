@@ -194,5 +194,7 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
     public class DataRaceReceivers
     {
         public static readonly DataRace StaticReadonly = new();
+        public static volatile DataRace VolatileStatic = new();
+        public volatile DataRace Volatile = new();
     }
 }

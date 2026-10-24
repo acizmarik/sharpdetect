@@ -83,6 +83,38 @@ TEST_CASE("IsSigTypeObjectReference rejects value types")
     CHECK_FALSE(IsObjRef({}));
 }
 
+TEST_CASE("IsSigTypeObjectReference looks through custom modifiers")
+{
+    // volatile object field — modreq(IsVolatile) CLASS <token>
+    CHECK(IsObjRef({ ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_CLASS, CompressedToken }));
+    CHECK(IsObjRef({ ELEMENT_TYPE_CMOD_OPT, CompressedToken, ELEMENT_TYPE_STRING }));
+    CHECK(IsObjRef({ ELEMENT_TYPE_CMOD_OPT, CompressedToken, ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_OBJECT }));
+    CHECK_FALSE(IsObjRef({ ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_I4 }));
+    CHECK_FALSE(IsObjRef({ ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_VOID }));
+    CHECK_FALSE(IsObjRef({ ELEMENT_TYPE_CMOD_REQD, CompressedToken }));
+
+    // A substituted generic argument can carry modifiers of its own
+    const Blob lazyOfVolatileClass = { ELEMENT_TYPE_GENERICINST, ELEMENT_TYPE_CLASS, CompressedToken,
+                                       1, ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_CLASS, CompressedToken };
+    CHECK(IsObjRef({ ELEMENT_TYPE_CMOD_OPT, CompressedToken, ELEMENT_TYPE_VAR, 0 }, ParseTypeSpec(lazyOfVolatileClass)));
+}
+
+TEST_CASE("SkipCustomModifiers measures only the leading modifiers")
+{
+    auto const skip = [](const Blob& signature) {
+        return LibProfiler::SkipCustomModifiers(signature.data(), static_cast<unsigned>(signature.size()));
+    };
+
+    CHECK(skip({ ELEMENT_TYPE_VOID }) == 0);
+    CHECK(skip({ ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_VOID }) == 2);
+    CHECK(skip({ ELEMENT_TYPE_CMOD_OPT, CompressedToken, ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_I4 }) == 4);
+    // A two-byte compressed token
+    CHECK(skip({ ELEMENT_TYPE_CMOD_REQD, 0x81, 0x02, ELEMENT_TYPE_VOID }) == 3);
+    // Modifiers nested below a byref belong to the inner type
+    CHECK(skip({ ELEMENT_TYPE_BYREF, ELEMENT_TYPE_CMOD_REQD, CompressedToken, ELEMENT_TYPE_I4 }) == 0);
+    CHECK(skip({}) == 0);
+}
+
 TEST_CASE("A generic parameter is unresolvable without arguments")
 {
     CHECK_FALSE(IsObjRef({ ELEMENT_TYPE_VAR, 0 }));

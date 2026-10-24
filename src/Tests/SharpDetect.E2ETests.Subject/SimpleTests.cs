@@ -1336,6 +1336,21 @@ namespace SharpDetect.E2ETests.Subject
                 () => DataRaceReceivers.StaticReadonly.Test_DataRace_ValueType_InstanceField = 456);
         }
 
+        public static void Test_DataRace_VolatileStaticReceiver_Instance_WriteWriteRace()
+        {
+            RunConcurrently(
+                () => DataRaceReceivers.VolatileStatic.Test_DataRace_ValueType_InstanceField = 123,
+                () => DataRaceReceivers.VolatileStatic.Test_DataRace_ValueType_InstanceField = 456);
+        }
+
+        public static void Test_DataRace_VolatileReceiver_Instance_WriteWriteRace()
+        {
+            var receivers = new DataRaceReceivers();
+            RunConcurrently(
+                () => receivers.Volatile.Test_DataRace_ValueType_InstanceField = 123,
+                () => receivers.Volatile.Test_DataRace_ValueType_InstanceField = 456);
+        }
+
         public static void Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor()
         {
             AllocateAndDropHandleOwners();

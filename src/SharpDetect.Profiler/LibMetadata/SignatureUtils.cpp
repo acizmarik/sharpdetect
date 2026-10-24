@@ -3,6 +3,8 @@
 
 #include "SignatureUtils.h"
 
+#include <algorithm>
+
 unsigned LibProfiler::SkipSigType(const BYTE* signature, unsigned length)
 {
     if (length == 0)
@@ -112,13 +114,31 @@ unsigned LibProfiler::SkipSigType(const BYTE* signature, unsigned length)
     }
 }
 
+unsigned LibProfiler::SkipCustomModifiers(const BYTE* signature, const unsigned length)
+{
+    unsigned position = 0;
+    while (position < length &&
+        (signature[position] == ELEMENT_TYPE_CMOD_REQD || signature[position] == ELEMENT_TYPE_CMOD_OPT))
+    {
+        position++;
+        ULONG token;
+        position += CorSigUncompressData(signature + position, &token);
+    }
+
+    return std::min(position, length);
+}
+
 bool LibProfiler::IsSigTypeObjectReference(
     const BYTE* signature,
-    const unsigned length,
+    unsigned length,
     const TypeArgs& classArgs,
     const TypeArgs& methodArgs)
 {
     static const TypeArgs noTypeArgs;
+
+    auto const modifiersLength = SkipCustomModifiers(signature, length);
+    signature += modifiersLength;
+    length -= modifiersLength;
 
     if (length == 0)
         return false;
