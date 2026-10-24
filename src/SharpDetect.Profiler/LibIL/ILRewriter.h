@@ -189,7 +189,7 @@ static int k_rgnStackPops[] = {
 //   1 = definitely an object reference (PushRef)
 //  -1 = VarPush (needs method-signature inspection)
 // Note: Push1 is mapped to 0 here. ComputeStackTypes() resolves Push1 opcodes
-// (ldarg/ldloc/ldfld) explicitly from signature blobs without resolving mdTypeRef tokens.
+// (ldarg/ldloc/ldfld/ldsfld) explicitly from signature blobs without resolving mdTypeRef tokens.
 static int k_rgnPushIsRef[] = {
 
 #if defined(WIN32) || defined(WIN64)

@@ -1329,6 +1329,13 @@ namespace SharpDetect.E2ETests.Subject
                 () => instance.Test_DataRace_ValueType_InstanceField = 456);
         }
 
+        public static void Test_DataRace_StaticReadonlyReceiver_Instance_WriteWriteRace()
+        {
+            RunConcurrently(
+                () => DataRaceReceivers.StaticReadonly.Test_DataRace_ValueType_InstanceField = 123,
+                () => DataRaceReceivers.StaticReadonly.Test_DataRace_ValueType_InstanceField = 456);
+        }
+
         public static void Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor()
         {
             AllocateAndDropHandleOwners();

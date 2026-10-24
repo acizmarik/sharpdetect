@@ -437,7 +437,7 @@ namespace
         LibProfiler::ParseTypeSpecGenericArgs(typeSpecSig, typeSpecSigLen, classArgs);
     }
 
-    // Determine the kind for a field load (ldfld pushes the field value).
+    // Determine the kind for a field load (ldfld and ldsfld push the field value).
     StackSlotKind GetFieldLoadKind(IMetaDataImport2* pImport, mdToken fieldToken)
     {
         PCCOR_SIGNATURE sig = nullptr;
@@ -814,8 +814,8 @@ HRESULT ILRewriter::ComputeStackTypes()
                     {
                         kind = localTypes[locIdx];
                     }
-                    // ldfld: check field signature blob for the pushed type
-                    else if (opcode == CEE_LDFLD)
+                    // ldfld/ldsfld: check field signature blob for the pushed type
+                    else if (opcode == CEE_LDFLD || opcode == CEE_LDSFLD)
                     {
                         kind = GetFieldLoadKind(pImport, static_cast<mdToken>(pInstr->m_Arg32));
                     }

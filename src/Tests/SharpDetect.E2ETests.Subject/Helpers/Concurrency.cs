@@ -190,4 +190,9 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
             _ = _activeContext;
         }
     }
+
+    public class DataRaceReceivers
+    {
+        public static readonly DataRace StaticReadonly = new();
+    }
 }
