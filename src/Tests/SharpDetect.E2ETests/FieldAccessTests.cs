@@ -460,6 +460,11 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     public Task InstanceField_UnalignedPrefix_Write(string sdk)
         => PrefixedFieldAccess("Test_Field_Prefixed_Unaligned_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, FieldAccessKind.Regular);
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_ValueType_OnForeignNewObj_Write(string sdk)
+        => FieldAccess("Test_Field_ValueType_OnForeignNewObj_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite);
+
     private Task PrefixedFieldAccess(string subjectArgs, string sdk, RecordedEventType eventType, FieldAccessKind accessKind)
         => FieldAccess(subjectArgs, sdk, eventType, accessKind, IlSubjectAssemblyName);
 

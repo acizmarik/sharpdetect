@@ -805,6 +805,12 @@ namespace SharpDetect.E2ETests.Subject
             PrefixedFieldAccess.WriteUnaligned(new PrefixedFieldAccess(), 123);
         }
 
+        public static void Test_Field_ValueType_OnForeignNewObj_Instance_Write()
+        {
+            // The type is defined in another module, so only the stfld tells that newobj built an object
+            _ = new PrefixedFieldAccess { Value = 123 };
+        }
+
         public static void Test_Field_Atomic_ValueType_Static_Increment()
         {
             Interlocked.Increment(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static);
