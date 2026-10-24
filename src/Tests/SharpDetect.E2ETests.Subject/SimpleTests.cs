@@ -746,6 +746,14 @@ namespace SharpDetect.E2ETests.Subject
             _ = (Environment.CurrentManagedThreadId < 0 ? first : second).Test_Field_ReferenceType_Instance;
         }
 
+        public static void Test_Field_ReferenceType_OnValueType_InitOnlyObjectWrite()
+        {
+            var instance = new InstanceFieldOnValueType();
+            instance.ReferenceField = new InitOnlyReferenceType { Value = 123 };
+            GC.Collect();
+            GC.KeepAlive(instance.ReferenceField);
+        }
+
         public static void Test_Field_Atomic_ValueType_Static_Increment()
         {
             Interlocked.Increment(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static);
@@ -1349,6 +1357,14 @@ namespace SharpDetect.E2ETests.Subject
             RunConcurrently(
                 () => receivers.Volatile.Test_DataRace_ValueType_InstanceField = 123,
                 () => receivers.Volatile.Test_DataRace_ValueType_InstanceField = 456);
+        }
+
+        public static void Test_DataRace_InitOnlyValueType_Instance_WriteWriteRace()
+        {
+            var receivers = new DataRaceReceivers();
+            RunConcurrently(
+                () => receivers.InitOnlyValue = new InitOnlyValueType { Value = 123 },
+                () => receivers.InitOnlyValue = new InitOnlyValueType { Value = 456 });
         }
 
         public static void Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor()

@@ -409,6 +409,11 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     public Task InstanceField_ReferenceType_TernaryReceiverRead_BranchTargetsLoad(string sdk)
         => FieldAccess("Test_Field_ReferenceType_Instance_TernaryReceiverRead", sdk, RecordedEventType.InstanceFieldRead);
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_ReferenceType_OnValueType_InitOnlyObjectWrite(string sdk)
+        => FieldAccessNotInstrumented("Test_Field_ReferenceType_OnValueType_InitOnlyObjectWrite", sdk, RecordedEventType.InstanceFieldWrite);
+
     private async Task FieldAccess(
         string subjectArgs,
         string sdk,
@@ -486,12 +491,14 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         // Verify: method enters and exits successfully (no crash from skipped instrumentation)
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        var instrumented = EventuallyFieldAccessInMethod(args.Target.Args!, eventType, plugin);
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        Assert.True(AssertStatus.Violated == instrumented.Evaluate(events), instrumented.GetDiagnosticInfo());
     }
 
     private async Task VolatileFieldAccess(string subjectArgs, string sdk, RecordedEventType eventType)

@@ -455,6 +455,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_ReferenceType_Instance_TernaryReceiverRead):
                     Test_Field_ReferenceType_Instance_TernaryReceiverRead();
                     break;
+                case nameof(Test_Field_ReferenceType_OnValueType_InitOnlyObjectWrite):
+                    Test_Field_ReferenceType_OnValueType_InitOnlyObjectWrite();
+                    break;
             }
 
             // Array events
@@ -601,6 +604,9 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_DataRace_VolatileReceiver_Instance_WriteWriteRace):
                     Test_DataRace_VolatileReceiver_Instance_WriteWriteRace();
+                    break;
+                case nameof(Test_DataRace_InitOnlyValueType_Instance_WriteWriteRace):
+                    Test_DataRace_InitOnlyValueType_Instance_WriteWriteRace();
                     break;
                 case nameof(Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor):
                     Test_NoDataRace_Finalizer_ClearsHandleWrittenInConstructor();

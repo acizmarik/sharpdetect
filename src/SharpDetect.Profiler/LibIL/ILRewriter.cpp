@@ -557,7 +557,9 @@ namespace
         if (remaining == 0)
             return info;
 
-        info.returnsVoid = (*ptr == ELEMENT_TYPE_VOID);
+        // An init accessor returns modreq(IsExternalInit) void
+        auto const modifiersLength = LibProfiler::SkipCustomModifiers(ptr, remaining);
+        info.returnsVoid = modifiersLength < remaining && ptr[modifiersLength] == ELEMENT_TYPE_VOID;
 
         TypeArgs classTypeArgs;
         ResolveDeclaringTypeSpecArgs(pImport, declaringToken, classTypeArgs);

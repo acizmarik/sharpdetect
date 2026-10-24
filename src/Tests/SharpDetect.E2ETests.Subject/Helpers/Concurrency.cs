@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Runtime.CompilerServices;
+using SharpDetect.E2ETests.Subject.Helpers.Fields;
 
 namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
 {
@@ -196,5 +197,6 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static readonly DataRace StaticReadonly = new();
         public static volatile DataRace VolatileStatic = new();
         public volatile DataRace Volatile = new();
+        public InitOnlyValueType InitOnlyValue;
     }
 }
