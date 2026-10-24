@@ -458,6 +458,12 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_ReferenceType_OnValueType_InitOnlyObjectWrite):
                     Test_Field_ReferenceType_OnValueType_InitOnlyObjectWrite();
                     break;
+                case nameof(Test_Field_ValueType_OnConstructedValueType_Instance_Read):
+                    Test_Field_ValueType_OnConstructedValueType_Instance_Read();
+                    break;
+                case nameof(Test_Field_ValueType_OnConstructedGenericValueType_Instance_Read):
+                    Test_Field_ValueType_OnConstructedGenericValueType_Instance_Read();
+                    break;
             }
 
             // Array events

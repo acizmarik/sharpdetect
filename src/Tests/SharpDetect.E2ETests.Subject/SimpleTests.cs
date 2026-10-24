@@ -754,6 +754,18 @@ namespace SharpDetect.E2ETests.Subject
             GC.KeepAlive(instance.ReferenceField);
         }
 
+        public static void Test_Field_ValueType_OnConstructedValueType_Instance_Read()
+        {
+            StaticFieldValueType.Test_Field_ValueType_Static = new ConstructedValueType(42).ValueField;
+            GC.Collect();
+        }
+
+        public static void Test_Field_ValueType_OnConstructedGenericValueType_Instance_Read()
+        {
+            StaticFieldValueType.Test_Field_ValueType_Static = new ConstructedValueType<int>(42).ValueField;
+            GC.Collect();
+        }
+
         public static void Test_Field_Atomic_ValueType_Static_Increment()
         {
             Interlocked.Increment(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static);

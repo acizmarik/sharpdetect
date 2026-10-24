@@ -275,7 +275,10 @@ namespace
     // Per-slot type: is it an object reference or something else?
     // SlotOther  = definitely NOT an object reference, or unknown (conservative)
     // SlotObjRef = definitely an object reference
-    enum StackSlotKind : unsigned char { SlotOther = 0, SlotObjRef = 1 };
+    // SlotNewObjOfForeignType = pushed by newobj of a type defined in another module, which is an object
+    //              reference unless the type is a value type. stfld needs an object reference or a pointer,
+    //              so only ldfld and ldflda can receive such a value type.
+    enum StackSlotKind : unsigned char { SlotOther = 0, SlotObjRef = 1, SlotNewObjOfForeignType = 2 };
     using LibProfiler::SkipSigType;
 
     using LibProfiler::TypeArgs;
@@ -325,6 +328,13 @@ namespace
         return wstrEq(name, sysValueType) || wstrEq(name, sysEnum);
     }
 
+    bool IsTypeDefValueType(IMetaDataImport* pImport, mdTypeDef typeDef)
+    {
+        mdToken baseToken = mdTokenNil;
+        pImport->GetTypeDefProps(typeDef, nullptr, 0, nullptr, nullptr, &baseToken);
+        return IsBaseTokenValueType(pImport, baseToken);
+    }
+
     // Determine the StackSlotKind for 'this' (arg 0) of the method being analyzed.
     // m_tkMethod is always mdtMethodDef. We get its declaring mdTypeDef, then check
     // whether the base type is System.ValueType or System.Enum (by reading the name).
@@ -337,13 +347,36 @@ namespace
         if (IsNilToken(declaringType))
             return SlotOther; // cannot determine — conservative
 
-        mdToken baseToken = mdTokenNil;
-        pImport->GetTypeDefProps(declaringType, nullptr, 0, nullptr, nullptr, &baseToken);
-
-        if (IsBaseTokenValueType(pImport, baseToken))
+        if (IsTypeDefValueType(pImport, declaringType))
             return SlotOther; // value type: 'this' is a managed pointer
 
         return SlotObjRef; // reference type: 'this' is an object reference
+    }
+
+    StackSlotKind GetNewObjKind(IMetaDataImport2* pImport, mdToken declaringToken)
+    {
+        switch (TypeFromToken(declaringToken))
+        {
+        case mdtTypeDef:
+            return IsTypeDefValueType(pImport, declaringToken) ? SlotOther : SlotObjRef;
+
+        case mdtTypeSpec:
+        {
+            PCCOR_SIGNATURE typeSpecSig = nullptr;
+            ULONG typeSpecSigLen = 0;
+            if (FAILED(pImport->GetTypeSpecFromToken(declaringToken, &typeSpecSig, &typeSpecSigLen)) ||
+                typeSpecSig == nullptr)
+            {
+                return SlotOther;
+            }
+
+            return IsSigTypeObjRef(typeSpecSig, typeSpecSigLen) ? SlotObjRef : SlotOther;
+        }
+
+        default:
+            // A TypeRef cannot be told apart without loading the module that defines it
+            return SlotNewObjOfForeignType;
+        }
     }
 
     // Build a lookup of argument index → StackSlotKind from the method signature.
@@ -497,6 +530,7 @@ namespace
         bool hasThis = false;
         bool returnsVoid = true;
         bool returnsObjRef = false;
+        mdToken declaringToken = mdTokenNil; // the method's parent; nil when it could not be read
     };
 
     CallTargetInfo ResolveCallTarget(IMetaDataImport2* pImport, mdToken methodToken)
@@ -521,16 +555,15 @@ namespace
 
         PCCOR_SIGNATURE sig = nullptr;
         ULONG sigLen = 0;
-        mdToken declaringToken = mdTokenNil;
         auto const tokenType = TypeFromToken(signatureToken);
         if (tokenType == mdtMethodDef)
         {
-            pImport->GetMethodProps(signatureToken, &declaringToken, nullptr, 0, nullptr,
+            pImport->GetMethodProps(signatureToken, &info.declaringToken, nullptr, 0, nullptr,
                                     nullptr, &sig, &sigLen, nullptr, nullptr);
         }
         else if (tokenType == mdtMemberRef)
         {
-            pImport->GetMemberRefProps(signatureToken, &declaringToken, nullptr, 0, nullptr, &sig, &sigLen);
+            pImport->GetMemberRefProps(signatureToken, &info.declaringToken, nullptr, 0, nullptr, &sig, &sigLen);
         }
 
         if (sig == nullptr || sigLen == 0)
@@ -562,7 +595,7 @@ namespace
         info.returnsVoid = modifiersLength < remaining && ptr[modifiersLength] == ELEMENT_TYPE_VOID;
 
         TypeArgs classTypeArgs;
-        ResolveDeclaringTypeSpecArgs(pImport, declaringToken, classTypeArgs);
+        ResolveDeclaringTypeSpecArgs(pImport, info.declaringToken, classTypeArgs);
         info.returnsObjRef = IsSigTypeObjectReference(ptr, remaining, classTypeArgs, methodTypeArgs);
         return info;
     }
@@ -686,8 +719,12 @@ HRESULT ILRewriter::ComputeStackTypes()
         else if (opcode == CEE_STFLD)
         {
             // Stack: [..., obj, value] — object operand is second from top
+            // A value type built by newobj cannot be stored into, so a foreign newobj here is an object
             if (stack.size() >= 2)
-                pInstr->m_objOperandIsObjRef = stack[stack.size() - 2] == SlotObjRef;
+            {
+                auto const kind = stack[stack.size() - 2];
+                pInstr->m_objOperandIsObjRef = kind == SlotObjRef || kind == SlotNewObjOfForeignType;
+            }
         }
 
         if (opcode == CEE_DUP)
@@ -742,7 +779,7 @@ HRESULT ILRewriter::ComputeStackTypes()
                 // Push return value
                 if (opcode == CEE_NEWOBJ)
                 {
-                    stack.push_back(SlotObjRef);
+                    stack.push_back(GetNewObjKind(pImport, target.declaringToken));
                     producers.push_back(pInstr);
                 }
                 else if (!target.returnsVoid)

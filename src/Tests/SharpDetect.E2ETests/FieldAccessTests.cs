@@ -414,6 +414,16 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     public Task InstanceField_ReferenceType_OnValueType_InitOnlyObjectWrite(string sdk)
         => FieldAccessNotInstrumented("Test_Field_ReferenceType_OnValueType_InitOnlyObjectWrite", sdk, RecordedEventType.InstanceFieldWrite);
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_ValueType_OnConstructedValueType_Read(string sdk)
+        => FieldAccessNotInstrumented("Test_Field_ValueType_OnConstructedValueType_Instance_Read", sdk, RecordedEventType.InstanceFieldRead);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_ValueType_OnConstructedGenericValueType_Read(string sdk)
+        => FieldAccessNotInstrumented("Test_Field_ValueType_OnConstructedGenericValueType_Instance_Read", sdk, RecordedEventType.InstanceFieldRead);
+
     private async Task FieldAccess(
         string subjectArgs,
         string sdk,
