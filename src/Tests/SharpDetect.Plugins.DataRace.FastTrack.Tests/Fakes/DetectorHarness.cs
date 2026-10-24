@@ -95,23 +95,29 @@ internal sealed class DetectorHarness
     public bool ReadIsRace(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Read(thread, field, instance) is not null;
 
-    public void VolatileWrite(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordVolatileWrite(thread, TestMetadata.ModuleId, field, instance);
+    public DataRaceInfo? VolatileWrite(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
+        => Detector.RecordVolatileWrite(thread, methodOffset: 0, field, instance, NewStack());
 
-    public void VolatileRead(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordVolatileRead(thread, TestMetadata.ModuleId, field, instance);
+    public DataRaceInfo? VolatileRead(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
+        => Detector.RecordVolatileRead(thread, methodOffset: 0, field, instance, NewStack());
 
     public void AtomicRelease(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Detector.RecordAtomicRelease(thread, TestMetadata.ModuleId, field, instance);
 
-    public void AtomicAcquire(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordAtomicAcquire(thread, TestMetadata.ModuleId, field, instance);
+    public DataRaceInfo? AtomicAcquire(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
+        => Detector.RecordAtomicAcquire(thread, methodOffset: 0, field, instance, NewStack());
 
     public void CompareExchangeRelease(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Detector.RecordCompareExchangeRelease(thread, TestMetadata.ModuleId, field, instance);
 
-    public void CompareExchangeCompleted(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, bool succeeded)
-        => Detector.RecordCompareExchangeCompleted(thread, TestMetadata.ModuleId, field, instance, succeeded);
+    public DataRaceInfo? CompareExchangeCompleted(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, bool succeeded)
+        => Detector.RecordCompareExchangeCompleted(thread, methodOffset: 0, field, instance, NewStack(), succeeded);
+
+    public DataRaceInfo? ReadModifyWrite(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
+    {
+        AtomicRelease(thread, field, instance);
+        return AtomicAcquire(thread, field, instance);
+    }
 
     public void QueueForFinalization(params ProcessTrackedObjectId[] objects)
     {

@@ -116,6 +116,7 @@ The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanaga
    - Statics and instance using `Volatile` class and some methods from `Interlocked` class (`LDSFLDA`, `LDFLDA`)
 - Atomic field access
    - Statics and instance using some methods from `Interlocked` class (`LDSFLDA`, `LDFLDA`)
+- Volatile and atomic accesses never race with each other, but they do race with unordered plain accesses of the same field
 
 #### Configuration
 

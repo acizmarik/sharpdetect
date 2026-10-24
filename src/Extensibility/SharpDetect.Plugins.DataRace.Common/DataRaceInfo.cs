@@ -9,7 +9,9 @@ namespace SharpDetect.Plugins.DataRace.Common;
 public enum AccessType
 {
     Read,
-    Write
+    Write,
+    AtomicRead,
+    AtomicWrite
 }
 
 public sealed record AccessInfo(

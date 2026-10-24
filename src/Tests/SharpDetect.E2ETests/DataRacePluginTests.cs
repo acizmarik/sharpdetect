@@ -15,7 +15,6 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 {
     public const string CollectionName = "E2E_DataRacePluginTests";
 
-    private const string MixedAccessGap = "Known gap: atomic accesses are not checked against plain accesses to the same field";
     private const string IndirectReferenceGap = "Known gap: Interlocked calls are recognized only when the ref argument is a direct field address";
     private const string StructFieldReceiverGap = "Known gap: a field address is not recognized when its receiver is a managed pointer (field of a struct)";
     private const string FieldIdentityByTokenGap = "Known gap: field identity includes the referencing token, so Foo<T>.F inside Foo<T> and Foo<int>.F outside it get separate clocks";
@@ -379,10 +378,30 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task CanDetectDataRace_InterlockedFailedCompareExchange_DoesNotPublish(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_InterlockedFailedCompareExchange_DoesNotPublish", sdk, plugin);
 
-    [Theory(Skip = MixedAccessGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_InterlockedCounter_MixedWithPlainIncrement(string sdk, string plugin)
-        => AssertDetectsDataRace("Test_DataRace_InterlockedCounter_MixedWithPlainIncrement", sdk, plugin);
+        => AssertDetectsDataRaceOnAtomicCounter("Test_DataRace_InterlockedCounter_MixedWithPlainIncrement", sdk, plugin, "AtomicWrite");
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_InterlockedCounter_AtomicIncrementBeforePlainIncrement(string sdk, string plugin)
+        => AssertDetectsDataRaceOnAtomicCounter("Test_DataRace_InterlockedCounter_AtomicIncrementBeforePlainIncrement", sdk, plugin, "AtomicWrite");
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_VolatileFlag_PlainWriteBeforeVolatileRead(string sdk, string plugin)
+        => AssertDetectsDataRaceOnAtomicCounter("Test_DataRace_VolatileFlag_PlainWriteBeforeVolatileRead", sdk, plugin, "AtomicRead");
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedCounter_PlainReadAfterAtomicIncrement_ByDefault(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_InterlockedCounter_PlainReadAfterAtomicIncrement", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedCounter_PlainAccessAfterJoin(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedCounter_PlainAccessAfterJoin", sdk, plugin);
 
     [Theory(Skip = IndirectReferenceGap)]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
@@ -722,6 +741,32 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         Assert.NotEmpty(subjectReports);
         var report = subjectReports.First();
         Assert.Equal(plugin.ReportCategory, report.Category);
+    }
+
+    private async Task AssertDetectsDataRaceOnAtomicCounter(
+        string subjectArgs,
+        string sdk,
+        string pluginFullTypeName,
+        string atomicAccessType)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithTestPlugin(pluginFullTypeName)
+            .WithPluginConfiguration(CreateConfiguration(enableStackTraceCollection: false))
+            .Build(sdk, testOutput, additionalData);
+        var plugin = GetTestPlugin(services);
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var subjectReports = plugin.GetSubjectReports().ToList();
+
+        // Assert
+        Assert.NotEmpty(subjectReports);
+        Assert.All(subjectReports, report => Assert.EndsWith(".Test_Atomic_ValueType_Static", report.Target));
+        Assert.Contains(subjectReports, report => report.Title.StartsWith($"{atomicAccessType} ") || report.Title.Contains($"↔ {atomicAccessType} "));
     }
 
     private async Task AssertDoesNotDetectDataRace(

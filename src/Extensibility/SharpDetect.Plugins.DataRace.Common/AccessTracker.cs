@@ -16,21 +16,15 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
     {
         public AccessRecord Last;
         public AccessRecord LastWrite;
+        public bool HasLast;
         public bool HasWrite;
         public Dictionary<ProcessThreadId, AccessRecord>? ReadsByThread;
+        public Dictionary<ProcessThreadId, AccessRecord>? AtomicByThread;
     }
 
     public bool TryGetLastAccess(FieldId fieldId, ProcessTrackedObjectId? objectId, out AccessRecord record)
     {
-        if (objectId != null)
-        {
-            if (_instanceFieldSlots.TryGetValue(objectId.Value, out var fields) && fields.TryGetValue(fieldId, out var slots))
-            {
-                record = slots.Last;
-                return true;
-            }
-        }
-        else if (_staticFieldSlots.TryGetValue(fieldId, out var slots))
+        if (TryGetSlots(fieldId, objectId, out var slots) && slots.HasLast)
         {
             record = slots.Last;
             return true;
@@ -92,42 +86,71 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         bool trackReadsByThread = false)
     {
         var record = new AccessRecord(threadId, methodOffset, accessType, stack);
-
-        if (objectId != null)
-        {
-            if (!_instanceFieldSlots.TryGetValue(objectId.Value, out var fields))
-            {
-                fields = [];
-                _instanceFieldSlots[objectId.Value] = fields;
-            }
-
-            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(fields, fieldId, out var exists);
-            UpdateSlots(ref slots, exists, record, trackReadsByThread);
-        }
-        else
-        {
-            ref var slots = ref CollectionsMarshal.GetValueRefOrAddDefault(_staticFieldSlots, fieldId, out var exists);
-            UpdateSlots(ref slots, exists, record, trackReadsByThread);
-        }
-
+        UpdateSlots(ref GetOrAddSlots(fieldId, objectId), record, trackReadsByThread);
         return record;
     }
 
-    private static void UpdateSlots(ref AccessSlots slots, bool exists, in AccessRecord record, bool trackReadsByThread)
+    public AccessRecord RecordAtomicAccess(
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        ProcessThreadId threadId,
+        uint methodOffset,
+        bool stored,
+        CapturedStackTrace stack)
+    {
+        var record = new AccessRecord(threadId, methodOffset, stored ? AccessType.AtomicWrite : AccessType.AtomicRead, stack);
+        ref var slots = ref GetOrAddSlots(fieldId, objectId);
+        var atomicByThread = slots.AtomicByThread ??= [];
+        atomicByThread[threadId] = record;
+        return record;
+    }
+
+    public bool TryGetLastAtomicAccess(
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        ProcessThreadId threadId,
+        out AccessRecord record)
+    {
+        if (TryGetSlots(fieldId, objectId, out var slots) &&
+            slots.AtomicByThread != null &&
+            slots.AtomicByThread.TryGetValue(threadId, out record))
+        {
+            return true;
+        }
+
+        record = default;
+        return false;
+    }
+
+    private ref AccessSlots GetOrAddSlots(FieldId fieldId, ProcessTrackedObjectId? objectId)
+    {
+        if (objectId == null)
+            return ref CollectionsMarshal.GetValueRefOrAddDefault(_staticFieldSlots, fieldId, out _);
+
+        if (!_instanceFieldSlots.TryGetValue(objectId.Value, out var fields))
+        {
+            fields = [];
+            _instanceFieldSlots[objectId.Value] = fields;
+        }
+
+        return ref CollectionsMarshal.GetValueRefOrAddDefault(fields, fieldId, out _);
+    }
+
+    private static void UpdateSlots(ref AccessSlots slots, in AccessRecord record, bool trackReadsByThread)
     {
         if (record.AccessType == AccessType.Write)
         {
             slots.LastWrite = record;
             slots.HasWrite = true;
             slots.ReadsByThread = null;
+            slots.AtomicByThread = null;
         }
         else if (trackReadsByThread)
         {
             var reads = slots.ReadsByThread ??= [];
 
             if (reads.Count == 0 &&
-                exists &&
-                slots.Last.AccessType == AccessType.Read &&
+                slots is { HasLast: true, Last.AccessType: AccessType.Read } &&
                 slots.Last.ProcessThreadId != record.ProcessThreadId)
             {
                 reads[slots.Last.ProcessThreadId] = slots.Last;
@@ -137,6 +160,7 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         }
 
         slots.Last = record;
+        slots.HasLast = true;
     }
 
     private bool TryGetSlots(FieldId fieldId, ProcessTrackedObjectId? objectId, out AccessSlots slots)

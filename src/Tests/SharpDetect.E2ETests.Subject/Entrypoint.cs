@@ -845,6 +845,18 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_InterlockedCounter_MixedWithPlainIncrement):
                     Test_DataRace_InterlockedCounter_MixedWithPlainIncrement();
                     break;
+                case nameof(Test_DataRace_InterlockedCounter_AtomicIncrementBeforePlainIncrement):
+                    Test_DataRace_InterlockedCounter_AtomicIncrementBeforePlainIncrement();
+                    break;
+                case nameof(Test_DataRace_VolatileFlag_PlainWriteBeforeVolatileRead):
+                    Test_DataRace_VolatileFlag_PlainWriteBeforeVolatileRead();
+                    break;
+                case nameof(Test_InterlockedCounter_PlainReadAfterAtomicIncrement):
+                    Test_InterlockedCounter_PlainReadAfterAtomicIncrement();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedCounter_PlainAccessAfterJoin):
+                    Test_NoDataRace_InterlockedCounter_PlainAccessAfterJoin();
+                    break;
                 case nameof(Test_NoDataRace_InterlockedArrayElementFlag_PublishThenRead):
                     Test_NoDataRace_InterlockedArrayElementFlag_PublishThenRead();
                     break;

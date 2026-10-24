@@ -107,6 +107,59 @@ public static partial class Program
             () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static));
     }
 
+    public static void Test_DataRace_InterlockedCounter_AtomicIncrementBeforePlainIncrement()
+    {
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static),
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (DataRace.Test_Atomic_ValueType_Static == 0)
+                    spinner.SpinOnce();
+
+                DataRace.Test_Atomic_ValueType_Static++;
+            });
+    }
+
+    public static void Test_DataRace_VolatileFlag_PlainWriteBeforeVolatileRead()
+    {
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () => DataRace.Test_Atomic_ValueType_Static = 1,
+            () =>
+            {
+                // The plain write releases nothing, so the read that observes it is not ordered after it
+                var spinner = new SpinWait();
+                while (Volatile.Read(ref DataRace.Test_Atomic_ValueType_Static) == 0)
+                    spinner.SpinOnce();
+            });
+    }
+
+    public static void Test_InterlockedCounter_PlainReadAfterAtomicIncrement()
+    {
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static),
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (DataRace.Test_Atomic_ValueType_Static == 0)
+                    spinner.SpinOnce();
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedCounter_PlainAccessAfterJoin()
+    {
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static),
+            () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static));
+
+        // Every increment happens-before the joins, so the plain accesses that follow do not race
+        DataRace.Test_Atomic_ValueType_Static = DataRace.Test_Atomic_ValueType_Static * 2;
+    }
+
     public static void Test_NoDataRace_InterlockedArrayElementFlag_PublishThenRead()
     {
         DataRace.Test_DataRace_ValueType_Static = 0;

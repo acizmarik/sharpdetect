@@ -201,21 +201,26 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         switch (accessKind)
         {
             case FieldAccessKind.Volatile:
-                _detector.RecordVolatileRead(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                if (_detector.RecordVolatileRead(threadId, methodOffset, fieldToken, objectId, stack) is { } volatileRaceInfo)
+                    RecordDataRace(volatileRaceInfo);
                 break;
 
             case FieldAccessKind.Atomic:
-                _detector.RecordAtomicAcquire(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                if (_detector.RecordAtomicAcquire(threadId, methodOffset, fieldToken, objectId, stack) is { } atomicRaceInfo)
+                    RecordDataRace(atomicRaceInfo);
                 break;
 
             case FieldAccessKind.CompareExchangeSucceeded:
             case FieldAccessKind.CompareExchangeFailed:
-                _detector.RecordCompareExchangeCompleted(
+                var compareExchangeRaceInfo = _detector.RecordCompareExchangeCompleted(
                     threadId,
-                    stack.Top.ModuleId,
+                    methodOffset,
                     fieldToken,
                     objectId,
+                    stack,
                     succeeded: accessKind == FieldAccessKind.CompareExchangeSucceeded);
+                if (compareExchangeRaceInfo != null)
+                    RecordDataRace(compareExchangeRaceInfo);
                 break;
 
             default:
@@ -236,7 +241,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         switch (accessKind)
         {
             case FieldAccessKind.Volatile:
-                _detector.RecordVolatileWrite(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                if (_detector.RecordVolatileWrite(threadId, methodOffset, fieldToken, objectId, stack) is { } volatileRaceInfo)
+                    RecordDataRace(volatileRaceInfo);
                 break;
 
             case FieldAccessKind.Atomic:

@@ -76,6 +76,8 @@ public static class DataRaceLogger
         {
             AccessType.Read => "read",
             AccessType.Write => "write",
+            AccessType.AtomicRead => "atomic read",
+            AccessType.AtomicWrite => "atomic write",
             _ => "<unresolved-access-type>"
         };
     }

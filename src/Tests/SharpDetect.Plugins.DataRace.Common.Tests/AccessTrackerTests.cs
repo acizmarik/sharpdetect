@@ -85,6 +85,48 @@ public class AccessTrackerTests
         Assert.False(_tracker.TryGetLastReadAccess(_field, instance, Second, out _));
     }
 
+    [Fact]
+    public void AtomicAccess_IsNotTakenForAPlainRead()
+    {
+        // Act
+        _tracker.RecordAtomicAccess(_field, null, First, methodOffset: 0, stored: false, Stack);
+        Read(Second, trackReadsByThread: true);
+
+        // Assert
+        Assert.False(_tracker.TryGetLastReadAccess(_field, null, First, out _));
+        Assert.True(_tracker.TryGetLastReadAccess(_field, null, Second, out _));
+        Assert.True(_tracker.TryGetLastAccess(_field, null, out var last));
+        Assert.Equal(Second, last.ProcessThreadId);
+    }
+
+    [Fact]
+    public void AtomicAccesses_KeepTheLastAccessOfEachThread()
+    {
+        // Act
+        _tracker.RecordAtomicAccess(_field, null, First, methodOffset: 1, stored: true, Stack);
+        _tracker.RecordAtomicAccess(_field, null, First, methodOffset: 2, stored: false, Stack);
+        _tracker.RecordAtomicAccess(_field, null, Second, methodOffset: 3, stored: true, Stack);
+
+        // Assert
+        Assert.True(_tracker.TryGetLastAtomicAccess(_field, null, First, out var lastOfFirst));
+        Assert.Equal((2u, AccessType.AtomicRead), (lastOfFirst.MethodOffset, lastOfFirst.AccessType));
+        Assert.True(_tracker.TryGetLastAtomicAccess(_field, null, Second, out var lastOfSecond));
+        Assert.Equal((3u, AccessType.AtomicWrite), (lastOfSecond.MethodOffset, lastOfSecond.AccessType));
+        Assert.False(_tracker.TryGetLastAtomicAccess(_field, null, Third, out _));
+        Assert.False(_tracker.TryGetLastAccess(_field, null, out _));
+    }
+
+    [Fact]
+    public void Write_ForgetsEarlierAtomicAccesses()
+    {
+        // Act
+        _tracker.RecordAtomicAccess(_field, null, First, methodOffset: 0, stored: true, Stack);
+        _tracker.RecordAccess(_field, null, Second, methodOffset: 0, AccessType.Write, Stack);
+
+        // Assert
+        Assert.False(_tracker.TryGetLastAtomicAccess(_field, null, First, out _));
+    }
+
     private void Read(ProcessThreadId thread, bool trackReadsByThread)
         => _tracker.RecordAccess(_field, null, thread, methodOffset: 0, AccessType.Read, Stack, trackReadsByThread);
 }

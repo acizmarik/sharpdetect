@@ -55,7 +55,7 @@ internal sealed class VolatileClockTable(ThreadClockTable threadClocks) : ITrack
     }
 
     // A stored value continues the release sequence, so it adds to the clocks of earlier writers
-    public void CompleteProvisionalRelease(
+    public VectorClock? CompleteProvisionalRelease(
         FieldId fieldId,
         ProcessTrackedObjectId? objectId,
         ProcessThreadId threadId,
@@ -63,10 +63,12 @@ internal sealed class VolatileClockTable(ThreadClockTable threadClocks) : ITrack
     {
         var location = GetOrCreateLocation(fieldId, objectId);
         if (location.Pending is not { } pending || !pending.Remove(threadId, out var pendingVc))
-            return;
+            return null;
 
         if (stored)
             location.Committed.Join(pendingVc);
+
+        return pendingVc;
     }
 
     public void RemoveTrackedObject(ProcessTrackedObjectId objectId) => _instanceClocks.Remove(objectId);

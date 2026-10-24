@@ -195,26 +195,44 @@ internal sealed class FastTrackDetector
             _eventClocks.Remove(eventId);
     }
 
-    public void RecordVolatileRead(
+    public DataRaceInfo? RecordVolatileRead(
         ProcessThreadId threadId,
-        ModuleId moduleId,
+        uint methodOffset,
         MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
+        ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack)
     {
+        var moduleId = stack.Top.ModuleId;
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
-            _volatileClocks.Acquire(fieldId, objectId, threadId);
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+            return null;
+
+        _volatileClocks.Acquire(fieldId, objectId, threadId);
+        if (!isAnalyzed)
+            return null;
+
+        var threadVc = _threadClocks.GetOrCreate(threadId);
+        return RecordAtomicAccess(threadId, methodOffset, fieldId, objectId, threadVc.GetEpoch(threadId), threadVc, stored: false, stack);
     }
 
-    public void RecordVolatileWrite(
+    public DataRaceInfo? RecordVolatileWrite(
         ProcessThreadId threadId,
-        ModuleId moduleId,
+        uint methodOffset,
         MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
+        ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack)
     {
+        var moduleId = stack.Top.ModuleId;
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
-            _volatileClocks.Release(fieldId, objectId, threadId);
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+            return null;
+
+        var threadVc = _threadClocks.GetOrCreate(threadId);
+        var epoch = threadVc.GetEpoch(threadId);
+        _volatileClocks.Release(fieldId, objectId, threadId);
+        return isAnalyzed
+            ? RecordAtomicAccess(threadId, methodOffset, fieldId, objectId, epoch, threadVc, stored: true, stack)
+            : null;
     }
 
     public void RecordAtomicRelease(
@@ -224,16 +242,22 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId? objectId)
     {
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
-            _volatileClocks.ReleaseProvisionally(fieldId, objectId, threadId);
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+            return;
+
+        if (isAnalyzed)
+            BeginAtomicOperation(threadId, fieldId, objectId);
+
+        _volatileClocks.ReleaseProvisionally(fieldId, objectId, threadId);
     }
 
-    public void RecordAtomicAcquire(
+    public DataRaceInfo? RecordAtomicAcquire(
         ProcessThreadId threadId,
-        ModuleId moduleId,
+        uint methodOffset,
         MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
-        => CompleteAtomicOperation(threadId, moduleId, fieldToken, objectId, stored: true);
+        ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack)
+        => CompleteAtomicOperation(threadId, methodOffset, fieldToken, objectId, stack, stored: true);
 
     public void RecordCompareExchangeRelease(
         ProcessThreadId threadId,
@@ -242,13 +266,14 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId? objectId)
         => RecordAtomicRelease(threadId, moduleId, fieldToken, objectId);
 
-    public void RecordCompareExchangeCompleted(
+    public DataRaceInfo? RecordCompareExchangeCompleted(
         ProcessThreadId threadId,
-        ModuleId moduleId,
+        uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack,
         bool succeeded)
-        => CompleteAtomicOperation(threadId, moduleId, fieldToken, objectId, stored: succeeded);
+        => CompleteAtomicOperation(threadId, methodOffset, fieldToken, objectId, stack, stored: succeeded);
 
     public void RecordValuePublished(
         ProcessThreadId threadId,
@@ -315,13 +340,102 @@ internal sealed class FastTrackDetector
         var writeKind = _writeClassifier.Classify(threadId, fieldId.FieldDef, objectId, stack);
 
         var conflict = writeKind == WriteKind.Regular
-            ? FindWriteConflict(fieldId, objectId, threadId, shadow, threadVc)
+            ? FindWriteConflict(fieldId, objectId, threadId, shadow, threadVc) ??
+              FindAtomicConflict(fieldId, objectId, threadId, shadow, threadVc)
             : null;
 
         var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Write, stack);
+        if (writeKind == WriteKind.Regular)
+            shadow.InFlightAtomicAccesses?.NotePlainWrite(threadId, threadVc, currentEpoch, currentAccess);
+
         shadow.SetWrite(currentEpoch, writeKind);
         shadow.SetRead(Epoch.None);
+        shadow.ClearAtomicAccesses();
         return CreateRaceInfo(threadId, fieldId, objectId, currentAccess, conflict);
+    }
+
+    private DataRaceInfo? RecordAtomicAccess(
+        ProcessThreadId threadId,
+        uint methodOffset,
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        Epoch epoch,
+        VectorClock epochVc,
+        bool stored,
+        CapturedStackTrace stack,
+        InFlightAtomicAccess? operation = null)
+    {
+        var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
+        var threadVc = _threadClocks.GetOrCreate(threadId);
+        _writeClassifier.NoteAccess(threadId, objectId);
+
+        AccessRecord? conflict;
+        if (operation != null)
+        {
+            conflict = FindCompletedOperationConflict(objectId, threadId, threadVc, operation, stored);
+        }
+        else
+        {
+            // Plain write and atomic access: a lost update, or a value that is not atomic at all
+            conflict = HasUnorderedWrite(shadow, threadVc, objectId)
+                ? GetConflictingWrite(fieldId, objectId, threadId)
+                : null;
+        }
+
+        // What the thread knew at the access decides whether it subsumes earlier atomic accesses
+        shadow.GetOrCreateAtomicAccesses().Record(epoch, epochVc, _threadClocks);
+        var currentAccess = _accessTracker.RecordAtomicAccess(fieldId, objectId, threadId, methodOffset, stored, stack);
+        return CreateRaceInfo(threadId, fieldId, objectId, currentAccess, conflict);
+    }
+
+    private void BeginAtomicOperation(ProcessThreadId threadId, FieldId fieldId, ProcessTrackedObjectId? objectId)
+    {
+        var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
+        var threadVc = _threadClocks.GetOrCreate(threadId);
+        var operation = shadow.GetOrCreateInFlightAtomicAccesses().Begin(threadId, threadVc.GetEpoch(threadId));
+
+        if (!shadow.WriteEpoch.IsNone &&
+            shadow.WriteEpoch.ThreadId != threadId &&
+            shadow.LastWriteKind == WriteKind.Regular &&
+            _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var lastWrite))
+        {
+            operation.WriteBefore = new PlainAccess(shadow.WriteEpoch, lastWrite);
+        }
+    }
+
+    private AccessRecord? FindCompletedOperationConflict(
+        ProcessTrackedObjectId? objectId,
+        ProcessThreadId threadId,
+        VectorClock threadVc,
+        InFlightAtomicAccess operation,
+        bool stored)
+    {
+        if (_writeClassifier.IsFinalizationQueued(objectId))
+            return null;
+
+        if (operation.WriteBefore is { } writeBefore && !writeBefore.Epoch.HappensBefore(threadVc))
+            return writeBefore.Record;
+
+        if (operation.FindUnorderedWrite(threadVc) is { } unorderedWrite)
+            return unorderedWrite;
+
+        return stored ? null : operation.FindObservingWrite(threadVc);
+    }
+
+    private AccessRecord? FindAtomicConflict(
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        ProcessThreadId threadId,
+        ShadowVariable shadow,
+        VectorClock threadVc)
+    {
+        if (shadow.AtomicAccesses is not { } atomicAccesses || _writeClassifier.IsFinalizationQueued(objectId))
+            return null;
+
+        return atomicAccesses.FindUnorderedAccess(threadId, threadVc) is { } racer &&
+               _accessTracker.TryGetLastAtomicAccess(fieldId, objectId, racer, out var racingAccess)
+            ? racingAccess
+            : null;
     }
 
     private void AcquireTypeInitialization(
@@ -442,30 +556,48 @@ internal sealed class FastTrackDetector
         return true;
     }
 
-    private void CompleteAtomicOperation(
+    private DataRaceInfo? CompleteAtomicOperation(
         ProcessThreadId threadId,
-        ModuleId moduleId,
+        uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        CapturedStackTrace stack,
         bool stored)
     {
+        var moduleId = stack.Top.ModuleId;
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
-            return;
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+            return null;
 
-        _volatileClocks.CompleteProvisionalRelease(fieldId, objectId, threadId, stored);
+        var releaseVc = _volatileClocks.CompleteProvisionalRelease(fieldId, objectId, threadId, stored);
         _volatileClocks.Acquire(fieldId, objectId, threadId);
+        if (!isAnalyzed)
+            return null;
+
+        InFlightAtomicAccess? operation = null;
+        _shadowMemory.GetOrCreateVirgin(fieldId, objectId).InFlightAtomicAccesses?.TryComplete(threadId, out operation);
+
+        // The operation is recorded at its release: acquirers of its value see that clock
+        var accessVc = releaseVc ?? _threadClocks.GetOrCreate(threadId);
+        return RecordAtomicAccess(threadId, methodOffset, fieldId, objectId, accessVc.GetEpoch(threadId), accessVc, stored, stack, operation);
     }
 
-    private bool TryResolveField(uint processId, ModuleId moduleId, MdToken fieldToken, out FieldId fieldId)
+    private bool TryResolveField(
+        uint processId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        out FieldId fieldId,
+        out bool isAnalyzed)
     {
-        if (!_fieldResolver.TryResolve(processId, moduleId, fieldToken, out var fieldDef, out _))
+        if (!_fieldResolver.TryResolve(processId, moduleId, fieldToken, out var fieldDef, out var fieldFlags))
         {
             fieldId = default;
+            isAnalyzed = false;
             return false;
         }
 
         fieldId = new FieldId(processId, moduleId, fieldToken, fieldDef!);
+        isAnalyzed = !FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration);
         return true;
     }
 }

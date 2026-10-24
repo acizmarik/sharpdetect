@@ -9,6 +9,8 @@ internal sealed class ShadowVariable
     public Epoch ReadEpoch { get; private set; }
     public VectorClock? ReadVectorClock { get; private set; }
     public WriteKind LastWriteKind { get; private set; }
+    public AtomicAccessClocks? AtomicAccesses { get; private set; }
+    public InFlightAtomicAccesses? InFlightAtomicAccesses { get; private set; }
     public bool HasReadVectorClock => ReadVectorClock != null;
 
     private ShadowVariable()
@@ -36,6 +38,15 @@ internal sealed class ShadowVariable
     public void ExpandReadToVectorClock(VectorClock vc)
     {
         ReadVectorClock = vc;
+    }
+
+    public AtomicAccessClocks GetOrCreateAtomicAccesses() => AtomicAccesses ??= new AtomicAccessClocks();
+
+    public InFlightAtomicAccesses GetOrCreateInFlightAtomicAccesses() => InFlightAtomicAccesses ??= new InFlightAtomicAccesses();
+
+    public void ClearAtomicAccesses()
+    {
+        AtomicAccesses = null;
     }
 }
 
