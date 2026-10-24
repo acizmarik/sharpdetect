@@ -217,6 +217,39 @@ internal sealed class FastTrackDetector
             _volatileClocks.Release(fieldId, objectId, threadId);
     }
 
+    public void RecordAtomicRelease(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
+    {
+        AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
+        if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
+            _volatileClocks.ReleaseProvisionally(fieldId, objectId, threadId);
+    }
+
+    public void RecordAtomicAcquire(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
+        => CompleteAtomicOperation(threadId, moduleId, fieldToken, objectId, stored: true);
+
+    public void RecordCompareExchangeRelease(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId)
+        => RecordAtomicRelease(threadId, moduleId, fieldToken, objectId);
+
+    public void RecordCompareExchangeCompleted(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId,
+        bool succeeded)
+        => CompleteAtomicOperation(threadId, moduleId, fieldToken, objectId, stored: succeeded);
+
     public void RecordAtomicReadModifyWrite(
         ProcessThreadId threadId,
         ModuleId moduleId,
@@ -417,6 +450,21 @@ internal sealed class FastTrackDetector
 
         fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         return true;
+    }
+
+    private void CompleteAtomicOperation(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId,
+        bool stored)
+    {
+        AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId))
+            return;
+
+        _volatileClocks.CompleteProvisionalRelease(fieldId, objectId, threadId, stored);
+        _volatileClocks.Acquire(fieldId, objectId, threadId);
     }
 
     private bool TryResolveField(uint processId, ModuleId moduleId, MdToken fieldToken, out FieldId fieldId)

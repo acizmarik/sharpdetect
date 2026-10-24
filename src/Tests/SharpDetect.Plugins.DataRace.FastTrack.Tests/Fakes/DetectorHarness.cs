@@ -101,6 +101,18 @@ internal sealed class DetectorHarness
     public void VolatileRead(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Detector.RecordVolatileRead(thread, TestMetadata.ModuleId, field, instance);
 
+    public void AtomicRelease(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
+        => Detector.RecordAtomicRelease(thread, TestMetadata.ModuleId, field, instance);
+
+    public void AtomicAcquire(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
+        => Detector.RecordAtomicAcquire(thread, TestMetadata.ModuleId, field, instance);
+
+    public void CompareExchangeRelease(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
+        => Detector.RecordCompareExchangeRelease(thread, TestMetadata.ModuleId, field, instance);
+
+    public void CompareExchangeCompleted(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, bool succeeded)
+        => Detector.RecordCompareExchangeCompleted(thread, TestMetadata.ModuleId, field, instance, succeeded);
+
     public void QueueForFinalization(params ProcessTrackedObjectId[] objects)
     {
         var ids = objects.Select(o => o.ObjectId).ToArray();
