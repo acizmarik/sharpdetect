@@ -34,4 +34,27 @@ public static class GenericAtomicFlag<T>
     {
         Interlocked.Exchange(ref Value, 1);
     }
+
+    public class AtomicReferenceSlot<TValue>
+        where TValue : class
+    {
+        private TValue? _value;
+
+        public TValue? Publish(TValue value)
+        {
+            return Interlocked.CompareExchange(ref _value, value, null);
+        }
+    }
+
+#if NET9_0_OR_GREATER
+    public class AtomicUnconstrainedSlot<TValue>
+    {
+        private TValue? _value;
+
+        public TValue? Publish(TValue value)
+        {
+            return Interlocked.CompareExchange(ref _value, value, default);
+        }
+    }
+#endif
 }

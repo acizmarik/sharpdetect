@@ -40,5 +40,12 @@ namespace LibProfiler
         const BYTE* methodSpecSignature,
         unsigned methodSpecSigLength,
         std::vector<std::pair<const BYTE*, unsigned>>& typeArgs);
+
+    bool GetMethodParameterSigType(
+        const BYTE* methodSignature,
+        unsigned methodSignatureLength,
+        unsigned parameterIndex,
+        const TypeArgs& methodArgs,
+        std::vector<BYTE>& parameterType);
 }
 

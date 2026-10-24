@@ -40,9 +40,13 @@ public static class InterlockedIntrinsicDescriptors
         .. CreateOverloads("And", IntegralTypes, additionalParametersCount: 1),
         .. CreateOverloads("Or", IntegralTypes, additionalParametersCount: 1),
         .. CreateOverloads("Exchange", ExchangeTypes, additionalParametersCount: 1),
-        .. CreateOverloads("CompareExchange", ExchangeTypes, additionalParametersCount: 2),
-        CreateGenericOverload("Exchange", additionalParametersCount: 1),
-        CreateGenericOverload("CompareExchange", additionalParametersCount: 2),
+        .. CreateOverloads(
+            "CompareExchange",
+            ExchangeTypes,
+            additionalParametersCount: 2,
+            FieldAccessIntrinsicInterpretation.CompareExchange),
+        CreateGenericOverload("Exchange", additionalParametersCount: 1, FieldAccessIntrinsicInterpretation.AtomicReadModifyWrite),
+        CreateGenericOverload("CompareExchange", additionalParametersCount: 2, FieldAccessIntrinsicInterpretation.CompareExchange),
     ];
 
     private static FieldAccessIntrinsicDescriptor[] CreateOverloads(
@@ -62,14 +66,17 @@ public static class InterlockedIntrinsicDescriptors
         ];
     }
 
-    private static FieldAccessIntrinsicDescriptor CreateGenericOverload(string methodName, byte additionalParametersCount)
+    private static FieldAccessIntrinsicDescriptor CreateGenericOverload(
+        string methodName,
+        byte additionalParametersCount,
+        FieldAccessIntrinsicInterpretation interpretation)
     {
         return Create(
             methodName,
             ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0),
             additionalParametersCount,
             genericParametersCount: 1,
-            FieldAccessIntrinsicInterpretation.AtomicReadModifyWrite);
+            interpretation);
     }
 
     private static FieldAccessIntrinsicDescriptor Create(

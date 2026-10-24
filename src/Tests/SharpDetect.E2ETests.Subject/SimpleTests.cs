@@ -1836,7 +1836,6 @@ namespace SharpDetect.E2ETests.Subject
                     while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_ReferenceType_Static, null, null) is null)
                         spinner.SpinOnce();
 
-                    _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_ReferenceType_Static, null, null);
                     _ = DataRace.Test_DataRace_ValueType_Static;
                 });
         }
@@ -1883,7 +1882,6 @@ namespace SharpDetect.E2ETests.Subject
             while (Interlocked.CompareExchange(ref instance.Test_Atomic_ValueType_Instance, 0, 0) == 0)
                 spinner.SpinOnce();
 
-            _ = Interlocked.CompareExchange(ref instance.Test_Atomic_ValueType_Instance, 0, 0);
             _ = instance.Test_DataRace_ValueType_InstanceField;
         }
 
@@ -1892,8 +1890,6 @@ namespace SharpDetect.E2ETests.Subject
             var spinner = new SpinWait();
             while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_ValueType_Static, 0, 0) == 0)
                 spinner.SpinOnce();
-
-            _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_ValueType_Static, 0, 0);
         }
 
         public static void Test_NoDataRace_VolatilePingPong_OrdersPlainFieldAccesses()

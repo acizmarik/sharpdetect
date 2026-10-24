@@ -250,16 +250,6 @@ internal sealed class FastTrackDetector
         bool succeeded)
         => CompleteAtomicOperation(threadId, moduleId, fieldToken, objectId, stored: succeeded);
 
-    public void RecordAtomicReadModifyWrite(
-        ProcessThreadId threadId,
-        ModuleId moduleId,
-        MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
-    {
-        RecordVolatileRead(threadId, moduleId, fieldToken, objectId);
-        RecordVolatileWrite(threadId, moduleId, fieldToken, objectId);
-    }
-
     public void RecordValuePublished(
         ProcessThreadId threadId,
         ProcessTrackedObjectId containerId,

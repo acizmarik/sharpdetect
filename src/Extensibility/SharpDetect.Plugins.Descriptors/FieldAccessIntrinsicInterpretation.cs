@@ -7,5 +7,6 @@ public enum FieldAccessIntrinsicInterpretation : byte
 {
     AtomicReadModifyWrite = 1,
     VolatileRead = 2,
-    VolatileWrite = 3
+    VolatileWrite = 3,
+    CompareExchange = 4
 }

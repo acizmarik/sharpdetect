@@ -15,9 +15,6 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 {
     public const string CollectionName = "E2E_DataRacePluginTests";
 
-    private const string ReleaseBeforeArgumentsGap = "Known gap: Interlocked and Volatile calls are recorded before their value arguments are evaluated";
-    private const string AcquireBeforeArgumentsGap = "Known gap: the acquire of an Interlocked call is recorded before its value arguments are evaluated";
-    private const string FailedCompareExchangeGap = "Known gap: a failed CompareExchange is modeled as a release";
     private const string MixedAccessGap = "Known gap: atomic accesses are not checked against plain accesses to the same field";
     private const string IndirectReferenceGap = "Known gap: Interlocked calls are recognized only when the ref argument is a direct field address";
     private const string StructFieldReceiverGap = "Known gap: a field address is not recognized when its receiver is a managed pointer (field of a struct)";
@@ -358,27 +355,27 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task CanDetectDataRace_InterlockedFlag_Instance_WriteAfterPublish(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_InterlockedFlag_Instance_WriteAfterPublish", sdk, plugin);
 
-    [Theory(Skip = ReleaseBeforeArgumentsGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_InterlockedFlag_PublishInValueArgument(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedFlag_PublishInValueArgument", sdk, plugin);
 
-    [Theory(Skip = AcquireBeforeArgumentsGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_InterlockedAcquire_ObservesPublishDuringArgumentEvaluation(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedAcquire_ObservesPublishDuringArgumentEvaluation", sdk, plugin);
 
-    [Theory(Skip = ReleaseBeforeArgumentsGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_VolatileWrite_PublishInValueArgument(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_VolatileWrite_PublishInValueArgument", sdk, plugin);
 
-    [Theory(Skip = ReleaseBeforeArgumentsGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_InterlockedReference_PublishConstructedObject(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedReference_PublishConstructedObject", sdk, plugin);
 
-    [Theory(Skip = FailedCompareExchangeGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_InterlockedFailedCompareExchange_DoesNotPublish(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_InterlockedFailedCompareExchange_DoesNotPublish", sdk, plugin);

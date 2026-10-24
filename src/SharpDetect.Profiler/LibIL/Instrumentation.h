@@ -61,33 +61,23 @@ namespace LibProfiler
 		IN const std::vector<std::string>& stackTraceFieldPatterns,
 		OUT ILInstr** nextInstruction);
 
-	HRESULT InstrumentStaticFieldAccessIntrinsic(
+	HRESULT InstrumentFieldAccessIntrinsic(
 		IN ICorProfilerInfo& corProfilerInfo,
 		IN LibIPC::Client& client,
 		IN ILRewriter& rewriter,
+		IN ILInstr* callInstruction,
 		IN ILInstr* addressInstruction,
-		IN const FieldAccessIntrinsicEffect& effect,
-		IN UINT64 instrumentationMark,
-		IN const ModuleDef& moduleDef,
-		IN mdMethodDef mdMethodDef,
-		IN const InjectedMethodsMap& injectedMethods,
-		IN BOOL enableStackTraceCollection,
-		IN const std::vector<std::string>& stackTraceFieldPatterns);
-
-	HRESULT InstrumentInstanceFieldAccessIntrinsic(
-		IN ICorProfilerInfo& corProfilerInfo,
-		IN LibIPC::Client& client,
-		IN ILRewriter& rewriter,
-		IN ILInstr* addressInstruction,
-		IN const FieldAccessIntrinsicEffect& effect,
+		IN FieldAccessIntrinsicKind intrinsicKind,
 		IN UINT16 importedLocalsCount,
 		IN std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>& addedLocals,
+		IN std::deque<std::vector<BYTE>>& ownedSignatures,
 		IN UINT64 instrumentationMark,
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
 		IN const InjectedMethodsMap& injectedMethods,
 		IN BOOL enableStackTraceCollection,
-		IN const std::vector<std::string>& stackTraceFieldPatterns);
+		IN const std::vector<std::string>& stackTraceFieldPatterns,
+		OUT ILInstr** lastInstruction);
 
 	HRESULT InstrumentInstanceFieldAccess(
 		IN ICorProfilerInfo& corProfilerInfo,

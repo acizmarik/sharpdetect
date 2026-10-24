@@ -382,3 +382,48 @@ TEST_CASE("ResolveSigType leaves MVAR and function pointers alone")
     const Blob functionPointer = { ELEMENT_TYPE_FNPTR, IMAGE_CEE_CS_CALLCONV_DEFAULT, 1, ELEMENT_TYPE_VOID, ELEMENT_TYPE_VAR, 0 };
     CHECK(IsUnchanged(functionPointer, typeArgs));
 }
+
+TEST_CASE("GetMethodParameterSigType copies a parameter of a non-generic method")
+{
+    // int32 CompareExchange(ref int32, int32, int32)
+    const Blob signature = { IMAGE_CEE_CS_CALLCONV_DEFAULT, 3,
+                             ELEMENT_TYPE_I4,
+                             ELEMENT_TYPE_BYREF, ELEMENT_TYPE_I4, ELEMENT_TYPE_I4, ELEMENT_TYPE_I4 };
+    Blob parameterType;
+
+    REQUIRE(LibProfiler::GetMethodParameterSigType(
+        signature.data(), static_cast<unsigned>(signature.size()), 0, {}, parameterType));
+    CHECK(parameterType == Blob{ ELEMENT_TYPE_BYREF, ELEMENT_TYPE_I4 });
+
+    REQUIRE(LibProfiler::GetMethodParameterSigType(
+        signature.data(), static_cast<unsigned>(signature.size()), 2, {}, parameterType));
+    CHECK(parameterType == Blob{ ELEMENT_TYPE_I4 });
+}
+
+TEST_CASE("GetMethodParameterSigType substitutes a method generic parameter")
+{
+    // !!0 CompareExchange<T>(ref !!0, !!0, !!0) instantiated with a class
+    const Blob signature = { IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_GENERIC, 1, 3,
+                             ELEMENT_TYPE_MVAR, 0,
+                             ELEMENT_TYPE_BYREF, ELEMENT_TYPE_MVAR, 0, ELEMENT_TYPE_MVAR, 0, ELEMENT_TYPE_MVAR, 0 };
+    const Blob instantiation = { IMAGE_CEE_CS_CALLCONV_GENERICINST, 1, ELEMENT_TYPE_CLASS, CompressedToken };
+    auto const methodArgs = ParseMethodSpec(instantiation);
+    Blob parameterType;
+
+    REQUIRE(LibProfiler::GetMethodParameterSigType(
+        signature.data(), static_cast<unsigned>(signature.size()), 2, methodArgs, parameterType));
+    CHECK(parameterType == Blob{ ELEMENT_TYPE_CLASS, CompressedToken });
+}
+
+TEST_CASE("GetMethodParameterSigType rejects missing parameters and arguments")
+{
+    const Blob signature = { IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_GENERIC, 1, 1,
+                             ELEMENT_TYPE_VOID, ELEMENT_TYPE_MVAR, 0 };
+    Blob parameterType;
+
+    CHECK_FALSE(LibProfiler::GetMethodParameterSigType(
+        signature.data(), static_cast<unsigned>(signature.size()), 1, {}, parameterType));
+    CHECK_FALSE(LibProfiler::GetMethodParameterSigType(
+        signature.data(), static_cast<unsigned>(signature.size()), 0, {}, parameterType));
+    CHECK_FALSE(LibProfiler::GetMethodParameterSigType(nullptr, 0, 0, {}, parameterType));
+}

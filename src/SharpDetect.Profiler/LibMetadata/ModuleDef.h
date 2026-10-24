@@ -115,6 +115,22 @@ namespace LibProfiler
 			IN mdMethodSpec methodSpec,
 			OUT mdToken* parent) const;
 
+		HRESULT GetMethodSpecProps(
+			IN mdMethodSpec methodSpec,
+			OUT mdToken* parent,
+			OUT PCCOR_SIGNATURE* instantiation,
+			OUT ULONG* instantiationLength) const;
+
+		HRESULT GetMemberRefSignature(
+			IN mdMemberRef memberRef,
+			OUT PCCOR_SIGNATURE* signature,
+			OUT ULONG* signatureLength) const;
+
+		HRESULT GetGenericParamAttributes(
+			IN mdToken owner,
+			IN ULONG index,
+			OUT DWORD* attributes) const;
+
 		HRESULT GetMethodProps(
 			IN mdMethodDef methodDef,
 			OUT mdTypeDef* typeDef,

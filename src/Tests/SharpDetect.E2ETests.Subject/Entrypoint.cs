@@ -425,6 +425,36 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Atomic_ValueType_Instance_CompareExchange):
                     Test_Field_Atomic_ValueType_Instance_CompareExchange();
                     break;
+                case nameof(Test_Field_Atomic_ExchangeReleasesAfterValueArgument):
+                    Test_Field_Atomic_ExchangeReleasesAfterValueArgument();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeFails):
+                    Test_Field_Atomic_CompareExchangeFails();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeComparandThroughBranch):
+                    Test_Field_Atomic_CompareExchangeComparandThroughBranch();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfGenericParameter):
+                    Test_Field_Atomic_CompareExchangeOfGenericParameter();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfDoubleNaN):
+                    Test_Field_Atomic_CompareExchangeOfDoubleNaN();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfDoubleNegativeZero):
+                    Test_Field_Atomic_CompareExchangeOfDoubleNegativeZero();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfSingleNaN):
+                    Test_Field_Atomic_CompareExchangeOfSingleNaN();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfStruct):
+                    Test_Field_Atomic_CompareExchangeOfStruct();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfUnconstrainedGenericParameter):
+                    Test_Field_Atomic_CompareExchangeOfUnconstrainedGenericParameter();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfEnum):
+                    Test_Field_Atomic_CompareExchangeOfEnum();
+                    break;
                 case nameof(Test_Field_Atomic_ValueType_OnValueType_Instance_Increment):
                     Test_Field_Atomic_ValueType_OnValueType_Instance_Increment();
                     break;

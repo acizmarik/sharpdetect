@@ -3,6 +3,7 @@
 
 using SharpDetect.E2ETests.Subject.Helpers;
 using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
+using SharpDetect.E2ETests.Subject.Helpers.Fields;
 
 namespace SharpDetect.E2ETests.Subject;
 
@@ -50,26 +51,25 @@ public static partial class Program
                 while (Volatile.Read(ref DataRace.Test_Atomic_ValueType_Static) == 0)
                     spinner.SpinOnce();
 
-                _ = Volatile.Read(ref DataRace.Test_Atomic_ValueType_Static);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
     }
 
-    public static void Test_NoDataRace_InterlockedReference_PublishConstructedObject()
-    {
-        DataRace.Test_Atomic_PublishedObject_Static = null;
-        RunConcurrently(
-            () => Interlocked.CompareExchange(
-                ref DataRace.Test_Atomic_PublishedObject_Static,
-                new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 },
-                null),
-            () =>
-            {
-                var spinner = new SpinWait();
-                while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_PublishedObject_Static, null, null) is null)
-                    spinner.SpinOnce();
+        public static void Test_NoDataRace_InterlockedReference_PublishConstructedObject()
+        {
+            DataRace.Test_Atomic_PublishedObject_Static = null;
+            RunConcurrently(
+                () => Interlocked.CompareExchange(
+                    ref DataRace.Test_Atomic_PublishedObject_Static,
+                    new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 },
+                    null),
+                () =>
+                {
+                    var spinner = new SpinWait();
+                    DataRace? published;
+                    while ((published = Interlocked.CompareExchange(ref DataRace.Test_Atomic_PublishedObject_Static, null, null)) is null)
+                        spinner.SpinOnce();
 
-                var published = Interlocked.CompareExchange(ref DataRace.Test_Atomic_PublishedObject_Static, null, null)!;
                 _ = published.Test_DataRace_ValueType_InstanceProperty;
             });
     }
@@ -122,7 +122,6 @@ public static partial class Program
                 while (Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_ArrayElement_Static[0], 0, 0) == 0)
                     spinner.SpinOnce();
 
-                _ = Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_ArrayElement_Static[0], 0, 0);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
     }
@@ -159,7 +158,6 @@ public static partial class Program
                 while (Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Holder.Flag.Value, 0, 0) == 0)
                     spinner.SpinOnce();
 
-                _ = Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Holder.Flag.Value, 0, 0);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
     }
@@ -179,7 +177,6 @@ public static partial class Program
                 while (Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Static.Value, 0, 0) == 0)
                     spinner.SpinOnce();
 
-                _ = Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Static.Value, 0, 0);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
     }
@@ -200,7 +197,6 @@ public static partial class Program
                 while (Interlocked.CompareExchange(ref GenericStaticField<int>.Value, 0, 0) == 0)
                     spinner.SpinOnce();
 
-                _ = Interlocked.CompareExchange(ref GenericStaticField<int>.Value, 0, 0);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
     }
@@ -245,7 +241,6 @@ public static partial class Program
                 while (Interlocked.CompareExchange(ref GenericAtomicFlag<int>.Value, 0, 0) == 0)
                     spinner.SpinOnce();
 
-                _ = Interlocked.CompareExchange(ref GenericAtomicFlag<int>.Value, 0, 0);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
     }
@@ -267,7 +262,6 @@ public static partial class Program
                 while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_Byte_Static, (byte)0, (byte)0) == 0)
                     spinner.SpinOnce();
 
-                _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_Byte_Static, (byte)0, (byte)0);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
 #endif
@@ -293,7 +287,6 @@ public static partial class Program
                     spinner.SpinOnce();
                 }
 
-                _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_Enum_Static, AtomicFlagState.Pending, AtomicFlagState.Pending);
                 _ = DataRace.Test_DataRace_ValueType_Static;
             });
 #endif
@@ -307,9 +300,87 @@ public static partial class Program
             ReadThroughLazyInitializer);
     }
 
+    public static void Test_Field_Atomic_ExchangeReleasesAfterValueArgument()
+    {
+        Interlocked.Exchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static, WriteOrderingValueAndReturnOne());
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeFails()
+    {
+        Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static, 1, 42);
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeComparandThroughBranch()
+    {
+        StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static = "published";
+        StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static_Comparand = StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static;
+        StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static_Fallback = null;
+        Interlocked.CompareExchange(
+            ref StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static,
+            "replaced",
+            StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static_Comparand ?? StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static_Fallback);
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfGenericParameter()
+    {
+        new GenericAtomicFlag<int>.AtomicReferenceSlot<string>().Publish("published");
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfDoubleNaN()
+    {
+        StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Double = double.NaN;
+        Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Double, 1.0, double.NaN);
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfDoubleNegativeZero()
+    {
+        StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Double = -0.0;
+        Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Double, 1.0, 0.0);
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfSingleNaN()
+    {
+        StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Single = float.NaN;
+        Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Single, 1.0f, float.NaN);
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfStruct()
+    {
+#if NET9_0_OR_GREATER
+        try
+        {
+            Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Struct, default, default);
+        }
+        catch (NotSupportedException)
+        {
+            // The runtime only exchanges references, primitives and enums
+        }
+#endif
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfUnconstrainedGenericParameter()
+    {
+#if NET9_0_OR_GREATER
+        new GenericAtomicFlag<int>.AtomicUnconstrainedSlot<int>().Publish(1);
+#endif
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfEnum()
+    {
+#if NET9_0_OR_GREATER
+        Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Enum, AtomicFlagState.Published, AtomicFlagState.Pending);
+#endif
+    }
+
     private static int WriteGuardedAndReturnFlag()
     {
         DataRace.Test_DataRace_ValueType_Static = 42;
+        return 1;
+    }
+
+    private static int WriteOrderingValueAndReturnOne()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 1;
         return 1;
     }
 

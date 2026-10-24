@@ -17,7 +17,8 @@ namespace Profiler
 	{
 		AtomicReadModifyWrite = 1,
 		VolatileRead = 2,
-		VolatileWrite = 3
+		VolatileWrite = 3,
+		CompareExchange = 4
 	};
 
 	struct FieldAccessIntrinsicDescriptor

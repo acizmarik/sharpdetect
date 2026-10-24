@@ -237,6 +237,67 @@ bool LibProfiler::ParseMethodSpecGenericArgs(
     return typeArgs.size() == genericArgsCount;
 }
 
+bool LibProfiler::GetMethodParameterSigType(
+    const BYTE* methodSignature,
+    const unsigned methodSignatureLength,
+    const unsigned parameterIndex,
+    const TypeArgs& methodArgs,
+    std::vector<BYTE>& parameterType)
+{
+    if (methodSignatureLength == 0)
+        return false;
+
+    unsigned position = 0;
+    auto const callingConvention = methodSignature[position++];
+    if ((callingConvention & IMAGE_CEE_CS_CALLCONV_GENERIC) != 0)
+    {
+        ULONG genericParametersCount;
+        position += CorSigUncompressData(methodSignature + position, &genericParametersCount);
+    }
+
+    ULONG parametersCount;
+    position += CorSigUncompressData(methodSignature + position, &parametersCount);
+    if (parameterIndex >= parametersCount)
+        return false;
+
+    // The return type comes first, followed by the parameters in order
+    for (unsigned i = 0; i <= parameterIndex; i++)
+    {
+        if (position >= methodSignatureLength)
+            return false;
+
+        auto const skipped = SkipSigType(methodSignature + position, methodSignatureLength - position);
+        if (skipped == 0)
+            return false;
+
+        position += skipped;
+    }
+
+    if (position >= methodSignatureLength)
+        return false;
+
+    auto const typeStart = methodSignature + position;
+    auto const typeLength = SkipSigType(typeStart, methodSignatureLength - position);
+    if (typeLength == 0 || position + typeLength > methodSignatureLength)
+        return false;
+
+    parameterType.clear();
+    if (typeStart[0] == ELEMENT_TYPE_MVAR)
+    {
+        ULONG index;
+        CorSigUncompressData(typeStart + 1, &index);
+        if (index >= methodArgs.size())
+            return false;
+
+        auto const& [argSignature, argLength] = methodArgs[index];
+        parameterType.insert(parameterType.end(), argSignature, argSignature + argLength);
+        return true;
+    }
+
+    parameterType.insert(parameterType.end(), typeStart, typeStart + typeLength);
+    return true;
+}
+
 namespace
 {
     using LibProfiler::SigTypeResolution;

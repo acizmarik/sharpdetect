@@ -392,19 +392,22 @@ HRESULT Profiler::TypeInjector::ImportMethodWrapper(
     return S_OK;
 }
 
-static LibProfiler::FieldAccessIntrinsicEffect ToFieldAccessIntrinsicEffect(const Profiler::FieldAccessIntrinsicInterpretation interpretation)
+static LibProfiler::FieldAccessIntrinsicKind ToFieldAccessIntrinsicKind(const Profiler::FieldAccessIntrinsicInterpretation interpretation)
 {
     switch (interpretation)
     {
         case Profiler::FieldAccessIntrinsicInterpretation::VolatileRead:
-            return { .direction = LibProfiler::FieldAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Volatile };
+            return LibProfiler::FieldAccessIntrinsicKind::VolatileRead;
 
         case Profiler::FieldAccessIntrinsicInterpretation::VolatileWrite:
-            return { .direction = LibProfiler::FieldAccessDirection::Write, .accessKind = LibIPC::FieldAccessKind::Volatile };
+            return LibProfiler::FieldAccessIntrinsicKind::VolatileWrite;
+
+        case Profiler::FieldAccessIntrinsicInterpretation::CompareExchange:
+            return LibProfiler::FieldAccessIntrinsicKind::CompareExchange;
 
         case Profiler::FieldAccessIntrinsicInterpretation::AtomicReadModifyWrite:
         default:
-            return { .direction = LibProfiler::FieldAccessDirection::Read, .accessKind = LibIPC::FieldAccessKind::Atomic };
+            return LibProfiler::FieldAccessIntrinsicKind::ReadModifyWrite;
     }
 }
 
@@ -446,7 +449,7 @@ HRESULT Profiler::TypeInjector::ResolveFieldAccessIntrinsics(
                 continue;
             }
 
-            intrinsics.emplace(methodRef, ToFieldAccessIntrinsicEffect(intrinsic.interpretation));
+            intrinsics.emplace(methodRef, ToFieldAccessIntrinsicKind(intrinsic.interpretation));
 
             LOG_F(INFO, "Recognized field access intrinsic %s::%s (%d) in module %s.",
                 intrinsic.declaringTypeFullName.c_str(),

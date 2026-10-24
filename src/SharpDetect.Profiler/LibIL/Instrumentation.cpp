@@ -190,31 +190,12 @@ HRESULT LibProfiler::PatchMethodBody(
 					callToken = parentToken;
 				}
 
-				auto const effectIt = fieldAccessIntrinsics.find(callToken);
-				if (effectIt != fieldAccessIntrinsics.cend())
+				auto const intrinsicIt = fieldAccessIntrinsics.find(callToken);
+				if (intrinsicIt != fieldAccessIntrinsics.cend())
 				{
 					const auto addressInstruction = currentInstruction->m_pArg0Producer;
 					auto const addressOpcode = addressInstruction != nullptr ? addressInstruction->m_opcode : CEE_COUNT;
-					if (addressOpcode == CEE_LDSFLDA)
-					{
-						auto const mark = instrumentationMark.fetch_add(1);
-						if (SUCCEEDED(InstrumentStaticFieldAccessIntrinsic(
-							corProfilerInfo,
-							client,
-							rewriter,
-							addressInstruction,
-							effectIt->second,
-							mark,
-							moduleDef,
-							mdMethodDef,
-							injectedMethods,
-							enableStackTraceCollection,
-							stackTraceFieldPatterns)))
-						{
-							isRewritten = true;
-						}
-					}
-					else if (addressOpcode == CEE_LDFLDA)
+					if (addressOpcode == CEE_LDSFLDA || addressOpcode == CEE_LDFLDA)
 					{
 						if (FAILED(ImportLocalVariableSignature(
 							moduleDef,
@@ -228,23 +209,30 @@ HRESULT LibProfiler::PatchMethodBody(
 							return E_FAIL;
 						}
 
-						auto const mark = instrumentationMark.fetch_add(1);
-						if (SUCCEEDED(InstrumentInstanceFieldAccessIntrinsic(
+						auto const mark = instrumentationMark.fetch_add(IntrinsicMarksCount);
+						ILInstr* lastInstruction = nullptr;
+						if (SUCCEEDED(InstrumentFieldAccessIntrinsic(
 							corProfilerInfo,
 							client,
 							rewriter,
+							currentInstruction,
 							addressInstruction,
-							effectIt->second,
+							intrinsicIt->second,
 							localSignatureVarsCount,
 							addedLocals,
+							ownedSignatures,
 							mark,
 							moduleDef,
 							mdMethodDef,
 							injectedMethods,
 							enableStackTraceCollection,
-							stackTraceFieldPatterns)))
+							stackTraceFieldPatterns,
+							&lastInstruction)))
 						{
+							// Continue after the injected code, so the re-emitted call is not instrumented again
 							isRewritten = true;
+							currentInstruction = lastInstruction;
+							continue;
 						}
 					}
 				}
@@ -463,166 +451,358 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	return S_OK;
 }
 
-HRESULT LibProfiler::InstrumentStaticFieldAccessIntrinsic(
-	IN ICorProfilerInfo& corProfilerInfo,
-	IN LibIPC::Client& client,
-	IN ILRewriter& rewriter,
-	IN ILInstr* addressInstruction,
-	IN const FieldAccessIntrinsicEffect& effect,
-	IN const UINT64 instrumentationMark,
-	IN const ModuleDef& moduleDef,
-	IN const mdMethodDef mdMethodDef,
-	IN const InjectedMethodsMap& injectedMethods,
-	IN const BOOL enableStackTraceCollection,
-	IN const std::vector<std::string>& stackTraceFieldPatterns)
+static mdToken FindFieldAccessHelper(
+	IN const LibProfiler::InjectedMethodsMap& injectedMethods,
+	IN const LibIPC::RecordedEventType eventType,
+	IN const BOOL captureStack)
 {
-	auto const moduleId = moduleDef.GetModuleId();
-	auto const fieldToken = static_cast<mdToken>(addressInstruction->m_Arg32);
-	auto const originalOffset = addressInstruction->m_offset;
-	ThreadID threadId;
-	corProfilerInfo.GetCurrentThreadID(&threadId);
-
-	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
-	const auto eventType = effect.direction == FieldAccessDirection::Write
-		? LibIPC::RecordedEventType::StaticFieldWrite
-		: LibIPC::RecordedEventType::StaticFieldRead;
 	auto const methodIt = injectedMethods.find(eventType);
-	const auto helperToken = methodIt != injectedMethods.end()
-		? (captureStack ? methodIt->second.withStackCapture : methodIt->second.plain)
-		: mdTokenNil;
-	if (helperToken == mdTokenNil)
-	{
-		LOG_F(
-			ERROR,
-			"Could not find injected %s method for event type %d.",
-			captureStack ? "stack-capturing" : "plain",
-			static_cast<int>(eventType));
-		return E_FAIL;
-	}
+	if (methodIt == injectedMethods.end())
+		return mdTokenNil;
 
-	// LDC.I8 <instrumentation-mark>
-	const auto ldcInstruction = rewriter.NewILInstr();
-	ldcInstruction->m_opcode = CEE_LDC_I8;
-	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
-	rewriter.InsertAfter(addressInstruction, ldcInstruction);
-	// CALL <injected-method-handler>
-	const auto callInstruction = rewriter.NewILInstr();
-	callInstruction->m_opcode = CEE_CALL;
-	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
-	rewriter.InsertAfter(ldcInstruction, callInstruction);
-
-	LOG_F(INFO, "Instrumented static field access intrinsic in method %d with stub %d from module %s.",
-		mdMethodDef,
-		helperToken,
-		moduleDef.GetName().c_str());
-
-	// Notify analysis of field access instrumentation point
-	client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
-		LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
-		moduleId,
-		mdMethodDef,
-		originalOffset,
-		fieldToken,
-		instrumentationMark,
-		effect.accessKind));
-
-	return S_OK;
+	return captureStack ? methodIt->second.withStackCapture : methodIt->second.plain;
 }
 
-HRESULT LibProfiler::InstrumentInstanceFieldAccessIntrinsic(
+static HRESULT ResolveComparandSignature(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN const mdToken callToken,
+	OUT std::vector<BYTE>& comparandSignature)
+{
+	mdToken memberRef = callToken;
+	LibProfiler::TypeArgs methodArgs;
+	if (TypeFromToken(callToken) == mdtMethodSpec)
+	{
+		PCCOR_SIGNATURE instantiation;
+		ULONG instantiationLength;
+		if (FAILED(moduleDef.GetMethodSpecProps(callToken, &memberRef, &instantiation, &instantiationLength)) ||
+			!LibProfiler::ParseMethodSpecGenericArgs(instantiation, instantiationLength, methodArgs))
+		{
+			return E_FAIL;
+		}
+	}
+
+	if (TypeFromToken(memberRef) != mdtMemberRef)
+		return E_FAIL;
+
+	PCCOR_SIGNATURE signature;
+	ULONG signatureLength;
+	if (FAILED(moduleDef.GetMemberRefSignature(memberRef, &signature, &signatureLength)))
+		return E_FAIL;
+
+	// CompareExchange(ref location, value, comparand)
+	constexpr unsigned comparandParameterIndex = 2;
+	return LibProfiler::GetMethodParameterSigType(signature, signatureLength, comparandParameterIndex, methodArgs, comparandSignature)
+		? S_OK
+		: E_FAIL;
+}
+
+enum class ComparandComparison
+{
+	// The outcome cannot be computed for every instantiation, so the exchange is modeled as a read-modify-write
+	Unsupported,
+	// The returned value is compared with the comparand using ceq
+	Value,
+	// CompareExchange compares floating-point values bitwise (NaN can match, -0.0 does not match 0.0), unlike ceq
+	Bits32,
+	Bits64
+};
+
+static ComparandComparison ClassifyComparand(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN const mdMethodDef mdMethodDef,
+	IN const std::vector<BYTE>& comparandSignature)
+{
+	if (comparandSignature.empty())
+		return ComparandComparison::Unsupported;
+
+	switch (comparandSignature[0])
+	{
+		case ELEMENT_TYPE_BOOLEAN:
+		case ELEMENT_TYPE_CHAR:
+		case ELEMENT_TYPE_I1:
+		case ELEMENT_TYPE_U1:
+		case ELEMENT_TYPE_I2:
+		case ELEMENT_TYPE_U2:
+		case ELEMENT_TYPE_I4:
+		case ELEMENT_TYPE_U4:
+		case ELEMENT_TYPE_I8:
+		case ELEMENT_TYPE_U8:
+		case ELEMENT_TYPE_I:
+		case ELEMENT_TYPE_U:
+		case ELEMENT_TYPE_STRING:
+		case ELEMENT_TYPE_OBJECT:
+		case ELEMENT_TYPE_CLASS:
+		case ELEMENT_TYPE_SZARRAY:
+		case ELEMENT_TYPE_ARRAY:
+			return ComparandComparison::Value;
+
+		case ELEMENT_TYPE_R4:
+			return ComparandComparison::Bits32;
+
+		case ELEMENT_TYPE_R8:
+			return ComparandComparison::Bits64;
+
+		case ELEMENT_TYPE_GENERICINST:
+			return comparandSignature.size() > 1 && comparandSignature[1] == ELEMENT_TYPE_CLASS
+				? ComparandComparison::Value
+				: ComparandComparison::Unsupported;
+
+		case ELEMENT_TYPE_VAR:
+		case ELEMENT_TYPE_MVAR:
+		{
+			// The generic parameter belongs to the instrumented method or its declaring type
+			ULONG index;
+			CorSigUncompressData(comparandSignature.data() + 1, &index);
+			mdToken owner = mdMethodDef;
+			if (comparandSignature[0] == ELEMENT_TYPE_VAR)
+			{
+				mdTypeDef declaringType;
+				std::string methodName;
+				if (FAILED(moduleDef.GetMethodProps(mdMethodDef, &declaringType, methodName, nullptr, nullptr, nullptr)))
+					return ComparandComparison::Unsupported;
+
+				owner = declaringType;
+			}
+
+			// Only a class constraint guarantees that every instantiation compares with ceq
+			DWORD attributes;
+			if (FAILED(moduleDef.GetGenericParamAttributes(owner, index, &attributes)))
+				return ComparandComparison::Unsupported;
+
+			return (attributes & gpReferenceTypeConstraint) != 0
+				? ComparandComparison::Value
+				: ComparandComparison::Unsupported;
+		}
+
+		default:
+			// A value type may be an enum or an arbitrary struct, which ceq cannot compare
+			return ComparandComparison::Unsupported;
+	}
+}
+
+HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
 	IN ILRewriter& rewriter,
+	IN ILInstr* callInstruction,
 	IN ILInstr* addressInstruction,
-	IN const FieldAccessIntrinsicEffect& effect,
+	IN const FieldAccessIntrinsicKind intrinsicKind,
 	IN const UINT16 importedLocalsCount,
 	IN std::vector<std::pair<PCCOR_SIGNATURE, ULONG>>& addedLocals,
+	IN std::deque<std::vector<BYTE>>& ownedSignatures,
 	IN const UINT64 instrumentationMark,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
 	IN const InjectedMethodsMap& injectedMethods,
 	IN const BOOL enableStackTraceCollection,
-	IN const std::vector<std::string>& stackTraceFieldPatterns)
+	IN const std::vector<std::string>& stackTraceFieldPatterns,
+	OUT ILInstr** lastInstruction)
 {
 	auto const moduleId = moduleDef.GetModuleId();
+	auto const isInstance = addressInstruction->m_opcode == CEE_LDFLDA;
 	auto const fieldToken = static_cast<mdToken>(addressInstruction->m_Arg32);
 	auto const originalOffset = addressInstruction->m_offset;
+	auto const callOpcode = callInstruction->m_opcode;
+	auto const callToken = static_cast<mdToken>(callInstruction->m_Arg32);
 	ThreadID threadId;
 	corProfilerInfo.GetCurrentThreadID(&threadId);
 
-	if (!addressInstruction->m_objOperandIsObjRef)
+	auto kind = intrinsicKind;
+	std::vector<BYTE> comparandSignature;
+	auto comparison = ComparandComparison::Unsupported;
+	if (kind == FieldAccessIntrinsicKind::CompareExchange)
+	{
+		if (SUCCEEDED(ResolveComparandSignature(moduleDef, callToken, comparandSignature)))
+			comparison = ClassifyComparand(moduleDef, mdMethodDef, comparandSignature);
+
+		if (comparison == ComparandComparison::Unsupported)
+		{
+			LOG_F(INFO, "Outcome of call %d in method %d from module %s cannot be computed, modeling it as a read-modify-write.",
+				callToken,
+				mdMethodDef,
+				moduleDef.GetName().c_str());
+			kind = FieldAccessIntrinsicKind::ReadModifyWrite;
+		}
+	}
+
+	auto const isCompareExchange = kind == FieldAccessIntrinsicKind::CompareExchange;
+	auto const hasRelease = kind != FieldAccessIntrinsicKind::VolatileRead;
+	auto const hasAcquire = kind != FieldAccessIntrinsicKind::VolatileWrite;
+
+	if (isInstance && !addressInstruction->m_objOperandIsObjRef)
 	{
 		// The object operand is a managed pointer or value type address
 		return E_FAIL;
 	}
 
-	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
-	const auto eventType = effect.direction == FieldAccessDirection::Write
-		? LibIPC::RecordedEventType::InstanceFieldWrite
-		: LibIPC::RecordedEventType::InstanceFieldRead;
-	auto const methodIt = injectedMethods.find(eventType);
-	const auto helperToken = methodIt != injectedMethods.end()
-		? (captureStack ? methodIt->second.withStackCapture : methodIt->second.plain)
-		: mdTokenNil;
-	if (helperToken == mdTokenNil)
+	if (callInstruction->m_pPrev->m_opcode == CEE_TAILCALL)
 	{
-		LOG_F(ERROR, "Could not find injected %s method for event type %d.",
-			captureStack ? "stack-capturing" : "plain",
-			static_cast<int>(eventType));
+		// Nothing may follow a tail call and the prefix must stay attached to it, so it is left alone
 		return E_FAIL;
 	}
 
-	auto tailInstruction = MakeRoomBefore(rewriter, addressInstruction);
+	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
+	const auto releaseHelper = FindFieldAccessHelper(
+		injectedMethods,
+		isInstance ? LibIPC::RecordedEventType::InstanceFieldWrite : LibIPC::RecordedEventType::StaticFieldWrite,
+		captureStack);
+	const auto acquireHelper = FindFieldAccessHelper(
+		injectedMethods,
+		isInstance ? LibIPC::RecordedEventType::InstanceFieldRead : LibIPC::RecordedEventType::StaticFieldRead,
+		captureStack);
+	if ((hasRelease && releaseHelper == mdTokenNil) || (hasAcquire && acquireHelper == mdTokenNil))
+	{
+		LOG_F(ERROR, "Could not find injected %s field access methods for intrinsic in method %d from module %s.",
+			captureStack ? "stack-capturing" : "plain",
+			mdMethodDef,
+			moduleDef.GetName().c_str());
+		return E_FAIL;
+	}
 
-	// Add a local to capture the object instance for the handler call
-	PCCOR_SIGNATURE instanceSignature = g_ObjectTypeSignature;
-	addedLocals.emplace_back(instanceSignature, 1);
-	const auto instanceLocalIndex = static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
+	ILInstr* tailInstruction = nullptr;
+	auto const emit = [&](const unsigned opcode) -> ILInstr*
+	{
+		auto const instruction = rewriter.NewILInstr();
+		instruction->m_opcode = opcode;
+		rewriter.InsertAfter(tailInstruction, instruction);
+		tailInstruction = instruction;
+		return instruction;
+	};
 
-	// DUP (duplicate object reference)
-	const auto dupInstruction = rewriter.NewILInstr();
-	dupInstruction->m_opcode = CEE_DUP;
-	rewriter.InsertAfter(tailInstruction, dupInstruction);
-	tailInstruction = dupInstruction;
-	// STLOC <instance-local> (save object reference copy)
-	const auto stlocInstanceInstruction = rewriter.NewILInstr();
-	stlocInstanceInstruction->m_opcode = CEE_STLOC;
-	stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
-	rewriter.InsertAfter(tailInstruction, stlocInstanceInstruction);
-	// LDFLDA <field> follows, then the handler arguments
-	tailInstruction = addressInstruction;
-	// LDC.I8 <instrumentation-mark>
-	const auto ldcInstruction = rewriter.NewILInstr();
-	ldcInstruction->m_opcode = CEE_LDC_I8;
-	ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
-	rewriter.InsertAfter(tailInstruction, ldcInstruction);
-	tailInstruction = ldcInstruction;
-	// LDLOC <instance-local> (restore object reference)
-	const auto ldlocInstanceInstruction = rewriter.NewILInstr();
-	ldlocInstanceInstruction->m_opcode = CEE_LDLOC;
-	ldlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
-	rewriter.InsertAfter(tailInstruction, ldlocInstanceInstruction);
-	tailInstruction = ldlocInstanceInstruction;
-	// CALL <injected-method-handler>
-	const auto callInstruction = rewriter.NewILInstr();
-	callInstruction->m_opcode = CEE_CALL;
-	callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
-	rewriter.InsertAfter(tailInstruction, callInstruction);
+	auto const addLocal = [&](const PCCOR_SIGNATURE signature, const ULONG signatureLength) -> INT16
+	{
+		addedLocals.emplace_back(signature, signatureLength);
+		return static_cast<INT16>(importedLocalsCount + static_cast<UINT16>(addedLocals.size() - 1));
+	};
 
-	LOG_F(INFO, "Instrumented instance field access intrinsic in method %d with stub %d from module %s.",
+	INT16 instanceLocalIndex = 0;
+	if (isInstance)
+	{
+		instanceLocalIndex = addLocal(g_ObjectTypeSignature, 1);
+
+		// The address load becomes the head, so branches targeting it still capture the instance
+		tailInstruction = MakeRoomBefore(rewriter, addressInstruction);
+		emit(CEE_DUP);
+		emit(CEE_STLOC)->m_Arg16 = instanceLocalIndex;
+		// LDFLDA <field> with its prefixes follows
+		tailInstruction = addressInstruction;
+	}
+
+	INT16 comparandLocalIndex = 0;
+	INT16 resultLocalIndex = 0;
+	if (isCompareExchange)
+	{
+		ownedSignatures.push_back(std::move(comparandSignature));
+		auto const& storedSignature = ownedSignatures.back();
+		auto const storedLength = static_cast<ULONG>(storedSignature.size());
+		comparandLocalIndex = addLocal(storedSignature.data(), storedLength);
+		if (comparison != ComparandComparison::Value)
+			resultLocalIndex = addLocal(storedSignature.data(), storedLength);
+	}
+
+	auto const emitHelperCall = [&](const mdToken helperToken)
+	{
+		if (isInstance)
+			emit(CEE_LDLOC)->m_Arg16 = instanceLocalIndex;
+
+		emit(CEE_CALL)->m_Arg32 = static_cast<INT32>(helperToken);
+	};
+
+	if (hasRelease)
+	{
+		// The call becomes the head, so branches targeting it still report the release
+		// The release is reported after all arguments are evaluated, right before the operation
+		callInstruction->m_opcode = CEE_NOP;
+		tailInstruction = callInstruction;
+		if (isCompareExchange)
+		{
+			// The comparand is the last argument, so it is on top of the stack
+			emit(CEE_DUP);
+			emit(CEE_STLOC)->m_Arg16 = comparandLocalIndex;
+		}
+
+		emit(CEE_LDC_I8)->m_Arg64 = static_cast<INT64>(instrumentationMark + IntrinsicReleaseMarkOffset);
+		emitHelperCall(releaseHelper);
+		emit(callOpcode)->m_Arg32 = static_cast<INT32>(callToken);
+	}
+	else
+	{
+		tailInstruction = callInstruction;
+	}
+
+	if (hasAcquire)
+	{
+		// The acquire is reported after the operation returns, so it follows the write it observed
+		if (isCompareExchange)
+		{
+			// The exchange succeeded when it returned the comparand, which selects the succeeded mark
+			emit(CEE_DUP);
+			if (comparison == ComparandComparison::Value)
+			{
+				emit(CEE_LDLOC)->m_Arg16 = comparandLocalIndex;
+			}
+			else
+			{
+				// Compare the bit patterns, like the exchange itself
+				auto const loadBits = comparison == ComparandComparison::Bits32 ? CEE_LDIND_I4 : CEE_LDIND_I8;
+				emit(CEE_STLOC)->m_Arg16 = resultLocalIndex;
+				emit(CEE_LDLOCA)->m_Arg16 = resultLocalIndex;
+				emit(loadBits);
+				emit(CEE_LDLOCA)->m_Arg16 = comparandLocalIndex;
+				emit(loadBits);
+			}
+
+			emit(CEE_CEQ);
+			emit(CEE_CONV_I8);
+			emit(CEE_LDC_I8)->m_Arg64 = static_cast<INT64>(instrumentationMark + IntrinsicFailedExchangeMarkOffset);
+			emit(CEE_ADD);
+		}
+		else
+		{
+			emit(CEE_LDC_I8)->m_Arg64 = static_cast<INT64>(instrumentationMark + IntrinsicAcquireMarkOffset);
+		}
+
+		emitHelperCall(acquireHelper);
+	}
+
+	*lastInstruction = tailInstruction;
+
+	LOG_F(INFO, "Instrumented %s field access intrinsic in method %d from module %s.",
+		isInstance ? "instance" : "static",
 		mdMethodDef,
-		helperToken,
 		moduleDef.GetName().c_str());
 
-	// Notify analysis of field access instrumentation point
-	client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
-		LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
-		moduleId,
-		mdMethodDef,
-		originalOffset,
-		fieldToken,
-		instrumentationMark,
-		effect.accessKind));
+	// Notify analysis of field access instrumentation points
+	auto const notify = [&](const UINT64 markOffset, const LibIPC::FieldAccessKind accessKind)
+	{
+		client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
+			LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
+			moduleId,
+			mdMethodDef,
+			originalOffset,
+			fieldToken,
+			instrumentationMark + markOffset,
+			accessKind));
+	};
+
+	switch (kind)
+	{
+		case FieldAccessIntrinsicKind::VolatileRead:
+			notify(IntrinsicAcquireMarkOffset, LibIPC::FieldAccessKind::Volatile);
+			break;
+		case FieldAccessIntrinsicKind::VolatileWrite:
+			notify(IntrinsicReleaseMarkOffset, LibIPC::FieldAccessKind::Volatile);
+			break;
+		case FieldAccessIntrinsicKind::ReadModifyWrite:
+			notify(IntrinsicReleaseMarkOffset, LibIPC::FieldAccessKind::Atomic);
+			notify(IntrinsicAcquireMarkOffset, LibIPC::FieldAccessKind::Atomic);
+			break;
+		case FieldAccessIntrinsicKind::CompareExchange:
+			notify(IntrinsicReleaseMarkOffset, LibIPC::FieldAccessKind::CompareExchange);
+			notify(IntrinsicFailedExchangeMarkOffset, LibIPC::FieldAccessKind::CompareExchangeFailed);
+			notify(IntrinsicSucceededExchangeMarkOffset, LibIPC::FieldAccessKind::CompareExchangeSucceeded);
+			break;
+	}
 
 	return S_OK;
 }

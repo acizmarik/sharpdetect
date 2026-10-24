@@ -249,29 +249,29 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_Increment(string sdk)
-        => FieldAccess(
+        => FieldAccessSequence(
             "Test_Field_Atomic_ValueType_Static_Increment",
             sdk,
-            RecordedEventType.StaticFieldRead,
-            FieldAccessKind.Atomic);
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_CompareExchange(string sdk)
-        => FieldAccess(
+        => FieldAccessSequence(
             "Test_Field_Atomic_ValueType_Static_CompareExchange",
             sdk,
-            RecordedEventType.StaticFieldRead,
-            FieldAccessKind.Atomic);
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeSucceeded));
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_CompareExchange_ComputedArguments(string sdk)
-        => FieldAccess(
+        => FieldAccessSequence(
             "Test_Field_Atomic_ValueType_Static_CompareExchangeComputedArguments",
             sdk,
-            RecordedEventType.StaticFieldRead,
-            FieldAccessKind.Atomic);
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, null));
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -312,20 +312,20 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_ReferenceType_CompareExchange(string sdk)
-        => FieldAccess(
+        => FieldAccessSequence(
             "Test_Field_Atomic_ReferenceType_Static_CompareExchange",
             sdk,
-            RecordedEventType.StaticFieldRead,
-            FieldAccessKind.Atomic);
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeSucceeded));
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicInstanceField_ReferenceType_CompareExchange(string sdk)
-        => FieldAccess(
+        => FieldAccessSequence(
             "Test_Field_Atomic_ReferenceType_Instance_CompareExchange",
             sdk,
-            RecordedEventType.InstanceFieldRead,
-            FieldAccessKind.Atomic);
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.CompareExchangeSucceeded));
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -348,20 +348,120 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicInstanceField_Increment(string sdk)
-        => FieldAccess(
+        => FieldAccessSequence(
             "Test_Field_Atomic_ValueType_Instance_Increment",
             sdk,
-            RecordedEventType.InstanceFieldRead,
-            FieldAccessKind.Atomic);
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.Atomic));
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicInstanceField_CompareExchange(string sdk)
-        => FieldAccess(
+        => FieldAccessSequence(
             "Test_Field_Atomic_ValueType_Instance_CompareExchange",
             sdk,
-            RecordedEventType.InstanceFieldRead,
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.CompareExchangeSucceeded));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_Exchange_ReleasesAfterValueArgument(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_ExchangeReleasesAfterValueArgument",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Regular),
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_ReportsFailureAfterTheCall(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeFails",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeFailed));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_ComparandThroughBranch(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeComparandThroughBranch",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeSucceeded));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_CompareExchange_OfGenericParameter(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfGenericParameter",
+            sdk,
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.CompareExchangeSucceeded));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_OfDoubleNaN_ReportsSuccess(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfDoubleNaN",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeSucceeded));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_OfDoubleNegativeZero_ReportsFailure(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfDoubleNegativeZero",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeFailed));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_OfSingleNaN_ReportsSuccess(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfSingleNaN",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeSucceeded));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_OfStruct_FallsBackToReadModifyWrite(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfStruct",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic));
+
+    // The exchange throws inside the call, so an acquire reported after the call never happens
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_ReadModifyWrite_ReportsNoAcquireWhenTheCallThrows(string sdk)
+        => NoFieldAccessOfKind(
+            "Test_Field_Atomic_CompareExchangeOfStruct",
+            sdk,
+            RecordedEventType.StaticFieldRead,
             FieldAccessKind.Atomic);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_CompareExchange_OfUnconstrainedGenericParameter_FallsBackToReadModifyWrite(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfUnconstrainedGenericParameter",
+            sdk,
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_OfEnum_FallsBackToReadModifyWrite(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfEnum",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -488,6 +588,33 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
             .Then(EventuallyFieldAccessInAssembly(assemblyName, eventType, plugin, requireAccessKind))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
+    private async Task FieldAccessSequence(
+        string subjectArgs,
+        string sdk,
+        params (RecordedEventType EventType, FieldAccessKind? AccessKind)[] expectedAccesses)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput, additionalData);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        AssertBase<ulong, RecordedEventType> assert = EventuallyMethodEnter(args.Target.Args!, plugin);
+        foreach (var (eventType, accessKind) in expectedAccesses)
+            assert = assert.Then(EventuallyFieldAccessInAssembly(SubjectAssemblyName, eventType, plugin, accessKind));
+        assert = assert.Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);

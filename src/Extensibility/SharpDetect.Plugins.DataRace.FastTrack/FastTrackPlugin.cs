@@ -205,7 +205,17 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 break;
 
             case FieldAccessKind.Atomic:
-                _detector.RecordAtomicReadModifyWrite(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                _detector.RecordAtomicAcquire(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                break;
+
+            case FieldAccessKind.CompareExchangeSucceeded:
+            case FieldAccessKind.CompareExchangeFailed:
+                _detector.RecordCompareExchangeCompleted(
+                    threadId,
+                    stack.Top.ModuleId,
+                    fieldToken,
+                    objectId,
+                    succeeded: accessKind == FieldAccessKind.CompareExchangeSucceeded);
                 break;
 
             default:
@@ -230,7 +240,11 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 break;
 
             case FieldAccessKind.Atomic:
-                _detector.RecordAtomicReadModifyWrite(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                _detector.RecordAtomicRelease(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                break;
+
+            case FieldAccessKind.CompareExchange:
+                _detector.RecordCompareExchangeRelease(threadId, stack.Top.ModuleId, fieldToken, objectId);
                 break;
 
             default:

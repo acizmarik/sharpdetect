@@ -7,5 +7,8 @@ public enum FieldAccessKind : byte
 {
     Regular = 0,
     Volatile = 1,
-    Atomic = 2
+    Atomic = 2,
+    CompareExchange = 3,
+    CompareExchangeSucceeded = 4,
+    CompareExchangeFailed = 5
 }

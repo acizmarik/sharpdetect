@@ -7,21 +7,22 @@
 
 #include "cor.h"
 
-#include "../LibIPC/Messages.h"
-
 namespace LibProfiler
 {
-	enum class FieldAccessDirection : UINT8
+	enum class FieldAccessIntrinsicKind : UINT8
 	{
-		Read,
-		Write
+		VolatileRead,
+		VolatileWrite,
+		ReadModifyWrite,
+		CompareExchange
 	};
 
-	struct FieldAccessIntrinsicEffect
-	{
-		FieldAccessDirection direction { FieldAccessDirection::Read };
-		LibIPC::FieldAccessKind accessKind { LibIPC::FieldAccessKind::Regular };
-	};
+	// Instrumentation marks reserved for each intrinsic call site
+	constexpr UINT64 IntrinsicReleaseMarkOffset = 0;
+	constexpr UINT64 IntrinsicAcquireMarkOffset = 1;
+	constexpr UINT64 IntrinsicFailedExchangeMarkOffset = IntrinsicAcquireMarkOffset;
+	constexpr UINT64 IntrinsicSucceededExchangeMarkOffset = 2;
+	constexpr UINT64 IntrinsicMarksCount = 3;
 
-	using FieldAccessIntrinsicsMap = std::unordered_map<mdMemberRef, FieldAccessIntrinsicEffect>;
+	using FieldAccessIntrinsicsMap = std::unordered_map<mdMemberRef, FieldAccessIntrinsicKind>;
 }

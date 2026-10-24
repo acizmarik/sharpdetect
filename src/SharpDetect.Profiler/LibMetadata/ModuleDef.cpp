@@ -267,6 +267,53 @@ HRESULT LibProfiler::ModuleDef::GetMethodSpecParent(
 	return metadataImport.GetMethodSpecProps(methodSpec, parent, nullptr, nullptr);
 }
 
+HRESULT LibProfiler::ModuleDef::GetMethodSpecProps(
+	IN const mdMethodSpec methodSpec,
+	OUT mdToken* parent,
+	OUT PCCOR_SIGNATURE* instantiation,
+	OUT ULONG* instantiationLength) const
+{
+	auto& metadataImport = GetMetadataImport();
+	return metadataImport.GetMethodSpecProps(methodSpec, parent, instantiation, instantiationLength);
+}
+
+HRESULT LibProfiler::ModuleDef::GetMemberRefSignature(
+	IN const mdMemberRef memberRef,
+	OUT PCCOR_SIGNATURE* signature,
+	OUT ULONG* signatureLength) const
+{
+	auto& metadataImport = GetMetadataImport();
+	return metadataImport.GetMemberRefProps(memberRef, nullptr, nullptr, 0, nullptr, signature, signatureLength);
+}
+
+HRESULT LibProfiler::ModuleDef::GetGenericParamAttributes(
+	IN const mdToken owner,
+	IN const ULONG index,
+	OUT DWORD* attributes) const
+{
+	auto& metadataImport = GetMetadataImport();
+	HCORENUM enumerator = nullptr;
+	mdGenericParam genericParam;
+	ULONG fetched = 0;
+	while (metadataImport.EnumGenericParams(&enumerator, owner, &genericParam, 1, &fetched) == S_OK && fetched == 1)
+	{
+		ULONG sequence;
+		DWORD flags;
+		if (FAILED(metadataImport.GetGenericParamProps(genericParam, &sequence, &flags, nullptr, nullptr, nullptr, 0, nullptr)))
+			break;
+
+		if (sequence == index)
+		{
+			metadataImport.CloseEnum(enumerator);
+			*attributes = flags;
+			return S_OK;
+		}
+	}
+
+	metadataImport.CloseEnum(enumerator);
+	return E_FAIL;
+}
+
 HRESULT LibProfiler::ModuleDef::AddMethodRef(
 	IN const std::string& name,
 	IN const mdTypeRef typeRef,
