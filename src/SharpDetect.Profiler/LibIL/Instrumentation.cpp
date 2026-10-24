@@ -42,6 +42,23 @@ static bool ShouldSkipFieldAccessInstrumentation(
 	return isExcluded;
 }
 
+static ILInstr* MakeRoomBefore(
+	IN ILRewriter& rewriter,
+	IN OUT ILInstr*& access)
+{
+	const auto head = LibProfiler::GetFirstPrefix(*access);
+	const auto movedHead = rewriter.NewILInstr();
+	movedHead->m_opcode = head->m_opcode;
+	movedHead->m_Arg64 = head->m_Arg64;
+	rewriter.InsertAfter(head, movedHead);
+	head->m_opcode = CEE_NOP;
+
+	if (head == access)
+		access = movedHead;
+
+	return head;
+}
+
 static bool ShouldCaptureFieldStack(
 	IN const LibProfiler::ModuleDef& moduleDef,
 	IN mdToken fieldToken,
@@ -398,8 +415,7 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	else if (isStore)
 	{
 		// A volatile store releases, so it is reported before the store publishes anything
-		const auto headInstruction = currentInstruction->m_pPrev;
-		headInstruction->m_opcode = CEE_NOP;
+		const auto headInstruction = MakeRoomBefore(rewriter, currentInstruction);
 		// LDC.I8 <instrumentation-mark>
 		const auto ldcInstruction = rewriter.NewILInstr();
 		ldcInstruction->m_opcode = CEE_LDC_I8;
@@ -410,10 +426,6 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		callInstruction->m_opcode = CEE_CALL;
 		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
 		rewriter.InsertAfter(ldcInstruction, callInstruction);
-		// The prefix moves after the call, so it still applies to the store
-		const auto volatileInstruction = rewriter.NewILInstr();
-		volatileInstruction->m_opcode = CEE_VOLATILE;
-		rewriter.InsertAfter(callInstruction, volatileInstruction);
 	}
 	else
 	{
@@ -560,8 +572,7 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccessIntrinsic(
 		return E_FAIL;
 	}
 
-	addressInstruction->m_opcode = CEE_NOP;
-	auto tailInstruction = addressInstruction;
+	auto tailInstruction = MakeRoomBefore(rewriter, addressInstruction);
 
 	// Add a local to capture the object instance for the handler call
 	PCCOR_SIGNATURE instanceSignature = g_ObjectTypeSignature;
@@ -578,13 +589,8 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccessIntrinsic(
 	stlocInstanceInstruction->m_opcode = CEE_STLOC;
 	stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
 	rewriter.InsertAfter(tailInstruction, stlocInstanceInstruction);
-	tailInstruction = stlocInstanceInstruction;
-	// LDFLDA <field> — re-emit the original address load; its node became the head
-	const auto newAddressInstruction = rewriter.NewILInstr();
-	newAddressInstruction->m_opcode = CEE_LDFLDA;
-	newAddressInstruction->m_Arg32 = static_cast<INT32>(fieldToken);
-	rewriter.InsertAfter(tailInstruction, newAddressInstruction);
-	tailInstruction = newAddressInstruction;
+	// LDFLDA <field> follows, then the handler arguments
+	tailInstruction = addressInstruction;
 	// LDC.I8 <instrumentation-mark>
 	const auto ldcInstruction = rewriter.NewILInstr();
 	ldcInstruction->m_opcode = CEE_LDC_I8;
@@ -756,10 +762,8 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	}
 
 	// The event must reach the queue before the store executes (release-before-store)
-	const auto accessOpcode = currentInstruction->m_opcode;
-	const auto headInstruction = isVolatile ? currentInstruction->m_pPrev : currentInstruction;
-	headInstruction->m_opcode = CEE_NOP;
-	auto tailInstruction = headInstruction;
+	auto accessInstruction = currentInstruction;
+	auto tailInstruction = MakeRoomBefore(rewriter, accessInstruction);
 
 	// Add a local to capture the object instance for the handler call
 	PCCOR_SIGNATURE instanceSignature = g_ObjectTypeSignature;
@@ -810,7 +814,6 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		callInstruction->m_opcode = CEE_CALL;
 		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
 		rewriter.InsertAfter(tailInstruction, callInstruction);
-		tailInstruction = callInstruction;
 	}
 	else
 	{
@@ -824,27 +827,9 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		stlocInstanceInstruction->m_opcode = CEE_STLOC;
 		stlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
 		rewriter.InsertAfter(tailInstruction, stlocInstanceInstruction);
-		tailInstruction = stlocInstanceInstruction;
 	}
 
-	// <FIELD-ACCESS> (LDFLD/STFLD) — re-emit the original access; its node became the head
-	ILInstr* accessInstruction;
-	if (isVolatile)
-	{
-		const auto volatileInstruction = rewriter.NewILInstr();
-		volatileInstruction->m_opcode = CEE_VOLATILE;
-		rewriter.InsertAfter(tailInstruction, volatileInstruction);
-		accessInstruction = currentInstruction;
-	}
-	else
-	{
-		const auto newAccessInstruction = rewriter.NewILInstr();
-		newAccessInstruction->m_opcode = accessOpcode;
-		newAccessInstruction->m_Arg32 = static_cast<INT32>(fieldToken);
-		rewriter.InsertAfter(tailInstruction, newAccessInstruction);
-		accessInstruction = newAccessInstruction;
-	}
-
+	// <FIELD-ACCESS> (LDFLD/STFLD) with its prefixes follows
 	if (isStore)
 	{
 		currentInstruction = accessInstruction;

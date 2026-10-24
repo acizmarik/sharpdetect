@@ -9,6 +9,9 @@
 
 namespace LibProfiler
 {
+	ILInstr* GetFirstPrefix(
+		IN ILInstr& instruction);
+
 	HRESULT IsVolatile(
 		IN const ILInstr& instruction,
 		OUT BOOL* isVolatile);

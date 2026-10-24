@@ -4,11 +4,45 @@
 #include "MetadataAnalysis.h"
 #include "WString.h"
 
+static bool IsPrefix(const ILInstr* instruction)
+{
+	if (instruction == nullptr)
+		return false;
+
+	switch (instruction->m_opcode)
+	{
+		case CEE_UNALIGNED:
+		case CEE_VOLATILE:
+		case CEE_TAILCALL:
+		case CEE_CONSTRAINED:
+		case CEE_READONLY:
+			return true;
+		default:
+			return false;
+	}
+}
+
+ILInstr* LibProfiler::GetFirstPrefix(
+	IN ILInstr& instruction)
+{
+	auto first = &instruction;
+	while (IsPrefix(first->m_pPrev))
+		first = first->m_pPrev;
+
+	return first;
+}
+
 HRESULT LibProfiler::IsVolatile(
 	IN const ILInstr& instruction,
 	OUT BOOL* isVolatile)
 {
-	*isVolatile = instruction.m_pPrev != nullptr && instruction.m_pPrev->m_opcode == CEE_VOLATILE;
+	*isVolatile = FALSE;
+	for (auto prefix = instruction.m_pPrev; IsPrefix(prefix); prefix = prefix->m_pPrev)
+	{
+		if (prefix->m_opcode == CEE_VOLATILE)
+			*isVolatile = TRUE;
+	}
+
 	return S_OK;
 }
 

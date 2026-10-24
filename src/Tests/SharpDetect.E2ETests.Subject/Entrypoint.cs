@@ -464,6 +464,27 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_ValueType_OnConstructedGenericValueType_Instance_Read):
                     Test_Field_ValueType_OnConstructedGenericValueType_Instance_Read();
                     break;
+                case nameof(Test_Field_Prefixed_VolatileUnaligned_Instance_Read):
+                    Test_Field_Prefixed_VolatileUnaligned_Instance_Read();
+                    break;
+                case nameof(Test_Field_Prefixed_UnalignedVolatile_Instance_Read):
+                    Test_Field_Prefixed_UnalignedVolatile_Instance_Read();
+                    break;
+                case nameof(Test_Field_Prefixed_Unaligned_Instance_Read):
+                    Test_Field_Prefixed_Unaligned_Instance_Read();
+                    break;
+                case nameof(Test_Field_Prefixed_VolatileUnaligned_BranchTarget_Instance_Read):
+                    Test_Field_Prefixed_VolatileUnaligned_BranchTarget_Instance_Read();
+                    break;
+                case nameof(Test_Field_Prefixed_VolatileUnaligned_Instance_Write):
+                    Test_Field_Prefixed_VolatileUnaligned_Instance_Write();
+                    break;
+                case nameof(Test_Field_Prefixed_UnalignedVolatile_Instance_Write):
+                    Test_Field_Prefixed_UnalignedVolatile_Instance_Write();
+                    break;
+                case nameof(Test_Field_Prefixed_Unaligned_Instance_Write):
+                    Test_Field_Prefixed_Unaligned_Instance_Write();
+                    break;
             }
 
             // Array events

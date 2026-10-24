@@ -7,6 +7,7 @@ using SharpDetect.E2ETests.Subject.Helpers;
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
 using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
 using SharpDetect.E2ETests.Subject.Helpers.Fields;
+using SharpDetect.E2ETests.Subject.IL;
 
 namespace SharpDetect.E2ETests.Subject
 {
@@ -764,6 +765,44 @@ namespace SharpDetect.E2ETests.Subject
         {
             StaticFieldValueType.Test_Field_ValueType_Static = new ConstructedValueType<int>(42).ValueField;
             GC.Collect();
+        }
+
+        public static void Test_Field_Prefixed_VolatileUnaligned_Instance_Read()
+        {
+            _ = PrefixedFieldAccess.ReadVolatileUnaligned(new PrefixedFieldAccess());
+        }
+
+        public static void Test_Field_Prefixed_UnalignedVolatile_Instance_Read()
+        {
+            _ = PrefixedFieldAccess.ReadUnalignedVolatile(new PrefixedFieldAccess());
+        }
+
+        public static void Test_Field_Prefixed_Unaligned_Instance_Read()
+        {
+            _ = PrefixedFieldAccess.ReadUnaligned(new PrefixedFieldAccess());
+        }
+
+        public static void Test_Field_Prefixed_VolatileUnaligned_BranchTarget_Instance_Read()
+        {
+            var first = new PrefixedFieldAccess();
+            var second = new PrefixedFieldAccess();
+            _ = PrefixedFieldAccess.ReadVolatileUnalignedFromEither(Environment.CurrentManagedThreadId > 0, first, second);
+            _ = PrefixedFieldAccess.ReadVolatileUnalignedFromEither(Environment.CurrentManagedThreadId < 0, first, second);
+        }
+
+        public static void Test_Field_Prefixed_VolatileUnaligned_Instance_Write()
+        {
+            PrefixedFieldAccess.WriteVolatileUnaligned(new PrefixedFieldAccess(), 123);
+        }
+
+        public static void Test_Field_Prefixed_UnalignedVolatile_Instance_Write()
+        {
+            PrefixedFieldAccess.WriteUnalignedVolatile(new PrefixedFieldAccess(), 123);
+        }
+
+        public static void Test_Field_Prefixed_Unaligned_Instance_Write()
+        {
+            PrefixedFieldAccess.WriteUnaligned(new PrefixedFieldAccess(), 123);
         }
 
         public static void Test_Field_Atomic_ValueType_Static_Increment()

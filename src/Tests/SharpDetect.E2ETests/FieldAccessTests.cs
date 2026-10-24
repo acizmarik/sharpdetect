@@ -20,6 +20,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 {
     public const string CollectionName = "E2E_FieldAccessTests";
     private const string SubjectAssemblyName = "SharpDetect.E2ETests.Subject";
+    private const string IlSubjectAssemblyName = "SharpDetect.E2ETests.Subject.IL";
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task StaticField_ValueType_Read(string sdk)
@@ -424,11 +425,50 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     public Task InstanceField_ValueType_OnConstructedGenericValueType_Read(string sdk)
         => FieldAccessNotInstrumented("Test_Field_ValueType_OnConstructedGenericValueType_Instance_Read", sdk, RecordedEventType.InstanceFieldRead);
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_VolatileUnalignedPrefixes_Read(string sdk)
+        => PrefixedFieldAccess("Test_Field_Prefixed_VolatileUnaligned_Instance_Read", sdk, RecordedEventType.InstanceFieldRead, FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_UnalignedVolatilePrefixes_Read(string sdk)
+        => PrefixedFieldAccess("Test_Field_Prefixed_UnalignedVolatile_Instance_Read", sdk, RecordedEventType.InstanceFieldRead, FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_UnalignedPrefix_Read(string sdk)
+        => PrefixedFieldAccess("Test_Field_Prefixed_Unaligned_Instance_Read", sdk, RecordedEventType.InstanceFieldRead, FieldAccessKind.Regular);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_VolatileUnalignedPrefixes_BranchTargetsFirstPrefix_Read(string sdk)
+        => PrefixedFieldAccess("Test_Field_Prefixed_VolatileUnaligned_BranchTarget_Instance_Read", sdk, RecordedEventType.InstanceFieldRead, FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_VolatileUnalignedPrefixes_Write(string sdk)
+        => PrefixedFieldAccess("Test_Field_Prefixed_VolatileUnaligned_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_UnalignedVolatilePrefixes_Write(string sdk)
+        => PrefixedFieldAccess("Test_Field_Prefixed_UnalignedVolatile_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, FieldAccessKind.Volatile);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task InstanceField_UnalignedPrefix_Write(string sdk)
+        => PrefixedFieldAccess("Test_Field_Prefixed_Unaligned_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, FieldAccessKind.Regular);
+
+    private Task PrefixedFieldAccess(string subjectArgs, string sdk, RecordedEventType eventType, FieldAccessKind accessKind)
+        => FieldAccess(subjectArgs, sdk, eventType, accessKind, IlSubjectAssemblyName);
+
     private async Task FieldAccess(
         string subjectArgs,
         string sdk,
         RecordedEventType eventType,
-        FieldAccessKind? requireAccessKind = null)
+        FieldAccessKind? requireAccessKind = null,
+        string assemblyName = SubjectAssemblyName)
     {
         // Arrange
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
@@ -441,7 +481,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
         var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyFieldAccessInAssembly(SubjectAssemblyName, eventType, plugin, requireAccessKind))
+            .Then(EventuallyFieldAccessInAssembly(assemblyName, eventType, plugin, requireAccessKind))
             .Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute
