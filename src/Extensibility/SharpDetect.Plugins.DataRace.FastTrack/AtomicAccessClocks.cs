@@ -8,12 +8,20 @@ namespace SharpDetect.Plugins.DataRace.FastTrack;
 internal sealed class AtomicAccessClocks
 {
     private AccessClock _accesses;
+    private AccessClock _stores;
 
-    public void Record(Epoch access, VectorClock accessorVc, ThreadClockTable threadClocks)
-        => _accesses.Add(access, accessorVc, threadClocks);
+    public void Record(Epoch access, VectorClock accessorVc, bool stored, ThreadClockTable threadClocks)
+    {
+        _accesses.Add(access, accessorVc, threadClocks);
+        if (stored)
+            _stores.Add(access, accessorVc, threadClocks);
+    }
 
     public ProcessThreadId? FindUnorderedAccess(ProcessThreadId threadId, VectorClock threadVc)
         => _accesses.FindUnordered(threadId, threadVc);
+
+    public ProcessThreadId? FindUnorderedStore(ProcessThreadId threadId, VectorClock threadVc)
+        => _stores.FindUnordered(threadId, threadVc);
 
     private struct AccessClock
     {

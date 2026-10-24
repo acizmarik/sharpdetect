@@ -19,6 +19,9 @@ public sealed class FastTrackPluginConfiguration : PluginOptionsConfiguration, I
     public bool EnableStackTraceCollection { get; init; } = false;
     public int StackTraceCollectionMaxDepth { get; init; } = DataRaceStackTraceOptions.DefaultMaxDepth;
     public ImmutableArray<string> StackTraceCollectionForFields { get; init; } = [];
+
+    // Analysis
+    public bool ReportPlainReadsRacingWithAtomicWrites { get; init; } = false;
 }
 
 

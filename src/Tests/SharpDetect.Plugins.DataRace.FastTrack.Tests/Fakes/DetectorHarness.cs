@@ -21,9 +21,14 @@ internal sealed class DetectorHarness
     public FastTrackDetector Detector { get; }
 
     public DetectorHarness()
+        : this(FastTrackPluginConfiguration.Default)
+    {
+    }
+
+    public DetectorHarness(FastTrackPluginConfiguration configuration)
     {
         Detector = new FastTrackDetector(
-            FastTrackPluginConfiguration.Default,
+            configuration,
             _metadata,
             TimeProvider.System,
             NullLogger.Instance,

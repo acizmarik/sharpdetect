@@ -39,7 +39,7 @@ internal sealed class InFlightAtomicAccesses
         return true;
     }
 
-    public void NotePlainWrite(ProcessThreadId threadId, VectorClock threadVc, Epoch epoch, in AccessRecord record)
+    public void NotePlainAccess(ProcessThreadId threadId, VectorClock threadVc, Epoch epoch, in AccessRecord record, bool isWrite)
     {
         if (_activeCount == 0)
             return;
@@ -47,7 +47,7 @@ internal sealed class InFlightAtomicAccesses
         foreach (var (owner, operation) in _operations)
         {
             if (operation.IsActive && owner != threadId)
-                operation.NoteWrite(threadId, new PlainAccess(epoch, record), observed: operation.Release.HappensBefore(threadVc));
+                operation.NoteAccess(threadId, new PlainAccess(epoch, record), isWrite, observed: operation.Release.HappensBefore(threadVc));
         }
     }
 }
@@ -57,31 +57,50 @@ internal readonly record struct PlainAccess(Epoch Epoch, AccessRecord Record);
 internal sealed class InFlightAtomicAccess
 {
     private Dictionary<ProcessThreadId, PlainAccess>? _unorderedWrites;
+    private Dictionary<ProcessThreadId, PlainAccess>? _unorderedReads;
     private Dictionary<ProcessThreadId, PlainAccess>? _observingWrites;
 
     public bool IsActive { get; set; }
     public Epoch Release { get; private set; }
+
     public PlainAccess? WriteBefore { get; set; }
+    public Epoch ReadEpochBefore { get; set; }
+    public VectorClock? ReadClockBefore { get; set; }
+    public Dictionary<ProcessThreadId, AccessRecord>? ReadsBefore { get; private set; }
 
     public void Reset(Epoch release)
     {
         IsActive = true;
         Release = release;
         WriteBefore = null;
+        ReadEpochBefore = Epoch.None;
+        ReadClockBefore = null;
+        ReadsBefore?.Clear();
         _unorderedWrites?.Clear();
+        _unorderedReads?.Clear();
         _observingWrites?.Clear();
     }
 
-    public void NoteWrite(ProcessThreadId threadId, in PlainAccess access, bool observed)
+    public Dictionary<ProcessThreadId, AccessRecord> GetOrCreateReadsBefore() => ReadsBefore ??= [];
+
+    public void NoteAccess(ProcessThreadId threadId, in PlainAccess access, bool isWrite, bool observed)
     {
+        // A plain read never races with an operation that turns out to store nothing
+        if (observed && !isWrite)
+            return;
+
         var accesses = observed
             ? _observingWrites ??= []
-            : _unorderedWrites ??= [];
+            : isWrite
+                ? _unorderedWrites ??= []
+                : _unorderedReads ??= [];
         accesses[threadId] = access;
     }
 
     public AccessRecord? FindUnorderedWrite(VectorClock operationVc) => FindUnordered(_unorderedWrites, operationVc);
     public AccessRecord? FindObservingWrite(VectorClock operationVc) => FindUnordered(_observingWrites, operationVc);
+
+    public AccessRecord? FindUnorderedRead(VectorClock operationVc) => FindUnordered(_unorderedReads, operationVc);
 
     private static AccessRecord? FindUnordered(Dictionary<ProcessThreadId, PlainAccess>? accesses, VectorClock operationVc)
     {

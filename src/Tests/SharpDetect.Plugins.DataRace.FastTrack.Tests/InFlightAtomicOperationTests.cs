@@ -10,6 +10,10 @@ namespace SharpDetect.Plugins.DataRace.FastTrack.Tests;
 public class InFlightAtomicOperationTests
 {
     private readonly DetectorHarness _harness = new();
+    private readonly DetectorHarness _reportingPlainReads = new(new FastTrackPluginConfiguration
+    {
+        ReportPlainReadsRacingWithAtomicWrites = true
+    });
 
     [Fact]
     public void PlainWriteThatDidNotObserveTheOperation_IsReportedWhenItCompletes()
@@ -208,5 +212,125 @@ public class InFlightAtomicOperationTests
         // Assert
         Assert.NotNull(race);
         Assert.Equal(plainWriter, race.LastAccess.ProcessThreadId);
+    }
+
+    [Fact]
+    public void PlainReadAfterObservingTheOperation_IsNotReportedWhenConfigured()
+    {
+        // Arrange
+        var incrementer = _reportingPlainReads.NewThread();
+        var reader = _reportingPlainReads.NewThread();
+        var counter = _reportingPlainReads.NewStaticField("Counter");
+
+        // Act
+        _reportingPlainReads.AtomicRelease(incrementer, counter, instance: null);
+        _reportingPlainReads.VolatileRead(reader, counter, instance: null);
+        _reportingPlainReads.Read(reader, counter, instance: null);
+        var race = _reportingPlainReads.AtomicAcquire(incrementer, counter, instance: null);
+
+        // Assert
+        Assert.Null(race);
+    }
+
+    [Fact]
+    public void PlainReadThatDidNotObserveTheOperation_IsReportedWhenConfigured()
+    {
+        // Arrange
+        var incrementer = _reportingPlainReads.NewThread();
+        var reader = _reportingPlainReads.NewThread();
+        var counter = _reportingPlainReads.NewStaticField("Counter");
+
+        // Act
+        _reportingPlainReads.AtomicRelease(incrementer, counter, instance: null);
+        var readRace = _reportingPlainReads.Read(reader, counter, instance: null);
+        var completionRace = _reportingPlainReads.AtomicAcquire(incrementer, counter, instance: null);
+
+        // Assert
+        Assert.Null(readRace);
+        Assert.NotNull(completionRace);
+        Assert.Equal(reader, completionRace.LastAccess.ProcessThreadId);
+        Assert.Equal(AccessType.Read, completionRace.LastAccess.AccessType);
+    }
+
+    [Fact]
+    public void PlainReadBeforeTheRelease_IsReportedWhenConfigured()
+    {
+        // Arrange
+        var reader = _reportingPlainReads.NewThread();
+        var incrementer = _reportingPlainReads.NewThread();
+        var counter = _reportingPlainReads.NewStaticField("Counter");
+
+        // Act
+        _reportingPlainReads.Read(reader, counter, instance: null);
+        _reportingPlainReads.AtomicRelease(incrementer, counter, instance: null);
+        var race = _reportingPlainReads.AtomicAcquire(incrementer, counter, instance: null);
+
+        // Assert
+        Assert.NotNull(race);
+        Assert.Equal(reader, race.LastAccess.ProcessThreadId);
+    }
+
+    [Fact]
+    public void PlainReadDuringFailedCompareExchange_IsNotReportedWhenConfigured()
+    {
+        // Arrange
+        var exchanger = _reportingPlainReads.NewThread();
+        var reader = _reportingPlainReads.NewThread();
+        var flag = _reportingPlainReads.NewStaticField("Flag");
+
+        // Act - a failed exchange stores nothing
+        _reportingPlainReads.CompareExchangeRelease(exchanger, flag, instance: null);
+        _reportingPlainReads.Read(reader, flag, instance: null);
+        var race = _reportingPlainReads.CompareExchangeCompleted(exchanger, flag, instance: null, succeeded: false);
+
+        // Assert
+        Assert.Null(race);
+    }
+
+    [Fact]
+    public void PlainReadBeforeTheRelease_IsReportedAfterAnOrderedReadReplacedIt()
+    {
+        // Arrange
+        var reader = _reportingPlainReads.NewThread();
+        var incrementer = _reportingPlainReads.NewThread();
+        var laterReader = _reportingPlainReads.NewThread();
+        var counter = _reportingPlainReads.NewStaticField("Counter");
+        var flag = _reportingPlainReads.NewStaticField("Flag");
+        var firstRead = _reportingPlainReads.NewStack();
+
+        // Act - the later reader is ordered after the first read and observes the operation
+        _reportingPlainReads.Detector.RecordRead(reader, methodOffset: 0, counter, objectId: null, firstRead);
+        _reportingPlainReads.VolatileWrite(reader, flag, instance: null);
+        _reportingPlainReads.VolatileRead(laterReader, flag, instance: null);
+        _reportingPlainReads.AtomicRelease(incrementer, counter, instance: null);
+        _reportingPlainReads.VolatileRead(laterReader, counter, instance: null);
+        _reportingPlainReads.Read(laterReader, counter, instance: null);
+        var race = _reportingPlainReads.AtomicAcquire(incrementer, counter, instance: null);
+
+        // Assert
+        Assert.NotNull(race);
+        Assert.Equal(reader, race.LastAccess.ProcessThreadId);
+        Assert.Equal(firstRead, race.LastAccess.Stack);
+    }
+
+    [Fact]
+    public void PlainReadBeforeTheRelease_IsAttributedToThatReadNotAnOrderedLaterOne()
+    {
+        // Arrange
+        var reader = _reportingPlainReads.NewThread();
+        var incrementer = _reportingPlainReads.NewThread();
+        var counter = _reportingPlainReads.NewStaticField("Counter");
+        var firstRead = _reportingPlainReads.NewStack();
+
+        // Act - the reader's second read observed the operation
+        _reportingPlainReads.Detector.RecordRead(reader, methodOffset: 0, counter, objectId: null, firstRead);
+        _reportingPlainReads.AtomicRelease(incrementer, counter, instance: null);
+        _reportingPlainReads.VolatileRead(reader, counter, instance: null);
+        _reportingPlainReads.Read(reader, counter, instance: null);
+        var race = _reportingPlainReads.AtomicAcquire(incrementer, counter, instance: null);
+
+        // Assert
+        Assert.NotNull(race);
+        Assert.Equal(firstRead, race.LastAccess.Stack);
     }
 }

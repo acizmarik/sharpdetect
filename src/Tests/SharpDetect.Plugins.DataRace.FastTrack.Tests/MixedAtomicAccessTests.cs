@@ -12,6 +12,10 @@ namespace SharpDetect.Plugins.DataRace.FastTrack.Tests;
 public class MixedAtomicAccessTests
 {
     private readonly DetectorHarness _harness = new();
+    private readonly DetectorHarness _reportingPlainReads = new(new FastTrackPluginConfiguration
+    {
+        ReportPlainReadsRacingWithAtomicWrites = true
+    });
 
     [Fact]
     public void PlainWriteAfterUnorderedReadModifyWrite_IsRace()
@@ -404,6 +408,25 @@ public class MixedAtomicAccessTests
     }
 
     [Fact]
+    public void PlainReadAfterUnorderedAtomicStore_IsReportedWhenConfigured()
+    {
+        // Arrange
+        var incrementer = _reportingPlainReads.NewThread();
+        var plainReader = _reportingPlainReads.NewThread();
+        var counter = _reportingPlainReads.NewStaticField("Counter");
+
+        // Act
+        _reportingPlainReads.ReadModifyWrite(incrementer, counter, instance: null);
+        var race = _reportingPlainReads.Read(plainReader, counter, instance: null);
+
+        // Assert
+        Assert.NotNull(race);
+        Assert.Equal(AccessType.Read, race.CurrentAccess.AccessType);
+        Assert.Equal(incrementer, race.LastAccess.ProcessThreadId);
+        Assert.Equal(AccessType.AtomicWrite, race.LastAccess.AccessType);
+    }
+
+    [Fact]
     public void AtomicStoreAfterUnorderedPlainRead_IsNotReportedByDefault()
     {
         // Arrange
@@ -416,6 +439,99 @@ public class MixedAtomicAccessTests
 
         // Assert
         Assert.Null(_harness.VolatileWrite(publisher, flag, instance: null));
+    }
+
+    [Fact]
+    public void AtomicStoreAfterUnorderedPlainRead_IsReportedWhenConfigured()
+    {
+        // Arrange
+        var plainReader = _reportingPlainReads.NewThread();
+        var publisher = _reportingPlainReads.NewThread();
+        var flag = _reportingPlainReads.NewStaticField("Flag");
+
+        // Act
+        _reportingPlainReads.Read(plainReader, flag, instance: null);
+        var race = _reportingPlainReads.VolatileWrite(publisher, flag, instance: null);
+
+        // Assert
+        Assert.NotNull(race);
+        Assert.Equal(AccessType.AtomicWrite, race.CurrentAccess.AccessType);
+        Assert.Equal(plainReader, race.LastAccess.ProcessThreadId);
+        Assert.Equal(AccessType.Read, race.LastAccess.AccessType);
+    }
+
+    [Fact]
+    public void PlainReadsAndAtomicLoads_NeverRaceEvenWhenConfigured()
+    {
+        // Arrange
+        var plainReader = _reportingPlainReads.NewThread();
+        var atomicReader = _reportingPlainReads.NewThread();
+        var exchanger = _reportingPlainReads.NewThread();
+        var flag = _reportingPlainReads.NewStaticField("Flag");
+
+        // Act - a failed compare-exchange stores nothing, so it is a load as well
+        var races = new[]
+        {
+            _reportingPlainReads.Read(plainReader, flag, instance: null),
+            _reportingPlainReads.VolatileRead(atomicReader, flag, instance: null),
+            CompareExchange(_reportingPlainReads, exchanger, flag, succeeded: false),
+            _reportingPlainReads.Read(plainReader, flag, instance: null)
+        };
+
+        // Assert
+        Assert.All(races, Assert.Null);
+    }
+
+    [Fact]
+    public void PlainReadRacingWithAtomicStore_IsReportedAgainstTheStoreNotALaterLoad()
+    {
+        // Arrange
+        var publisher = _reportingPlainReads.NewThread();
+        var plainReader = _reportingPlainReads.NewThread();
+        var flag = _reportingPlainReads.NewStaticField("Flag");
+
+        // Act
+        _reportingPlainReads.VolatileWrite(publisher, flag, instance: null);
+        _reportingPlainReads.VolatileRead(publisher, flag, instance: null);
+        var race = _reportingPlainReads.Read(plainReader, flag, instance: null);
+
+        // Assert
+        Assert.NotNull(race);
+        Assert.Equal(AccessType.AtomicWrite, race.LastAccess.AccessType);
+    }
+
+    [Fact]
+    public void FinalizerReadAfterAtomicStoreOnAnotherThread_IsNotReportedEvenWhenConfigured()
+    {
+        // Arrange
+        var owner = _reportingPlainReads.NewThread();
+        var finalizer = _reportingPlainReads.NewThread();
+        var instance = _reportingPlainReads.NewObject();
+        var counter = _reportingPlainReads.NewInstanceField("Counter");
+
+        // Act
+        _reportingPlainReads.ReadModifyWrite(owner, counter, instance);
+        _reportingPlainReads.QueueForFinalization(instance);
+
+        // Assert
+        Assert.False(_reportingPlainReads.ReadIsRace(finalizer, counter, instance));
+    }
+
+    [Fact]
+    public void AtomicStoreAfterFinalizerRead_IsNotReportedEvenWhenConfigured()
+    {
+        // Arrange
+        var finalizer = _reportingPlainReads.NewThread();
+        var other = _reportingPlainReads.NewThread();
+        var instance = _reportingPlainReads.NewObject();
+        var counter = _reportingPlainReads.NewInstanceField("Counter");
+
+        // Act
+        _reportingPlainReads.QueueForFinalization(instance);
+        _reportingPlainReads.Read(finalizer, counter, instance);
+
+        // Assert
+        Assert.Null(_reportingPlainReads.ReadModifyWrite(other, counter, instance));
     }
 
     private static DataRaceInfo? CompareExchange(DetectorHarness harness, ProcessThreadId thread, MdToken field, bool succeeded)

@@ -128,6 +128,9 @@ Data race analysis accepts the following `Analysis.Configuration` properties.
   - Array of fully-qualified field names (`Namespace.Type.Field`) to restrict stack-trace collection to
   - Matching is by prefix, so a value ending in `.` matches every field of a type (e.g. `MyApp.Test.` matches `MyApp.Test.Field` and `MyApp.Test.AnotherField`)
   - Defaults to `[]`, which collects stack traces for all instrumented fields
+- `ReportPlainReadsRacingWithAtomicWrites`
+  - Report a plain read that is not ordered with an atomic or volatile write of the same field (e.g. `return _count;` while another thread runs `Interlocked.Increment(ref _count)`)
+  - Either `true` or `false` (default)
 
 Stack-trace collection walks the target thread's call stack at each analyzed access, so enabling it for a broad set of fields adds overhead. Use `StackTraceCollectionForFields` to limit collection to the fields you are investigating.
 

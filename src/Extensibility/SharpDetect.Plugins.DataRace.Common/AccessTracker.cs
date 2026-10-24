@@ -19,8 +19,10 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         public bool HasLast;
         public bool HasWrite;
         public Dictionary<ProcessThreadId, AccessRecord>? ReadsByThread;
-        public Dictionary<ProcessThreadId, AccessRecord>? AtomicByThread;
+        public Dictionary<ProcessThreadId, AtomicAccessRecords>? AtomicByThread;
     }
+
+    private readonly record struct AtomicAccessRecords(AccessRecord Last, AccessRecord? LastStore);
 
     public bool TryGetLastAccess(FieldId fieldId, ProcessTrackedObjectId? objectId, out AccessRecord record)
     {
@@ -76,6 +78,25 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         return false;
     }
 
+    public void CopyLastReadAccesses(
+        FieldId fieldId,
+        ProcessTrackedObjectId? objectId,
+        Dictionary<ProcessThreadId, AccessRecord> destination)
+    {
+        if (!TryGetSlots(fieldId, objectId, out var slots))
+            return;
+
+        if (slots.ReadsByThread != null)
+        {
+            foreach (var (threadId, record) in slots.ReadsByThread)
+                destination[threadId] = record;
+        }
+        else if (slots.HasLast && slots.Last.AccessType == AccessType.Read)
+        {
+            destination[slots.Last.ProcessThreadId] = slots.Last;
+        }
+    }
+
     public AccessRecord RecordAccess(
         FieldId fieldId,
         ProcessTrackedObjectId? objectId,
@@ -101,7 +122,8 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         var record = new AccessRecord(threadId, methodOffset, stored ? AccessType.AtomicWrite : AccessType.AtomicRead, stack);
         ref var slots = ref GetOrAddSlots(fieldId, objectId);
         var atomicByThread = slots.AtomicByThread ??= [];
-        atomicByThread[threadId] = record;
+        ref var records = ref CollectionsMarshal.GetValueRefOrAddDefault(atomicByThread, threadId, out _);
+        records = new AtomicAccessRecords(record, stored ? record : records.LastStore);
         return record;
     }
 
@@ -109,13 +131,24 @@ public sealed class AccessTracker(Func<ProcessThreadId, string?> threadNameResol
         FieldId fieldId,
         ProcessTrackedObjectId? objectId,
         ProcessThreadId threadId,
+        bool storesOnly,
         out AccessRecord record)
     {
         if (TryGetSlots(fieldId, objectId, out var slots) &&
             slots.AtomicByThread != null &&
-            slots.AtomicByThread.TryGetValue(threadId, out record))
+            slots.AtomicByThread.TryGetValue(threadId, out var records))
         {
-            return true;
+            if (!storesOnly)
+            {
+                record = records.Last;
+                return true;
+            }
+
+            if (records.LastStore is { } lastStore)
+            {
+                record = lastStore;
+                return true;
+            }
         }
 
         record = default;

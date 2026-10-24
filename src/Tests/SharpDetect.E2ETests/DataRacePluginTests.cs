@@ -400,6 +400,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_InterlockedCounter_PlainReadAfterAtomicIncrement_WhenConfigured(string sdk, string plugin)
+        => AssertDetectsDataRaceOnAtomicCounter("Test_InterlockedCounter_PlainReadAfterAtomicIncrement", sdk, plugin, "AtomicWrite", reportPlainReadsRacingWithAtomicWrites: true);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_InterlockedCounter_PlainAccessAfterJoin(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedCounter_PlainAccessAfterJoin", sdk, plugin);
 
@@ -747,14 +752,19 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         string subjectArgs,
         string sdk,
         string pluginFullTypeName,
-        string atomicAccessType)
+        string atomicAccessType,
+        bool reportPlainReadsRacingWithAtomicWrites = false)
     {
         // Arrange
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
         using var services = E2ETestBuilder
             .ForSubject(subjectArgs)
             .WithTestPlugin(pluginFullTypeName)
-            .WithPluginConfiguration(CreateConfiguration(enableStackTraceCollection: false))
+            .WithPluginConfiguration(new
+            {
+                SkipInstrumentationForAssemblies = SkipSystemAssemblies,
+                ReportPlainReadsRacingWithAtomicWrites = reportPlainReadsRacingWithAtomicWrites
+            })
             .Build(sdk, testOutput, additionalData);
         var plugin = GetTestPlugin(services);
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();

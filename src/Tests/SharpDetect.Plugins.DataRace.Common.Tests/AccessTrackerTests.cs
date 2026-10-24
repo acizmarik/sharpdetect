@@ -100,19 +100,20 @@ public class AccessTrackerTests
     }
 
     [Fact]
-    public void AtomicAccesses_KeepTheLastAccessOfEachThread()
+    public void AtomicAccesses_KeepTheLastStoreOfEachThread()
     {
         // Act
         _tracker.RecordAtomicAccess(_field, null, First, methodOffset: 1, stored: true, Stack);
         _tracker.RecordAtomicAccess(_field, null, First, methodOffset: 2, stored: false, Stack);
-        _tracker.RecordAtomicAccess(_field, null, Second, methodOffset: 3, stored: true, Stack);
+        _tracker.RecordAtomicAccess(_field, null, Second, methodOffset: 3, stored: false, Stack);
 
         // Assert
-        Assert.True(_tracker.TryGetLastAtomicAccess(_field, null, First, out var lastOfFirst));
+        Assert.True(_tracker.TryGetLastAtomicAccess(_field, null, First, storesOnly: false, out var lastOfFirst));
         Assert.Equal((2u, AccessType.AtomicRead), (lastOfFirst.MethodOffset, lastOfFirst.AccessType));
-        Assert.True(_tracker.TryGetLastAtomicAccess(_field, null, Second, out var lastOfSecond));
-        Assert.Equal((3u, AccessType.AtomicWrite), (lastOfSecond.MethodOffset, lastOfSecond.AccessType));
-        Assert.False(_tracker.TryGetLastAtomicAccess(_field, null, Third, out _));
+        Assert.True(_tracker.TryGetLastAtomicAccess(_field, null, First, storesOnly: true, out var storeOfFirst));
+        Assert.Equal((1u, AccessType.AtomicWrite), (storeOfFirst.MethodOffset, storeOfFirst.AccessType));
+        Assert.True(_tracker.TryGetLastAtomicAccess(_field, null, Second, storesOnly: false, out _));
+        Assert.False(_tracker.TryGetLastAtomicAccess(_field, null, Second, storesOnly: true, out _));
         Assert.False(_tracker.TryGetLastAccess(_field, null, out _));
     }
 
@@ -124,7 +125,7 @@ public class AccessTrackerTests
         _tracker.RecordAccess(_field, null, Second, methodOffset: 0, AccessType.Write, Stack);
 
         // Assert
-        Assert.False(_tracker.TryGetLastAtomicAccess(_field, null, First, out _));
+        Assert.False(_tracker.TryGetLastAtomicAccess(_field, null, First, storesOnly: false, out _));
     }
 
     private void Read(ProcessThreadId thread, bool trackReadsByThread)
