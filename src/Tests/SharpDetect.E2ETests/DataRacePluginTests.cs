@@ -14,6 +14,17 @@ namespace SharpDetect.E2ETests;
 public class DataRacePluginTests(ITestOutputHelper testOutput)
 {
     public const string CollectionName = "E2E_DataRacePluginTests";
+
+    private const string ReleaseBeforeArgumentsGap = "Known gap: Interlocked and Volatile calls are recorded before their value arguments are evaluated";
+    private const string AcquireBeforeArgumentsGap = "Known gap: the acquire of an Interlocked call is recorded before its value arguments are evaluated";
+    private const string FailedCompareExchangeGap = "Known gap: a failed CompareExchange is modeled as a release";
+    private const string MixedAccessGap = "Known gap: atomic accesses are not checked against plain accesses to the same field";
+    private const string IndirectReferenceGap = "Known gap: Interlocked calls are recognized only when the ref argument is a direct field address";
+    private const string StructFieldReceiverGap = "Known gap: a field address is not recognized when its receiver is a managed pointer (field of a struct)";
+    private const string FieldIdentityByTokenGap = "Known gap: field identity includes the referencing token, so Foo<T>.F inside Foo<T> and Foo<int>.F outside it get separate clocks";
+    private const string SmallIntegralOverloadsGap = "Known gap: the byte, sbyte, short and ushort Interlocked overloads added in .NET 9 have no descriptors";
+    private const string LazyInitializerGap = "Known gap: LazyInitializer.EnsureInitialized is not modeled";
+
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ReferenceType_Static_ReadWriteRace(string sdk, string plugin)
@@ -346,6 +357,86 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_InterlockedFlag_Instance_WriteAfterPublish(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_InterlockedFlag_Instance_WriteAfterPublish", sdk, plugin);
+
+    [Theory(Skip = ReleaseBeforeArgumentsGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedFlag_PublishInValueArgument(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedFlag_PublishInValueArgument", sdk, plugin);
+
+    [Theory(Skip = AcquireBeforeArgumentsGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedAcquire_ObservesPublishDuringArgumentEvaluation(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedAcquire_ObservesPublishDuringArgumentEvaluation", sdk, plugin);
+
+    [Theory(Skip = ReleaseBeforeArgumentsGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_VolatileWrite_PublishInValueArgument(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_VolatileWrite_PublishInValueArgument", sdk, plugin);
+
+    [Theory(Skip = ReleaseBeforeArgumentsGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedReference_PublishConstructedObject(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedReference_PublishConstructedObject", sdk, plugin);
+
+    [Theory(Skip = FailedCompareExchangeGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_InterlockedFailedCompareExchange_DoesNotPublish(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_InterlockedFailedCompareExchange_DoesNotPublish", sdk, plugin);
+
+    [Theory(Skip = MixedAccessGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_InterlockedCounter_MixedWithPlainIncrement(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_InterlockedCounter_MixedWithPlainIncrement", sdk, plugin);
+
+    [Theory(Skip = IndirectReferenceGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedArrayElementFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedArrayElementFlag_PublishThenRead", sdk, plugin);
+
+    [Theory(Skip = IndirectReferenceGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedFlagThroughRefParameter_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedFlagThroughRefParameter_PublishThenRead", sdk, plugin);
+
+    [Theory(Skip = StructFieldReceiverGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedStructFieldFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedStructFieldFlag_PublishThenRead", sdk, plugin);
+
+    [Theory(Skip = StructFieldReceiverGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedStaticStructFieldFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedStaticStructFieldFlag_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedGenericStaticFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedGenericStaticFlag_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_InterlockedGenericStaticFlag_OtherInstantiationDoesNotPublish(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_InterlockedGenericStaticFlag_OtherInstantiationDoesNotPublish", sdk, plugin);
+
+    [Theory(Skip = FieldIdentityByTokenGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead", sdk, plugin);
+
+    [Theory(Skip = SmallIntegralOverloadsGap)]
+    [MemberData(nameof(SdkVersions.Net9AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedByteFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedByteFlag_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_InterlockedEnumFlag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedEnumFlag_PublishThenRead", sdk, plugin);
+
+    [Theory(Skip = LazyInitializerGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LazyInitializer_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LazyInitializer_PublishThenRead", sdk, plugin);
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]

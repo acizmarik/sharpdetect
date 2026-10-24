@@ -794,6 +794,54 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_InterlockedReferenceFlag_PublishThenRead):
                     Test_NoDataRace_InterlockedReferenceFlag_PublishThenRead();
                     break;
+                case nameof(Test_NoDataRace_InterlockedFlag_PublishInValueArgument):
+                    Test_NoDataRace_InterlockedFlag_PublishInValueArgument();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedAcquire_ObservesPublishDuringArgumentEvaluation):
+                    Test_NoDataRace_InterlockedAcquire_ObservesPublishDuringArgumentEvaluation();
+                    break;
+                case nameof(Test_NoDataRace_VolatileWrite_PublishInValueArgument):
+                    Test_NoDataRace_VolatileWrite_PublishInValueArgument();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedReference_PublishConstructedObject):
+                    Test_NoDataRace_InterlockedReference_PublishConstructedObject();
+                    break;
+                case nameof(Test_DataRace_InterlockedFailedCompareExchange_DoesNotPublish):
+                    Test_DataRace_InterlockedFailedCompareExchange_DoesNotPublish();
+                    break;
+                case nameof(Test_DataRace_InterlockedCounter_MixedWithPlainIncrement):
+                    Test_DataRace_InterlockedCounter_MixedWithPlainIncrement();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedArrayElementFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedArrayElementFlag_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedFlagThroughRefParameter_PublishThenRead):
+                    Test_NoDataRace_InterlockedFlagThroughRefParameter_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedStructFieldFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedStructFieldFlag_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedStaticStructFieldFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedStaticStructFieldFlag_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedGenericStaticFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedGenericStaticFlag_PublishThenRead();
+                    break;
+                case nameof(Test_DataRace_InterlockedGenericStaticFlag_OtherInstantiationDoesNotPublish):
+                    Test_DataRace_InterlockedGenericStaticFlag_OtherInstantiationDoesNotPublish();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead):
+                    Test_NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedByteFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedByteFlag_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_InterlockedEnumFlag_PublishThenRead):
+                    Test_NoDataRace_InterlockedEnumFlag_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_LazyInitializer_PublishThenRead):
+                    Test_NoDataRace_LazyInitializer_PublishThenRead();
+                    break;
                 case nameof(Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin):
                     Test_NoDataRace_Task_WriteInsideTask_ReadAfterTaskJoin();
                     break;

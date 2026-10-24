@@ -1,0 +1,338 @@
+// Copyright 2026 Andrej Čižmárik and Contributors
+// SPDX-License-Identifier: Apache-2.0
+
+using SharpDetect.E2ETests.Subject.Helpers;
+using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
+
+namespace SharpDetect.E2ETests.Subject;
+
+public static partial class Program
+{
+    public static void Test_NoDataRace_InterlockedFlag_PublishInValueArgument()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () => Interlocked.Exchange(ref DataRace.Test_Atomic_ValueType_Static, WriteGuardedAndReturnFlag()),
+            () =>
+            {
+                AcquireInterlockedFlag();
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedAcquire_ObservesPublishDuringArgumentEvaluation()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        var publisher = new Thread(() =>
+        {
+            DataRace.Test_DataRace_ValueType_Static = 42;
+            Interlocked.Exchange(ref DataRace.Test_Atomic_ValueType_Static, 1);
+        });
+
+        // The publisher runs while the addend is computed, so the add observes the published flag
+        if (Interlocked.Add(ref DataRace.Test_Atomic_ValueType_Static, StartAndAwaitPublisher(publisher)) == 1)
+            _ = DataRace.Test_DataRace_ValueType_Static;
+
+        publisher.Join();
+    }
+
+    public static void Test_NoDataRace_VolatileWrite_PublishInValueArgument()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () => Volatile.Write(ref DataRace.Test_Atomic_ValueType_Static, WriteGuardedAndReturnFlag()),
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Volatile.Read(ref DataRace.Test_Atomic_ValueType_Static) == 0)
+                    spinner.SpinOnce();
+
+                _ = Volatile.Read(ref DataRace.Test_Atomic_ValueType_Static);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedReference_PublishConstructedObject()
+    {
+        DataRace.Test_Atomic_PublishedObject_Static = null;
+        RunConcurrently(
+            () => Interlocked.CompareExchange(
+                ref DataRace.Test_Atomic_PublishedObject_Static,
+                new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 },
+                null),
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_PublishedObject_Static, null, null) is null)
+                    spinner.SpinOnce();
+
+                var published = Interlocked.CompareExchange(ref DataRace.Test_Atomic_PublishedObject_Static, null, null)!;
+                _ = published.Test_DataRace_ValueType_InstanceProperty;
+            });
+    }
+
+    public static void Test_DataRace_InterlockedFailedCompareExchange_DoesNotPublish()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        DataRace.Test_Atomic_ValueType_Static_Done = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                // The flag is 0, so this exchange fails and stores nothing another thread could observe
+                Interlocked.CompareExchange(ref DataRace.Test_Atomic_ValueType_Static, 2, 1);
+                Interlocked.Exchange(ref DataRace.Test_Atomic_ValueType_Static_Done, 1);
+            },
+            () =>
+            {
+                // Acquires the flag only after the failed exchange completed
+                var spinner = new SpinWait();
+                while (DataRace.Test_Atomic_ValueType_Static_Done == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_ValueType_Static, 0, 0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_DataRace_InterlockedCounter_MixedWithPlainIncrement()
+    {
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () => DataRace.Test_Atomic_ValueType_Static++,
+            () => Interlocked.Increment(ref DataRace.Test_Atomic_ValueType_Static));
+    }
+
+    public static void Test_NoDataRace_InterlockedArrayElementFlag_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                Interlocked.Exchange(ref AtomicLocations.Test_Atomic_ArrayElement_Static[0], 1);
+            },
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_ArrayElement_Static[0], 0, 0) == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_ArrayElement_Static[0], 0, 0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedFlagThroughRefParameter_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        DataRace.Test_Atomic_ValueType_Static = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                PublishFlagThroughRefParameter(ref DataRace.Test_Atomic_ValueType_Static);
+            },
+            () =>
+            {
+                AcquireInterlockedFlag();
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedStructFieldFlag_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                Interlocked.Exchange(ref AtomicLocations.Test_Atomic_StructField_Holder.Flag.Value, 1);
+            },
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Holder.Flag.Value, 0, 0) == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Holder.Flag.Value, 0, 0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedStaticStructFieldFlag_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                Interlocked.Exchange(ref AtomicLocations.Test_Atomic_StructField_Static.Value, 1);
+            },
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Static.Value, 0, 0) == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref AtomicLocations.Test_Atomic_StructField_Static.Value, 0, 0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedGenericStaticFlag_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        GenericStaticField<int>.Value = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                Interlocked.Exchange(ref GenericStaticField<int>.Value, 1);
+            },
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref GenericStaticField<int>.Value, 0, 0) == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref GenericStaticField<int>.Value, 0, 0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_DataRace_InterlockedGenericStaticFlag_OtherInstantiationDoesNotPublish()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        GenericStaticField<int>.Value = 0;
+        GenericStaticField<long>.Value = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                Interlocked.Exchange(ref GenericStaticField<long>.Value, 1);
+            },
+            () =>
+            {
+                // Acquires the other instantiation only after the publish
+                var spinner = new SpinWait();
+                while (GenericStaticField<long>.Value == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref GenericStaticField<int>.Value, 0, 0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+        GenericAtomicFlag<int>.Value = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                // Inside the generic type the field is referenced as GenericAtomicFlag<T>.Value
+                GenericAtomicFlag<int>.Publish();
+            },
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref GenericAtomicFlag<int>.Value, 0, 0) == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref GenericAtomicFlag<int>.Value, 0, 0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+    }
+
+    public static void Test_NoDataRace_InterlockedByteFlag_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+#if NET9_0_OR_GREATER
+        DataRace.Test_Atomic_Byte_Static = 0;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                Interlocked.Exchange(ref DataRace.Test_Atomic_Byte_Static, (byte)1);
+            },
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_Byte_Static, (byte)0, (byte)0) == 0)
+                    spinner.SpinOnce();
+
+                _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_Byte_Static, (byte)0, (byte)0);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+#endif
+    }
+
+    public static void Test_NoDataRace_InterlockedEnumFlag_PublishThenRead()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 0;
+#if NET9_0_OR_GREATER
+        DataRace.Test_Atomic_Enum_Static = AtomicFlagState.Pending;
+        RunConcurrently(
+            () =>
+            {
+                DataRace.Test_DataRace_ValueType_Static = 42;
+                Interlocked.Exchange(ref DataRace.Test_Atomic_Enum_Static, AtomicFlagState.Published);
+            },
+            () =>
+            {
+                var spinner = new SpinWait();
+                while (Interlocked.CompareExchange(ref DataRace.Test_Atomic_Enum_Static, AtomicFlagState.Pending, AtomicFlagState.Pending)
+                       == AtomicFlagState.Pending)
+                {
+                    spinner.SpinOnce();
+                }
+
+                _ = Interlocked.CompareExchange(ref DataRace.Test_Atomic_Enum_Static, AtomicFlagState.Pending, AtomicFlagState.Pending);
+                _ = DataRace.Test_DataRace_ValueType_Static;
+            });
+#endif
+    }
+
+    public static void Test_NoDataRace_LazyInitializer_PublishThenRead()
+    {
+        DataRace.Test_LazyInitializer_ReferenceType_Static = null;
+        RunConcurrently(
+            ReadThroughLazyInitializer,
+            ReadThroughLazyInitializer);
+    }
+
+    private static int WriteGuardedAndReturnFlag()
+    {
+        DataRace.Test_DataRace_ValueType_Static = 42;
+        return 1;
+    }
+
+    private static int StartAndAwaitPublisher(Thread publisher)
+    {
+        publisher.Start();
+        var spinner = new SpinWait();
+        while (DataRace.Test_Atomic_ValueType_Static == 0)
+            spinner.SpinOnce();
+
+        return 0;
+    }
+
+    private static void PublishFlagThroughRefParameter(ref int flag)
+    {
+        Interlocked.Exchange(ref flag, 1);
+    }
+
+    private static void ReadThroughLazyInitializer()
+    {
+        var value = LazyInitializer.EnsureInitialized(
+            ref DataRace.Test_LazyInitializer_ReferenceType_Static,
+            () => new DataRace { Test_DataRace_ValueType_InstanceProperty = 42 });
+        _ = value.Test_DataRace_ValueType_InstanceProperty;
+    }
+}

@@ -19,6 +19,11 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         public static int Test_TaskContinuation_ValueType_Static;
         public static int Test_Atomic_ValueType_Static;
         public static string? Test_Atomic_ReferenceType_Static;
+        public static int Test_Atomic_ValueType_Static_Done;
+        public static byte Test_Atomic_Byte_Static;
+        public static AtomicFlagState Test_Atomic_Enum_Static;
+        public static DataRace? Test_Atomic_PublishedObject_Static;
+        public static DataRace? Test_LazyInitializer_ReferenceType_Static;
         [ThreadStatic]
         public static object? Test_ThreadStatic_ReferenceType;
         [ThreadStatic]
