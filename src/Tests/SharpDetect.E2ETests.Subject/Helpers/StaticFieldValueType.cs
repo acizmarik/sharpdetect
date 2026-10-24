@@ -13,6 +13,7 @@ namespace SharpDetect.E2ETests.Subject.Helpers.Fields
         public static long Test_Field_Atomic_ValueType_Static_Long;
         public static double Test_Field_Atomic_ValueType_Static_Double;
         public static float Test_Field_Atomic_ValueType_Static_Single;
+        public static byte Test_Field_Atomic_ValueType_Static_Byte;
         public static AtomicFlagState Test_Field_Atomic_ValueType_Static_Enum;
         public static AtomicFlag Test_Field_Atomic_ValueType_Static_Struct;
         public static int Test_Property_ValueType_Static { get; set; }

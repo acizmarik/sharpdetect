@@ -455,6 +455,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Atomic_CompareExchangeOfEnum):
                     Test_Field_Atomic_CompareExchangeOfEnum();
                     break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfByte):
+                    Test_Field_Atomic_CompareExchangeOfByte();
+                    break;
                 case nameof(Test_Field_Atomic_ValueType_OnValueType_Instance_Increment):
                     Test_Field_Atomic_ValueType_OnValueType_Instance_Increment();
                     break;

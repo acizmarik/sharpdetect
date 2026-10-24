@@ -19,7 +19,6 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     private const string IndirectReferenceGap = "Known gap: Interlocked calls are recognized only when the ref argument is a direct field address";
     private const string StructFieldReceiverGap = "Known gap: a field address is not recognized when its receiver is a managed pointer (field of a struct)";
     private const string FieldIdentityByTokenGap = "Known gap: field identity includes the referencing token, so Foo<T>.F inside Foo<T> and Foo<int>.F outside it get separate clocks";
-    private const string SmallIntegralOverloadsGap = "Known gap: the byte, sbyte, short and ushort Interlocked overloads added in .NET 9 have no descriptors";
     private const string LazyInitializerGap = "Known gap: LazyInitializer.EnsureInitialized is not modeled";
 
     [Theory]
@@ -420,7 +419,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead", sdk, plugin);
 
-    [Theory(Skip = SmallIntegralOverloadsGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.Net9AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_InterlockedByteFlag_PublishThenRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedByteFlag_PublishThenRead", sdk, plugin);

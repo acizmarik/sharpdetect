@@ -17,9 +17,18 @@ public static class InterlockedIntrinsicDescriptors
         CorElementType.ELEMENT_TYPE_U8
     ];
     
+    private static readonly CorElementType[] SmallIntegralTypes =
+    [
+        CorElementType.ELEMENT_TYPE_I1,
+        CorElementType.ELEMENT_TYPE_U1,
+        CorElementType.ELEMENT_TYPE_I2,
+        CorElementType.ELEMENT_TYPE_U2
+    ];
+
     private static readonly CorElementType[] ExchangeTypes =
     [
         .. IntegralTypes,
+        .. SmallIntegralTypes,
         CorElementType.ELEMENT_TYPE_R4,
         CorElementType.ELEMENT_TYPE_R8,
         CorElementType.ELEMENT_TYPE_I,

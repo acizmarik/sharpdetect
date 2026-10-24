@@ -464,6 +464,15 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
             (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_CompareExchange_OfByte(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfByte",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.CompareExchangeSucceeded));
+
+    [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicInstanceField_OnValueType_NotInstrumented(string sdk)
         => NoFieldAccessOfKind(

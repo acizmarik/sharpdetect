@@ -372,6 +372,13 @@ public static partial class Program
 #endif
     }
 
+    public static void Test_Field_Atomic_CompareExchangeOfByte()
+    {
+#if NET9_0_OR_GREATER
+        Interlocked.CompareExchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Byte, (byte)1, (byte)0);
+#endif
+    }
+
     private static int WriteGuardedAndReturnFlag()
     {
         DataRace.Test_DataRace_ValueType_Static = 42;
