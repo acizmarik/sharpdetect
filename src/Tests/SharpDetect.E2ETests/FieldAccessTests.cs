@@ -571,6 +571,16 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_Increment_InTailPosition(string sdk)
+        => FieldAccessSequenceInAssembly(
+            IlSubjectAssemblyName,
+            "Test_Field_Prefixed_TailCall_Static_Increment",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task InstanceField_ValueType_OnForeignNewObj_Write(string sdk)
         => FieldAccess("Test_Field_ValueType_OnForeignNewObj_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite);
 
@@ -605,7 +615,14 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
 
-    private async Task FieldAccessSequence(
+    private Task FieldAccessSequence(
+        string subjectArgs,
+        string sdk,
+        params (RecordedEventType EventType, FieldAccessKind? AccessKind)[] expectedAccesses)
+        => FieldAccessSequenceInAssembly(SubjectAssemblyName, subjectArgs, sdk, expectedAccesses);
+
+    private async Task FieldAccessSequenceInAssembly(
+        string assemblyName,
         string subjectArgs,
         string sdk,
         params (RecordedEventType EventType, FieldAccessKind? AccessKind)[] expectedAccesses)
@@ -622,7 +639,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var events = new TestEventsEnumerable(plugin);
         AssertBase<ulong, RecordedEventType> assert = EventuallyMethodEnter(args.Target.Args!, plugin);
         foreach (var (eventType, accessKind) in expectedAccesses)
-            assert = assert.Then(EventuallyFieldAccessInAssembly(SubjectAssemblyName, eventType, plugin, accessKind));
+            assert = assert.Then(EventuallyFieldAccessInAssembly(assemblyName, eventType, plugin, accessKind));
         assert = assert.Then(EventuallyMethodExit(args.Target.Args!, plugin));
 
         // Execute

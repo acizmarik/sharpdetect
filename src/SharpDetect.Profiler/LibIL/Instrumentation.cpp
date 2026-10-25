@@ -635,12 +635,6 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 		return E_FAIL;
 	}
 
-	if (callInstruction->m_pPrev->m_opcode == CEE_TAILCALL)
-	{
-		// Nothing may follow a tail call and the prefix must stay attached to it, so it is left alone
-		return E_FAIL;
-	}
-
 	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
 	const auto releaseHelper = FindFieldAccessHelper(
 		injectedMethods,
@@ -657,6 +651,12 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 			mdMethodDef,
 			moduleDef.GetName().c_str());
 		return E_FAIL;
+	}
+
+	if (callInstruction->m_pPrev->m_opcode == CEE_TAILCALL)
+	{
+		// Nothing may follow a tail call, so the prefix is dropped; the intrinsic never recurses, so the stack does not grow
+		callInstruction->m_pPrev->m_opcode = CEE_NOP;
 	}
 
 	ILInstr* tailInstruction = nullptr;

@@ -518,6 +518,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Prefixed_Unaligned_Instance_Write):
                     Test_Field_Prefixed_Unaligned_Instance_Write();
                     break;
+                case nameof(Test_Field_Prefixed_TailCall_Static_Increment):
+                    Test_Field_Prefixed_TailCall_Static_Increment();
+                    break;
                 case nameof(Test_Field_ValueType_OnForeignNewObj_Instance_Write):
                     Test_Field_ValueType_OnForeignNewObj_Instance_Write();
                     break;

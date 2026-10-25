@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .assembly extern System.Runtime { .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A) .ver 8:0:0:0 }
+.assembly extern System.Threading { .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A) .ver 8:0:0:0 }
 .assembly SharpDetect.E2ETests.Subject.IL { }
 .module SharpDetect.E2ETests.Subject.IL.dll
 
@@ -9,6 +10,7 @@
     extends [System.Runtime]System.Object
 {
     .field public int32 Value
+    .field public static int32 Counter
 
     .method public hidebysig specialname rtspecialname instance void .ctor() cil managed
     {
@@ -87,6 +89,14 @@
         ldarg.1
         unaligned. 1
         stfld int32 SharpDetect.E2ETests.Subject.IL.PrefixedFieldAccess::Value
+        ret
+    }
+
+    .method public hidebysig static int32 IncrementInTailPosition() cil managed
+    {
+        ldsflda int32 SharpDetect.E2ETests.Subject.IL.PrefixedFieldAccess::Counter
+        tail.
+        call int32 [System.Threading]System.Threading.Interlocked::Increment(int32&)
         ret
     }
 }
