@@ -434,6 +434,15 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Atomic_CompareExchangeComparandThroughBranch):
                     Test_Field_Atomic_CompareExchangeComparandThroughBranch();
                     break;
+                case nameof(Test_Field_Atomic_ExchangeConditionalValue):
+                    Test_Field_Atomic_ExchangeConditionalValue();
+                    break;
+                case nameof(Test_Field_Atomic_ExchangeConditionalValue_Instance):
+                    Test_Field_Atomic_ExchangeConditionalValue_Instance();
+                    break;
+                case nameof(Test_Field_Atomic_IncrementConditionalLocation):
+                    Test_Field_Atomic_IncrementConditionalLocation();
+                    break;
                 case nameof(Test_Field_Atomic_CompareExchangeOfGenericParameter):
                     Test_Field_Atomic_CompareExchangeOfGenericParameter();
                     break;

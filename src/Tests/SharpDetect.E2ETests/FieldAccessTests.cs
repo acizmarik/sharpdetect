@@ -393,6 +393,33 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_Exchange_ConditionalValue(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_ExchangeConditionalValue",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_Exchange_ConditionalValue(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_ExchangeConditionalValue_Instance",
+            sdk,
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_Increment_ConditionalLocation_NotInstrumented(string sdk)
+        => NoFieldAccessOfKind(
+            "Test_Field_Atomic_IncrementConditionalLocation",
+            sdk,
+            RecordedEventType.StaticFieldWrite,
+            FieldAccessKind.Atomic);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicInstanceField_CompareExchange_OfGenericParameter(string sdk)
         => FieldAccessSequence(
             "Test_Field_Atomic_CompareExchangeOfGenericParameter",

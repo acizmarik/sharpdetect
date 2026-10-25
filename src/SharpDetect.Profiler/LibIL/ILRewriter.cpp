@@ -599,6 +599,27 @@ namespace
         info.returnsObjRef = IsSigTypeObjectReference(ptr, remaining, classTypeArgs, methodTypeArgs);
         return info;
     }
+
+    struct BranchTargetState
+    {
+        std::vector<StackSlotKind> stack;
+        std::vector<ILInstr*> producers;
+    };
+
+    void MergeProducers(std::vector<ILInstr*>& producers, const std::vector<ILInstr*>& otherProducers)
+    {
+        if (producers.size() != otherProducers.size())
+        {
+            producers.assign(producers.size(), nullptr);
+            return;
+        }
+
+        for (size_t i = 0; i < producers.size(); i++)
+        {
+            if (producers[i] != otherProducers[i])
+                producers[i] = nullptr;
+        }
+    }
 }
 
 HRESULT ILRewriter::ComputeStackTypes()
@@ -629,8 +650,14 @@ HRESULT ILRewriter::ComputeStackTypes()
     producers.reserve(m_maxStack);
 
     // The scan is linear. After unconditional jump the state of stack is unknown. We need to keep track
-    std::unordered_map<ILInstr*, std::vector<StackSlotKind>> branchTargetStates;
+    std::unordered_map<ILInstr*, BranchTargetState> branchTargetStates;
     auto stackKnown = true;
+    auto const recordBranchTarget = [&](ILInstr* target)
+    {
+        auto const [targetIt, inserted] = branchTargetStates.try_emplace(target, BranchTargetState { stack, producers });
+        if (!inserted)
+            MergeProducers(targetIt->second.producers, producers);
+    };
 
     // Pre-parse method argument types and local variable types from signature blobs.
     std::vector<StackSlotKind> argTypes;
@@ -666,7 +693,7 @@ HRESULT ILRewriter::ComputeStackTypes()
         if (opcode == CEE_SWITCH_ARG)
         {
             if (stackKnown && pInstr->m_pTarget != nullptr)
-                branchTargetStates.try_emplace(pInstr->m_pTarget, stack);
+                recordBranchTarget(pInstr->m_pTarget);
             continue;
         }
 
@@ -685,15 +712,19 @@ HRESULT ILRewriter::ComputeStackTypes()
             stackKnown = true;
         }
 
-        // Recover branch stack state if it is only reachable via a branch
-        if (!stackKnown)
+        // Recover branch stack state if it is only reachable via a branch, otherwise merge it with the fall-through
+        auto targetIt = branchTargetStates.find(pInstr);
+        if (targetIt != branchTargetStates.end())
         {
-            auto targetIt = branchTargetStates.find(pInstr);
-            if (targetIt != branchTargetStates.end())
+            if (!stackKnown)
             {
-                stack = targetIt->second;
-                producers.assign(stack.size(), nullptr);
+                stack = targetIt->second.stack;
+                producers = targetIt->second.producers;
                 stackKnown = true;
+            }
+            else
+            {
+                MergeProducers(producers, targetIt->second.producers);
             }
         }
 
@@ -819,7 +850,7 @@ HRESULT ILRewriter::ComputeStackTypes()
         }
 
         if ((s_OpCodeFlags[opcode] & OPCODEFLAGS_BranchTarget) != 0 && stackKnown && pInstr->m_pTarget != nullptr)
-            branchTargetStates.try_emplace(pInstr->m_pTarget, stack);
+            recordBranchTarget(pInstr->m_pTarget);
 
         // --- Push ---
         int pushCount = k_rgnStackPushes[opcode];

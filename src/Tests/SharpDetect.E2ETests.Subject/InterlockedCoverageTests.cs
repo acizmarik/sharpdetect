@@ -374,6 +374,25 @@ public static partial class Program
             StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static_Comparand ?? StaticFieldReferenceType.Test_Field_Atomic_ReferenceType_Static_Fallback);
     }
 
+    public static void Test_Field_Atomic_ExchangeConditionalValue()
+    {
+        Interlocked.Exchange(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static, Environment.CurrentManagedThreadId > 0 ? 1 : 2);
+    }
+
+    public static void Test_Field_Atomic_ExchangeConditionalValue_Instance()
+    {
+        var instance = new InstanceFieldValueType();
+        Interlocked.Exchange(ref instance.Test_Field_Atomic_ValueType_Instance, Environment.CurrentManagedThreadId > 0 ? 1 : 2);
+    }
+
+    public static void Test_Field_Atomic_IncrementConditionalLocation()
+    {
+        // Each branch loads a different field address, so neither of them is the incremented location
+        Interlocked.Increment(ref Environment.CurrentManagedThreadId > 0
+            ? ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static
+            : ref StaticFieldValueType.Test_Field_ValueType_Static);
+    }
+
     public static void Test_Field_Atomic_CompareExchangeOfGenericParameter()
     {
         new GenericAtomicFlag<int>.AtomicReferenceSlot<string>().Publish("published");
