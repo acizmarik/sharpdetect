@@ -437,6 +437,15 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_Atomic_CompareExchangeOfGenericParameter):
                     Test_Field_Atomic_CompareExchangeOfGenericParameter();
                     break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfBaseClassConstrainedParameter):
+                    Test_Field_Atomic_CompareExchangeOfBaseClassConstrainedParameter();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfGenericBaseClassConstrainedParameter):
+                    Test_Field_Atomic_CompareExchangeOfGenericBaseClassConstrainedParameter();
+                    break;
+                case nameof(Test_Field_Atomic_CompareExchangeOfForeignBaseClassConstrainedParameter):
+                    Test_Field_Atomic_CompareExchangeOfForeignBaseClassConstrainedParameter();
+                    break;
                 case nameof(Test_Field_Atomic_CompareExchangeOfDoubleNaN):
                     Test_Field_Atomic_CompareExchangeOfDoubleNaN();
                     break;

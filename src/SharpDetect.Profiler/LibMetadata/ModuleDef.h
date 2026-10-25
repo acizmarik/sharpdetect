@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "cor.h"
 #include "corprof.h"
@@ -131,6 +132,11 @@ namespace LibProfiler
 			IN ULONG index,
 			OUT DWORD* attributes) const;
 
+		HRESULT GetGenericParamConstraints(
+			IN mdToken owner,
+			IN ULONG index,
+			OUT std::vector<mdToken>& constraintTypes) const;
+
 		HRESULT GetMethodProps(
 			IN mdMethodDef methodDef,
 			OUT mdTypeDef* typeDef,
@@ -154,6 +160,10 @@ namespace LibProfiler
 			OUT mdTypeDef* typeDef,
 			OUT PCCOR_SIGNATURE* fieldSignature,
 			OUT ULONG* fieldSignatureLength) const;
+
+		HRESULT GetTypeDefAttributes(
+			IN mdTypeDef typeDef,
+			OUT DWORD* attributes) const;
 
 		HRESULT GetFieldAttributes(
 			IN mdFieldDef fieldDef,

@@ -507,6 +507,37 @@ enum class ComparandComparison
 	Bits64
 };
 
+static bool IsBaseClassConstraint(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN mdToken constraintType)
+{
+	if (TypeFromToken(constraintType) == mdtTypeSpec)
+	{
+		// A generic base class is an instantiation of its definition
+		PCCOR_SIGNATURE signature;
+		ULONG signatureLength;
+		if (FAILED(moduleDef.GetTypeSpecProps(constraintType, &signature, &signatureLength)) ||
+			signatureLength < 3 ||
+			signature[0] != ELEMENT_TYPE_GENERICINST ||
+			signature[1] != ELEMENT_TYPE_CLASS)
+		{
+			return false;
+		}
+
+		CorSigUncompressToken(signature + 2, &constraintType);
+	}
+
+	// A type from another module cannot be told apart from an interface without resolving it
+	if (TypeFromToken(constraintType) != mdtTypeDef)
+		return false;
+
+	// Value types are sealed, so a sealed constraint may be a struct or an enum
+	DWORD attributes;
+	return SUCCEEDED(moduleDef.GetTypeDefAttributes(constraintType, &attributes)) &&
+		!IsTdInterface(attributes) &&
+		!IsTdSealed(attributes);
+}
+
 static ComparandComparison ClassifyComparand(
 	IN const LibProfiler::ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
@@ -564,14 +595,25 @@ static ComparandComparison ClassifyComparand(
 				owner = declaringType;
 			}
 
-			// Only a class constraint guarantees that every instantiation compares with ceq
+			// Only a class or base class constraint guarantees that every instantiation compares with ceq
 			DWORD attributes;
 			if (FAILED(moduleDef.GetGenericParamAttributes(owner, index, &attributes)))
 				return ComparandComparison::Unsupported;
 
-			return (attributes & gpReferenceTypeConstraint) != 0
-				? ComparandComparison::Value
-				: ComparandComparison::Unsupported;
+			if ((attributes & gpReferenceTypeConstraint) != 0)
+				return ComparandComparison::Value;
+
+			std::vector<mdToken> constraintTypes;
+			if (FAILED(moduleDef.GetGenericParamConstraints(owner, index, constraintTypes)))
+				return ComparandComparison::Unsupported;
+
+			for (auto const constraintType : constraintTypes)
+			{
+				if (IsBaseClassConstraint(moduleDef, constraintType))
+					return ComparandComparison::Value;
+			}
+
+			return ComparandComparison::Unsupported;
 		}
 
 		default:

@@ -286,25 +286,27 @@ HRESULT LibProfiler::ModuleDef::GetMemberRefSignature(
 	return metadataImport.GetMemberRefProps(memberRef, nullptr, nullptr, 0, nullptr, signature, signatureLength);
 }
 
-HRESULT LibProfiler::ModuleDef::GetGenericParamAttributes(
+static HRESULT FindGenericParam(
+	IN IMetaDataImport2& metadataImport,
 	IN const mdToken owner,
 	IN const ULONG index,
-	OUT DWORD* attributes) const
+	OUT mdGenericParam* genericParam,
+	OUT DWORD* attributes)
 {
-	auto& metadataImport = GetMetadataImport();
 	HCORENUM enumerator = nullptr;
-	mdGenericParam genericParam;
+	mdGenericParam candidate;
 	ULONG fetched = 0;
-	while (metadataImport.EnumGenericParams(&enumerator, owner, &genericParam, 1, &fetched) == S_OK && fetched == 1)
+	while (metadataImport.EnumGenericParams(&enumerator, owner, &candidate, 1, &fetched) == S_OK && fetched == 1)
 	{
 		ULONG sequence;
 		DWORD flags;
-		if (FAILED(metadataImport.GetGenericParamProps(genericParam, &sequence, &flags, nullptr, nullptr, nullptr, 0, nullptr)))
+		if (FAILED(metadataImport.GetGenericParamProps(candidate, &sequence, &flags, nullptr, nullptr, nullptr, 0, nullptr)))
 			break;
 
 		if (sequence == index)
 		{
 			metadataImport.CloseEnum(enumerator);
+			*genericParam = candidate;
 			*attributes = flags;
 			return S_OK;
 		}
@@ -312,6 +314,45 @@ HRESULT LibProfiler::ModuleDef::GetGenericParamAttributes(
 
 	metadataImport.CloseEnum(enumerator);
 	return E_FAIL;
+}
+
+HRESULT LibProfiler::ModuleDef::GetGenericParamAttributes(
+	IN const mdToken owner,
+	IN const ULONG index,
+	OUT DWORD* attributes) const
+{
+	mdGenericParam genericParam;
+	return FindGenericParam(GetMetadataImport(), owner, index, &genericParam, attributes);
+}
+
+HRESULT LibProfiler::ModuleDef::GetGenericParamConstraints(
+	IN const mdToken owner,
+	IN const ULONG index,
+	OUT std::vector<mdToken>& constraintTypes) const
+{
+	auto& metadataImport = GetMetadataImport();
+	mdGenericParam genericParam;
+	DWORD attributes;
+	if (FAILED(FindGenericParam(metadataImport, owner, index, &genericParam, &attributes)))
+		return E_FAIL;
+
+	HCORENUM enumerator = nullptr;
+	mdGenericParamConstraint constraint;
+	ULONG fetched = 0;
+	auto hr = S_OK;
+	while (metadataImport.EnumGenericParamConstraints(&enumerator, genericParam, &constraint, 1, &fetched) == S_OK && fetched == 1)
+	{
+		mdGenericParam constrainedParam;
+		mdToken constraintType;
+		hr = metadataImport.GetGenericParamConstraintProps(constraint, &constrainedParam, &constraintType);
+		if (FAILED(hr))
+			break;
+
+		constraintTypes.push_back(constraintType);
+	}
+
+	metadataImport.CloseEnum(enumerator);
+	return hr;
 }
 
 HRESULT LibProfiler::ModuleDef::AddMethodRef(
@@ -453,6 +494,14 @@ HRESULT LibProfiler::ModuleDef::GetFieldProps(
 	}
 
 	return S_OK;
+}
+
+HRESULT LibProfiler::ModuleDef::GetTypeDefAttributes(
+	IN const mdTypeDef typeDef,
+	OUT DWORD* attributes) const
+{
+	auto& metadataImport = GetMetadataImport();
+	return metadataImport.GetTypeDefProps(typeDef, nullptr, 0, nullptr, attributes, nullptr);
 }
 
 HRESULT LibProfiler::ModuleDef::GetFieldAttributes(

@@ -402,6 +402,33 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_CompareExchange_OfBaseClassConstrainedParameter_ReportsFailure(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfBaseClassConstrainedParameter",
+            sdk,
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.CompareExchangeFailed));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_CompareExchange_OfGenericBaseClassConstrainedParameter_ReportsFailure(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfGenericBaseClassConstrainedParameter",
+            sdk,
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.CompareExchange),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.CompareExchangeFailed));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task AtomicInstanceField_CompareExchange_OfForeignBaseClassConstrainedParameter_FallsBackToReadModifyWrite(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_CompareExchangeOfForeignBaseClassConstrainedParameter",
+            sdk,
+            (RecordedEventType.InstanceFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.InstanceFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_CompareExchange_OfDoubleNaN_ReportsSuccess(string sdk)
         => FieldAccessSequence(
             "Test_Field_Atomic_CompareExchangeOfDoubleNaN",

@@ -379,6 +379,21 @@ public static partial class Program
         new GenericAtomicFlag<int>.AtomicReferenceSlot<string>().Publish("published");
     }
 
+    public static void Test_Field_Atomic_CompareExchangeOfBaseClassConstrainedParameter()
+    {
+        new AtomicNodeSlot<AtomicNode>().Publish(new AtomicNode(), new AtomicNode());
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfGenericBaseClassConstrainedParameter()
+    {
+        new AtomicGenericNodeSlot<AtomicNode<int>>().Publish(new AtomicNode<int>(), new AtomicNode<int>());
+    }
+
+    public static void Test_Field_Atomic_CompareExchangeOfForeignBaseClassConstrainedParameter()
+    {
+        new AtomicExceptionSlot<InvalidOperationException>().Publish(new InvalidOperationException(), new InvalidOperationException());
+    }
+
     public static void Test_Field_Atomic_CompareExchangeOfDoubleNaN()
     {
         StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Double = double.NaN;

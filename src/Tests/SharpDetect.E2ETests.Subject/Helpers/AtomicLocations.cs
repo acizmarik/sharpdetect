@@ -58,3 +58,44 @@ public static class GenericAtomicFlag<T>
     }
 #endif
 }
+
+public class AtomicNode
+{
+}
+
+public class AtomicNode<T> : AtomicNode
+{
+}
+
+public class AtomicNodeSlot<TNode>
+    where TNode : AtomicNode
+{
+    private TNode? _value;
+
+    public TNode? Publish(TNode value, TNode expected)
+    {
+        return Interlocked.CompareExchange(ref _value, value, expected);
+    }
+}
+
+public class AtomicGenericNodeSlot<TNode>
+    where TNode : AtomicNode<int>
+{
+    private TNode? _value;
+
+    public TNode? Publish(TNode value, TNode expected)
+    {
+        return Interlocked.CompareExchange(ref _value, value, expected);
+    }
+}
+
+public class AtomicExceptionSlot<TException>
+    where TException : Exception
+{
+    private TException? _value;
+
+    public TException? Publish(TException value, TException expected)
+    {
+        return Interlocked.CompareExchange(ref _value, value, expected);
+    }
+}
