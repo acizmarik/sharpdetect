@@ -248,6 +248,10 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     RecordDataRace(volatileRaceInfo);
                 break;
 
+            case FieldAccessKind.VolatileWriteCompleted:
+                _detector.RecordVolatileWriteCompleted(threadId, stack.Top.ModuleId, fieldToken, objectId, declaringTypeHandle);
+                break;
+
             case FieldAccessKind.Atomic:
                 _detector.RecordAtomicRelease(threadId, stack.Top.ModuleId, fieldToken, objectId, declaringTypeHandle);
                 break;

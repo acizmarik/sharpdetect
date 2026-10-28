@@ -12,7 +12,7 @@ internal sealed class ObjectClockSlots(ThreadClockTable threadClocks) : ITracked
     // Release edge: what the thread has done so far becomes visible to whoever acquires the slot next
     public void Release(ProcessTrackedObjectId slotId, ProcessThreadId threadId)
     {
-        var threadVc = threadClocks.GetOrCreate(threadId);
+        var threadVc = threadClocks.GetOrCreateSeen(threadId);
         if (_slots.TryGetValue(slotId, out var slotVc))
             slotVc.Join(threadVc);
         else
@@ -24,7 +24,7 @@ internal sealed class ObjectClockSlots(ThreadClockTable threadClocks) : ITracked
     // Release edge that replaces the slot, so the handover carries only the releasing thread's work
     public void ReleaseSnapshot(ProcessTrackedObjectId slotId, ProcessThreadId threadId)
     {
-        var threadVc = threadClocks.GetOrCreate(threadId);
+        var threadVc = threadClocks.GetOrCreateSeen(threadId);
         _slots[slotId] = threadVc.Clone();
         threadVc.Increment(threadId);
     }
@@ -38,7 +38,7 @@ internal sealed class ObjectClockSlots(ThreadClockTable threadClocks) : ITracked
             _slots[slotId] = slotVc;
         }
 
-        threadClocks.GetOrCreate(threadId).Join(slotVc);
+        threadClocks.GetOrCreateSeen(threadId).Join(slotVc);
     }
 
     // Acquire edge that is only established if something was released into the slot
@@ -47,7 +47,7 @@ internal sealed class ObjectClockSlots(ThreadClockTable threadClocks) : ITracked
         if (!_slots.TryGetValue(slotId, out var slotVc))
             return false;
 
-        threadClocks.GetOrCreate(threadId).Join(slotVc);
+        threadClocks.GetOrCreateSeen(threadId).Join(slotVc);
         return true;
     }
 
@@ -57,7 +57,7 @@ internal sealed class ObjectClockSlots(ThreadClockTable threadClocks) : ITracked
         if (!_slots.Remove(slotId, out var slotVc))
             return false;
 
-        threadClocks.GetOrCreate(threadId).Join(slotVc);
+        threadClocks.GetOrCreateSeen(threadId).Join(slotVc);
         return true;
     }
 

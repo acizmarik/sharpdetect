@@ -10,5 +10,6 @@ public enum FieldAccessKind : byte
     Atomic = 2,
     CompareExchange = 3,
     CompareExchangeSucceeded = 4,
-    CompareExchangeFailed = 5
+    CompareExchangeFailed = 5,
+    VolatileWriteCompleted = 6
 }

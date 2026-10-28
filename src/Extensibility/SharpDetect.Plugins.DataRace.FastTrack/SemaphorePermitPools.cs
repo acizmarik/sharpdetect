@@ -18,7 +18,7 @@ internal sealed class SemaphorePermitPools(ThreadClockTable threadClocks) : ITra
     // Each released permit carries its own copy of the releasing thread's clock.
     public void Release(ProcessTrackedObjectId semaphoreId, ProcessThreadId threadId, int releaseCount)
     {
-        var threadVc = threadClocks.GetOrCreate(threadId);
+        var threadVc = threadClocks.GetOrCreateSeen(threadId);
         var pool = GetOrCreate(semaphoreId);
         for (var i = 0; i < releaseCount; i++)
             pool.ReleasedPermits.Enqueue(threadVc.Clone());
@@ -38,7 +38,7 @@ internal sealed class SemaphorePermitPools(ThreadClockTable threadClocks) : ITra
         if (pool.ReleasedPermits.Count == 0)
             return;
 
-        threadClocks.GetOrCreate(threadId).Join(pool.ReleasedPermits.Dequeue());
+        threadClocks.GetOrCreateSeen(threadId).Join(pool.ReleasedPermits.Dequeue());
     }
 
     public void RemoveTrackedObject(ProcessTrackedObjectId objectId) => _pools.Remove(objectId);

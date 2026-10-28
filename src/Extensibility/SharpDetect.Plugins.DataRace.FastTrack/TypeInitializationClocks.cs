@@ -56,7 +56,7 @@ internal sealed class TypeInitializationClocks(
             return;
 
         RemoveRunning(threadId, slot);
-        var threadVc = threadClocks.GetOrCreate(threadId);
+        var threadVc = threadClocks.GetOrCreateSeen(threadId);
         if (slot.Clock is { } slotVc)
             slotVc.Join(threadVc);
         else
@@ -87,7 +87,7 @@ internal sealed class TypeInitializationClocks(
             return;
 
         if (slot.Clock is { } slotVc)
-            threadClocks.GetOrCreate(threadId).Join(slotVc);
+            threadClocks.GetOrCreateSeen(threadId).Join(slotVc);
         
         if (slot.Clock is null || slot.RunningInitializers > 0)
             (slot.Waiters ??= []).Add(threadId);

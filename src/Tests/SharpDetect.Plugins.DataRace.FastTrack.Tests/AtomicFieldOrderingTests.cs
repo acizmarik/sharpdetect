@@ -90,6 +90,7 @@ public class AtomicFieldOrderingTests
         _harness.AtomicAcquire(incrementer, flag, instance: null);
         _harness.Write(overwriter, guardedByOverwriter, instance: null);
         _harness.VolatileWrite(overwriter, flag, instance: null);
+        _harness.ObserveThread(consumer);
         _harness.VolatileRead(consumer, flag, instance: null);
 
         // Assert

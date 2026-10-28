@@ -17,6 +17,7 @@ internal sealed class DetectorHarness
     private nuint _nextThreadId = 1;
     private nuint _nextObjectId = 1000;
     private int _nextMethod;
+    private int _nextObservation;
 
     public FastTrackDetector Detector { get; }
 
@@ -97,6 +98,9 @@ internal sealed class DetectorHarness
     public DataRaceInfo? Read(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
         => Detector.RecordRead(thread, methodOffset: 0, field, instance, declaringTypeHandle, NewStack());
 
+    public void ObserveThread(ProcessThreadId thread)
+        => Read(thread, NewStaticField($"Observation{_nextObservation++}"), instance: null);
+
     public bool WriteIsRace(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Write(thread, field, instance) is not null;
 
@@ -104,7 +108,17 @@ internal sealed class DetectorHarness
         => Read(thread, field, instance) is not null;
 
     public DataRaceInfo? VolatileWrite(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
+    {
+        var raceInfo = VolatileWriteRelease(thread, field, instance, declaringTypeHandle);
+        VolatileWriteCompleted(thread, field, instance, declaringTypeHandle);
+        return raceInfo;
+    }
+
+    public DataRaceInfo? VolatileWriteRelease(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
         => Detector.RecordVolatileWrite(thread, methodOffset: 0, field, instance, declaringTypeHandle, NewStack());
+
+    public void VolatileWriteCompleted(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
+        => Detector.RecordVolatileWriteCompleted(thread, TestMetadata.ModuleId, field, instance, declaringTypeHandle);
 
     public DataRaceInfo? VolatileRead(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
         => Detector.RecordVolatileRead(thread, methodOffset: 0, field, instance, declaringTypeHandle, NewStack());

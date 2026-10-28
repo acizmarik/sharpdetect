@@ -33,7 +33,7 @@ internal sealed class PublicationTracker(ThreadClockTable threadClocks) : ITrack
         bool onlyIfAbsent)
     {
         var slot = new PublicationSlot(containerId, valueId);
-        var threadVc = threadClocks.GetOrCreate(threadId);
+        var threadVc = threadClocks.GetOrCreateSeen(threadId);
         if (_publicationClocks.TryGetValue(slot, out var publicationVc))
         {
             if (onlyIfAbsent)
@@ -60,7 +60,7 @@ internal sealed class PublicationTracker(ThreadClockTable threadClocks) : ITrack
         var slot = new PublicationSlot(containerId, valueId);
         if (_publicationClocks.TryGetValue(slot, out var publicationVc))
         {
-            threadClocks.GetOrCreate(threadId).Join(publicationVc);
+            threadClocks.GetOrCreateSeen(threadId).Join(publicationVc);
             return;
         }
 

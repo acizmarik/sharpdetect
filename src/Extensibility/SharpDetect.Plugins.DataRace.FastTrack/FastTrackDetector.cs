@@ -231,10 +231,21 @@ internal sealed class FastTrackDetector
 
         var threadVc = _threadClocks.GetOrCreate(threadId);
         var epoch = threadVc.GetEpoch(threadId);
-        _volatileClocks.Release(fieldId, objectId, threadId);
+        _volatileClocks.ReleaseProvisionally(fieldId, objectId, threadId);
         return isAnalyzed
             ? RecordAtomicAccess(threadId, methodOffset, fieldId, objectId, epoch, threadVc, stored: true, stack)
             : null;
+    }
+
+    public void RecordVolatileWriteCompleted(
+        ProcessThreadId threadId,
+        ModuleId moduleId,
+        MdToken fieldToken,
+        ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle)
+    {
+        if (TryResolveField(threadId.ProcessId, moduleId, fieldToken, declaringTypeHandle, out var fieldId, out _))
+            _volatileClocks.CompleteRelease(fieldId, objectId, threadId);
     }
 
     public void RecordAtomicRelease(
@@ -316,7 +327,7 @@ internal sealed class FastTrackDetector
             return null;
 
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
-        var threadVc = _threadClocks.GetOrCreate(threadId);
+        var threadVc = _threadClocks.GetOrCreateSeen(threadId);
         _writeClassifier.NoteAccess(threadId, objectId);
 
         // Write-read race: the last write does not happen-before this read
@@ -350,7 +361,7 @@ internal sealed class FastTrackDetector
             return null;
 
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
-        var threadVc = _threadClocks.GetOrCreate(threadId);
+        var threadVc = _threadClocks.GetOrCreateSeen(threadId);
         var currentEpoch = threadVc.GetEpoch(threadId);
         var writeKind = _writeClassifier.Classify(threadId, fieldId.FieldDef, objectId, stack);
 
