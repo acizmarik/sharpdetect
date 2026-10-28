@@ -247,7 +247,8 @@ namespace LibIPC
 		Atomic = 2,
 		CompareExchange = 3,
 		CompareExchangeSucceeded = 4,
-		CompareExchangeFailed = 5
+		CompareExchangeFailed = 5,
+		VolatileWriteCompleted = 6
 	};
 
 	using FieldAccessInstrumentationMsgArgs = msgpack::type::tuple<UINT64, UINT32, UINT32, UINT32, UINT64, UINT8>;

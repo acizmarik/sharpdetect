@@ -42,6 +42,27 @@ static bool ShouldSkipFieldAccessInstrumentation(
 	return isExcluded;
 }
 
+static mdToken FindFieldAccessHelper(
+	IN const LibProfiler::InjectedMethodsMap& injectedMethods,
+	IN const LibIPC::RecordedEventType eventType,
+	IN const BOOL captureStack)
+{
+	auto const methodIt = injectedMethods.find(eventType);
+	if (methodIt == injectedMethods.end())
+		return mdTokenNil;
+
+	return captureStack ? methodIt->second.withStackCapture : methodIt->second.plain;
+}
+
+static UINT64 CountFieldAccessMarks(IN const ILInstr& instruction)
+{
+	BOOL isVolatile;
+	auto const isStore = instruction.m_opcode == CEE_STSFLD || instruction.m_opcode == CEE_STFLD;
+	return isStore && SUCCEEDED(LibProfiler::IsVolatile(instruction, &isVolatile)) && isVolatile
+		? LibProfiler::VolatileStoreMarksCount
+		: 1;
+}
+
 static ILInstr* MakeRoomBefore(
 	IN ILRewriter& rewriter,
 	IN OUT ILInstr*& access)
@@ -244,7 +265,7 @@ HRESULT LibProfiler::PatchMethodBody(
 				if (ShouldSkipFieldAccessInstrumentation(moduleDef, *currentInstruction, fieldToken))
 					continue;
 
-				auto const mark = instrumentationMark.fetch_add(1);
+				auto const mark = instrumentationMark.fetch_add(CountFieldAccessMarks(*currentInstruction));
 				ILInstr* nextInstruction = nullptr;
 
 				if (!FAILED(InstrumentStaticFieldAccess(
@@ -283,7 +304,7 @@ HRESULT LibProfiler::PatchMethodBody(
 					return E_FAIL;
 				}
 
-				auto const mark = instrumentationMark.fetch_add(1);
+				auto const mark = instrumentationMark.fetch_add(CountFieldAccessMarks(*currentInstruction));
 				ILInstr* nextInstruction = nullptr;
 
 				if (!FAILED(InstrumentInstanceFieldAccess(
@@ -409,6 +430,15 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		return E_FAIL;
 	}
 
+	const auto completedHelperToken = isStore && isVolatile
+		? FindFieldAccessHelper(injectedMethods, eventType, FALSE)
+		: mdTokenNil;
+	if (isStore && isVolatile && completedHelperToken == mdTokenNil)
+	{
+		LOG_F(ERROR, "Could not find injected plain method for event type %d.", static_cast<int>(eventType));
+		return E_FAIL;
+	}
+
 	// Pushes the helper's arguments and calls it right after the anchor; returns the call
 	auto const insertHelperCall = [&](ILInstr* anchor, const UINT64 mark, const mdToken helper)
 	{
@@ -439,6 +469,11 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	{
 		// A volatile store releases, so it is reported before the store publishes anything
 		insertHelperCall(MakeRoomBefore(rewriter, currentInstruction), instrumentationMark, helperToken);
+		// The release only takes effect once the store has landed, which is reported after it
+		currentInstruction = insertHelperCall(
+			currentInstruction,
+			instrumentationMark + VolatileStoreCompletedMarkOffset,
+			completedHelperToken);
 	}
 	else
 	{
@@ -462,20 +497,20 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		instrumentationMark,
 		isVolatile ? LibIPC::FieldAccessKind::Volatile : LibIPC::FieldAccessKind::Regular));
 
+	if (isStore && isVolatile)
+	{
+		client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
+			LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
+			moduleId,
+			mdMethodDef,
+			originalOffset,
+			fieldToken,
+			instrumentationMark + VolatileStoreCompletedMarkOffset,
+			LibIPC::FieldAccessKind::VolatileWriteCompleted));
+	}
+
 	*nextInstruction = currentInstruction;
 	return S_OK;
-}
-
-static mdToken FindFieldAccessHelper(
-	IN const LibProfiler::InjectedMethodsMap& injectedMethods,
-	IN const LibIPC::RecordedEventType eventType,
-	IN const BOOL captureStack)
-{
-	auto const methodIt = injectedMethods.find(eventType);
-	if (methodIt == injectedMethods.end())
-		return mdTokenNil;
-
-	return captureStack ? methodIt->second.withStackCapture : methodIt->second.plain;
 }
 
 static HRESULT ResolveComparandSignature(
@@ -685,6 +720,7 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 	auto const isCompareExchange = kind == FieldAccessIntrinsicKind::CompareExchange;
 	auto const hasRelease = kind != FieldAccessIntrinsicKind::VolatileRead;
 	auto const hasAcquire = kind != FieldAccessIntrinsicKind::VolatileWrite;
+	auto const hasStoreCompletion = kind == FieldAccessIntrinsicKind::VolatileWrite;
 
 	if (isInstance && !addressInstruction->m_objOperandIsObjRef)
 	{
@@ -702,19 +738,20 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 	// Each instantiation of a generic type has its own statics, so their accesses report the declaring type handle
 	auto const isGenericStatic = !isInstance && TypeFromToken(declaringTypeToken) == mdtTypeSpec;
 	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
-	const auto releaseHelper = FindFieldAccessHelper(
-		injectedMethods,
-		isInstance ? LibIPC::RecordedEventType::InstanceFieldWrite
-			: isGenericStatic ? LibIPC::RecordedEventType::GenericStaticFieldWrite
-			: LibIPC::RecordedEventType::StaticFieldWrite,
-		captureStack);
+	const auto writeEventType = isInstance ? LibIPC::RecordedEventType::InstanceFieldWrite
+		: isGenericStatic ? LibIPC::RecordedEventType::GenericStaticFieldWrite
+		: LibIPC::RecordedEventType::StaticFieldWrite;
+	const auto releaseHelper = FindFieldAccessHelper(injectedMethods, writeEventType, captureStack);
 	const auto acquireHelper = FindFieldAccessHelper(
 		injectedMethods,
 		isInstance ? LibIPC::RecordedEventType::InstanceFieldRead
 			: isGenericStatic ? LibIPC::RecordedEventType::GenericStaticFieldRead
 			: LibIPC::RecordedEventType::StaticFieldRead,
 		captureStack);
-	if ((hasRelease && releaseHelper == mdTokenNil) || (hasAcquire && acquireHelper == mdTokenNil))
+	const auto storeCompletionHelper = FindFieldAccessHelper(injectedMethods, writeEventType, FALSE);
+	if ((hasRelease && releaseHelper == mdTokenNil) ||
+		(hasAcquire && acquireHelper == mdTokenNil) ||
+		(hasStoreCompletion && storeCompletionHelper == mdTokenNil))
 	{
 		LOG_F(ERROR, "Could not find injected %s field access methods for intrinsic in method %d from module %s.",
 			captureStack ? "stack-capturing" : "plain",
@@ -837,6 +874,13 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 		emitHelperCall(acquireHelper);
 	}
 
+	if (hasStoreCompletion)
+	{
+		// The release only takes effect once the store has landed, which is reported after it
+		emit(CEE_LDC_I8)->m_Arg64 = static_cast<INT64>(instrumentationMark + IntrinsicStoreCompletedMarkOffset);
+		emitHelperCall(storeCompletionHelper);
+	}
+
 	*lastInstruction = tailInstruction;
 
 	LOG_F(INFO, "Instrumented %s field access intrinsic in method %d from module %s.",
@@ -864,6 +908,7 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 			break;
 		case FieldAccessIntrinsicKind::VolatileWrite:
 			notify(IntrinsicReleaseMarkOffset, LibIPC::FieldAccessKind::Volatile);
+			notify(IntrinsicStoreCompletedMarkOffset, LibIPC::FieldAccessKind::VolatileWriteCompleted);
 			break;
 		case FieldAccessIntrinsicKind::ReadModifyWrite:
 			notify(IntrinsicReleaseMarkOffset, LibIPC::FieldAccessKind::Atomic);
@@ -956,6 +1001,15 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		LOG_F(ERROR, "Could not find injected %s method for event type %d.",
 			captureStack ? "stack-capturing" : "plain",
 			static_cast<int>(fieldAccessEventType));
+		return E_FAIL;
+	}
+
+	const auto completedHelperToken = isStore && isVolatile
+		? FindFieldAccessHelper(injectedMethods, fieldAccessEventType, FALSE)
+		: mdTokenNil;
+	if (isStore && isVolatile && completedHelperToken == mdTokenNil)
+	{
+		LOG_F(ERROR, "Could not find injected plain method for event type %d.", static_cast<int>(fieldAccessEventType));
 		return E_FAIL;
 	}
 
@@ -1082,7 +1136,27 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	}
 
 	// <FIELD-ACCESS> (LDFLD/STFLD) with its prefixes follows
-	if (isStore)
+	if (isStore && isVolatile)
+	{
+		// LDC.I8 <instrumentation-mark + completed>
+		const auto ldcInstruction = rewriter.NewILInstr();
+		ldcInstruction->m_opcode = CEE_LDC_I8;
+		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark + VolatileStoreCompletedMarkOffset);
+		rewriter.InsertAfter(accessInstruction, ldcInstruction);
+		// LDLOC <instance-local> (restore object reference)
+		const auto ldlocInstanceInstruction = rewriter.NewILInstr();
+		ldlocInstanceInstruction->m_opcode = CEE_LDLOC;
+		ldlocInstanceInstruction->m_Arg16 = instanceLocalIndex;
+		rewriter.InsertAfter(ldcInstruction, ldlocInstanceInstruction);
+		// CALL <injected-method-handler>
+		const auto callInstruction = rewriter.NewILInstr();
+		callInstruction->m_opcode = CEE_CALL;
+		callInstruction->m_Arg32 = static_cast<INT32>(completedHelperToken);
+		rewriter.InsertAfter(ldlocInstanceInstruction, callInstruction);
+		// Skip to next non-injected instruction
+		currentInstruction = callInstruction;
+	}
+	else if (isStore)
 	{
 		currentInstruction = accessInstruction;
 	}
@@ -1123,6 +1197,18 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 		fieldToken,
 		instrumentationMark,
 		isVolatile ? LibIPC::FieldAccessKind::Volatile : LibIPC::FieldAccessKind::Regular));
+
+	if (isStore && isVolatile)
+	{
+		client.Send(LibIPC::Helpers::CreateFieldAccessInstrumentationMsg(
+			LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId),
+			moduleId,
+			mdMethodDef,
+			originalOffset,
+			fieldToken,
+			instrumentationMark + VolatileStoreCompletedMarkOffset,
+			LibIPC::FieldAccessKind::VolatileWriteCompleted));
+	}
 
 	*nextInstruction = currentInstruction;
 	return S_OK;

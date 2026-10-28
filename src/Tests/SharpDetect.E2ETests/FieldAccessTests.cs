@@ -234,7 +234,12 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task VolatileStaticField_ValueType_Write(string sdk)
-        => VolatileFieldAccess("Test_Field_Volatile_ValueType_Static_Write", sdk, RecordedEventType.StaticFieldWrite);
+        => VolatileWrite("Test_Field_Volatile_ValueType_Static_Write", sdk, RecordedEventType.StaticFieldWrite);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task VolatileGenericStaticField_ValueType_Write(string sdk)
+        => VolatileWrite("Test_Field_Volatile_ValueType_GenericStatic_Write", sdk, RecordedEventType.StaticFieldWrite);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -244,7 +249,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task VolatileInstanceField_ValueType_Write(string sdk)
-        => VolatileFieldAccess("Test_Field_Volatile_ValueType_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite);
+        => VolatileWrite("Test_Field_Volatile_ValueType_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -294,11 +299,12 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task VolatileCallStaticField_Write(string sdk)
-        => FieldAccess(
-            "Test_Field_VolatileCall_ValueType_Static_Write",
-            sdk,
-            RecordedEventType.StaticFieldWrite,
-            FieldAccessKind.Volatile);
+        => VolatileWrite("Test_Field_VolatileCall_ValueType_Static_Write", sdk, RecordedEventType.StaticFieldWrite);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task VolatileCallGenericStaticField_Write(string sdk)
+        => VolatileWrite("Test_Field_VolatileCall_ValueType_GenericStatic_Write", sdk, RecordedEventType.StaticFieldWrite);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -339,11 +345,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task VolatileCallStaticField_ReferenceType_Write(string sdk)
-        => FieldAccess(
-            "Test_Field_VolatileCall_ReferenceType_Static_Write",
-            sdk,
-            RecordedEventType.StaticFieldWrite,
-            FieldAccessKind.Volatile);
+        => VolatileWrite("Test_Field_VolatileCall_ReferenceType_Static_Write", sdk, RecordedEventType.StaticFieldWrite);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -547,11 +549,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task VolatileCallInstanceField_Write(string sdk)
-        => FieldAccess(
-            "Test_Field_VolatileCall_ValueType_Instance_Write",
-            sdk,
-            RecordedEventType.InstanceFieldWrite,
-            FieldAccessKind.Volatile);
+        => VolatileWrite("Test_Field_VolatileCall_ValueType_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -561,7 +559,7 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task VolatileStaticField_ValueType_TernaryWrite_BranchTargetsStore(string sdk)
-        => VolatileFieldAccess("Test_Field_Volatile_ValueType_Static_TernaryWrite", sdk, RecordedEventType.StaticFieldWrite);
+        => VolatileWrite("Test_Field_Volatile_ValueType_Static_TernaryWrite", sdk, RecordedEventType.StaticFieldWrite);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -611,12 +609,12 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task InstanceField_VolatileUnalignedPrefixes_Write(string sdk)
-        => PrefixedFieldAccess("Test_Field_Prefixed_VolatileUnaligned_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, FieldAccessKind.Volatile);
+        => VolatileWrite("Test_Field_Prefixed_VolatileUnaligned_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, IlSubjectAssemblyName);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task InstanceField_UnalignedVolatilePrefixes_Write(string sdk)
-        => PrefixedFieldAccess("Test_Field_Prefixed_UnalignedVolatile_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, FieldAccessKind.Volatile);
+        => VolatileWrite("Test_Field_Prefixed_UnalignedVolatile_Instance_Write", sdk, RecordedEventType.InstanceFieldWrite, IlSubjectAssemblyName);
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -702,6 +700,15 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         // Assert
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
     }
+
+    // The release is reported before the store and its completion after it
+    private Task VolatileWrite(string subjectArgs, string sdk, RecordedEventType eventType, string assemblyName = SubjectAssemblyName)
+        => FieldAccessSequenceInAssembly(
+            assemblyName,
+            subjectArgs,
+            sdk,
+            (eventType, FieldAccessKind.Volatile),
+            (eventType, FieldAccessKind.VolatileWriteCompleted));
 
     private async Task NoFieldAccessOfKind(
         string subjectArgs,

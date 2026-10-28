@@ -22,6 +22,7 @@ namespace LibProfiler
 	constexpr UINT64 IntrinsicAcquireMarkOffset = 1;
 	constexpr UINT64 IntrinsicFailedExchangeMarkOffset = IntrinsicAcquireMarkOffset;
 	constexpr UINT64 IntrinsicSucceededExchangeMarkOffset = 2;
+	constexpr UINT64 IntrinsicStoreCompletedMarkOffset = IntrinsicAcquireMarkOffset;
 	constexpr UINT64 IntrinsicMarksCount = 3;
 
 	using FieldAccessIntrinsicsMap = std::unordered_map<mdMemberRef, FieldAccessIntrinsicKind>;

@@ -23,6 +23,9 @@ namespace LibProfiler
 {
 	static constexpr COR_SIGNATURE g_ObjectTypeSignature[] = { ELEMENT_TYPE_OBJECT };
 
+	constexpr UINT64 VolatileStoreCompletedMarkOffset = 1;
+	constexpr UINT64 VolatileStoreMarksCount = 2;
+
 	bool ShouldSkipInstrumentation(
 		IN const ModuleDef& moduleDef,
 		IN const std::vector<std::string>& skipInstrumentationForAssemblies);

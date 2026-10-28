@@ -26,6 +26,11 @@ public enum AtomicFlagState
     Published
 }
 
+public static class GenericVolatileFlag<T>
+{
+    public static volatile int Value;
+}
+
 public static class GenericAtomicFlag<T>
 {
     public static int Value;

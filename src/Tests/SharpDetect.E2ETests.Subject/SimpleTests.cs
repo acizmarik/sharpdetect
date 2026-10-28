@@ -712,6 +712,11 @@ namespace SharpDetect.E2ETests.Subject
             StaticFieldValueType.Test_Field_Volatile_ValueType_Static = 123;
         }
 
+        public static void Test_Field_Volatile_ValueType_GenericStatic_Write()
+        {
+            GenericVolatileFlag<int>.Value = 123;
+        }
+
         public static void Test_Field_Volatile_ValueType_Instance_Read()
         {
             var instance = new InstanceFieldValueType();
@@ -905,6 +910,11 @@ namespace SharpDetect.E2ETests.Subject
         public static void Test_Field_VolatileCall_ValueType_Static_Write()
         {
             Volatile.Write(ref StaticFieldValueType.Test_Field_ValueType_Static, 123);
+        }
+
+        public static void Test_Field_VolatileCall_ValueType_GenericStatic_Write()
+        {
+            Volatile.Write(ref GenericAtomicFlag<int>.Value, 123);
         }
 
         public static void Test_Array_I_Read()
