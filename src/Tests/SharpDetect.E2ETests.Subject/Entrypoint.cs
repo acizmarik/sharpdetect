@@ -668,6 +668,18 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_CrossAssembly_Static_ReadWriteRace):
                     Test_DataRace_CrossAssembly_Static_ReadWriteRace();
                     break;
+                case nameof(Test_DataRace_GenericSelfReference_Instance_ReadWriteRace):
+                    Test_DataRace_GenericSelfReference_Instance_ReadWriteRace();
+                    break;
+                case nameof(Test_DataRace_GenericSelfReference_Static_ReadWriteRace):
+                    Test_DataRace_GenericSelfReference_Static_ReadWriteRace();
+                    break;
+                case nameof(Test_DataRace_GenericSelfReference_SharedCode_Static_ReadWriteRace):
+                    Test_DataRace_GenericSelfReference_SharedCode_Static_ReadWriteRace();
+                    break;
+                case nameof(Test_NoDataRace_GenericSelfReference_SharedCode_Static_DifferentInstantiations_WriteWrite):
+                    Test_NoDataRace_GenericSelfReference_SharedCode_Static_DifferentInstantiations_WriteWrite();
+                    break;
                 case nameof(Test_DataRace_ReferenceType_Static_WriteReadRace):
                     Test_DataRace_ReferenceType_Static_WriteReadRace();
                     break;

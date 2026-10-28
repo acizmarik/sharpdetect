@@ -896,7 +896,8 @@ void Profiler::CorProfiler::OnFieldAccess(
         return;
 
     // Same layout as arguments captured through ELT: values are packed and each one is described by (index << 16 | size)
-    BYTE argumentValues[sizeof(UINT64) + sizeof(LibProfiler::TrackedObjectId)];
+    static_assert(sizeof(LibProfiler::TrackedObjectId) == sizeof(UINT_PTR));
+    BYTE argumentValues[sizeof(UINT64) + sizeof(UINT_PTR)];
     UINT argumentOffsets[2];
     std::memcpy(argumentValues, &instrumentationMark, sizeof(UINT64));
     argumentOffsets[0] = (0 << 16) | sizeof(UINT64);
@@ -907,11 +908,19 @@ void Profiler::CorProfiler::OnFieldAccess(
         const auto instance = *instanceSlot;
         const LibProfiler::TrackedObjectId trackedObjectId = instance != 0 ? _objectsTracker.GetTrackedObject(instance) : 0;
         std::memcpy(argumentValues + sizeof(UINT64), &trackedObjectId, sizeof(LibProfiler::TrackedObjectId));
-        argumentOffsets[1] = (1 << 16) | sizeof(ObjectID);
         argumentsCount = 2;
     }
+    else if (helper.interpretation == static_cast<USHORT>(LibIPC::RecordedEventType::GenericStaticFieldRead) ||
+             helper.interpretation == static_cast<USHORT>(LibIPC::RecordedEventType::GenericStaticFieldWrite))
+    {
+        const auto declaringTypeHandle = reinterpret_cast<UINT_PTR>(instanceSlot);
+        std::memcpy(argumentValues + sizeof(UINT64), &declaringTypeHandle, sizeof(UINT_PTR));
+        argumentsCount = 2;
+    }
+    if (argumentsCount == 2)
+        argumentOffsets[1] = (1 << 16) | sizeof(UINT_PTR);
 
-    const auto argumentValuesLength = sizeof(UINT64) + (helper.isInstance ? sizeof(LibProfiler::TrackedObjectId) : 0);
+    const auto argumentValuesLength = sizeof(UINT64) + (argumentsCount == 2 ? sizeof(UINT_PTR) : 0);
     SendMethodEnterWithArguments(
         helper.moduleId,
         helper.methodDef,

@@ -199,7 +199,7 @@ public class RaceAggregatorTests
             FieldAttributes.Public);
         type.Fields.Add(field);
 
-        return new FieldId(1, new ModuleId(1), new MdToken(0x04000001), field);
+        return FieldId.Create(1, field, declaringTypeHandle: 0);
     }
 
     private static DataRaceInfo CreateRace(

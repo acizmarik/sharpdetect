@@ -19,6 +19,8 @@ namespace
     {
         return eventType == LibIPC::RecordedEventType::StaticFieldRead ||
             eventType == LibIPC::RecordedEventType::StaticFieldWrite ||
+            eventType == LibIPC::RecordedEventType::GenericStaticFieldRead ||
+            eventType == LibIPC::RecordedEventType::GenericStaticFieldWrite ||
             eventType == LibIPC::RecordedEventType::InstanceFieldRead ||
             eventType == LibIPC::RecordedEventType::InstanceFieldWrite;
     }
@@ -27,6 +29,12 @@ namespace
     {
         return eventType == LibIPC::RecordedEventType::InstanceFieldRead ||
             eventType == LibIPC::RecordedEventType::InstanceFieldWrite;
+    }
+
+    bool IsGenericStaticFieldAccessEvent(const LibIPC::RecordedEventType eventType)
+    {
+        return eventType == LibIPC::RecordedEventType::GenericStaticFieldRead ||
+            eventType == LibIPC::RecordedEventType::GenericStaticFieldWrite;
     }
 
     void EmitOpcode(std::vector<BYTE>& code, const BYTE opcode)
@@ -43,6 +51,14 @@ namespace
         code.resize(offset + sizeof(INT64));
         std::memcpy(code.data() + offset, &value, sizeof(INT64));
         code.push_back(CEE_CONV_I);
+    }
+
+    void EmitToken(std::vector<BYTE>& code, const BYTE opcode, const mdToken token)
+    {
+        code.push_back(opcode);
+        const auto offset = code.size();
+        code.resize(offset + sizeof(mdToken));
+        std::memcpy(code.data() + offset, &token, sizeof(mdToken));
     }
 
     void EmitCalli(std::vector<BYTE>& code, const mdSignature signature)
@@ -696,6 +712,16 @@ HRESULT Profiler::TypeInjector::CreateFieldAccessHelperBody(
             LOG_F(ERROR, "Could not create field access stack call signature in module %s.", moduleDef.GetName().c_str());
             return E_FAIL;
         }
+
+        // instance native int RuntimeTypeHandle::get_Value()
+        mdTypeDef runtimeTypeHandleTypeDef;
+        constexpr BYTE valueGetterSignature[] { IMAGE_CEE_CS_CALLCONV_HASTHIS, 0, ELEMENT_TYPE_I };
+        if (FAILED(moduleDef.FindTypeDef("System.RuntimeTypeHandle", &runtimeTypeHandleTypeDef)) ||
+            FAILED(moduleDef.FindMethodDef("get_Value", valueGetterSignature, sizeof(valueGetterSignature), runtimeTypeHandleTypeDef, &_runtimeTypeHandleValueGetter)))
+        {
+            LOG_F(ERROR, "Could not find RuntimeTypeHandle.get_Value in module %s.", moduleDef.GetName().c_str());
+            return E_FAIL;
+        }
     }
 
     const auto isInstance = IsInstanceFieldAccessEvent(eventType);
@@ -714,7 +740,7 @@ HRESULT Profiler::TypeInjector::CreateFieldAccessHelperBody(
         EmitCalli(code, _fieldAccessStackCallSignature);
     }
 
-    // CALLI unmanaged[SuppressGCTransition] FieldAccessStub(&helper, instrumentationMark, &instance)
+    // CALLI unmanaged[SuppressGCTransition] FieldAccessStub(&helper, instrumentationMark, &instance or declaringType.Value)
     EmitPointer(code, &helper);
     EmitOpcode(code, CEE_LDARG_0);
     if (isInstance)
@@ -722,6 +748,12 @@ HRESULT Profiler::TypeInjector::CreateFieldAccessHelperBody(
         EmitOpcode(code, CEE_LDARGA_S);
         EmitOpcode(code, 1);
         EmitOpcode(code, CEE_CONV_U);
+    }
+    else if (IsGenericStaticFieldAccessEvent(eventType))
+    {
+        EmitOpcode(code, CEE_LDARGA_S);
+        EmitOpcode(code, 1);
+        EmitToken(code, CEE_CALL, _runtimeTypeHandleValueGetter);
     }
     else
     {
@@ -779,6 +811,15 @@ HRESULT Profiler::TypeInjector::ImportInjectedTypes(
         &wasCoreAssemblyRefInjected)))
     {
         LOG_F(ERROR, "Could not add reference to core assembly for type injection.");
+        return E_FAIL;
+    }
+
+    // Generic static field access helpers take the declaring type's handle
+    mdTypeRef runtimeTypeHandleRef;
+    if (FAILED(moduleDef.FindTypeRefByName("System.RuntimeTypeHandle", &runtimeTypeHandleRef)) &&
+        FAILED(moduleDef.AddTypeRef(coreAssemblyRef, "System.RuntimeTypeHandle", &runtimeTypeHandleRef)))
+    {
+        LOG_F(ERROR, "Could not import System.RuntimeTypeHandle into module %s.", moduleDef.GetName().c_str());
         return E_FAIL;
     }
 

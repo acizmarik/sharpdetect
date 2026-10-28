@@ -43,7 +43,7 @@ public class ThreadForkOrderingTests
     }
 
     private DataRaceInfo? Write(ProcessThreadId threadId)
-        => _detector.RecordWrite(threadId, methodOffset: 0, _field, objectId: null, CreateStack());
+        => _detector.RecordWrite(threadId, methodOffset: 0, _field, objectId: null, declaringTypeHandle: 0, CreateStack());
     
     [Fact]
     public void ChildStartedAfterSiblingJoined_StillDetectsRace()

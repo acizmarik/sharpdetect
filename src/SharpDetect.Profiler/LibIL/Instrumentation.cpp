@@ -341,6 +341,21 @@ HRESULT LibProfiler::PatchMethodBody(
 	return E_FAIL;
 }
 
+static HRESULT GetFieldDeclaringType(
+	IN const LibProfiler::ModuleDef& moduleDef,
+	IN const mdToken fieldToken,
+	OUT mdToken* declaringTypeToken)
+{
+	PCCOR_SIGNATURE fieldSignature;
+	ULONG fieldSignatureLength;
+	if (TypeFromToken(fieldToken) == mdtFieldDef)
+		return moduleDef.GetFieldProps(fieldToken, declaringTypeToken, &fieldSignature, &fieldSignatureLength);
+	if (TypeFromToken(fieldToken) == mdtMemberRef)
+		return moduleDef.GetFieldRefProps(fieldToken, declaringTypeToken, &fieldSignature, &fieldSignatureLength);
+
+	return E_FAIL;
+}
+
 HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
@@ -369,10 +384,19 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		return E_FAIL;
 	}
 
+	mdToken declaringTypeToken;
+	if (FAILED(GetFieldDeclaringType(moduleDef, fieldToken, &declaringTypeToken)))
+	{
+		LOG_F(ERROR, "Could not resolve declaring type of field token %d in module %s.", fieldToken, moduleDef.GetName().c_str());
+		return E_FAIL;
+	}
+
+	// Each instantiation of a generic type has its own statics, so their accesses report the declaring type handle
+	const auto isGeneric = TypeFromToken(declaringTypeToken) == mdtTypeSpec;
 	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
-	const auto eventType = isStore
-		? LibIPC::RecordedEventType::StaticFieldWrite
-		: LibIPC::RecordedEventType::StaticFieldRead;
+	const auto eventType = isGeneric
+		? (isStore ? LibIPC::RecordedEventType::GenericStaticFieldWrite : LibIPC::RecordedEventType::GenericStaticFieldRead)
+		: (isStore ? LibIPC::RecordedEventType::StaticFieldWrite : LibIPC::RecordedEventType::StaticFieldRead);
 	auto const methodIt = injectedMethods.find(eventType);
 	const auto helperToken = methodIt != injectedMethods.end()
 		? (captureStack ? methodIt->second.withStackCapture : methodIt->second.plain)
@@ -385,50 +409,41 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 		return E_FAIL;
 	}
 
-	if (isStore && !isVolatile)
+	// Pushes the helper's arguments and calls it right after the anchor; returns the call
+	auto const insertHelperCall = [&](ILInstr* anchor, const UINT64 mark, const mdToken helper)
 	{
 		// LDC.I8 <instrumentation-mark>
 		const auto ldcInstruction = rewriter.NewILInstr();
 		ldcInstruction->m_opcode = CEE_LDC_I8;
-		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
-		rewriter.InsertAfter(currentInstruction, ldcInstruction);
+		ldcInstruction->m_Arg64 = static_cast<INT64>(mark);
+		rewriter.InsertAfter(anchor, ldcInstruction);
+		auto argumentsTail = ldcInstruction;
+		if (isGeneric)
+		{
+			// LDTOKEN <declaring-type>
+			const auto ldtokenInstruction = rewriter.NewILInstr();
+			ldtokenInstruction->m_opcode = CEE_LDTOKEN;
+			ldtokenInstruction->m_Arg32 = static_cast<INT32>(declaringTypeToken);
+			rewriter.InsertAfter(ldcInstruction, ldtokenInstruction);
+			argumentsTail = ldtokenInstruction;
+		}
 		// CALL <injected-method-handler>
 		const auto callInstruction = rewriter.NewILInstr();
 		callInstruction->m_opcode = CEE_CALL;
-		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
-		rewriter.InsertAfter(ldcInstruction, callInstruction);
-		// Skip to next non-injected instruction
-		currentInstruction = callInstruction;
-	}
-	else if (isStore)
+		callInstruction->m_Arg32 = static_cast<INT32>(helper);
+		rewriter.InsertAfter(argumentsTail, callInstruction);
+		return callInstruction;
+	};
+
+	if (isStore && isVolatile)
 	{
 		// A volatile store releases, so it is reported before the store publishes anything
-		const auto headInstruction = MakeRoomBefore(rewriter, currentInstruction);
-		// LDC.I8 <instrumentation-mark>
-		const auto ldcInstruction = rewriter.NewILInstr();
-		ldcInstruction->m_opcode = CEE_LDC_I8;
-		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
-		rewriter.InsertAfter(headInstruction, ldcInstruction);
-		// CALL <injected-method-handler>
-		const auto callInstruction = rewriter.NewILInstr();
-		callInstruction->m_opcode = CEE_CALL;
-		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
-		rewriter.InsertAfter(ldcInstruction, callInstruction);
+		insertHelperCall(MakeRoomBefore(rewriter, currentInstruction), instrumentationMark, helperToken);
 	}
 	else
 	{
-		// LDC.I8 <instrumentation-mark>
-		const auto ldcInstruction = rewriter.NewILInstr();
-		ldcInstruction->m_opcode = CEE_LDC_I8;
-		ldcInstruction->m_Arg64 = static_cast<INT64>(instrumentationMark);
-		rewriter.InsertAfter(currentInstruction, ldcInstruction);
-		// CALL <injected-method-handler>
-		const auto callInstruction = rewriter.NewILInstr();
-		callInstruction->m_opcode = CEE_CALL;
-		callInstruction->m_Arg32 = static_cast<INT32>(helperToken);
-		rewriter.InsertAfter(ldcInstruction, callInstruction);
 		// Skip to next non-injected instruction
-		currentInstruction = callInstruction;
+		currentInstruction = insertHelperCall(currentInstruction, instrumentationMark, helperToken);
 	}
 
 	LOG_F(INFO, "Instrumented static field %s access in method %d with stub %d from module %s.",
@@ -677,14 +692,27 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 		return E_FAIL;
 	}
 
+	mdToken declaringTypeToken = mdTokenNil;
+	if (!isInstance && FAILED(GetFieldDeclaringType(moduleDef, fieldToken, &declaringTypeToken)))
+	{
+		LOG_F(ERROR, "Could not resolve declaring type of field token %d in module %s.", fieldToken, moduleDef.GetName().c_str());
+		return E_FAIL;
+	}
+
+	// Each instantiation of a generic type has its own statics, so their accesses report the declaring type handle
+	auto const isGenericStatic = !isInstance && TypeFromToken(declaringTypeToken) == mdtTypeSpec;
 	const auto captureStack = ShouldCaptureFieldStack(moduleDef, fieldToken, enableStackTraceCollection, stackTraceFieldPatterns);
 	const auto releaseHelper = FindFieldAccessHelper(
 		injectedMethods,
-		isInstance ? LibIPC::RecordedEventType::InstanceFieldWrite : LibIPC::RecordedEventType::StaticFieldWrite,
+		isInstance ? LibIPC::RecordedEventType::InstanceFieldWrite
+			: isGenericStatic ? LibIPC::RecordedEventType::GenericStaticFieldWrite
+			: LibIPC::RecordedEventType::StaticFieldWrite,
 		captureStack);
 	const auto acquireHelper = FindFieldAccessHelper(
 		injectedMethods,
-		isInstance ? LibIPC::RecordedEventType::InstanceFieldRead : LibIPC::RecordedEventType::StaticFieldRead,
+		isInstance ? LibIPC::RecordedEventType::InstanceFieldRead
+			: isGenericStatic ? LibIPC::RecordedEventType::GenericStaticFieldRead
+			: LibIPC::RecordedEventType::StaticFieldRead,
 		captureStack);
 	if ((hasRelease && releaseHelper == mdTokenNil) || (hasAcquire && acquireHelper == mdTokenNil))
 	{
@@ -746,6 +774,8 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 	{
 		if (isInstance)
 			emit(CEE_LDLOC)->m_Arg16 = instanceLocalIndex;
+		else if (isGenericStatic)
+			emit(CEE_LDTOKEN)->m_Arg32 = static_cast<INT32>(declaringTypeToken);
 
 		emit(CEE_CALL)->m_Arg32 = static_cast<INT32>(helperToken);
 	};

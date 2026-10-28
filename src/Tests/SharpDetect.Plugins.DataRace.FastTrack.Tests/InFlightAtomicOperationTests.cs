@@ -299,7 +299,7 @@ public class InFlightAtomicOperationTests
         var firstRead = _reportingPlainReads.NewStack();
 
         // Act - the later reader is ordered after the first read and observes the operation
-        _reportingPlainReads.Detector.RecordRead(reader, methodOffset: 0, counter, objectId: null, firstRead);
+        _reportingPlainReads.Detector.RecordRead(reader, methodOffset: 0, counter, objectId: null, declaringTypeHandle: 0, firstRead);
         _reportingPlainReads.VolatileWrite(reader, flag, instance: null);
         _reportingPlainReads.VolatileRead(laterReader, flag, instance: null);
         _reportingPlainReads.AtomicRelease(incrementer, counter, instance: null);
@@ -323,7 +323,7 @@ public class InFlightAtomicOperationTests
         var firstRead = _reportingPlainReads.NewStack();
 
         // Act - the reader's second read observed the operation
-        _reportingPlainReads.Detector.RecordRead(reader, methodOffset: 0, counter, objectId: null, firstRead);
+        _reportingPlainReads.Detector.RecordRead(reader, methodOffset: 0, counter, objectId: null, declaringTypeHandle: 0, firstRead);
         _reportingPlainReads.AtomicRelease(incrementer, counter, instance: null);
         _reportingPlainReads.VolatileRead(reader, counter, instance: null);
         _reportingPlainReads.Read(reader, counter, instance: null);

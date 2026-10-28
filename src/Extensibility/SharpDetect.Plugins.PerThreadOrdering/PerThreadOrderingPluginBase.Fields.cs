@@ -19,6 +19,8 @@ public abstract partial class PerThreadOrderingPluginBase
     {
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.StaticFieldRead, OnStaticFieldRead);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.StaticFieldWrite, OnStaticFieldWrite);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.GenericStaticFieldRead, OnStaticFieldRead);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.GenericStaticFieldWrite, OnStaticFieldWrite);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.InstanceFieldRead, OnInstanceFieldRead);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.InstanceFieldWrite, OnInstanceFieldWrite);
     }
@@ -26,11 +28,12 @@ public abstract partial class PerThreadOrderingPluginBase
     private void OnStaticFieldRead(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
+        var (fieldAccess, declaringTypeHandle) = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
         StaticFieldRead?.Invoke(new StaticFieldReadArgs(
             id,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
+            declaringTypeHandle,
             fieldAccess.AccessKind,
             BuildStack(fieldAccess, args.StackFrames)));
     }
@@ -38,11 +41,12 @@ public abstract partial class PerThreadOrderingPluginBase
     private void OnStaticFieldWrite(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        var fieldAccess = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
+        var (fieldAccess, declaringTypeHandle) = GetInstrumentedStaticFieldAccessFromArguments(metadata, args);
         StaticFieldWritten?.Invoke(new StaticFieldWriteArgs(
             id,
             fieldAccess.MethodOffset,
             fieldAccess.FieldToken,
+            declaringTypeHandle,
             fieldAccess.AccessKind,
             BuildStack(fieldAccess, args.StackFrames)));
     }
@@ -76,12 +80,16 @@ public abstract partial class PerThreadOrderingPluginBase
     private static CapturedStackTrace BuildStack(InstrumentedFieldAccess fieldAccess, byte[]? deeperFramesBlob)
         => new(new CapturedStackFrame(fieldAccess.ModuleId, fieldAccess.MethodToken), deeperFramesBlob);
 
-    private InstrumentedFieldAccess GetInstrumentedStaticFieldAccessFromArguments(
+    private (InstrumentedFieldAccess Access, nuint DeclaringTypeHandle) GetInstrumentedStaticFieldAccessFromArguments(
         RecordedEventMetadata metadata,
         MethodEnterWithArgumentsRecordedEvent args)
     {
         var instrumentationId = MemoryMarshal.Read<ulong>(args.ArgumentValues);
-        return InstrumentedFieldAccesses[new InstrumentationPointId(metadata.Pid, instrumentationId)];
+        var access = InstrumentedFieldAccesses[new InstrumentationPointId(metadata.Pid, instrumentationId)];
+        var declaringTypeHandle = args.ArgumentValues.Length > sizeof(ulong)
+            ? MemoryMarshal.Read<nuint>(args.ArgumentValues.AsSpan()[sizeof(ulong)..])
+            : 0;
+        return (access, declaringTypeHandle);
     }
 
     private (InstrumentedFieldAccess Access, ProcessTrackedObjectId Instance) GetInstrumentedInstanceFieldAccessFromArguments(

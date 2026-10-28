@@ -65,5 +65,6 @@ namespace Profiler
 		std::deque<FieldAccessHelperInfo> _fieldAccessHelpers;
 		mdSignature _fieldAccessCallSignature { mdTokenNil };
 		mdSignature _fieldAccessStackCallSignature { mdTokenNil };
+		mdMethodDef _runtimeTypeHandleValueGetter { mdTokenNil };
 	};
 }

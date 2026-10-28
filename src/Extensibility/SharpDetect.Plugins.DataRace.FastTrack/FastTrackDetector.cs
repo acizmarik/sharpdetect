@@ -200,11 +200,12 @@ internal sealed class FastTrackDetector
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         CapturedStackTrace stack)
     {
         var moduleId = stack.Top.ModuleId;
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, declaringTypeHandle, out var fieldId, out var isAnalyzed))
             return null;
 
         _volatileClocks.Acquire(fieldId, objectId, threadId);
@@ -220,11 +221,12 @@ internal sealed class FastTrackDetector
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         CapturedStackTrace stack)
     {
         var moduleId = stack.Top.ModuleId;
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, declaringTypeHandle, out var fieldId, out var isAnalyzed))
             return null;
 
         var threadVc = _threadClocks.GetOrCreate(threadId);
@@ -239,10 +241,11 @@ internal sealed class FastTrackDetector
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
+        ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle)
     {
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, declaringTypeHandle, out var fieldId, out var isAnalyzed))
             return;
 
         if (isAnalyzed)
@@ -256,24 +259,27 @@ internal sealed class FastTrackDetector
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         CapturedStackTrace stack)
-        => CompleteAtomicOperation(threadId, methodOffset, fieldToken, objectId, stack, stored: true);
+        => CompleteAtomicOperation(threadId, methodOffset, fieldToken, objectId, declaringTypeHandle, stack, stored: true);
 
     public void RecordCompareExchangeRelease(
         ProcessThreadId threadId,
         ModuleId moduleId,
         MdToken fieldToken,
-        ProcessTrackedObjectId? objectId)
-        => RecordAtomicRelease(threadId, moduleId, fieldToken, objectId);
+        ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle)
+        => RecordAtomicRelease(threadId, moduleId, fieldToken, objectId, declaringTypeHandle);
 
     public DataRaceInfo? RecordCompareExchangeCompleted(
         ProcessThreadId threadId,
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         CapturedStackTrace stack,
         bool succeeded)
-        => CompleteAtomicOperation(threadId, methodOffset, fieldToken, objectId, stack, stored: succeeded);
+        => CompleteAtomicOperation(threadId, methodOffset, fieldToken, objectId, declaringTypeHandle, stack, stored: succeeded);
 
     public void RecordValuePublished(
         ProcessThreadId threadId,
@@ -302,10 +308,11 @@ internal sealed class FastTrackDetector
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         CapturedStackTrace stack)
     {
         AcquireTypeInitialization(threadId, stack.Top.ModuleId, fieldToken, objectId);
-        if (!TryResolveAnalyzedField(threadId, stack, fieldToken, out var fieldId))
+        if (!TryResolveAnalyzedField(threadId, stack, fieldToken, declaringTypeHandle, out var fieldId))
             return null;
 
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
@@ -335,10 +342,11 @@ internal sealed class FastTrackDetector
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         CapturedStackTrace stack)
     {
         AcquireTypeInitialization(threadId, stack.Top.ModuleId, fieldToken, objectId);
-        if (!TryResolveAnalyzedField(threadId, stack, fieldToken, out var fieldId))
+        if (!TryResolveAnalyzedField(threadId, stack, fieldToken, declaringTypeHandle, out var fieldId))
             return null;
 
         var shadow = _shadowMemory.GetOrCreateVirgin(fieldId, objectId);
@@ -594,6 +602,7 @@ internal sealed class FastTrackDetector
         ProcessThreadId threadId,
         CapturedStackTrace stack,
         MdToken fieldToken,
+        nuint declaringTypeHandle,
         out FieldId fieldId)
     {
         var moduleId = stack.Top.ModuleId;
@@ -604,7 +613,7 @@ internal sealed class FastTrackDetector
             return false;
         }
 
-        fieldId = FieldId.Create(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
+        fieldId = FieldId.Create(threadId.ProcessId, fieldDef!, declaringTypeHandle);
         return true;
     }
 
@@ -613,12 +622,13 @@ internal sealed class FastTrackDetector
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         CapturedStackTrace stack,
         bool stored)
     {
         var moduleId = stack.Top.ModuleId;
         AcquireTypeInitialization(threadId, moduleId, fieldToken, objectId);
-        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, out var fieldId, out var isAnalyzed))
+        if (!TryResolveField(threadId.ProcessId, moduleId, fieldToken, declaringTypeHandle, out var fieldId, out var isAnalyzed))
             return null;
 
         var releaseVc = _volatileClocks.CompleteProvisionalRelease(fieldId, objectId, threadId, stored);
@@ -638,6 +648,7 @@ internal sealed class FastTrackDetector
         uint processId,
         ModuleId moduleId,
         MdToken fieldToken,
+        nuint declaringTypeHandle,
         out FieldId fieldId,
         out bool isAnalyzed)
     {
@@ -648,7 +659,7 @@ internal sealed class FastTrackDetector
             return false;
         }
 
-        fieldId = FieldId.Create(processId, moduleId, fieldToken, fieldDef!);
+        fieldId = FieldId.Create(processId, fieldDef!, declaringTypeHandle);
         isAnalyzed = !FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration);
         return true;
     }

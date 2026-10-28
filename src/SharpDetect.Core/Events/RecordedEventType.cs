@@ -62,6 +62,8 @@ public enum RecordedEventType : ushort
     StaticFieldWrite = 42,
     InstanceFieldRead = 43,
     InstanceFieldWrite = 44,
+    GenericStaticFieldRead = 45,
+    GenericStaticFieldWrite = 46,
 
     /* Exceptions */
     MethodUnwound = 90,

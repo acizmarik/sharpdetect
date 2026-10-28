@@ -54,9 +54,9 @@ public class WriteClassificationTests
     
     private bool IsReportedAsRace(MdToken fieldToken, ProcessTrackedObjectId? objectId, CapturedStackTrace writeStack)
     {
-        _detector.RecordWrite(Writer, methodOffset: 0, fieldToken, objectId, writeStack);
+        _detector.RecordWrite(Writer, methodOffset: 0, fieldToken, objectId, declaringTypeHandle: 0, writeStack);
         var readStack = new CapturedStackTrace(new CapturedStackFrame(TestMetadata.ModuleId, new MdMethodDef(999)));
-        return _detector.RecordRead(Reader, methodOffset: 0, fieldToken, objectId, readStack) is not null;
+        return _detector.RecordRead(Reader, methodOffset: 0, fieldToken, objectId, declaringTypeHandle: 0, readStack) is not null;
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class WriteClassificationTests
         var method = _metadata.AddMethod(type, "Mutate");
 
         var readStack = new CapturedStackTrace(new CapturedStackFrame(TestMetadata.ModuleId, method));
-        _detector.RecordRead(Reader, methodOffset: 0, field, Instance, readStack);
+        _detector.RecordRead(Reader, methodOffset: 0, field, Instance, declaringTypeHandle: 0, readStack);
 
         Assert.True(IsReportedAsRace(field, Instance, CreateStack(ctor)));
     }

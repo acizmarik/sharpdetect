@@ -1337,6 +1337,37 @@ namespace SharpDetect.E2ETests.Subject
                 () => PrefixedFieldAccess.Counter = 123);
         }
 
+        public static void Test_DataRace_GenericSelfReference_Instance_ReadWriteRace()
+        {
+            var instance = new GenericSelfReferencedField<int>();
+            RunConcurrently(
+                () => _ = instance.Read(),
+                () => instance.Value = 123);
+        }
+
+        public static void Test_DataRace_GenericSelfReference_Static_ReadWriteRace()
+        {
+            GenericSelfReferencedField<int>.StaticValue = 0;
+            RunConcurrently(
+                () => _ = GenericSelfReferencedField<int>.ReadStatic(),
+                () => GenericSelfReferencedField<int>.StaticValue = 123);
+        }
+
+        public static void Test_DataRace_GenericSelfReference_SharedCode_Static_ReadWriteRace()
+        {
+            GenericSelfReferencedField<string>.StaticValue = null;
+            RunConcurrently(
+                () => _ = GenericSelfReferencedField<string>.ReadStatic(),
+                () => GenericSelfReferencedField<string>.StaticValue = "hello");
+        }
+
+        public static void Test_NoDataRace_GenericSelfReference_SharedCode_Static_DifferentInstantiations_WriteWrite()
+        {
+            RunConcurrently(
+                () => GenericSelfReferencedField<string>.WriteStatic("hello"),
+                () => GenericSelfReferencedField<object>.WriteStatic(new object()));
+        }
+
         public static void Test_DataRace_ReferenceType_Static_WriteReadRace()
         {
             DataRace.Test_DataRace_ReferenceType_Static = new object();

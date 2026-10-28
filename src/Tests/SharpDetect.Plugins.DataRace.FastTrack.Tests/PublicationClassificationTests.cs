@@ -41,10 +41,10 @@ public class PublicationClassificationTests
         => new(new CapturedStackFrame(TestMetadata.ModuleId, method));
 
     private void Write(ProcessThreadId thread, MdMethodDef method)
-        => _detector.RecordWrite(thread, methodOffset: 0, _field, Value, Stack(method));
+        => _detector.RecordWrite(thread, methodOffset: 0, _field, Value, declaringTypeHandle: 0, Stack(method));
 
     private bool ReadIsRace(ProcessThreadId thread, MdMethodDef method)
-        => _detector.RecordRead(thread, methodOffset: 0, _field, Value, Stack(method)) is not null;
+        => _detector.RecordRead(thread, methodOffset: 0, _field, Value, declaringTypeHandle: 0, Stack(method)) is not null;
 
     [Fact]
     public void InitWriteThenCrossThreadRead_WithoutPublication_IsReported()
@@ -137,12 +137,12 @@ public class PublicationClassificationTests
 
         // Act
         _detector.RecordValuePublished(Publisher, Container, Value);
-        _detector.RecordWrite(Mutator, methodOffset: 0, _field, unrelated, Stack(mutate));
+        _detector.RecordWrite(Mutator, methodOffset: 0, _field, unrelated, declaringTypeHandle: 0, Stack(mutate));
         _detector.RecordValuePublished(Mutator, Container, Value);
         _detector.RecordValueObserved(Observer, Container, Value);
 
         // Assert
-        Assert.Null(_detector.RecordRead(Observer, methodOffset: 0, _field, unrelated, Stack(read)));
+        Assert.Null(_detector.RecordRead(Observer, methodOffset: 0, _field, unrelated, declaringTypeHandle: 0, Stack(read)));
     }
 
     [Fact]
@@ -156,14 +156,14 @@ public class PublicationClassificationTests
         // Act
         _detector.RecordValuePublished(Publisher, Container, Value, onlyIfAbsent: true);
         _detector.RecordValueObserved(Publisher, Container, Value);
-        _detector.RecordWrite(Mutator, methodOffset: 0, _field, unrelated, Stack(mutate));
+        _detector.RecordWrite(Mutator, methodOffset: 0, _field, unrelated, declaringTypeHandle: 0, Stack(mutate));
         _detector.RecordValuePublished(Mutator, Container, Value, onlyIfAbsent: true);
         _detector.RecordValueObserved(Mutator, Container, Value);
         _detector.RecordValuePublished(Observer, Container, Value, onlyIfAbsent: true);
         _detector.RecordValueObserved(Observer, Container, Value);
 
         // Assert
-        Assert.NotNull(_detector.RecordRead(Observer, methodOffset: 0, _field, unrelated, Stack(read)));
+        Assert.NotNull(_detector.RecordRead(Observer, methodOffset: 0, _field, unrelated, declaringTypeHandle: 0, Stack(read)));
     }
 
     [Fact]

@@ -179,34 +179,35 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     }
 
     private void OnStaticFieldRead(StaticFieldReadArgs args)
-        => OnFieldRead(args.ProcessThreadId, args.MethodOffset, args.FieldToken, objectId: null, args.AccessKind, args.Stack);
+        => OnFieldRead(args.ProcessThreadId, args.MethodOffset, args.FieldToken, objectId: null, args.DeclaringTypeHandle, args.AccessKind, args.Stack);
 
     private void OnInstanceFieldRead(InstanceFieldReadArgs args)
-        => OnFieldRead(args.ProcessThreadId, args.MethodOffset, args.FieldToken, args.ObjectId, args.AccessKind, args.Stack);
+        => OnFieldRead(args.ProcessThreadId, args.MethodOffset, args.FieldToken, args.ObjectId, declaringTypeHandle: 0, args.AccessKind, args.Stack);
 
     private void OnStaticFieldWritten(StaticFieldWriteArgs args)
-        => OnFieldWritten(args.ProcessThreadId, args.MethodOffset, args.FieldToken, objectId: null, args.AccessKind, args.Stack);
+        => OnFieldWritten(args.ProcessThreadId, args.MethodOffset, args.FieldToken, objectId: null, args.DeclaringTypeHandle, args.AccessKind, args.Stack);
 
     private void OnInstanceFieldWritten(InstanceFieldWriteArgs args)
-        => OnFieldWritten(args.ProcessThreadId, args.MethodOffset, args.FieldToken, args.ObjectId, args.AccessKind, args.Stack);
+        => OnFieldWritten(args.ProcessThreadId, args.MethodOffset, args.FieldToken, args.ObjectId, declaringTypeHandle: 0, args.AccessKind, args.Stack);
 
     private void OnFieldRead(
         ProcessThreadId threadId,
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         FieldAccessKind accessKind,
         CapturedStackTrace stack)
     {
         switch (accessKind)
         {
             case FieldAccessKind.Volatile:
-                if (_detector.RecordVolatileRead(threadId, methodOffset, fieldToken, objectId, stack) is { } volatileRaceInfo)
+                if (_detector.RecordVolatileRead(threadId, methodOffset, fieldToken, objectId, declaringTypeHandle, stack) is { } volatileRaceInfo)
                     RecordDataRace(volatileRaceInfo);
                 break;
 
             case FieldAccessKind.Atomic:
-                if (_detector.RecordAtomicAcquire(threadId, methodOffset, fieldToken, objectId, stack) is { } atomicRaceInfo)
+                if (_detector.RecordAtomicAcquire(threadId, methodOffset, fieldToken, objectId, declaringTypeHandle, stack) is { } atomicRaceInfo)
                     RecordDataRace(atomicRaceInfo);
                 break;
 
@@ -217,6 +218,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                     methodOffset,
                     fieldToken,
                     objectId,
+                    declaringTypeHandle,
                     stack,
                     succeeded: accessKind == FieldAccessKind.CompareExchangeSucceeded);
                 if (compareExchangeRaceInfo != null)
@@ -224,7 +226,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                 break;
 
             default:
-                if (_detector.RecordRead(threadId, methodOffset, fieldToken, objectId, stack) is { } raceInfo)
+                if (_detector.RecordRead(threadId, methodOffset, fieldToken, objectId, declaringTypeHandle, stack) is { } raceInfo)
                     RecordDataRace(raceInfo);
                 break;
         }
@@ -235,26 +237,27 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         uint methodOffset,
         MdToken fieldToken,
         ProcessTrackedObjectId? objectId,
+        nuint declaringTypeHandle,
         FieldAccessKind accessKind,
         CapturedStackTrace stack)
     {
         switch (accessKind)
         {
             case FieldAccessKind.Volatile:
-                if (_detector.RecordVolatileWrite(threadId, methodOffset, fieldToken, objectId, stack) is { } volatileRaceInfo)
+                if (_detector.RecordVolatileWrite(threadId, methodOffset, fieldToken, objectId, declaringTypeHandle, stack) is { } volatileRaceInfo)
                     RecordDataRace(volatileRaceInfo);
                 break;
 
             case FieldAccessKind.Atomic:
-                _detector.RecordAtomicRelease(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                _detector.RecordAtomicRelease(threadId, stack.Top.ModuleId, fieldToken, objectId, declaringTypeHandle);
                 break;
 
             case FieldAccessKind.CompareExchange:
-                _detector.RecordCompareExchangeRelease(threadId, stack.Top.ModuleId, fieldToken, objectId);
+                _detector.RecordCompareExchangeRelease(threadId, stack.Top.ModuleId, fieldToken, objectId, declaringTypeHandle);
                 break;
 
             default:
-                if (_detector.RecordWrite(threadId, methodOffset, fieldToken, objectId, stack) is { } raceInfo)
+                if (_detector.RecordWrite(threadId, methodOffset, fieldToken, objectId, declaringTypeHandle, stack) is { } raceInfo)
                     RecordDataRace(raceInfo);
                 break;
         }

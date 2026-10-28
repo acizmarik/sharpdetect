@@ -91,11 +91,11 @@ internal sealed class DetectorHarness
     public CapturedStackTrace NewStack()
         => new(new CapturedStackFrame(TestMetadata.ModuleId, _metadata.AddMethod(_methodsType, $"Step{_nextMethod++}")));
 
-    public DataRaceInfo? Write(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordWrite(thread, methodOffset: 0, field, instance, NewStack());
+    public DataRaceInfo? Write(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
+        => Detector.RecordWrite(thread, methodOffset: 0, field, instance, declaringTypeHandle, NewStack());
 
-    public DataRaceInfo? Read(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordRead(thread, methodOffset: 0, field, instance, NewStack());
+    public DataRaceInfo? Read(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
+        => Detector.RecordRead(thread, methodOffset: 0, field, instance, declaringTypeHandle, NewStack());
 
     public bool WriteIsRace(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Write(thread, field, instance) is not null;
@@ -103,23 +103,23 @@ internal sealed class DetectorHarness
     public bool ReadIsRace(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
         => Read(thread, field, instance) is not null;
 
-    public DataRaceInfo? VolatileWrite(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordVolatileWrite(thread, methodOffset: 0, field, instance, NewStack());
+    public DataRaceInfo? VolatileWrite(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
+        => Detector.RecordVolatileWrite(thread, methodOffset: 0, field, instance, declaringTypeHandle, NewStack());
 
-    public DataRaceInfo? VolatileRead(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordVolatileRead(thread, methodOffset: 0, field, instance, NewStack());
+    public DataRaceInfo? VolatileRead(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, nuint declaringTypeHandle = 0)
+        => Detector.RecordVolatileRead(thread, methodOffset: 0, field, instance, declaringTypeHandle, NewStack());
 
     public void AtomicRelease(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordAtomicRelease(thread, TestMetadata.ModuleId, field, instance);
+        => Detector.RecordAtomicRelease(thread, TestMetadata.ModuleId, field, instance, declaringTypeHandle: 0);
 
     public DataRaceInfo? AtomicAcquire(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordAtomicAcquire(thread, methodOffset: 0, field, instance, NewStack());
+        => Detector.RecordAtomicAcquire(thread, methodOffset: 0, field, instance, declaringTypeHandle: 0, NewStack());
 
     public void CompareExchangeRelease(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
-        => Detector.RecordCompareExchangeRelease(thread, TestMetadata.ModuleId, field, instance);
+        => Detector.RecordCompareExchangeRelease(thread, TestMetadata.ModuleId, field, instance, declaringTypeHandle: 0);
 
     public DataRaceInfo? CompareExchangeCompleted(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance, bool succeeded)
-        => Detector.RecordCompareExchangeCompleted(thread, methodOffset: 0, field, instance, NewStack(), succeeded);
+        => Detector.RecordCompareExchangeCompleted(thread, methodOffset: 0, field, instance, declaringTypeHandle: 0, NewStack(), succeeded);
 
     public DataRaceInfo? ReadModifyWrite(ProcessThreadId thread, MdToken field, ProcessTrackedObjectId? instance)
     {

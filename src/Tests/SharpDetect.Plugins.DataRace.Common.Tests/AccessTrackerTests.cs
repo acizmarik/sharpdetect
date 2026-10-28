@@ -25,7 +25,7 @@ public class AccessTrackerTests
         module.Types.Add(type);
         var field = new FieldDefUser("Counter", new FieldSig(module.CorLibTypes.Int32), FieldAttributes.Public);
         type.Fields.Add(field);
-        _field = new FieldId(1, new ModuleId(1), new MdToken(0x04000001), field);
+        _field = FieldId.Create(1, field, declaringTypeHandle: 0);
     }
 
     [Fact]

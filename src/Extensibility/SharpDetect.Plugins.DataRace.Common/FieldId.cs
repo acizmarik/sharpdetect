@@ -3,16 +3,16 @@
 
 using System.Diagnostics;
 using dnlib.DotNet;
-using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.DataRace.Common;
 
-[DebuggerDisplay("Process:{ProcessId}/Module:{ModuleId}/Token:{FieldToken}/Field:{FieldDef.FullName}")]
-public readonly record struct FieldId(uint ProcessId, ModuleId ModuleId, MdToken FieldToken, FieldDef FieldDef)
+// Keyed by the definition - every token form of a field shares one identity
+// Instances are told apart by their object
+// Statics of generic types are told apart by the runtime handle of their declaring type's instantiation
+[DebuggerDisplay("Process:{ProcessId}/Field:{FieldDef.FullName}/DeclaringType:{DeclaringTypeHandle}")]
+public readonly record struct FieldId(uint ProcessId, FieldDef FieldDef, nuint DeclaringTypeHandle)
 {
-    public static FieldId Create(uint processId, ModuleId moduleId, MdToken fieldToken, FieldDef fieldDef)
-        => fieldDef.IsStatic
-            ? new FieldId(processId, moduleId, fieldToken, fieldDef)
-            : new FieldId(processId, default, default, fieldDef);
+    public static FieldId Create(uint processId, FieldDef fieldDef, nuint declaringTypeHandle)
+        => new(processId, fieldDef, fieldDef.IsStatic && fieldDef.DeclaringType.HasGenericParameters ? declaringTypeHandle : 0);
 }
 

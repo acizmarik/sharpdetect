@@ -14,15 +14,18 @@ public static class SharpDetectHelperTypeDescriptors
             .. CreateFieldAccessHelperPair("ReadStaticField", RecordedEventType.StaticFieldRead, isInstance: false),
             .. CreateFieldAccessHelperPair("ReadInstanceField", RecordedEventType.InstanceFieldRead, isInstance: true),
             .. CreateFieldAccessHelperPair("WriteStaticField", RecordedEventType.StaticFieldWrite, isInstance: false),
+            .. CreateFieldAccessHelperPair("ReadGenericStaticField", RecordedEventType.GenericStaticFieldRead, isInstance: false, isGenericStatic: true),
+            .. CreateFieldAccessHelperPair("WriteGenericStaticField", RecordedEventType.GenericStaticFieldWrite, isInstance: false, isGenericStatic: true),
             .. CreateFieldAccessHelperPair("WriteInstanceField", RecordedEventType.InstanceFieldWrite, isInstance: true),
         ]);
     
     private static MethodInjectionDescriptor[] CreateFieldAccessHelperPair(
         string name,
         RecordedEventType eventType,
-        bool isInstance)
+        bool isInstance,
+        bool isGenericStatic = false)
     {
-        var signature = FieldAccessHelperSignature.Create(isInstance);
+        var signature = FieldAccessHelperSignature.Create(isInstance, isGenericStatic);
 
         return
         [

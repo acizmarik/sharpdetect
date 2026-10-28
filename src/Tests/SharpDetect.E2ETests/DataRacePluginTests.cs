@@ -17,7 +17,6 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     private const string IndirectReferenceGap = "Known gap: Interlocked calls are recognized only when the ref argument is a direct field address";
     private const string StructFieldReceiverGap = "Known gap: a field address is not recognized when its receiver is a managed pointer (field of a struct)";
-    private const string FieldIdentityByTokenGap = "Known gap: static field identity includes the referencing module and token, so Foo<T>.F inside Foo<T> and Foo<int>.F outside it, or a field accessed from two assemblies, get separate clocks";
     private const string LazyInitializerGap = "Known gap: LazyInitializer.EnsureInitialized is not modeled";
 
     [Theory]
@@ -55,10 +54,25 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task CanDetectDataRace_CrossAssembly_Instance_ReadWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_CrossAssembly_Instance_ReadWriteRace", sdk, plugin);
 
-    [Theory(Skip = FieldIdentityByTokenGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_CrossAssembly_Static_ReadWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_CrossAssembly_Static_ReadWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_GenericSelfReference_Instance_ReadWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_GenericSelfReference_Instance_ReadWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_GenericSelfReference_Static_ReadWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_GenericSelfReference_Static_ReadWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_GenericSelfReference_SharedCode_Static_ReadWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_GenericSelfReference_SharedCode_Static_ReadWriteRace", sdk, plugin);
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
@@ -448,7 +462,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task CanDetectDataRace_InterlockedGenericStaticFlag_OtherInstantiationDoesNotPublish(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_InterlockedGenericStaticFlag_OtherInstantiationDoesNotPublish", sdk, plugin);
 
-    [Theory(Skip = FieldIdentityByTokenGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_InterlockedGenericFlagPublishedInsideGenericType_PublishThenRead", sdk, plugin);
@@ -622,6 +636,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_GenericSelfReference_SharedCode_Static_DifferentInstantiations_WriteWrite(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_GenericSelfReference_SharedCode_Static_DifferentInstantiations_WriteWrite", sdk, plugin);
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
