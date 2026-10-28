@@ -1321,6 +1321,22 @@ namespace SharpDetect.E2ETests.Subject
                 () => instance.Test_DataRace_ValueType_InstanceField = 123);
         }
 
+        public static void Test_DataRace_CrossAssembly_Instance_ReadWriteRace()
+        {
+            var instance = new PrefixedFieldAccess();
+            RunConcurrently(
+                () => _ = PrefixedFieldAccess.ReadValue(instance),
+                () => instance.Value = 123);
+        }
+
+        public static void Test_DataRace_CrossAssembly_Static_ReadWriteRace()
+        {
+            PrefixedFieldAccess.Counter = 0;
+            RunConcurrently(
+                () => _ = PrefixedFieldAccess.ReadCounter(),
+                () => PrefixedFieldAccess.Counter = 123);
+        }
+
         public static void Test_DataRace_ReferenceType_Static_WriteReadRace()
         {
             DataRace.Test_DataRace_ReferenceType_Static = new object();

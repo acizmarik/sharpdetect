@@ -17,7 +17,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     private const string IndirectReferenceGap = "Known gap: Interlocked calls are recognized only when the ref argument is a direct field address";
     private const string StructFieldReceiverGap = "Known gap: a field address is not recognized when its receiver is a managed pointer (field of a struct)";
-    private const string FieldIdentityByTokenGap = "Known gap: field identity includes the referencing token, so Foo<T>.F inside Foo<T> and Foo<int>.F outside it get separate clocks";
+    private const string FieldIdentityByTokenGap = "Known gap: static field identity includes the referencing module and token, so Foo<T>.F inside Foo<T> and Foo<int>.F outside it, or a field accessed from two assemblies, get separate clocks";
     private const string LazyInitializerGap = "Known gap: LazyInitializer.EnsureInitialized is not modeled";
 
     [Theory]
@@ -49,6 +49,16 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_ValueType_Instance_ReadWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_ValueType_Instance_ReadWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_CrossAssembly_Instance_ReadWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_CrossAssembly_Instance_ReadWriteRace", sdk, plugin);
+
+    [Theory(Skip = FieldIdentityByTokenGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_CrossAssembly_Static_ReadWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_CrossAssembly_Static_ReadWriteRace", sdk, plugin);
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]

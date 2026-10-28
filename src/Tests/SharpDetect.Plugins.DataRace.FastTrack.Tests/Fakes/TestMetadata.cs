@@ -75,6 +75,13 @@ internal sealed class TestMetadata : IMetadataContext, IMetadataResolver
         return new MdToken(token);
     }
     
+    public MdToken AddFieldReference(MdToken field)
+    {
+        var token = _nextToken++;
+        _fields.Add(token, _fields[field.Value]);
+        return new MdToken(token);
+    }
+
     public MdToken AddAutoPropertyBackingField(TypeDefUser type, string propertyName)
     {
         var token = AddField(type, $"<{propertyName}>k__BackingField", isStatic: false);

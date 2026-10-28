@@ -604,7 +604,7 @@ internal sealed class FastTrackDetector
             return false;
         }
 
-        fieldId = new FieldId(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
+        fieldId = FieldId.Create(threadId.ProcessId, moduleId, fieldToken, fieldDef!);
         return true;
     }
 
@@ -648,7 +648,7 @@ internal sealed class FastTrackDetector
             return false;
         }
 
-        fieldId = new FieldId(processId, moduleId, fieldToken, fieldDef!);
+        fieldId = FieldId.Create(processId, moduleId, fieldToken, fieldDef!);
         isAnalyzed = !FieldResolver.ShouldExcludeFromAnalysis(fieldFlags, _configuration);
         return true;
     }

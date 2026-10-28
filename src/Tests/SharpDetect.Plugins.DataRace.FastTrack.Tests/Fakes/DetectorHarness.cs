@@ -73,6 +73,9 @@ internal sealed class DetectorHarness
     public MdToken NewInstanceField(TypeDefUser type, string name)
         => _metadata.AddField(type, name, isStatic: false);
 
+    public MdToken NewFieldReference(MdToken field)
+        => _metadata.AddFieldReference(field);
+
     public MdMethodDef NewTypeInitializer(TypeDefUser type)
         => _metadata.AddStaticConstructor(type);
 

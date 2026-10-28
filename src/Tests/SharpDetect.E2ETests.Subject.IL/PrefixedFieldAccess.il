@@ -92,6 +92,19 @@
         ret
     }
 
+    .method public hidebysig static int32 ReadValue(class SharpDetect.E2ETests.Subject.IL.PrefixedFieldAccess target) cil managed
+    {
+        ldarg.0
+        ldfld int32 SharpDetect.E2ETests.Subject.IL.PrefixedFieldAccess::Value
+        ret
+    }
+
+    .method public hidebysig static int32 ReadCounter() cil managed
+    {
+        ldsfld int32 SharpDetect.E2ETests.Subject.IL.PrefixedFieldAccess::Counter
+        ret
+    }
+
     .method public hidebysig static int32 IncrementInTailPosition() cil managed
     {
         ldsflda int32 SharpDetect.E2ETests.Subject.IL.PrefixedFieldAccess::Counter
