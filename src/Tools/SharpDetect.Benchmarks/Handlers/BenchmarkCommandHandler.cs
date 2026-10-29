@@ -150,11 +150,13 @@ internal sealed class BenchmarkCommandHandler(BenchmarkOptions options)
             var worker = provider.GetRequiredService<IAnalysisWorker>();
             var cpu = ChildCpuAccounting.Begin();
             var startTimestamp = Stopwatch.GetTimestamp();
+            AnalysisOutcome? outcome = null;
             var samples = await SampleWhileAsync(
                 static () => AnalysisWorkerMetrics.CurrentTargetPid,
-                () => worker.ExecuteAsync(cancellationToken).AsTask(),
+                async () => outcome = await worker.ExecuteAsync(cancellationToken),
                 cancellationToken);
             var wallSeconds = Stopwatch.GetElapsedTime(startTimestamp).TotalSeconds;
+            EnsureSane("instrumented", outcome!.Gaps.Select(static gap => gap.Description).ToArray());
 
             var plugin = provider.GetRequiredService<IPlugin>();
             return new AnalysisExecution(

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using CliFx.Infrastructure;
+using SharpDetect.Cli.Handlers;
+using SharpDetect.Worker;
 using Xunit;
 
 namespace SharpDetect.Cli.Tests;
@@ -19,6 +21,22 @@ public class ExitCodeTests
     public void ExitCode_ValuesAreStable(ExitCode exitCode, int expected)
     {
         Assert.Equal(expected, (int)exitCode);
+    }
+
+    [Theory]
+    [InlineData(false, false, ExitCode.Success)]
+    [InlineData(false, true, ExitCode.IssuesFound)]
+    [InlineData(true, false, ExitCode.AnalysisIncomplete)]
+    [InlineData(true, true, ExitCode.AnalysisIncomplete)]
+    public void GetExitCode_IncompleteAnalysisTakesPrecedenceOverIssues(bool incomplete, bool issuesFound, ExitCode expected)
+    {
+        AnalysisGap[] gaps = incomplete
+            ? [new AnalysisGap(AnalysisGapKind.ProcessNotFinished, "Process 42 did not report the end of its events.")]
+            : [];
+
+        var exitCode = RunCommandHandler.GetExitCode(new AnalysisOutcome(gaps), issuesFound);
+
+        Assert.Equal(expected, exitCode);
     }
 
     [Theory]

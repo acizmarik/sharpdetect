@@ -728,11 +728,43 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         var summary = plugin.CreateDiagnostics();
-        var context = new SummaryRenderingContext(summary, plugin, plugin.ReportTemplates, ConfigurationJson: string.Empty);
+        var context = new SummaryRenderingContext(summary, plugin, plugin.ReportTemplates, ConfigurationJson: string.Empty, AnalysisWarnings: []);
         var exception = await Record.ExceptionAsync(() => reportWriter.Write(context, reportRenderer, CancellationToken.None));
 
         // Assert
         Assert.Null(exception);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public async Task CanRenderReport_WithAnalysisWarnings(string sdk, string pluginFullTypeName)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject("Test_NoDataRace_ReferenceType_Static_CorrectLocks")
+            .WithTestPlugin(pluginFullTypeName)
+            .WithPluginConfiguration(new { SkipInstrumentationForAssemblies = SkipSystemAssemblies })
+            .Build(sdk, testOutput, additionalData);
+        var plugin = GetTestPlugin(services);
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var reportRenderer = services.GetRequiredService<IReportSummaryRenderer>();
+        const string warning = "Process 42 did not report the end of its events.";
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var context = new SummaryRenderingContext(
+            plugin.CreateDiagnostics(),
+            plugin,
+            plugin.ReportTemplates,
+            ConfigurationJson: string.Empty,
+            AnalysisWarnings: [warning]);
+        var html = reportRenderer.Render(context);
+
+        // Assert
+        Assert.Contains("Analysis Incomplete", html);
+        Assert.Contains(warning, html);
+        Assert.DoesNotContain("No Violations", html);
     }
 
     private static readonly string[] SkipSystemAssemblies = ["System.", "Microsoft."];

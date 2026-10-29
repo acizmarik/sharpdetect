@@ -5,5 +5,5 @@ namespace SharpDetect.Worker;
 
 public interface IAnalysisWorker
 {
-    ValueTask ExecuteAsync(CancellationToken cancellationToken);
+    ValueTask<AnalysisOutcome> ExecuteAsync(CancellationToken cancellationToken);
 }

@@ -10,4 +10,5 @@ public record SummaryRenderingContext(
     Summary Summary,
     IPlugin Plugin,
     DirectoryInfo AdditionalPartials,
-    string ConfigurationJson);
+    string ConfigurationJson,
+    IReadOnlyList<string> AnalysisWarnings);

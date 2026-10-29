@@ -3185,6 +3185,11 @@ namespace SharpDetect.E2ETests.Subject
         {
             Thread.Sleep(TimeSpan.FromMinutes(1));
         }
+
+        public static void Test_Lifecycle_KillsItself()
+        {
+            System.Diagnostics.Process.GetCurrentProcess().Kill();
+        }
         
         private static void RunConcurrently(params Action[] actions)
         {

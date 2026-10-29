@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
@@ -17,6 +18,7 @@ namespace SharpDetect.E2ETests;
 public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
 {
     public const string CollectionName = "E2E_AnalysisLifecycleTests";
+    private const string ShortSubject = "Test_MultiProcess_Child_LockAndExit";
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
@@ -36,6 +38,101 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
         // Assert
         Assert.NotNull(pluginHost.FailedPid);
         Assert.False(IsRunning((int)pluginHost.FailedPid.Value), "Target process outlived the failed analysis.");
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task CompletedTarget_AnalysisIsComplete(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(ShortSubject)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Empty(outcome.Gaps);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task ProfilerDisabled_ReportsProfilerNotAttached(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(ShortSubject)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .WithTargetEnvironmentVariables(new KeyValuePair<string, string>("CORECLR_ENABLE_PROFILING", "0"))
+            .Build(sdk, testOutput);
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var gap = Assert.Single(outcome.Gaps);
+        Assert.Equal(AnalysisGapKind.ProfilerNotAttached, gap.Kind);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task KilledTarget_ReportsProcessNotFinished(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_Lifecycle_KillsItself")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var gap = Assert.Single(outcome.Gaps);
+        Assert.Equal(AnalysisGapKind.ProcessNotFinished, gap.Kind);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task ReceiverCannotAttach_ReportsReceiverNotAttached(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(ShortSubject)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var analysisWorker = ActivatorUtilities.CreateInstance<AnalysisWorker>(services, new UnattachableReceiverProvider());
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var gap = Assert.Single(outcome.Gaps);
+        Assert.Equal(AnalysisGapKind.ReceiverNotAttached, gap.Kind);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task ReceiverFailure_FailsAnalysis(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(ShortSubject)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var receiverProvider = new FailingReceiverProvider(services.GetRequiredService<IProfilerEventReceiverProvider>());
+        var analysisWorker = ActivatorUtilities.CreateInstance<AnalysisWorker>(services, receiverProvider);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<AnalysisFailedException>(() => analysisWorker.ExecuteAsync(CancellationToken.None).AsTask());
+
+        // Assert
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
     }
 
     private static bool IsRunning(int pid)
@@ -63,5 +160,24 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
             FailedPid = recordedEvent.Metadata.Pid;
             return RecordedEventState.Failed;
         }
+    }
+
+    private sealed class UnattachableReceiverProvider : IProfilerEventReceiverProvider
+    {
+        public IProfilerEventReceiver Create(uint pid)
+            => throw new IOException($"Cannot open the event queue of process {pid}.");
+    }
+
+    private sealed class FailingReceiverProvider(IProfilerEventReceiverProvider inner) : IProfilerEventReceiverProvider
+    {
+        public IProfilerEventReceiver Create(uint pid) => new FailingReceiver(inner.Create(pid));
+    }
+
+    private sealed class FailingReceiver(IProfilerEventReceiver inner) : IProfilerEventReceiver, IDisposable
+    {
+        public int TryReceiveNotifications(Span<RecordedEvent> destination, out int failedRecordsCount)
+            => throw new InvalidOperationException("Event receiver failed.");
+
+        public void Dispose() => (inner as IDisposable)?.Dispose();
     }
 }

@@ -74,30 +74,61 @@ internal sealed class RunCommandHandler : IDisposable
     {
         // Execute analysis
         var worker = _serviceProvider.GetRequiredService<IAnalysisWorker>();
-        await worker.ExecuteAsync(cancellationToken);
+        var outcome = await worker.ExecuteAsync(cancellationToken);
         
         // Create report summary
         var plugin = _serviceProvider.GetRequiredService<IPlugin>();
         var reportSummary = plugin.CreateDiagnostics();
+        var analysisWarnings = outcome.Gaps.Select(gap => gap.Description).ToArray();
         
         // Persist report summary
         if (_arguments.Analysis.RenderReport)
         {
-            var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, cancellationToken);
+            var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, analysisWarnings, cancellationToken);
             await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(reportFullPath)}.");
         }
 
-        if (reportSummary.GetAllReports().Any())
-            throw new CommandException("Analysis detected issue(s)", (int)ExitCode.IssuesFound);
+        var issuesFound = reportSummary.GetAllReports().Any();
+        var exitCode = GetExitCode(outcome, issuesFound);
+        if (exitCode != ExitCode.Success)
+            throw new CommandException(GetExitMessage(outcome, issuesFound), (int)exitCode);
     }
 
-    private Task<string> RenderAndWriteReport(IPlugin plugin, Summary reportSummary, CancellationToken cancellationToken)
+    internal static ExitCode GetExitCode(AnalysisOutcome outcome, bool issuesFound)
+    {
+        if (!outcome.IsComplete)
+            return ExitCode.AnalysisIncomplete;
+
+        return issuesFound ? ExitCode.IssuesFound : ExitCode.Success;
+    }
+
+    private static string GetExitMessage(AnalysisOutcome outcome, bool issuesFound)
+    {
+        if (outcome.IsComplete)
+            return "Analysis detected issue(s)";
+
+        var gaps = string.Join(" ", outcome.Gaps.Select(gap => gap.Description));
+        return issuesFound
+            ? $"Analysis detected issue(s), but is incomplete: {gaps}"
+            : $"Analysis is incomplete: {gaps}";
+    }
+
+    private Task<string> RenderAndWriteReport(
+        IPlugin plugin,
+        Summary reportSummary,
+        IReadOnlyList<string> analysisWarnings,
+        CancellationToken cancellationToken)
     {
         var reportDirectory = _arguments.Analysis.ReportsFolder;
         var reportFileName = _arguments.Analysis.ReportFileName;
         var writer = _serviceProvider.GetRequiredService<IReportSummaryWriter>();
         var renderer = _serviceProvider.GetRequiredService<IReportSummaryRenderer>();
-        var context = new SummaryRenderingContext(reportSummary, plugin, plugin.ReportTemplates, _rawConfigurationJson);
+        var context = new SummaryRenderingContext(
+            reportSummary,
+            plugin,
+            plugin.ReportTemplates,
+            _rawConfigurationJson,
+            analysisWarnings);
         return writer.Write(reportFileName, reportDirectory, context, renderer, cancellationToken);
     }
 

@@ -23,6 +23,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
     private const int MaxPollsPerReceiver = 64;
     private const int MaxConsecutiveEmptyPolls = 50;
     private const int MaxConsecutiveFailedRecords = 1000;
+    private const int MtpZeroTestsExitCode = 8;
 
     private readonly RunCommandArgs _arguments;
     private readonly IPlugin _plugin;
@@ -47,7 +48,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         _logger = logger;
     }
 
-    public async ValueTask ExecuteAsync(CancellationToken cancellationToken)
+    public async ValueTask<AnalysisOutcome> ExecuteAsync(CancellationToken cancellationToken)
     {
         var configurationPath = GetFullConfigurationPath();
         _logger.LogTrace("Running with arguments: {Arguments}.", _arguments);
@@ -77,10 +78,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
 
+            var progress = new AnalysisProgress();
             long processTailEnd;
             try
             {
-                processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, cancellationToken);
+                processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, progress, cancellationToken);
             }
             catch
             {
@@ -105,6 +107,8 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     commandResult.ExitCode,
                     commandResult.ExitCode);
             }
+
+            return CreateOutcome(progress, commandResult.ExitCode);
         }
         finally
         {
@@ -201,11 +205,16 @@ public sealed class AnalysisWorker : IAnalysisWorker
         return envVars;
     }
 
-    private long ExecuteAnalysis(Task targetProcessTask, uint rootPid, StrongBox<long> targetDoneTimestamp, CancellationToken cancellationToken)
+    private long ExecuteAnalysis(
+        Task targetProcessTask,
+        uint rootPid,
+        StrongBox<long> targetDoneTimestamp,
+        AnalysisProgress progress,
+        CancellationToken cancellationToken)
     {
         using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var events = new EventBatchPipe(EventBatchSize, MaxPendingEventBatches);
-        var producer = new Thread(() => ProduceEvents(events, targetProcessTask, targetDoneTimestamp, receiveCts.Token))
+        var producer = new Thread(() => ProduceEvents(events, targetProcessTask, targetDoneTimestamp, progress, receiveCts.Token))
         {
             IsBackground = true,
             Name = "SharpDetect.EventReceiver"
@@ -215,7 +224,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         var processTailEnd = 0L;
         try
         {
-            ProcessEvents(events, rootPid, cancellationToken);
+            ProcessEvents(events, rootPid, progress, cancellationToken);
         }
         finally
         {
@@ -227,6 +236,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 disposable.Dispose();
         }
 
+        if (progress.ReceiverFailure is { } receiverFailure)
+            throw new AnalysisFailedException(receiverFailure);
+
         return processTailEnd;
     }
 
@@ -234,11 +246,12 @@ public sealed class AnalysisWorker : IAnalysisWorker
         EventBatchPipe events,
         Task targetProcessTask,
         StrongBox<long> targetDoneTimestamp,
+        AnalysisProgress progress,
         CancellationToken cancellationToken)
     {
         try
         {
-            ReceiveEvents(events, targetProcessTask, targetDoneTimestamp, cancellationToken);
+            ReceiveEvents(events, targetProcessTask, targetDoneTimestamp, progress, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -246,7 +259,8 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "Event receiver stopped; the analysis is incomplete");
+            _logger.LogCritical(ex, "Event receiver stopped; the analysis failed");
+            progress.ReceiverFailure = ex;
         }
         finally
         {
@@ -254,7 +268,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
 
-    private void ProcessEvents(EventBatchPipe events, uint rootPid, CancellationToken cancellationToken)
+    private void ProcessEvents(EventBatchPipe events, uint rootPid, AnalysisProgress progress, CancellationToken cancellationToken)
     {
         try
         {
@@ -267,8 +281,12 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     for (; processed < batch.Count; processed++)
                     {
                         var currentEvent = buffer[processed];
-                        if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent && currentEvent.Metadata.Pid == rootPid)
-                            return;
+                        if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent)
+                        {
+                            progress.FinishedPids.Add(currentEvent.Metadata.Pid);
+                            if (currentEvent.Metadata.Pid == rootPid)
+                                return;
+                        }
 
                         if (_pluginHost.ProcessEvent(currentEvent) == RecordedEventState.Failed)
                             LogFailureAndTerminateAnalysis();
@@ -291,6 +309,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         EventBatchPipe events,
         Task targetProcessTask,
         StrongBox<long> targetDoneTimestamp,
+        AnalysisProgress progress,
         CancellationToken cancellationToken)
     {
         var receivers = new Dictionary<uint, IProfilerEventReceiver>();
@@ -306,6 +325,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
             {
                 var destination = events.GetWriteSpan();
                 var count = receiver.TryReceiveNotifications(destination, out var failedRecords);
+                progress.DiscardedRecords += failedRecords;
                 consecutiveFailedRecords = count > 0 ? 0 : consecutiveFailedRecords + failedRecords;
                 if (count == 0)
                     break;
@@ -329,7 +349,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
             var consecutiveEmptyPolls = 0;
             while (!cancellationToken.IsCancellationRequested)
             {
-                DiscoverProcesses(receivers);
+                DiscoverProcesses(receivers, progress);
 
                 if (drainStartTimestamp == 0)
                 {
@@ -371,11 +391,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
 
-    private void DiscoverProcesses(Dictionary<uint, IProfilerEventReceiver> receivers)
+    private void DiscoverProcesses(Dictionary<uint, IProfilerEventReceiver> receivers, AnalysisProgress progress)
     {
         foreach (var pid in _registrationTable.DrainNewRegistrations())
         {
-            if (receivers.ContainsKey(pid))
+            if (!progress.RegisteredPids.Add(pid))
                 continue;
 
             try
@@ -386,8 +406,37 @@ public sealed class AnalysisWorker : IAnalysisWorker
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to attach event receiver for PID {Pid}.", pid);
+                progress.UnattachedPids.Add(pid);
             }
         }
+    }
+    
+    private AnalysisOutcome CreateOutcome(AnalysisProgress progress, int targetExitCode)
+    {
+        var gaps = new List<AnalysisGap>();
+        if (progress.RegisteredPids.Count == 0)
+            gaps.Add(new AnalysisGap(AnalysisGapKind.ProfilerNotAttached, "No process was profiled. The profiler did not load into the target."));
+
+        foreach (var pid in progress.UnattachedPids)
+            gaps.Add(new AnalysisGap(AnalysisGapKind.ReceiverNotAttached, $"Events of process {pid} could not be received."));
+
+        foreach (var pid in progress.RegisteredPids.Except(progress.UnattachedPids).Except(progress.FinishedPids).Order())
+        {
+            gaps.Add(new AnalysisGap(
+                AnalysisGapKind.ProcessNotFinished,
+                $"Process {pid} did not report the end of its events. It crashed, was killed, or its last events were not analyzed."));
+        }
+
+        if (progress.DiscardedRecords > 0)
+            gaps.Add(new AnalysisGap(AnalysisGapKind.EventsDiscarded, $"{progress.DiscardedRecords} unparsable event(s) were discarded."));
+
+        if (_arguments.Target is { Kind: TargetKind.TestAssembly, Test.Runner: TestRunner.Mtp } && targetExitCode == MtpZeroTestsExitCode)
+            gaps.Add(new AnalysisGap(AnalysisGapKind.NoTestsRan, "No tests ran. The test filter matched no tests."));
+
+        foreach (var gap in gaps)
+            _logger.LogWarning("Analysis is incomplete: {Gap}", gap.Description);
+
+        return new AnalysisOutcome(gaps);
     }
     
     private string GetProfilerPath()
@@ -445,6 +494,15 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
     
+    private sealed class AnalysisProgress
+    {
+        public readonly HashSet<uint> RegisteredPids = [];
+        public readonly List<uint> UnattachedPids = [];
+        public readonly HashSet<uint> FinishedPids = [];
+        public long DiscardedRecords;
+        public Exception? ReceiverFailure;
+    }
+
     [DoesNotReturn]
     private void LogFailureAndTerminateAnalysis()
     {
