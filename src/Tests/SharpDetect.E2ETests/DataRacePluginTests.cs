@@ -783,6 +783,91 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
             : new { SkipInstrumentationForAssemblies = SkipSystemAssemblies };
     }
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ReaderWriterLockSlim_WriteThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ReaderWriterLockSlim_WriteThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ReaderWriterLockSlim_UpgradedWriteThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ReaderWriterLockSlim_UpgradedWriteThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ReaderWriterLockSlim_WritesUnderReadLock(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ReaderWriterLockSlim_WritesUnderReadLock", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ManualResetEventSlim_SetThenWait(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ManualResetEventSlim_SetThenWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ManualResetEventSlim_WriteAfterSet(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ManualResetEventSlim_WriteAfterSet", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_CountdownEvent_EverySignalBeforeWait(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_CountdownEvent_EverySignalBeforeWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_CountdownEvent_WriteAfterSignal(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_CountdownEvent_WriteAfterSignal", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Barrier_WriteBeforePhaseReadAfter(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Barrier_WriteBeforePhaseReadAfter", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_Barrier_WriteAfterPhase(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_Barrier_WriteAfterPhase", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConcurrentQueue_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentQueue_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ConcurrentQueue_PostPublicationWrite(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ConcurrentQueue_PostPublicationWrite", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConcurrentStack_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentStack_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConcurrentBag_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentBag_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Channel_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Channel_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ThreadPoolQueueUserWorkItem_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ThreadPoolQueueUserWorkItem_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ThreadPoolQueueUserWorkItem_WriteAfterQueue(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ThreadPoolQueueUserWorkItem_WriteAfterQueue", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Semaphore_FullReleaseDoesNotShiftPermits(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Semaphore_FullReleaseDoesNotShiftPermits", sdk, plugin);
+
     private async Task AssertDetectsDataRace(
         string subjectArgs,
         string sdk,

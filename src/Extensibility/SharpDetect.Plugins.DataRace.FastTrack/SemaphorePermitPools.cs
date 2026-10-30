@@ -20,10 +20,32 @@ internal sealed class SemaphorePermitPools(ThreadClockTable threadClocks) : ITra
     {
         var threadVc = threadClocks.GetOrCreateSeen(threadId);
         var pool = GetOrCreate(semaphoreId);
-        for (var i = 0; i < releaseCount; i++)
-            pool.ReleasedPermits.Enqueue(threadVc.Clone());
+        var released = new VectorClock[Math.Max(releaseCount, 0)];
+        for (var i = 0; i < released.Length; i++)
+        {
+            released[i] = threadVc.Clone();
+            pool.ReleasedPermits.Enqueue(released[i]);
+        }
 
+        pool.LastReleases[threadId] = released;
         threadVc.Increment(threadId);
+    }
+
+    // A release that threw never released its permits; drop the ones nobody has acquired yet
+    public void Retract(ProcessTrackedObjectId semaphoreId, ProcessThreadId threadId, int releaseCount)
+    {
+        if (!_pools.TryGetValue(semaphoreId, out var pool) ||
+            !pool.LastReleases.Remove(threadId, out var released) ||
+            released.Length == 0)
+        {
+            return;
+        }
+
+        var retracted = new HashSet<VectorClock>(released.Take(releaseCount), ReferenceEqualityComparer.Instance);
+        var remaining = pool.ReleasedPermits.Where(permit => !retracted.Contains(permit)).ToArray();
+        pool.ReleasedPermits.Clear();
+        foreach (var permit in remaining)
+            pool.ReleasedPermits.Enqueue(permit);
     }
 
     public void Acquire(ProcessTrackedObjectId semaphoreId, ProcessThreadId threadId)
@@ -58,5 +80,6 @@ internal sealed class SemaphorePermitPools(ThreadClockTable threadClocks) : ITra
     {
         public int InitialPermits;
         public readonly Queue<VectorClock> ReleasedPermits = new();
+        public readonly Dictionary<ProcessThreadId, VectorClock[]> LastReleases = [];
     }
 }

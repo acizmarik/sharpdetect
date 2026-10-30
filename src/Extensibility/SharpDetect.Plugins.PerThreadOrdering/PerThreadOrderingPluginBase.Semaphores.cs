@@ -13,12 +13,6 @@ public abstract partial class PerThreadOrderingPluginBase
     private readonly Dictionary<ProcessTrackedObjectId, ProcessTrackedObjectId> _waitAsyncTaskToSemaphore = [];
     private readonly HashSet<(ModuleId, MdMethodDef)> _semaphoreAcquireMethods = [];
 
-    public event Action<SemaphoreCreatedArgs>? SemaphoreCreated;
-    public event Action<SemaphoreAcquireAttemptArgs>? SemaphoreAcquireAttempted;
-    public event Action<SemaphoreAcquireResultArgs>? SemaphoreAcquireReturned;
-    public event Action<SemaphoreReleaseArgs>? SemaphoreReleased;
-    public event Action<SemaphoreWaitAsyncArgs>? SemaphoreWaitAsyncReturned;
-
     private void RegisterSemaphoreBindings()
     {
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SemaphoreCreate, OnSemaphoreCreateEnter);
@@ -39,14 +33,14 @@ public abstract partial class PerThreadOrderingPluginBase
         using var _ = arguments;
         var initialCount = (int)arguments[1].Value.AsPrimitive;
         _waitHandleKinds[semaphoreId] = WaitHandleKind.Semaphore;
-        SemaphoreCreated?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, initialCount));
+        RaisePermitsCreated(new(id, args.ModuleId, args.MethodToken, semaphoreId, initialCount));
     }
 
     private void OnSemaphoreAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         _semaphoreAcquireMethods.Add((args.ModuleId, args.MethodToken));
         var (id, _, semaphoreId) = PushSynchronizationContext(metadata, args);
-        SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId));
+        RaisePermitAcquireAttempted(new(id, args.ModuleId, args.MethodToken, semaphoreId));
     }
 
     private void OnSemaphoreAcquireExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -62,7 +56,7 @@ public abstract partial class PerThreadOrderingPluginBase
     {
         var (id, arguments, semaphoreId) = PushSynchronizationContext(metadata, args);
         var releaseCount = (int)arguments[1].Value.AsPrimitive;
-        SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
+        RaisePermitsReleased(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
     }
 
     private void OnSemaphoreReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -106,6 +100,6 @@ public abstract partial class PerThreadOrderingPluginBase
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         using var frameLease = _callStackTracker.PopFrame(id, moduleId, functionToken);
         var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
-        SemaphoreAcquireReturned?.Invoke(new(id, moduleId, functionToken, semaphoreId, isSuccess));
+        RaisePermitAcquireReturned(new(id, moduleId, functionToken, semaphoreId, isSuccess));
     }
 }

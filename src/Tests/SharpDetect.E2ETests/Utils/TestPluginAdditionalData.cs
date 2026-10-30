@@ -25,15 +25,7 @@ public record TestPluginAdditionalData(
         new(
             MethodDescriptors: 
             [
-                ..MonitorMethodDescriptors.GetAllMethods()
-                    .Concat(LockMethodDescriptors.GetAllMethods())
-                    .Concat(ThreadMethodDescriptors.GetAllMethods())
-                    .Concat(TaskMethodDescriptors.GetAllMethods())
-                    .Concat(AsyncMethodBuilderMethodDescriptors.GetAllMethods())
-                    .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
-                    .Concat(WaitHandleMethodDescriptors.GetAllMethods())
-                    .Concat(LazyMethodDescriptors.GetAllMethods())
-                    .Concat(ConcurrentDictionaryMethodDescriptors.GetAllMethods())
+                ..SynchronizationMethodDescriptors.GetAllMethods()
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],
@@ -45,15 +37,7 @@ public record TestPluginAdditionalData(
         new(
             MethodDescriptors: 
             [
-                ..MonitorMethodDescriptors.GetAllMethods()
-                    .Concat(LockMethodDescriptors.GetAllMethods())
-                    .Concat(ThreadMethodDescriptors.GetAllMethods())
-                    .Concat(TaskMethodDescriptors.GetAllMethods())
-                    .Concat(AsyncMethodBuilderMethodDescriptors.GetAllMethods())
-                    .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
-                    .Concat(WaitHandleMethodDescriptors.GetAllMethods())
-                    .Concat(LazyMethodDescriptors.GetAllMethods())
-                    .Concat(ConcurrentDictionaryMethodDescriptors.GetAllMethods())
+                ..SynchronizationMethodDescriptors.GetAllMethods()
                     .Concat(FieldAccessDescriptors.GetAllMethods())
                     .Concat(TestMethodDescriptors.GetAllTestMethods())
             ],

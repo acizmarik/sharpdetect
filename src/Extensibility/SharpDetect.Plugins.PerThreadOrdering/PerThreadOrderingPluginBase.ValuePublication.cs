@@ -13,8 +13,6 @@ public abstract partial class PerThreadOrderingPluginBase
     private const int ContainerArgumentIndex = 0;
     private const int ValueArgumentIndex = 1;
 
-    public event Action<ValuePublicationArgs>? ValuePublication;
-
     private void RegisterValuePublicationBindings()
     {
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.ValuePublicationContainerEnter, OnValueContainerEntered);
@@ -81,16 +79,4 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private static ProcessTrackedObjectId GetCapturedObject(ProcessThreadId id, RuntimeArgumentList arguments, int position)
         => new(id.ProcessId, arguments[position].Value.AsTrackedObject);
-
-    private void RaiseValuePublication(
-        ProcessThreadId id,
-        ProcessTrackedObjectId container,
-        ProcessTrackedObjectId value,
-        ValuePublicationKind kind)
-    {
-        if (value.ObjectId.Value == 0 || container.ObjectId.Value == 0)
-            return;
-
-        ValuePublication?.Invoke(new ValuePublicationArgs(id, container, value, kind));
-    }
 }

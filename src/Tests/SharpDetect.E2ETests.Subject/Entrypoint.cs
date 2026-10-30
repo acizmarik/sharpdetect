@@ -650,6 +650,12 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Deadlock_ThreadJoinDeadlock):
                     Test_Deadlock_ThreadJoinDeadlock();
                     break;
+                case nameof(Test_Deadlock_SimpleDeadlock_UsingReaderWriterLockSlimWriteLocks):
+                    Test_Deadlock_SimpleDeadlock_UsingReaderWriterLockSlimWriteLocks();
+                    break;
+                case nameof(Test_NoDeadlock_ReaderWriterLockSlimReadLocksInOppositeOrder):
+                    Test_NoDeadlock_ReaderWriterLockSlimReadLocksInOppositeOrder();
+                    break;
                 case nameof(Test_Deadlock_MixedMonitorAndThreadJoinDeadlock):
                     Test_Deadlock_MixedMonitorAndThreadJoinDeadlock();
                     break;
@@ -1110,6 +1116,62 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject):
                     Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject();
+                    break;
+            }
+
+            // Synchronization primitives modeled through descriptors only
+            switch (args[0])
+            {
+                case nameof(Test_NoDataRace_ReaderWriterLockSlim_WriteThenRead):
+                    Test_NoDataRace_ReaderWriterLockSlim_WriteThenRead();
+                    break;
+                case nameof(Test_NoDataRace_ReaderWriterLockSlim_UpgradedWriteThenRead):
+                    Test_NoDataRace_ReaderWriterLockSlim_UpgradedWriteThenRead();
+                    break;
+                case nameof(Test_DataRace_ReaderWriterLockSlim_WritesUnderReadLock):
+                    Test_DataRace_ReaderWriterLockSlim_WritesUnderReadLock();
+                    break;
+                case nameof(Test_NoDataRace_ManualResetEventSlim_SetThenWait):
+                    Test_NoDataRace_ManualResetEventSlim_SetThenWait();
+                    break;
+                case nameof(Test_DataRace_ManualResetEventSlim_WriteAfterSet):
+                    Test_DataRace_ManualResetEventSlim_WriteAfterSet();
+                    break;
+                case nameof(Test_NoDataRace_CountdownEvent_EverySignalBeforeWait):
+                    Test_NoDataRace_CountdownEvent_EverySignalBeforeWait();
+                    break;
+                case nameof(Test_DataRace_CountdownEvent_WriteAfterSignal):
+                    Test_DataRace_CountdownEvent_WriteAfterSignal();
+                    break;
+                case nameof(Test_NoDataRace_Barrier_WriteBeforePhaseReadAfter):
+                    Test_NoDataRace_Barrier_WriteBeforePhaseReadAfter();
+                    break;
+                case nameof(Test_DataRace_Barrier_WriteAfterPhase):
+                    Test_DataRace_Barrier_WriteAfterPhase();
+                    break;
+                case nameof(Test_NoDataRace_ConcurrentQueue_PublishThenRead):
+                    Test_NoDataRace_ConcurrentQueue_PublishThenRead();
+                    break;
+                case nameof(Test_DataRace_ConcurrentQueue_PostPublicationWrite):
+                    Test_DataRace_ConcurrentQueue_PostPublicationWrite();
+                    break;
+                case nameof(Test_NoDataRace_ConcurrentStack_PublishThenRead):
+                    Test_NoDataRace_ConcurrentStack_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_ConcurrentBag_PublishThenRead):
+                    Test_NoDataRace_ConcurrentBag_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_Channel_PublishThenRead):
+                    Test_NoDataRace_Channel_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_ThreadPoolQueueUserWorkItem_PublishThenRead):
+                    Test_NoDataRace_ThreadPoolQueueUserWorkItem_PublishThenRead();
+                    break;
+                case nameof(Test_DataRace_ThreadPoolQueueUserWorkItem_WriteAfterQueue):
+                    Test_DataRace_ThreadPoolQueueUserWorkItem_WriteAfterQueue();
+                    break;
+                case nameof(Test_NoDataRace_Semaphore_FullReleaseDoesNotShiftPermits):
+                    Test_NoDataRace_Semaphore_FullReleaseDoesNotShiftPermits();
                     break;
             }
 

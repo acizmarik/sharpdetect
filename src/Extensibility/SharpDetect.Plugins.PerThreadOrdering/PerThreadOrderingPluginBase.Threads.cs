@@ -14,11 +14,6 @@ public abstract partial class PerThreadOrderingPluginBase
     private readonly ThreadObjectRegistry _threadObjectRegistry = new();
     private readonly Dictionary<ProcessTrackedObjectId, List<(ProcessThreadId JoiningThread, ModuleId ModuleId, MdMethodDef MethodToken)>> _pendingJoinAttempts = [];
 
-    public event Action<ThreadStartingArgs>? ThreadStarting;
-    public event Action<ThreadStartArgs>? ThreadStarted;
-    public event Action<ThreadJoinAttemptArgs>? ThreadJoinAttempted;
-    public event Action<ThreadJoinResultArgs>? ThreadJoinReturned;
-
     private void RegisterThreadBindings()
     {
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.ThreadStartCore, OnThreadStartCore);
@@ -84,27 +79,23 @@ public abstract partial class PerThreadOrderingPluginBase
             return;
         }
 
-        ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, moduleId, methodToken, isSuccess));
+        RaiseThreadJoinReturned(new ThreadJoinResultArgs(id, joinedThreadId, moduleId, methodToken, isSuccess));
     }
 
-    protected virtual void ProcessThreadStartCore(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
-    {
-        ThreadStarting?.Invoke(new ThreadStartingArgs(id, threadObjectId));
-    }
+    private void ProcessThreadStartCore(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
+        => RaiseForkRequested(id, threadObjectId, ForkKind.Thread);
 
-    protected virtual void ProcessThreadStartCallback(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
-    {
-        ThreadStarted?.Invoke(new ThreadStartArgs(id, threadObjectId));
-    }
+    private void ProcessThreadStartCallback(ProcessThreadId id, ProcessTrackedObjectId threadObjectId)
+        => RaiseForkStarted(id, threadObjectId, ForkKind.Thread);
 
-    protected virtual void ProcessThreadJoinAttempt(
+    private void ProcessThreadJoinAttempt(
         ProcessThreadId id,
         ProcessTrackedObjectId joinedThreadObjectId,
         ModuleId moduleId,
         MdMethodDef methodToken)
     {
         if (_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joiningThreadId))
-            ThreadJoinAttempted?.Invoke(new ThreadJoinAttemptArgs(id, joiningThreadId, moduleId, methodToken));
+            RaiseThreadJoinAttempted(new ThreadJoinAttemptArgs(id, joiningThreadId, moduleId, methodToken));
         else
         {
             if (!_pendingJoinAttempts.TryGetValue(joinedThreadObjectId, out var pending))

@@ -43,27 +43,27 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1)); // releases shadow
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1)); // releases shadow
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.FieldRead(T1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
         var kinds = recorder.Dispatched.Select(ClassifyDispatched).ToArray();
         
         // Assert
         Assert.Equal(new[]
         {
-            (T1, RecordedEventType.MonitorLockAcquire),
-            (T2, RecordedEventType.MonitorLockAcquire),
-            (T2, RecordedEventType.MonitorLockAcquireResult),
+            (T1, RecordedEventType.LockAcquire),
+            (T2, RecordedEventType.LockAcquire),
+            (T2, RecordedEventType.LockAcquireResult),
             (T2, RecordedEventType.InstanceFieldRead),
-            (T2, RecordedEventType.MonitorLockRelease),
-            (T1, RecordedEventType.MonitorLockAcquireResult),
+            (T2, RecordedEventType.LockRelease),
+            (T1, RecordedEventType.LockAcquireResult),
             (T1, RecordedEventType.InstanceFieldRead),
-            (T2, RecordedEventType.MonitorLockReleaseResult),
+            (T2, RecordedEventType.LockReleaseResult),
         }, kinds);
     }
 
@@ -74,14 +74,14 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
 
         // Assert
         Assert.Equal(8, recorder.Dispatched.Count);
@@ -95,14 +95,14 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockTryAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.MonitorLockAcquireResult, success: false));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockTryAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T2, RecordedEventType.LockAcquireResult, success: false));
 
         // Assert
         Assert.Equal(4, recorder.Dispatched.Count);
-        Assert.Equal((T2, RecordedEventType.MonitorLockAcquireResult), ClassifyDispatched(recorder.Dispatched[^1]));
+        Assert.Equal((T2, RecordedEventType.LockAcquireResult), ClassifyDispatched(recorder.Dispatched[^1]));
     }
 
     [Fact]
@@ -112,18 +112,18 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [1st in wake queue]
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult)); // deferred [2nd in wake queue]
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1)); // wakes T2
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
-        var t1ReleaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T1, RecordedEventType.MonitorLockRelease));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [1st in wake queue]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult)); // deferred [2nd in wake queue]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1)); // wakes T2
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
+        var t1ReleaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T1, RecordedEventType.LockRelease));
         var firstT2Acq = recorder.Dispatched.FindIndex(e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
 
         // Assert
         Assert.True(firstT2Acq > t1ReleaseEnter, "T2's acquire result should dispatch after T1's release enter");
@@ -137,20 +137,20 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L2));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [waiting on T1 to release L1]
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L2));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [waiting on T3 to release L2]
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult)); // wakes T2 to acquire L1
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [waiting on T1 to release L1]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [waiting on T3 to release L2]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult)); // wakes T2 to acquire L1
         var t2Acquires = recorder.Dispatched.Where(e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e)).ToList();
         Assert.Single(t2Acquires);
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockRelease, L2));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockReleaseResult)); // wakes T2 to acquire L2
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockRelease, L2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockReleaseResult)); // wakes T2 to acquire L2
         t2Acquires = recorder.Dispatched.Where(e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e)).ToList();
         Assert.Equal(2, t2Acquires.Count);
     }
@@ -204,8 +204,8 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskStart, Task1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task1));
         host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskJoinFinish)); // deferred
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorLockAcquireResult)); // must drop L1 target
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.LockAcquireResult)); // must drop L1 target
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.TaskComplete));
         Assert.Contains(recorder.Dispatched, e =>
             e.Metadata.Tid.Value == T2 &&
@@ -219,11 +219,11 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.LockAcquireResult));
     }
 
     [Fact]
@@ -236,8 +236,8 @@ public class ReorderingPluginHostTests
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.TaskStart, Task1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskJoinStart, Task1));
         host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskJoinFinish)); // deferred
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
         host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorWaitResult)); // must drop L1 target
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.TaskComplete));
@@ -253,19 +253,19 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
         host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorWaitResult)); // reacquires for T1, then throws
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult));
         Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
     }
 
@@ -276,16 +276,16 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1)); // releases shadow
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1)); // releases shadow
         host.ProcessEvent(SyncEventBuilder.Unwound(T1, RecordedEventType.MonitorWaitResult)); // reacquires immediately
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
         Assert.Equal(8, recorder.Dispatched.Count);
-        var releaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.MonitorLockRelease));
+        var releaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.LockRelease));
         var waitResult = recorder.Dispatched.FindIndex(e =>
             e.Metadata.Tid.Value == T1 &&
             (e.EventArgs as MethodUnwoundRecordedEvent)?.Interpretation == (ushort)RecordedEventType.MonitorWaitResult);
@@ -324,13 +324,13 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.MonitorWaitResult, true));
 
         // Assert
@@ -346,18 +346,18 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1)); // releases shadow
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1)); // releases shadow
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.MonitorWaitResult, true)); // reacquires immediately
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
 
         // Assert
         Assert.Equal(8, recorder.Dispatched.Count);
-        var releaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.MonitorLockRelease));
+        var releaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.LockRelease));
         var waitResult = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T1, RecordedEventType.MonitorWaitResult));
         Assert.True(waitResult > releaseEnter, "T1's wait result should dispatch after T2's release enter");
     }
@@ -369,18 +369,18 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1)); // releases shadow
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1)); // releases shadow
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.MonitorWaitResult, false)); // wait timeout still reacquires immediately
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
 
         // Assert
         Assert.Equal(8, recorder.Dispatched.Count);
-        var releaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.MonitorLockRelease));
+        var releaseEnter = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T2, RecordedEventType.LockRelease));
         var waitResult = recorder.Dispatched.FindIndex(e => ClassifyDispatched(e) == (T1, RecordedEventType.MonitorWaitResult));
         Assert.True(waitResult > releaseEnter, "T1's wait result should dispatch after T2's release enter");
     }
@@ -392,19 +392,19 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.MonitorWaitResult, false));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult));
         Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
     }
 
@@ -415,16 +415,16 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred
         host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T1));
 
         // Assert
         Assert.Contains(recorder.Dispatched, e =>
             e.Metadata.Tid.Value == T2 &&
-            (e.EventArgs as MethodExitRecordedEvent)?.Interpretation == (ushort)RecordedEventType.MonitorLockAcquireResult);
+            (e.EventArgs as MethodExitRecordedEvent)?.Interpretation == (ushort)RecordedEventType.LockAcquireResult);
     }
 
     [Fact]
@@ -826,23 +826,23 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.MonitorWaitResult, true));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult));
         Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
     }
 
@@ -853,18 +853,18 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorWaitAttempt, L1));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
         host.ProcessEvent(SyncEventBuilder.ExitWithSuccess(T1, RecordedEventType.MonitorWaitResult, false));
         Assert.Contains(recorder.Dispatched, e =>
             e.Metadata.Tid.Value == T1 && ClassifyDispatched(e) == (T1, RecordedEventType.MonitorWaitAttempt));
         Assert.Contains(recorder.Dispatched, e =>
             e.Metadata.Tid.Value == T1 && ClassifyDispatched(e) == (T1, RecordedEventType.MonitorWaitResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult));
 
         // Assert
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
@@ -877,12 +877,12 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorPulseOneAttempt, L1));
         host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorPulseOneResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
 
         // Assert
         Assert.Equal(6, recorder.Dispatched.Count);
@@ -945,15 +945,15 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [1st in wake queue]
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult)); // deferred [2nd in wake queue]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [1st in wake queue]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult)); // deferred [2nd in wake queue]
         host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T2, TReaper)); // dead before being woken; destroy fires from a different thread
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult)); // would have woken T2 — must now wake T3
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult)); // would have woken T2 — must now wake T3
 
         // Assert
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
@@ -1029,10 +1029,10 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred behind T2's BlockedOn
         host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T1));
 
@@ -1043,8 +1043,8 @@ public class ReorderingPluginHostTests
             .ToArray();
         Assert.Equal(new[]
         {
-            (T2, RecordedEventType.MonitorLockAcquire),
-            (T2, RecordedEventType.MonitorLockAcquireResult),
+            (T2, RecordedEventType.LockAcquire),
+            (T2, RecordedEventType.LockAcquireResult),
             (T2, RecordedEventType.InstanceFieldRead),
         }, t2Events);
     }
@@ -1056,10 +1056,10 @@ public class ReorderingPluginHostTests
         var host = Build(out _, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred behind T2's BlockedOn
         host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T2, TReaper)); // destroyed while still blocked with a pending queue
 
@@ -1075,12 +1075,12 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L2));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // T2 blocked on L1
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L2));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // T2 blocked on L1
         host.ProcessEvent(SyncEventBuilder.ThreadDestroy(T2));
         host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L2)); // L2 collected once T2 is gone
 
@@ -1097,10 +1097,10 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // T2 blocked on L1
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // T2 blocked on L1
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.ThreadStartCore, T3)); // deferred in T2's pending queue
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.ThreadStartCallback, T3)); // child defers awaiting parent's core
         Assert.DoesNotContain(recorder.Dispatched, e => ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
@@ -1118,10 +1118,10 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
         Assert.Equal(1, host.ShadowLockCount);
         host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1));
 
@@ -1177,10 +1177,10 @@ public class ReorderingPluginHostTests
         var host = Build(out _, out _);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTargetCountAndCapacity(T1, RecordedEventType.SemaphoreCreate, S1, 1, 1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.TaskStart, Task1));
         host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.TaskComplete));
@@ -1202,10 +1202,10 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred behind T2's BlockedOn
         host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1)); // owner's release was never observed
 
@@ -1216,8 +1216,8 @@ public class ReorderingPluginHostTests
             .ToArray();
         Assert.Equal(new[]
         {
-            (T2, RecordedEventType.MonitorLockAcquire),
-            (T2, RecordedEventType.MonitorLockAcquireResult),
+            (T2, RecordedEventType.LockAcquire),
+            (T2, RecordedEventType.LockAcquireResult),
             (T2, RecordedEventType.InstanceFieldRead),
         }, t2Events);
     }
@@ -1267,10 +1267,10 @@ public class ReorderingPluginHostTests
         var host = Build(out _, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [1]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [1]
         for (var i = 0; i < 63; i++)
             host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // deferred [2..64]
 
@@ -1285,8 +1285,8 @@ public class ReorderingPluginHostTests
         var host = Build(out _, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.GarbageCollected(TReaper, L1));
 
         // Assert
@@ -1372,9 +1372,9 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.ThreadStartCore, T3));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.ThreadStartCallback, T3));
         Assert.Contains(recorder.Dispatched, e =>
@@ -1393,18 +1393,18 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.ThreadStartCore, T3));
         host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.ThreadStartCallback, T3));
         Assert.DoesNotContain(recorder.Dispatched, e =>
             ClassifyDispatched(e) == (T2, RecordedEventType.ThreadStartCore));
         Assert.DoesNotContain(recorder.Dispatched, e =>
             ClassifyDispatched(e) == (T3, RecordedEventType.ThreadStartCallback));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
         Assert.Contains(recorder.Dispatched, e =>
             ClassifyDispatched(e) == (T2, RecordedEventType.ThreadStartCore));
         Assert.Contains(recorder.Dispatched, e =>
@@ -1421,14 +1421,14 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockTryAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.MonitorLockAcquireResult, success: false));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockTryAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.LockAcquireResult, success: false));
 
         // Assert
         Assert.Equal(4, recorder.Dispatched.Count);
-        Assert.Equal((T2, RecordedEventType.MonitorLockAcquireResult), ClassifyDispatched(recorder.Dispatched[^1]));
+        Assert.Equal((T2, RecordedEventType.LockAcquireResult), ClassifyDispatched(recorder.Dispatched[^1]));
     }
 
     [Fact]
@@ -1438,14 +1438,14 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockTryAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.MonitorLockAcquireResult, success: false));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockTryAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.LockAcquireResult, success: false));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult));
 
         // Assert
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
@@ -1458,25 +1458,25 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockTryAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.MonitorLockAcquireResult, success: true)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockTryAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.ExitWithByRefSuccess(T2, RecordedEventType.LockAcquireResult, success: true)); // deferred
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // deferred
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1)); // wakes T2
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1)); // wakes T2
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
 
         // Assert
         var kinds = recorder.Dispatched.Select(ClassifyDispatched).ToArray();
         Assert.Equal(new[]
         {
-            (T1, RecordedEventType.MonitorLockAcquire),
-            (T1, RecordedEventType.MonitorLockAcquireResult),
-            (T2, RecordedEventType.MonitorLockTryAcquire),
-            (T1, RecordedEventType.MonitorLockRelease),
-            (T2, RecordedEventType.MonitorLockAcquireResult),
+            (T1, RecordedEventType.LockAcquire),
+            (T1, RecordedEventType.LockAcquireResult),
+            (T2, RecordedEventType.LockTryAcquire),
+            (T1, RecordedEventType.LockRelease),
+            (T2, RecordedEventType.LockAcquireResult),
             (T2, RecordedEventType.InstanceFieldRead),
-            (T1, RecordedEventType.MonitorLockReleaseResult),
+            (T1, RecordedEventType.LockReleaseResult),
         }, kinds);
     }
 
@@ -1487,13 +1487,13 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [T1 owns]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [T1 owns]
         host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // also deferred
         Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1)); // wakes T2; ReleaseResult never arrives
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1)); // wakes T2; ReleaseResult never arrives
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e));
         Assert.Contains(recorder.Dispatched, e => ClassifyDispatched(e) == (T2, RecordedEventType.InstanceFieldRead));
     }
@@ -1505,16 +1505,16 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult)); // depth 2
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1)); // depth 2 -> 1
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult)); // depth 2
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1)); // depth 2 -> 1
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
         Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1)); // depth 1 -> 0, wakes T2
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1)); // depth 1 -> 0, wakes T2
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e));
     }
 
@@ -1525,14 +1525,14 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockRelease, L1)); // non-owner; must not free the shadow
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockReleaseResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.MonitorLockAcquireResult)); // deferred [T1 still owns]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockRelease, L1)); // non-owner; must not free the shadow
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T3, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T3, RecordedEventType.LockAcquireResult)); // deferred [T1 still owns]
         Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockRelease, L1)); // owner releases, wakes T3
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockRelease, L1)); // owner releases, wakes T3
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T3 && IsAcquireResult(e));
     }
 
@@ -1543,14 +1543,14 @@ public class ReorderingPluginHostTests
         var host = Build(out var recorder);
 
         // Act & Assert
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndFlag(T1, RecordedEventType.MonitorLockRelease, L1, flag: false)); // lockTaken == false
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockReleaseResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [shadow still owned]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndFlag(T1, RecordedEventType.LockRelease, L1, flag: false)); // lockTaken == false
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockReleaseResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [shadow still owned]
         Assert.DoesNotContain(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndFlag(T1, RecordedEventType.MonitorLockRelease, L1, flag: true)); // wakes T2
+        host.ProcessEvent(SyncEventBuilder.EnterWithTargetAndFlag(T1, RecordedEventType.LockRelease, L1, flag: true)); // wakes T2
         Assert.Contains(recorder.Dispatched, e => e.Metadata.Tid.Value == T2 && IsAcquireResult(e));
     }
 
@@ -1561,10 +1561,10 @@ public class ReorderingPluginHostTests
         var host = Build(out _, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred, never delivered
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred, never delivered
         host.Dispose();
 
         // Assert
@@ -1578,10 +1578,10 @@ public class ReorderingPluginHostTests
         var host = Build(out _, out var logger);
 
         // Act
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.MonitorLockAcquireResult));
-        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.MonitorLockAcquire, L1));
-        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.MonitorLockAcquireResult)); // deferred [1]
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T1, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T1, RecordedEventType.LockAcquireResult));
+        host.ProcessEvent(SyncEventBuilder.EnterWithTarget(T2, RecordedEventType.LockAcquire, L1));
+        host.ProcessEvent(SyncEventBuilder.Exit(T2, RecordedEventType.LockAcquireResult)); // deferred [1]
         for (var i = 0; i < 255; i++)
             host.ProcessEvent(SyncEventBuilder.FieldRead(T2)); // deferred [2..256]
 
@@ -1612,12 +1612,12 @@ public class ReorderingPluginHostTests
             case MethodExitRecordedEvent exit:
             {
                 var t = (RecordedEventType)exit.Interpretation;
-                return t is RecordedEventType.MonitorLockAcquireResult or RecordedEventType.LockAcquireResult;
+                return t is RecordedEventType.LockAcquireResult or RecordedEventType.LockAcquireResult;
             }
             case MethodExitWithArgumentsRecordedEvent exitArg:
             {
                 var t = (RecordedEventType)exitArg.Interpretation;
-                return t is RecordedEventType.MonitorLockAcquireResult or RecordedEventType.LockAcquireResult;
+                return t is RecordedEventType.LockAcquireResult or RecordedEventType.LockAcquireResult;
             }
             default:
                 return false;

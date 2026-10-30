@@ -101,8 +101,6 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 return inner.ProcessEvent(recordedEvent);
             }
 
-            case RecordedEventType.MonitorLockAcquire:
-            case RecordedEventType.MonitorLockTryAcquire:
             case RecordedEventType.LockAcquire:
             case RecordedEventType.LockTryAcquire:
             case RecordedEventType.SemaphoreAcquire:
@@ -112,7 +110,6 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
                 thread.SyncTargetStack.Push(ReadTargetId(enter.ArgumentValues, tid.ProcessId));
                 return inner.ProcessEvent(recordedEvent);
 
-            case RecordedEventType.MonitorLockRelease:
             case RecordedEventType.LockRelease:
             {
                 var lockId = ReadTargetId(enter.ArgumentValues, tid.ProcessId);
@@ -200,11 +197,9 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         var kind = (RecordedEventType)interpretation;
         switch (kind)
         {
-            case RecordedEventType.MonitorLockAcquireResult:
             case RecordedEventType.LockAcquireResult:
                 return HandleAcquireResult(recordedEvent, tid, thread, ReadBoolOrDefault(returnValue, byRefArgumentValues, true));
 
-            case RecordedEventType.MonitorLockReleaseResult:
             case RecordedEventType.LockReleaseResult:
                 return inner.ProcessEvent(recordedEvent);
 
@@ -243,7 +238,6 @@ internal sealed class ReorderingPluginHost(IPluginHost inner, ILogger<Reordering
         // The instrumented method exited via an exception
         switch ((RecordedEventType)interpretation)
         {
-            case RecordedEventType.MonitorLockAcquireResult:
             case RecordedEventType.LockAcquireResult:
             case RecordedEventType.SemaphoreAcquireResult:
             case RecordedEventType.SemaphoreWaitAsyncResult:

@@ -51,6 +51,31 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task DeadlockPlugin_CanDetectReaderWriterLockSlimWriteLockDeadlock(string sdk)
+        => CanDetectDeadlock("Test_Deadlock_SimpleDeadlock_UsingReaderWriterLockSlimWriteLocks", sdk);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task DeadlockPlugin_ReaderWriterLockSlimReadLocksInOppositeOrder_IsNotADeadlock(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_NoDeadlock_ReaderWriterLockSlimReadLocksInOppositeOrder")
+            .WithExternalPlugin(ExternalDeadlockPluginTypeName)
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<IPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
+
+        // Assert
+        Assert.Null(report);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public Task DeadlockPlugin_CanDetectThreadJoinDeadlock(string sdk)
         => CanDetectDeadlock("Test_Deadlock_ThreadJoinDeadlock", sdk);
 
