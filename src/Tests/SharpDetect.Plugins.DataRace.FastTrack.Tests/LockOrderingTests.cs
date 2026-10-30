@@ -148,4 +148,83 @@ public class LockOrderingTests
         // Assert
         Assert.False(_harness.WriteIsRace(successor, field, instance: null));
     }
+
+    [Fact]
+    public void SharedHolders_AreNotOrderedWithEachOther()
+    {
+        // Arrange
+        var firstReader = _harness.NewThread();
+        var secondReader = _harness.NewThread();
+        var lockObject = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordLockAcquired(firstReader, lockObject, isShared: true);
+        _harness.Write(firstReader, field, instance: null);
+        _harness.Detector.RecordLockReleased(firstReader, lockObject, isShared: true);
+        _harness.Detector.RecordLockAcquired(secondReader, lockObject, isShared: true);
+
+        // Assert
+        Assert.True(_harness.WriteIsRace(secondReader, field, instance: null));
+    }
+
+    [Fact]
+    public void ExclusiveRelease_OrdersTheNextSharedHolder()
+    {
+        // Arrange
+        var writer = _harness.NewThread();
+        var reader = _harness.NewThread();
+        var lockObject = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordLockAcquired(writer, lockObject);
+        _harness.Write(writer, field, instance: null);
+        _harness.Detector.RecordLockReleased(writer, lockObject);
+        _harness.Detector.RecordLockAcquired(reader, lockObject, isShared: true);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(reader, field, instance: null));
+    }
+
+    [Fact]
+    public void SharedRelease_OrdersTheNextExclusiveHolder()
+    {
+        // Arrange
+        var reader = _harness.NewThread();
+        var writer = _harness.NewThread();
+        var lockObject = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordLockAcquired(reader, lockObject, isShared: true);
+        _harness.Read(reader, field, instance: null);
+        _harness.Detector.RecordLockReleased(reader, lockObject, isShared: true);
+        _harness.Detector.RecordLockAcquired(writer, lockObject);
+
+        // Assert
+        Assert.False(_harness.WriteIsRace(writer, field, instance: null));
+    }
+
+    [Fact]
+    public void SharedRelease_IsVisibleToSharedHoldersOnlyThroughALaterExclusiveRelease()
+    {
+        // Arrange
+        var firstReader = _harness.NewThread();
+        var writer = _harness.NewThread();
+        var secondReader = _harness.NewThread();
+        var lockObject = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordLockAcquired(firstReader, lockObject, isShared: true);
+        _harness.Write(firstReader, field, instance: null);
+        _harness.Detector.RecordLockReleased(firstReader, lockObject, isShared: true);
+        _harness.Detector.RecordLockAcquired(writer, lockObject);
+        _harness.Detector.RecordLockReleased(writer, lockObject);
+        _harness.Detector.RecordLockAcquired(secondReader, lockObject, isShared: true);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(secondReader, field, instance: null));
+    }
 }

@@ -89,8 +89,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: true,
             arguments: [ObjectRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockAcquire,
+            RecordedEventType.LockAcquireResult));
 
     private static MethodDescriptor CreateEnterDescriptor_v10() => new(
         "Enter",
@@ -103,8 +103,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockAcquire,
+            RecordedEventType.LockAcquireResult));
 
     private static MethodDescriptor CreateEnterWithLockTakenDescriptor_v10() => new(
         "Enter",
@@ -118,8 +118,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg, BoolRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockAcquire,
+            RecordedEventType.LockAcquireResult));
 
     private static MethodDescriptor CreateEnterWithLockTakenDescriptor_v8() => new(
         "Enter",
@@ -133,8 +133,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: true,
             arguments: [ObjectRefArg, BoolRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockAcquire,
+            RecordedEventType.LockAcquireResult));
     
     private static MethodDescriptor CreateReliableEnterTimeoutDescriptor_v8() => new(
         "ReliableEnterTimeout",
@@ -149,8 +149,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: true,
             arguments: [ObjectRefArg, BoolRefArgAt2],
             returnValue: null,
-            RecordedEventType.MonitorLockTryAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockTryAcquire,
+            RecordedEventType.LockAcquireResult));
 
     // TryEnter method descriptors
     private static MethodDescriptor CreateTryEnterDescriptor_v10() => new(
@@ -164,8 +164,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg],
             returnValue: BoolReturnValue,
-            RecordedEventType.MonitorLockTryAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockTryAcquire,
+            RecordedEventType.LockAcquireResult));
 
     private static MethodDescriptor CreateTryEnterTimeoutDescriptor_v10() => new(
         "TryEnter",
@@ -179,8 +179,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg],
             returnValue: BoolReturnValue,
-            RecordedEventType.MonitorLockTryAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockTryAcquire,
+            RecordedEventType.LockAcquireResult));
 
     private static MethodDescriptor CreateTryReliableEnterDescriptor_v10() => new(
         "TryEnter",
@@ -194,8 +194,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg, BoolRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockTryAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockTryAcquire,
+            RecordedEventType.LockAcquireResult));
 
     private static MethodDescriptor CreateTryReliableEnterTimeoutDescriptor_v10() => new(
         "TryEnter",
@@ -210,8 +210,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg, BoolRefArgAt2],
             returnValue: null,
-            RecordedEventType.MonitorLockTryAcquire,
-            RecordedEventType.MonitorLockAcquireResult));
+            RecordedEventType.LockTryAcquire,
+            RecordedEventType.LockAcquireResult));
 
     // Exit method descriptors
     private static MethodDescriptor CreateExitDescriptor_v8() => new(
@@ -225,8 +225,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: true,
             arguments: [ObjectRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockRelease,
-            RecordedEventType.MonitorLockReleaseResult));
+            RecordedEventType.LockRelease,
+            RecordedEventType.LockReleaseResult));
 
     private static MethodDescriptor CreateExitDescriptor_v10() => new(
         "Exit",
@@ -239,8 +239,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockRelease,
-            RecordedEventType.MonitorLockReleaseResult));
+            RecordedEventType.LockRelease,
+            RecordedEventType.LockReleaseResult));
     
     private static MethodDescriptor CreateExitIfLockTaken_V10() => new(
         "ExitIfLockTaken",
@@ -254,8 +254,8 @@ public static class MonitorMethodDescriptors
             injectManagedWrapper: false,
             arguments: [ObjectRefArg, BoolRefArg],
             returnValue: null,
-            RecordedEventType.MonitorLockRelease,
-            RecordedEventType.MonitorLockReleaseResult));
+            RecordedEventType.LockRelease,
+            RecordedEventType.LockReleaseResult));
 
     // Signal method descriptors
     private static MethodDescriptor CreatePulseDescriptor() => new(

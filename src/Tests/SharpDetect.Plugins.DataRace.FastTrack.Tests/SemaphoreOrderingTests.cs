@@ -148,4 +148,66 @@ public class SemaphoreOrderingTests
         _harness.Detector.RecordSemaphoreAcquired(secondAcquirer, semaphore);
         Assert.False(_harness.ReadIsRace(secondAcquirer, field, instance: null));
     }
+
+    [Fact]
+    public void RetractedRelease_DoesNotOrderTheNextAcquirer()
+    {
+        // Arrange
+        var releaser = _harness.NewThread();
+        var acquirer = _harness.NewThread();
+        var semaphore = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordSemaphoreCreated(semaphore, initialCount: 0);
+        _harness.Write(releaser, field, instance: null);
+        _harness.Detector.RecordSemaphoreReleased(releaser, semaphore, releaseCount: 1);
+        _harness.Detector.RecordSemaphoreReleaseRetracted(releaser, semaphore, releaseCount: 1);
+        _harness.Detector.RecordSemaphoreAcquired(acquirer, semaphore);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(acquirer, field, instance: null));
+    }
+
+    [Fact]
+    public void RetractedRelease_DoesNotShiftLaterPermitsToTheWrongAcquirer()
+    {
+        // Arrange
+        var phantomReleaser = _harness.NewThread();
+        var releaser = _harness.NewThread();
+        var acquirer = _harness.NewThread();
+        var semaphore = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordSemaphoreCreated(semaphore, initialCount: 0);
+        _harness.Detector.RecordSemaphoreReleased(phantomReleaser, semaphore, releaseCount: 1);
+        _harness.Write(releaser, field, instance: null);
+        _harness.Detector.RecordSemaphoreReleased(releaser, semaphore, releaseCount: 1);
+        _harness.Detector.RecordSemaphoreReleaseRetracted(phantomReleaser, semaphore, releaseCount: 1);
+        _harness.Detector.RecordSemaphoreAcquired(acquirer, semaphore);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(acquirer, field, instance: null));
+    }
+
+    [Fact]
+    public void RetractingAnAlreadyAcquiredRelease_KeepsTheEdgeItGave()
+    {
+        // Arrange
+        var releaser = _harness.NewThread();
+        var acquirer = _harness.NewThread();
+        var semaphore = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordSemaphoreCreated(semaphore, initialCount: 0);
+        _harness.Write(releaser, field, instance: null);
+        _harness.Detector.RecordSemaphoreReleased(releaser, semaphore, releaseCount: 1);
+        _harness.Detector.RecordSemaphoreAcquired(acquirer, semaphore);
+        _harness.Detector.RecordSemaphoreReleaseRetracted(releaser, semaphore, releaseCount: 1);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(acquirer, field, instance: null));
+    }
 }

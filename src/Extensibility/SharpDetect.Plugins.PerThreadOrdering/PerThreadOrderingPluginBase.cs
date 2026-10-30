@@ -32,6 +32,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
         RegisterMonitorBindings();
         RegisterSemaphoreBindings();
         RegisterWaitHandleBindings();
+        RegisterSignalBindings();
         RegisterThreadBindings();
         RegisterTaskBindings();
         RegisterAsyncContinuationBindings();
@@ -97,18 +98,39 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
 
         switch ((RecordedEventType)args.Interpretation)
         {
-            case RecordedEventType.MonitorLockAcquireResult:
             case RecordedEventType.LockAcquireResult:
             {
                 var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
-                LockAcquireReturned?.Invoke(new(id, args.ModuleId, args.MethodToken, lockId, IsSuccess: false));
+                RaiseLockAcquireReturned(new(id, args.ModuleId, args.MethodToken, lockId, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.SharedLockAcquireResult:
+            {
+                var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                RaiseLockAcquireReturned(new(id, args.ModuleId, args.MethodToken, lockId, IsSuccess: false, IsShared: true));
+                break;
+            }
+
+            case RecordedEventType.SignalWaitResult:
+            {
+                var signalId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                RaiseSignalWaitReturned(new(id, args.ModuleId, args.MethodToken, signalId, IsAutoReset: false, IsSuccess: false));
                 break;
             }
 
             case RecordedEventType.SemaphoreAcquireResult:
             {
                 var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
-                SemaphoreAcquireReturned?.Invoke(new(id, args.ModuleId, args.MethodToken, semaphoreId, IsSuccess: false));
+                RaisePermitAcquireReturned(new(id, args.ModuleId, args.MethodToken, semaphoreId, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.SemaphoreReleaseResult:
+            {
+                var semaphoreId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                var releaseCount = (int)frame.Arguments![1].Value.AsPrimitive;
+                RaisePermitsReleaseRetracted(new(id, args.ModuleId, args.MethodToken, semaphoreId, releaseCount));
                 break;
             }
 
@@ -155,8 +177,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
             case RecordedEventType.MonitorWaitResult:
             {
                 var lockId = ExtractSynchronizationObjectIdFromFrame(id, frame);
-                OnAfterWaitReturn(id, lockId);
-                ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, args.ModuleId, args.MethodToken, lockId, IsSuccess: false));
+                RaiseObjectWaitReturned(new ObjectWaitResultArgs(id, args.ModuleId, args.MethodToken, lockId, IsSuccess: false));
                 break;
             }
 
@@ -164,7 +185,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
             {
                 var joinedThreadObjectId = new ProcessTrackedObjectId(id.ProcessId, frame.Arguments![0].Value.AsTrackedObject);
                 if (_threadObjectRegistry.TryGetThreadId(joinedThreadObjectId, out var joinedThreadId))
-                    ThreadJoinReturned?.Invoke(new ThreadJoinResultArgs(id, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: false));
+                    RaiseThreadJoinReturned(new ThreadJoinResultArgs(id, joinedThreadId, args.ModuleId, args.MethodToken, IsSuccess: false));
                 break;
             }
 

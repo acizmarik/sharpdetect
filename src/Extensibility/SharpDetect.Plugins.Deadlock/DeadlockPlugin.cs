@@ -72,10 +72,7 @@ public partial class DeadlockPlugin : PerThreadOrderingPluginBase, IPlugin
                        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
             additionalData: new
             {
-                MethodDescriptors = MonitorMethodDescriptors.GetAllMethods().Concat(
-                    LockMethodDescriptors.GetAllMethods()).Concat(
-                    ThreadMethodDescriptors.GetAllMethods())
-                    .ToImmutableArray(),
+                MethodDescriptors = SynchronizationMethodDescriptors.GetLockMethods().ToImmutableArray(),
                 TypeInjectionDescriptors = Array.Empty<TypeInjectionDescriptor>(),
                 EnableFieldsAccessInstrumentation = false
             },
@@ -105,6 +102,9 @@ public partial class DeadlockPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnLockAcquireAttempted(LockAcquireAttemptArgs args)
     {
+        if (args.IsShared)
+            return;
+
         var id = args.ProcessThreadId;
         _concurrencyContext.RecordLockAcquireCalled(id, args.LockId);
         CheckForDeadlocks(id.ProcessId);
@@ -112,12 +112,18 @@ public partial class DeadlockPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnLockAcquireReturned(LockAcquireResultArgs args)
     {
+        if (args.IsShared)
+            return;
+
         var id = args.ProcessThreadId;
         _concurrencyContext.RecordLockAcquireReturned(id, args.LockId, args.IsSuccess);
     }
 
     private void OnLockReleased(LockReleaseArgs args)
     {
+        if (args.IsShared)
+            return;
+
         var id = args.ProcessThreadId;
         _concurrencyContext.RecordLockReleaseReturned(id, args.LockId);
     }

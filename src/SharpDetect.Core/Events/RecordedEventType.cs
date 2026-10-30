@@ -69,11 +69,6 @@ public enum RecordedEventType : ushort
     MethodUnwound = 90,
 
     /* Synchronization */
-    MonitorLockAcquire = 100,
-    MonitorLockTryAcquire = 101,
-    MonitorLockAcquireResult = 102,
-    MonitorLockRelease = 103,
-    MonitorLockReleaseResult = 104,
     MonitorPulseOneAttempt = 105,
     MonitorPulseOneResult = 106,
     MonitorPulseAllAttempt = 107,
@@ -112,6 +107,16 @@ public enum RecordedEventType : ushort
     AbandonedMutexExceptionCreate = 140,
     EventWaitHandleReset = 141,
     EventWaitHandleResetResult = 142,
+    SharedLockAcquire = 143,
+    SharedLockAcquireResult = 144,
+    SharedLockRelease = 145,
+    SharedLockReleaseResult = 146,
+    SignalSet = 147,
+    SignalSetResult = 148,
+    SignalReset = 149,
+    SignalResetResult = 150,
+    SignalWait = 151,
+    SignalWaitResult = 152,
 
     /* Task synchronization */
     TaskSchedule = 200,

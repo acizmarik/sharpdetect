@@ -10,13 +10,6 @@ namespace SharpDetect.Plugins.PerThreadOrdering;
 
 public abstract partial class PerThreadOrderingPluginBase
 {
-    public event Action<TaskScheduleArgs>? TaskScheduled;
-    public event Action<TaskStartArgs>? TaskStarted;
-    public event Action<TaskCompleteArgs>? TaskCompleted;
-    public event Action<TaskJoinFinishArgs>? TaskJoinFinished;
-    public event Action<TaskPromiseCompleteArgs>? TaskPromiseCompleted;
-    public event Action<TaskContinuationRegisterArgs>? TaskContinuationRegistered;
-
     private void RegisterTaskBindings()
     {
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.TaskSchedule, OnTaskSchedule);
@@ -80,7 +73,8 @@ public abstract partial class PerThreadOrderingPluginBase
 
         if (_waitAsyncTaskToSemaphore.Remove(taskObjectId, out var semaphoreId) && outcome == TaskJoinOutcome.Completed)
         {
-            SemaphoreWaitAsyncReturned?.Invoke(new(id, moduleId, methodToken, semaphoreId, taskObjectId));
+            // The awaited WaitAsync task completed, so its continuation now holds a permit
+            RaisePermitAcquireReturned(new(id, moduleId, methodToken, semaphoreId, IsSuccess: true, IsAsyncContinuation: true));
         }
         else
         {
@@ -102,39 +96,21 @@ public abstract partial class PerThreadOrderingPluginBase
         ProcessTaskContinuationRegister(id, new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject));
     }
 
-    protected virtual void ProcessTaskSchedule(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
-    {
-        TaskScheduled?.Invoke(new TaskScheduleArgs(id, taskObjectId));
-    }
+    private void ProcessTaskSchedule(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+        => RaiseForkRequested(id, taskObjectId, ForkKind.Task);
 
-    protected virtual void ProcessTaskStart(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
-    {
-        TaskStarted?.Invoke(new TaskStartArgs(id, taskObjectId));
-    }
+    private void ProcessTaskStart(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+        => RaiseForkStarted(id, taskObjectId, ForkKind.Task);
 
-    protected virtual void ProcessTaskComplete(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
-    {
-        TaskCompleted?.Invoke(new TaskCompleteArgs(id, taskObjectId));
-    }
+    private void ProcessTaskComplete(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+        => RaiseForkFinished(id, taskObjectId, ForkKind.Task, ForkFinishKind.Completed);
 
-    protected virtual void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId, TaskJoinOutcome outcome)
-    {
-        TaskJoinFinished?.Invoke(new TaskJoinFinishArgs(id, taskObjectId, outcome));
-    }
+    private void ProcessTaskJoinFinish(ProcessThreadId id, ProcessTrackedObjectId taskObjectId, TaskJoinOutcome outcome)
+        => RaiseForkJoined(id, taskObjectId, outcome);
 
-    protected virtual void ProcessTaskPromiseComplete(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
-    {
-        if (taskObjectId.ObjectId.Value == 0)
-            return;
+    private void ProcessTaskPromiseComplete(ProcessThreadId id, ProcessTrackedObjectId taskObjectId)
+        => RaiseForkFinished(id, taskObjectId, ForkKind.Task, ForkFinishKind.PromiseCompleted);
 
-        TaskPromiseCompleted?.Invoke(new TaskPromiseCompleteArgs(id, taskObjectId));
-    }
-
-    protected virtual void ProcessTaskContinuationRegister(ProcessThreadId id, ProcessTrackedObjectId continuationTaskObjectId)
-    {
-        if (continuationTaskObjectId.ObjectId.Value == 0)
-            return;
-
-        TaskContinuationRegistered?.Invoke(new TaskContinuationRegisterArgs(id, continuationTaskObjectId));
-    }
+    private void ProcessTaskContinuationRegister(ProcessThreadId id, ProcessTrackedObjectId continuationTaskObjectId)
+        => RaiseForkRequested(id, continuationTaskObjectId, ForkKind.Continuation);
 }

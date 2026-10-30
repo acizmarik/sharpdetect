@@ -74,16 +74,8 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
                        COR_PRF_MONITOR.COR_PRF_DISABLE_ALL_NGEN_IMAGES,
             additionalData: new
             {
-                MethodDescriptors = MonitorMethodDescriptors.GetAllMethods().Concat(
-                    LockMethodDescriptors.GetAllMethods()).Concat(
-                    ThreadMethodDescriptors.GetAllMethods()).Concat(
-                    TaskMethodDescriptors.GetAllMethods()).Concat(
-                    AsyncMethodBuilderMethodDescriptors.GetAllMethods()).Concat(
-                    SemaphoreSlimMethodDescriptors.GetAllMethods()).Concat(
-                    WaitHandleMethodDescriptors.GetAllMethods()).Concat(
-                    ConcurrentDictionaryMethodDescriptors.GetAllMethods()).Concat(
-                    LazyMethodDescriptors.GetAllMethods()).Concat(
-                    FieldAccessDescriptors.GetAllMethods())
+                MethodDescriptors = SynchronizationMethodDescriptors.GetAllMethods()
+                    .Concat(FieldAccessDescriptors.GetAllMethods())
                     .ToImmutableArray(),
                 FieldAccessIntrinsicDescriptors = InterlockedIntrinsicDescriptors.GetAllIntrinsics().Concat(
                     VolatileIntrinsicDescriptors.GetAllIntrinsics())
@@ -104,32 +96,24 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         LockReleased += OnLockReleased;
         ObjectWaitAttempted += OnObjectWaitAttempted;
         ObjectWaitReturned += OnObjectWaitReturned;
+        SignalCreated += OnSignalCreated;
+        Signaled += OnSignaled;
+        SignalReset += OnSignalReset;
+        SignalWaitReturned += OnSignalWaitReturned;
+        PermitsCreated += OnPermitsCreated;
+        PermitAcquireReturned += OnPermitAcquireReturned;
+        PermitsReleased += OnPermitsReleased;
+        PermitsReleaseRetracted += OnPermitsReleaseRetracted;
+        ForkRequested += OnForkRequested;
+        ForkStarted += OnForkStarted;
+        ForkFinished += OnForkFinished;
+        ForkJoined += OnForkJoined;
+        ThreadJoinReturned += OnThreadJoinReturned;
+        ValuePublication += OnValuePublication;
         StaticFieldRead += OnStaticFieldRead;
         StaticFieldWritten += OnStaticFieldWritten;
         InstanceFieldRead += OnInstanceFieldRead;
         InstanceFieldWritten += OnInstanceFieldWritten;
-        ThreadJoinReturned += OnThreadJoinReturned;
-        ThreadStarting += OnThreadStarting;
-        ThreadStarted += OnThreadStarted;
-        TaskScheduled += OnTaskScheduled;
-        TaskStarted += OnTaskStarted;
-        TaskCompleted += OnTaskCompleted;
-        TaskJoinFinished += OnTaskJoinFinished;
-        TaskPromiseCompleted += OnTaskPromiseCompleted;
-        TaskContinuationRegistered += OnTaskContinuationRegistered;
-        AsyncStateMachineSuspended += OnAsyncStateMachineSuspended;
-        AsyncStateMachineResumed += OnAsyncStateMachineResumed;
-        AsyncStateMachineSegmentCompleted += OnAsyncStateMachineSegmentCompleted;
-        AsyncStateMachineCompleted += OnAsyncStateMachineCompleted;
-        SemaphoreCreated += OnSemaphoreCreated;
-        SemaphoreAcquireReturned += OnSemaphoreAcquireReturned;
-        SemaphoreReleased += OnSemaphoreReleased;
-        SemaphoreWaitAsyncReturned += OnSemaphoreWaitAsyncReturned;
-        EventWaitHandleCreated += OnEventWaitHandleCreated;
-        EventWaitHandleSignaled += OnEventWaitHandleSignaled;
-        EventWaitHandleWasReset += OnEventWaitHandleWasReset;
-        EventWaitHandleWaitReturned += OnEventWaitHandleWaitReturned;
-        ValuePublication += OnValuePublication;
         TypeInitializerEntered += OnTypeInitializerEntered;
         TypeInitialized += OnTypeInitialized;
         TypeInitializerFailed += OnTypeInitializerFailed;
@@ -151,13 +135,13 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
     {
         if (args.IsSuccess)
         {
-            _detector.RecordLockAcquired(args.ProcessThreadId, args.LockId);
+            _detector.RecordLockAcquired(args.ProcessThreadId, args.LockId, args.IsShared);
         }
     }
 
     private void OnLockReleased(LockReleaseArgs args)
     {
-        _detector.RecordLockReleased(args.ProcessThreadId, args.LockId);
+        _detector.RecordLockReleased(args.ProcessThreadId, args.LockId, args.IsShared);
     }
 
     private void OnObjectWaitAttempted(ObjectWaitAttemptArgs args)
@@ -267,82 +251,71 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         }
     }
     
-    private void OnThreadStarting(ThreadStartingArgs obj)
+    private void OnForkRequested(ForkRequestArgs args)
     {
-        _startingThreads[obj.ThreadObjectId] = obj.ProcessThreadId;
-        _detector.RecordThreadForkRequested(obj.ProcessThreadId, obj.ThreadObjectId);
+        switch (args.Kind)
+        {
+            case ForkKind.Thread:
+                _startingThreads[args.ChildId] = args.ProcessThreadId;
+                _detector.RecordThreadForkRequested(args.ProcessThreadId, args.ChildId);
+                break;
+            case ForkKind.Continuation:
+                _detector.RecordTaskContinuationRegistered(args.ProcessThreadId, args.ChildId);
+                break;
+            default:
+                _detector.RecordTaskScheduled(args.ProcessThreadId, args.ChildId);
+                break;
+        }
     }
-    
-    private void OnThreadStarted(ThreadStartArgs obj)
+
+    private void OnForkStarted(ForkStartArgs args)
     {
-        var childThreadId = obj.ProcessThreadId;
-        var parentThreadId = _startingThreads[obj.ThreadObjectId];
-        _startingThreads.Remove(obj.ThreadObjectId);
-        Logger.LogInformation(
-            "Thread {Parent} is parent of thread {Child}.",
-            Threads.GetValueOrDefault(parentThreadId, parentThreadId.ToString()),
-            Threads.GetValueOrDefault(childThreadId, childThreadId.ToString()));
-        
+        if (args.Kind != ForkKind.Thread)
+        {
+            _detector.RecordTaskStarted(args.ProcessThreadId, args.ChildId);
+            return;
+        }
+
+        var childThreadId = args.ProcessThreadId;
+        if (_startingThreads.Remove(args.ChildId, out var parentThreadId))
+        {
+            Logger.LogInformation(
+                "Thread {Parent} is parent of thread {Child}.",
+                Threads.GetValueOrDefault(parentThreadId, parentThreadId.ToString()),
+                Threads.GetValueOrDefault(childThreadId, childThreadId.ToString()));
+        }
+
         _detector.RecordThreadCreated(childThreadId);
-        _detector.RecordThreadFork(obj.ThreadObjectId, childThreadId);
+        _detector.RecordThreadFork(args.ChildId, childThreadId);
     }
 
-    private void OnTaskScheduled(TaskScheduleArgs args)
+    private void OnForkFinished(ForkFinishArgs args)
     {
-        _detector.RecordTaskScheduled(args.ProcessThreadId, args.TaskObjectId);
+        switch (args.FinishKind)
+        {
+            case ForkFinishKind.Completed:
+                _detector.RecordTaskCompleted(args.ProcessThreadId, args.ChildId);
+                break;
+            case ForkFinishKind.SegmentCompleted:
+                _detector.RecordTaskSegmentCompleted(args.ProcessThreadId, args.ChildId);
+                break;
+            case ForkFinishKind.PromiseCompleted:
+                _detector.RecordTaskPromiseCompleted(args.ProcessThreadId, args.ChildId);
+                break;
+        }
     }
 
-    private void OnTaskStarted(TaskStartArgs args)
-    {
-        _detector.RecordTaskStarted(args.ProcessThreadId, args.TaskObjectId);
-    }
-
-    private void OnTaskCompleted(TaskCompleteArgs args)
-    {
-        _detector.RecordTaskCompleted(args.ProcessThreadId, args.TaskObjectId);
-    }
-
-    private void OnTaskJoinFinished(TaskJoinFinishArgs args)
+    private void OnForkJoined(ForkJoinArgs args)
     {
         if (args.Outcome == TaskJoinOutcome.Completed)
-            _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.TaskObjectId);
+            _detector.RecordTaskJoinFinished(args.ProcessThreadId, args.ChildId);
         else if (args.Outcome == TaskJoinOutcome.Threw)
-            _detector.RecordTaskJoinThrew(args.ProcessThreadId, args.TaskObjectId);
+            _detector.RecordTaskJoinThrew(args.ProcessThreadId, args.ChildId);
     }
 
-    private void OnTaskPromiseCompleted(TaskPromiseCompleteArgs args)
+    private void OnPermitsCreated(PermitsCreatedArgs args)
     {
-        _detector.RecordTaskPromiseCompleted(args.ProcessThreadId, args.TaskObjectId);
-    }
-
-    private void OnTaskContinuationRegistered(TaskContinuationRegisterArgs args)
-    {
-        _detector.RecordTaskContinuationRegistered(args.ProcessThreadId, args.ContinuationTaskObjectId);
-    }
-
-    private void OnAsyncStateMachineSuspended(AsyncStateMachineSuspendArgs args)
-    {
-        _detector.RecordTaskScheduled(args.ProcessThreadId, args.StateMachineBoxId);
-    }
-
-    private void OnAsyncStateMachineResumed(AsyncStateMachineResumeArgs args)
-    {
-        _detector.RecordTaskStarted(args.ProcessThreadId, args.StateMachineBoxId);
-    }
-
-    private void OnAsyncStateMachineSegmentCompleted(AsyncStateMachineSegmentCompleteArgs args)
-    {
-        _detector.RecordTaskSegmentCompleted(args.ProcessThreadId, args.StateMachineBoxId);
-    }
-
-    private void OnAsyncStateMachineCompleted(AsyncStateMachineCompleteArgs args)
-    {
-        _detector.RecordTaskCompleted(args.ProcessThreadId, args.StateMachineBoxId);
-    }
-
-    private void OnSemaphoreCreated(SemaphoreCreatedArgs args)
-    {
-        _detector.RecordSemaphoreCreated(args.SemaphoreId, args.InitialCount);
+        _detector.RecordSemaphoreCreated(args.PermitPoolId, args.InitialCount);
     }
 
     private void OnValuePublication(ValuePublicationArgs args)
@@ -381,42 +354,41 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
         _detector.RecordTypeInitializerFailed(args.ProcessThreadId, args.ModuleId, args.TypeInitializerToken);
     }
 
-    private void OnSemaphoreAcquireReturned(SemaphoreAcquireResultArgs args)
+    private void OnPermitAcquireReturned(PermitAcquireResultArgs args)
     {
         if (args.IsSuccess)
-            _detector.RecordSemaphoreAcquired(args.ProcessThreadId, args.SemaphoreId);
+            _detector.RecordSemaphoreAcquired(args.ProcessThreadId, args.PermitPoolId);
     }
 
-    private void OnSemaphoreReleased(SemaphoreReleaseArgs args)
+    private void OnPermitsReleased(PermitsReleaseArgs args)
     {
-        _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.SemaphoreId, args.ReleaseCount);
+        _detector.RecordSemaphoreReleased(args.ProcessThreadId, args.PermitPoolId, args.ReleaseCount);
     }
 
-    private void OnSemaphoreWaitAsyncReturned(SemaphoreWaitAsyncArgs args)
+    private void OnPermitsReleaseRetracted(PermitsReleaseArgs args)
     {
-        // Raised on the continuation's thread once the WaitAsync await completed successfully
-        _detector.RecordSemaphoreAcquired(args.ProcessThreadId, args.SemaphoreId);
+        _detector.RecordSemaphoreReleaseRetracted(args.ProcessThreadId, args.PermitPoolId, args.ReleaseCount);
     }
 
-    private void OnEventWaitHandleCreated(EventWaitHandleCreatedArgs args)
+    private void OnSignalCreated(SignalCreatedArgs args)
     {
-        _detector.RecordEventCreated(args.EventId, args.InitialState);
+        _detector.RecordEventCreated(args.SignalId, args.InitialState);
     }
 
-    private void OnEventWaitHandleSignaled(EventWaitHandleSetArgs args)
+    private void OnSignaled(SignalSetArgs args)
     {
-        _detector.RecordEventSignaled(args.ProcessThreadId, args.EventId);
+        _detector.RecordEventSignaled(args.ProcessThreadId, args.SignalId);
     }
 
-    private void OnEventWaitHandleWasReset(EventWaitHandleResetArgs args)
+    private void OnSignalReset(SignalResetArgs args)
     {
-        _detector.RecordEventReset(args.EventId);
+        _detector.RecordEventReset(args.SignalId);
     }
 
-    private void OnEventWaitHandleWaitReturned(EventWaitHandleWaitResultArgs args)
+    private void OnSignalWaitReturned(SignalWaitResultArgs args)
     {
         if (args.IsSuccess)
-            _detector.RecordEventWaitReturned(args.ProcessThreadId, args.EventId, args.IsAutoReset);
+            _detector.RecordEventWaitReturned(args.ProcessThreadId, args.SignalId, args.IsAutoReset);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, ThreadRenameRecordedEvent args)

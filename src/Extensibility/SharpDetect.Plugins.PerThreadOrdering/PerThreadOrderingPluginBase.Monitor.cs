@@ -10,30 +10,20 @@ namespace SharpDetect.Plugins.PerThreadOrdering;
 
 public abstract partial class PerThreadOrderingPluginBase
 {
-    public event Action<LockAcquireAttemptArgs>? LockAcquireAttempted;
-    public event Action<LockAcquireResultArgs>? LockAcquireReturned;
-    public event Action<LockReleaseArgs>? LockReleased;
-    public event Action<ObjectPulseOneArgs>? ObjectPulsedOne;
-    public event Action<ObjectPulseAllArgs>? ObjectPulsedAll;
-    public event Action<ObjectWaitAttemptArgs>? ObjectWaitAttempted;
-    public event Action<ObjectWaitResultArgs>? ObjectWaitReturned;
-
     private void RegisterMonitorBindings()
     {
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.LockAcquire, OnLockAcquireEnter);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.LockTryAcquire, OnLockAcquireEnter);
-        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MonitorLockAcquire, OnLockAcquireEnter);
-        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MonitorLockTryAcquire, OnLockAcquireEnter);
         Bind<MethodExitRecordedEvent>(RecordedEventType.LockAcquireResult, OnLockAcquireExit);
-        Bind<MethodExitRecordedEvent>(RecordedEventType.MonitorLockAcquireResult, OnLockAcquireExit);
         Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.LockAcquireResult, OnLockAcquireExitWithArguments);
-        Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.MonitorLockAcquireResult, OnLockAcquireExitWithArguments);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.LockRelease, OnLockReleaseEnter);
-        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MonitorLockRelease, OnLockReleaseEnter);
         Bind<MethodExitRecordedEvent>(RecordedEventType.LockReleaseResult, OnLockReleaseResultExit);
-        Bind<MethodExitRecordedEvent>(RecordedEventType.MonitorLockReleaseResult, OnLockReleaseResultExit);
         Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.LockReleaseResult, OnLockReleaseResultExitWithArguments);
-        Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.MonitorLockReleaseResult, OnLockReleaseResultExitWithArguments);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SharedLockAcquire, OnSharedLockAcquireEnter);
+        Bind<MethodExitRecordedEvent>(RecordedEventType.SharedLockAcquireResult, OnSharedLockAcquireExit);
+        Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.SharedLockAcquireResult, OnSharedLockAcquireExitWithArguments);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SharedLockRelease, OnSharedLockReleaseEnter);
+        Bind<MethodExitRecordedEvent>(RecordedEventType.SharedLockReleaseResult, OnLockReleaseResultExit);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MonitorPulseOneAttempt, OnMonitorPulseOneAttempt);
         Bind<MethodExitRecordedEvent>(RecordedEventType.MonitorPulseOneResult, OnMonitorPulseOneResult);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MonitorPulseAllAttempt, OnMonitorPulseAllAttempt);
@@ -45,7 +35,7 @@ public abstract partial class PerThreadOrderingPluginBase
     private void OnLockAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var (id, _, lockId) = PushSynchronizationContext(metadata, args);
-        LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, lockId));
+        RaiseLockAcquireAttempted(new(id, args.ModuleId, args.MethodToken, lockId));
     }
 
     private void OnLockAcquireExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -53,7 +43,7 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private void OnLockAcquireExitWithArguments(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
-        var lockTaken = DetermineLockTakenFromExitEvent(metadata, args);
+        var lockTaken = DetermineSuccessFromExitEvent(metadata, args);
         HandleLockAcquireExit(metadata, args.ModuleId, args.MethodToken, lockTaken);
     }
 
@@ -63,6 +53,27 @@ public abstract partial class PerThreadOrderingPluginBase
         var lockTaken = arguments.Count == 1 || (bool)arguments[1].Value.AsPrimitive;
         if (lockTaken)
             ProcessLockRelease(id, args.ModuleId, args.MethodToken, lockId);
+    }
+
+    private void OnSharedLockAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, _, lockId) = PushSynchronizationContext(metadata, args);
+        RaiseLockAcquireAttempted(new(id, args.ModuleId, args.MethodToken, lockId, IsShared: true));
+    }
+
+    private void OnSharedLockAcquireExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+        => HandleLockAcquireExit(metadata, args.ModuleId, args.MethodToken, lockTaken: true, isShared: true);
+
+    private void OnSharedLockAcquireExitWithArguments(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    {
+        var lockTaken = DetermineSuccessFromExitEvent(metadata, args);
+        HandleLockAcquireExit(metadata, args.ModuleId, args.MethodToken, lockTaken, isShared: true);
+    }
+
+    private void OnSharedLockReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var (id, _, lockId) = PushSynchronizationContext(metadata, args);
+        RaiseLockReleased(new(id, args.ModuleId, args.MethodToken, lockId, IsShared: true));
     }
 
     private void OnLockReleaseResultExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -92,7 +103,6 @@ public abstract partial class PerThreadOrderingPluginBase
     private void OnMonitorWaitAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var (id, _, lockId) = PushSynchronizationContext(metadata, args);
-        OnBeforeWaitAttempt(id, lockId);
         ProcessWaitAttempt(id, args.ModuleId, args.MethodToken, lockId);
     }
 
@@ -105,90 +115,66 @@ public abstract partial class PerThreadOrderingPluginBase
         ProcessWaitReturn(id, args.ModuleId, args.MethodToken, lockId, success);
     }
 
-    protected virtual void HandleLockAcquireExit(
+    private void HandleLockAcquireExit(
         RecordedEventMetadata metadata,
         ModuleId moduleId,
         MdMethodDef functionToken,
-        bool lockTaken)
+        bool lockTaken,
+        bool isShared = false)
     {
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         using var frameLease = _callStackTracker.PopFrame(id, moduleId, functionToken);
         var lockId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
-
-        if (!lockTaken)
-        {
-            LockAcquireReturned?.Invoke(new(id, moduleId, functionToken, lockId, IsSuccess: false));
-            return;
-        }
-
-        ProcessLockAcquire(id, moduleId, functionToken, lockId);
+        RaiseLockAcquireReturned(new(id, moduleId, functionToken, lockId, lockTaken, isShared));
     }
 
-    protected virtual void ProcessLockAcquire(
-        ProcessThreadId id,
-        ModuleId moduleId,
-        MdMethodDef functionToken,
-        ProcessTrackedObjectId lockId)
-    {
-        LockAcquireReturned?.Invoke(new(id, moduleId, functionToken, lockId, true));
-    }
-
-    protected virtual void ProcessLockRelease(
+    private void ProcessLockRelease(
         ProcessThreadId id,
         ModuleId moduleId,
         MdMethodDef methodToken,
         ProcessTrackedObjectId lockId)
     {
-        LockReleased?.Invoke(new(id, moduleId, methodToken, lockId));
+        RaiseLockReleased(new(id, moduleId, methodToken, lockId));
     }
 
-    protected virtual void ProcessPulseOne(
+    private void ProcessPulseOne(
         ProcessThreadId id,
         ModuleId moduleId,
         MdMethodDef methodToken,
         ProcessTrackedObjectId lockId)
     {
-        ObjectPulsedOne?.Invoke(new ObjectPulseOneArgs(id, moduleId, methodToken, lockId));
+        RaiseObjectPulsedOne(new ObjectPulseOneArgs(id, moduleId, methodToken, lockId));
     }
 
-    protected virtual void ProcessPulseAll(
+    private void ProcessPulseAll(
         ProcessThreadId id,
         ModuleId moduleId,
         MdMethodDef methodToken,
         ProcessTrackedObjectId lockId)
     {
-        ObjectPulsedAll?.Invoke(new ObjectPulseAllArgs(id, moduleId, methodToken, lockId));
+        RaiseObjectPulsedAll(new ObjectPulseAllArgs(id, moduleId, methodToken, lockId));
     }
 
-    protected virtual void OnBeforeWaitAttempt(ProcessThreadId id, ProcessTrackedObjectId lockId)
-    {
-    }
-
-    protected virtual void ProcessWaitAttempt(
+    private void ProcessWaitAttempt(
         ProcessThreadId id,
         ModuleId moduleId,
         MdMethodDef methodToken,
         ProcessTrackedObjectId lockId)
     {
-        ObjectWaitAttempted?.Invoke(new ObjectWaitAttemptArgs(id, moduleId, methodToken, lockId));
+        RaiseObjectWaitAttempted(new ObjectWaitAttemptArgs(id, moduleId, methodToken, lockId));
     }
 
-    protected virtual void ProcessWaitReturn(
+    private void ProcessWaitReturn(
         ProcessThreadId id,
         ModuleId moduleId,
         MdMethodDef methodToken,
         ProcessTrackedObjectId lockId,
         bool success)
     {
-        OnAfterWaitReturn(id, lockId);
-        ObjectWaitReturned?.Invoke(new ObjectWaitResultArgs(id, moduleId, methodToken, lockId, success));
+        RaiseObjectWaitReturned(new ObjectWaitResultArgs(id, moduleId, methodToken, lockId, success));
     }
 
-    protected virtual void OnAfterWaitReturn(ProcessThreadId id, ProcessTrackedObjectId lockId)
-    {
-    }
-
-    private bool DetermineLockTakenFromExitEvent(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
+    private bool DetermineSuccessFromExitEvent(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
     {
         if (args.ReturnValue.Length > 0)
             return MemoryMarshal.Read<bool>(args.ReturnValue);

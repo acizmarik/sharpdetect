@@ -571,10 +571,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Act && Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var stores = ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad);
+        var stores = ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad, args.Target.Args!, plugin);
         Assert.Single(stores);
         var lazyContainer = stores[0].Container;
-        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad)
+        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad, args.Target.Args!, plugin)
             .Where(load => load.Container == lazyContainer)
             .ToList();
         Assert.True(loads.Count >= 2);
@@ -605,13 +605,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Act & Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var stores = ValuePublications(events, RecordedEventType.ValuePublicationStore);
+        var stores = ValuePublications(events, RecordedEventType.ValuePublicationStore, args.Target.Args!, plugin);
         Assert.Single(stores);
-        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad)
+        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad, args.Target.Args!, plugin)
             .Where(load => load.Container == stores[0].Container)
             .ToList();
         Assert.NotEmpty(loads);
-        Assert.Empty(ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad));
+        Assert.Empty(ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad, args.Target.Args!, plugin));
         Assert.All(loads, load => Assert.Equal(stores[0].Value, load.Value));
     }
 
@@ -703,12 +703,29 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     private static List<ValuePublicationArgs> ValuePublications(
         TestEventsEnumerable events,
-        RecordedEventType type)
+        RecordedEventType type,
+        string subjectMethod,
+        IMetadataResolver plugin)
     {
-        return events
+        var ordered = events.OrderBy(e => e.Id).ToList();
+        var enter = ordered.FindIndex(e => Matches(EventMatchers.MethodEnter(subjectMethod, plugin), e));
+        var exit = ordered.FindLastIndex(e => Matches(EventMatchers.MethodExit(subjectMethod, plugin), e));
+        if (enter < 0 || exit < enter)
+            return [];
+
+        var subjectThread = ordered[enter].Get<(RecordedEventMetadata Metadata, MethodEnterRecordedEvent Args)>().Metadata.Tid;
+        return ordered[enter..exit]
             .Where(e => e.Type == type)
-            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args)
+            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>())
+            .Where(e => e.Metadata.Tid == subjectThread)
+            .Select(e => e.Args)
             .ToList();
+    }
+
+    private static bool Matches(AtomicPredicate<ulong, RecordedEventType> predicate, IEvent<ulong, RecordedEventType> evt)
+    {
+        predicate.ProcessEvent(evt);
+        return predicate.Status == AssertStatus.Satisfied;
     }
 
     [Theory]
@@ -769,11 +786,8 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         // Act && Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var publications = events
-            .Where(e => e.Type == eventType)
-            .Select(e => e.Get<(RecordedEventMetadata Metadata, ValuePublicationArgs Args)>().Args)
-            .ToList();
-        var publishedValues = publications.Select(args => args.Value).Distinct().ToList();
+        var publications = ValuePublications(events, eventType, args.Target.Args!, plugin);
+        var publishedValues = publications.Select(publication => publication.Value).Distinct().ToList();
         Assert.True(
             publishedValues.Count >= expectedCount,
             $"Expected at least {expectedCount} distinct {eventType} value(s), observed {publishedValues.Count}.");

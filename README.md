@@ -99,14 +99,21 @@ The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanaga
 - `System.Threading.Mutex` (unnamed)
 - `System.Threading.Semaphore` (unnamed)
 - `System.Threading.EventWaitHandle` (`AutoResetEvent`, `ManualResetEvent`)
+- `System.Threading.ReaderWriterLockSlim`
+- `System.Threading.ManualResetEventSlim`
+- `System.Threading.CountdownEvent`
+- `System.Threading.Barrier`
 
 #### Supported Thread and Task Lifecycle
 - `System.Threading.Thread`
 - `System.Threading.Tasks.Task`
+- `System.Threading.ThreadPool.QueueUserWorkItem` (through the thread pool's global queue)
 
 #### Supported Value Publication
 - `System.Lazy<T>`
 - `System.Collections.Concurrent.ConcurrentDictionary<TKey, TValue>`
+- `System.Collections.Concurrent.ConcurrentQueue<T>`, `ConcurrentStack<T>`, `ConcurrentBag<T>`
+- `System.Threading.Channels` unbounded channels (through their `ConcurrentQueue<T>`)
 
 #### Supported Memory Accesses
 - Regular field access
@@ -136,6 +143,7 @@ The `Deadlock` plugin detects deadlocks by tracking lock acquisition order acros
 #### Supported Synchronization Primitives
 - `System.Threading.Monitor`
 - `System.Threading.Lock`
+- `System.Threading.ReaderWriterLockSlim`
 
 #### Supported Thread Lifecycle
 - `System.Threading.Thread`

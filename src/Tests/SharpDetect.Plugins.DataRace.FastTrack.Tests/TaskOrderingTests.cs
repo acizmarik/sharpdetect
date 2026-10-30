@@ -107,7 +107,7 @@ public class TaskOrderingTests
     }
     
     [Fact]
-    public void JoiningBeforeCompletion_ConveysOnlyTheSchedulingClock()
+    public void JoiningBeforeCompletion_DoesNotConveyTheSchedulingClock()
     {
         // Arrange
         var parent = _harness.NewThread();
@@ -125,8 +125,49 @@ public class TaskOrderingTests
         _harness.Detector.RecordTaskJoinFinished(waiter, task);
 
         // Assert
-        Assert.False(_harness.ReadIsRace(waiter, parentField, instance: null));
+        Assert.True(_harness.ReadIsRace(waiter, parentField, instance: null));
         Assert.True(_harness.ReadIsRace(waiter, bodyField, instance: null));
+    }
+
+    [Fact]
+    public void SchedulingAfterCompletion_DoesNotReplaceTheCompletionClock()
+    {
+        // Arrange
+        var parent = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var waiter = _harness.NewThread();
+        var task = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordTaskScheduled(parent, task);
+        _harness.Detector.RecordTaskStarted(worker, task);
+        _harness.Write(worker, field, instance: null);
+        _harness.Detector.RecordTaskCompleted(worker, task);
+        _harness.Detector.RecordTaskScheduled(parent, task);
+        _harness.Detector.RecordTaskJoinFinished(waiter, task);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(waiter, field, instance: null));
+    }
+
+    [Fact]
+    public void CompletedAsyncSegment_OrdersTheSegmentBeforeTheNextResumption()
+    {
+        // Arrange
+        var firstWorker = _harness.NewThread();
+        var secondWorker = _harness.NewThread();
+        var box = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act
+        _harness.Detector.RecordTaskStarted(firstWorker, box);
+        _harness.Write(firstWorker, field, instance: null);
+        _harness.Detector.RecordTaskSegmentCompleted(firstWorker, box);
+        _harness.Detector.RecordTaskStarted(secondWorker, box);
+
+        // Assert
+        Assert.False(_harness.WriteIsRace(secondWorker, field, instance: null));
     }
 
     [Fact]

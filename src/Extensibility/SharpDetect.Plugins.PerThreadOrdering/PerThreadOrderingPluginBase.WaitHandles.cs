@@ -22,11 +22,6 @@ public abstract partial class PerThreadOrderingPluginBase
     private readonly Dictionary<ProcessTrackedObjectId, ProcessThreadId> _lastMutexAcquirers = [];
     private readonly Dictionary<ProcessThreadId, ProcessTrackedObjectId?> _pendingAbandonedMutexes = [];
 
-    public event Action<EventWaitHandleCreatedArgs>? EventWaitHandleCreated;
-    public event Action<EventWaitHandleSetArgs>? EventWaitHandleSignaled;
-    public event Action<EventWaitHandleResetArgs>? EventWaitHandleWasReset;
-    public event Action<EventWaitHandleWaitResultArgs>? EventWaitHandleWaitReturned;
-
     private void RegisterWaitHandleBindings()
     {
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MutexCreate, OnMutexCreateEnter);
@@ -63,7 +58,7 @@ public abstract partial class PerThreadOrderingPluginBase
         var (id, _, mutexId) = PushSynchronizationContext(metadata, args);
         // ReleaseMutex proves the kind even when the constructor was not observed (for example, OpenExisting)
         _waitHandleKinds[mutexId] = WaitHandleKind.Mutex;
-        LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, mutexId));
+        RaiseLockReleased(new(id, args.ModuleId, args.MethodToken, mutexId));
     }
 
     private void OnMutexReleaseExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -88,7 +83,7 @@ public abstract partial class PerThreadOrderingPluginBase
             _waitHandleKinds[eventId] = kind = WaitHandleKind.ManualResetEvent;
         }
 
-        EventWaitHandleSignaled?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId, kind == WaitHandleKind.AutoResetEvent));
+        RaiseSignaled(new(id, args.ModuleId, args.MethodToken, eventId, kind == WaitHandleKind.AutoResetEvent));
     }
 
     private void OnEventWaitHandleSetExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -97,7 +92,7 @@ public abstract partial class PerThreadOrderingPluginBase
     private void OnEventWaitHandleResetEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
         var (id, _, eventId) = PushSynchronizationContext(metadata, args);
-        EventWaitHandleWasReset?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId));
+        RaiseSignalReset(new(id, args.ModuleId, args.MethodToken, eventId));
     }
 
     private void OnEventWaitHandleResetExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
@@ -113,11 +108,11 @@ public abstract partial class PerThreadOrderingPluginBase
         switch (kind)
         {
             case WaitHandleKind.Mutex:
-                LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, handleId));
+                RaiseLockAcquireAttempted(new(id, args.ModuleId, args.MethodToken, handleId));
                 break;
 
             case WaitHandleKind.Semaphore:
-                SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, handleId));
+                RaisePermitAcquireAttempted(new(id, args.ModuleId, args.MethodToken, handleId));
                 break;
         }
     }
@@ -142,16 +137,16 @@ public abstract partial class PerThreadOrderingPluginBase
             switch (signalKind)
             {
                 case WaitHandleKind.Mutex:
-                    LockReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, toSignalId));
+                    RaiseLockReleased(new(id, args.ModuleId, args.MethodToken, toSignalId));
                     break;
 
                 case WaitHandleKind.Semaphore:
-                    SemaphoreReleased?.Invoke(new(id, args.ModuleId, args.MethodToken, toSignalId, ReleaseCount: 1));
+                    RaisePermitsReleased(new(id, args.ModuleId, args.MethodToken, toSignalId, ReleaseCount: 1));
                     break;
 
                 case WaitHandleKind.AutoResetEvent:
                 case WaitHandleKind.ManualResetEvent:
-                    EventWaitHandleSignaled?.Invoke(new(id, args.ModuleId, args.MethodToken, toSignalId, signalKind == WaitHandleKind.AutoResetEvent));
+                    RaiseSignaled(new(id, args.ModuleId, args.MethodToken, toSignalId, signalKind == WaitHandleKind.AutoResetEvent));
                     break;
             }
         }
@@ -161,11 +156,11 @@ public abstract partial class PerThreadOrderingPluginBase
             switch (waitKind)
             {
                 case WaitHandleKind.Mutex:
-                    LockAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, toWaitOnId));
+                    RaiseLockAcquireAttempted(new(id, args.ModuleId, args.MethodToken, toWaitOnId));
                     break;
 
                 case WaitHandleKind.Semaphore:
-                    SemaphoreAcquireAttempted?.Invoke(new(id, args.ModuleId, args.MethodToken, toWaitOnId));
+                    RaisePermitAcquireAttempted(new(id, args.ModuleId, args.MethodToken, toWaitOnId));
                     break;
             }
         }
@@ -222,7 +217,7 @@ public abstract partial class PerThreadOrderingPluginBase
 
         var initialState = (bool)arguments[1].Value.AsPrimitive;
         _waitHandleKinds[eventId] = isAutoReset ? WaitHandleKind.AutoResetEvent : WaitHandleKind.ManualResetEvent;
-        EventWaitHandleCreated?.Invoke(new(id, args.ModuleId, args.MethodToken, eventId, initialState, isAutoReset));
+        RaiseSignalCreated(new(id, args.ModuleId, args.MethodToken, eventId, initialState, isAutoReset));
     }
 
     private void HandleWaitHandleWaitExit(
@@ -257,10 +252,10 @@ public abstract partial class PerThreadOrderingPluginBase
     {
         _waitHandleKinds[mutexId] = WaitHandleKind.Mutex;
         if (_lastMutexAcquirers.TryGetValue(mutexId, out var abandonerId) && abandonerId != id)
-            LockReleased?.Invoke(new(abandonerId, moduleId, methodToken, mutexId));
+            RaiseLockReleased(new(abandonerId, moduleId, methodToken, mutexId));
 
         _lastMutexAcquirers[mutexId] = id;
-        LockAcquireReturned?.Invoke(new(id, moduleId, methodToken, mutexId, IsSuccess: true));
+        RaiseLockAcquireReturned(new(id, moduleId, methodToken, mutexId, IsSuccess: true));
     }
 
     private void DispatchWaitMultipleResult(
@@ -304,16 +299,16 @@ public abstract partial class PerThreadOrderingPluginBase
             case WaitHandleKind.Mutex:
                 if (isSuccess)
                     _lastMutexAcquirers[handleId] = id;
-                LockAcquireReturned?.Invoke(new(id, moduleId, methodToken, handleId, isSuccess));
+                RaiseLockAcquireReturned(new(id, moduleId, methodToken, handleId, isSuccess));
                 break;
 
             case WaitHandleKind.Semaphore:
-                SemaphoreAcquireReturned?.Invoke(new(id, moduleId, methodToken, handleId, isSuccess));
+                RaisePermitAcquireReturned(new(id, moduleId, methodToken, handleId, isSuccess));
                 break;
 
             case WaitHandleKind.AutoResetEvent:
             case WaitHandleKind.ManualResetEvent:
-                EventWaitHandleWaitReturned?.Invoke(new(id, moduleId, methodToken, handleId, kind == WaitHandleKind.AutoResetEvent, isSuccess));
+                RaiseSignalWaitReturned(new(id, moduleId, methodToken, handleId, kind == WaitHandleKind.AutoResetEvent, isSuccess));
                 break;
         }
     }

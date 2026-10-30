@@ -19,10 +19,12 @@ internal sealed class FastTrackDetector
 
     private readonly ThreadClockTable _threadClocks = new();
     private readonly ObjectClockSlots _forkClocks;
-    private readonly ObjectClockSlots _taskClocks;
+    private readonly ObjectClockSlots _taskStartClocks;
+    private readonly ObjectClockSlots _taskFinishClocks;
     private readonly ObjectClockSlots _taskRegistrationClocks;
     private readonly TrackedObjectSet _completedTasks = new();
     private readonly ObjectClockSlots _lockClocks;
+    private readonly ObjectClockSlots _sharedLockClocks;
     private readonly ObjectClockSlots _eventClocks;
     private readonly SemaphorePermitPools _semaphorePermits;
     private readonly VolatileClockTable _volatileClocks;
@@ -44,9 +46,11 @@ internal sealed class FastTrackDetector
         _fieldResolver = new FieldResolver(metadataContext, logger);
 
         _forkClocks = new ObjectClockSlots(_threadClocks);
-        _taskClocks = new ObjectClockSlots(_threadClocks);
+        _taskStartClocks = new ObjectClockSlots(_threadClocks);
+        _taskFinishClocks = new ObjectClockSlots(_threadClocks);
         _taskRegistrationClocks = new ObjectClockSlots(_threadClocks);
         _lockClocks = new ObjectClockSlots(_threadClocks);
+        _sharedLockClocks = new ObjectClockSlots(_threadClocks);
         _eventClocks = new ObjectClockSlots(_threadClocks);
         _semaphorePermits = new SemaphorePermitPools(_threadClocks);
         _volatileClocks = new VolatileClockTable(_threadClocks);
@@ -57,10 +61,12 @@ internal sealed class FastTrackDetector
         _objectKeyedState =
         [
             _forkClocks,
-            _taskClocks,
+            _taskStartClocks,
+            _taskFinishClocks,
             _taskRegistrationClocks,
             _completedTasks,
             _lockClocks,
+            _sharedLockClocks,
             _eventClocks,
             _semaphorePermits,
             _volatileClocks,
@@ -113,7 +119,7 @@ internal sealed class FastTrackDetector
         => _threadClocks.AcquireFromThread(joinerThreadId, joinedThreadId);
 
     public void RecordTaskScheduled(ProcessThreadId parentThreadId, ProcessTrackedObjectId taskId)
-        => _taskClocks.ReleaseSnapshot(taskId, parentThreadId);
+        => _taskStartClocks.ReleaseSnapshot(taskId, parentThreadId);
 
     public void RecordTaskContinuationRegistered(
         ProcessThreadId registeringThreadId,
@@ -122,29 +128,32 @@ internal sealed class FastTrackDetector
 
     public void RecordTaskStarted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
     {
-        // The scheduling clock is kept for later joins, but a registration is consumed by the run it enables
-        _taskClocks.TryAcquire(taskId, workerThreadId);
+        // The scheduling clock is kept for later runs of the same state machine, but a registration is consumed by the run it enables
+        _taskStartClocks.TryAcquire(taskId, workerThreadId);
         _taskRegistrationClocks.TryAcquireOnce(taskId, workerThreadId);
     }
 
     public void RecordTaskCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
     {
-        _taskClocks.ReleaseSnapshot(taskId, workerThreadId);
+        _taskFinishClocks.ReleaseSnapshot(taskId, workerThreadId);
         _completedTasks.Add(taskId);
     }
 
     public void RecordTaskSegmentCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
-        => _taskClocks.ReleaseSnapshot(taskId, workerThreadId);
+    {
+        _taskStartClocks.ReleaseSnapshot(taskId, workerThreadId);
+        _taskFinishClocks.ReleaseSnapshot(taskId, workerThreadId);
+    }
 
     public void RecordTaskPromiseCompleted(ProcessThreadId completerThreadId, ProcessTrackedObjectId taskId)
     {
-        _taskClocks.Release(taskId, completerThreadId);
+        _taskFinishClocks.Release(taskId, completerThreadId);
         _completedTasks.Add(taskId);
     }
 
     public void RecordTaskJoinFinished(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
     {
-        _taskClocks.TryAcquire(taskId, waiterThreadId);
+        _taskFinishClocks.TryAcquire(taskId, waiterThreadId);
         _threadClocks.Advance(waiterThreadId);
     }
 
@@ -154,11 +163,20 @@ internal sealed class FastTrackDetector
             RecordTaskJoinFinished(waiterThreadId, taskId);
     }
 
-    public void RecordLockAcquired(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
-        => _lockClocks.Acquire(lockId, threadId);
+    public void RecordLockAcquired(ProcessThreadId threadId, ProcessTrackedObjectId lockId, bool isShared = false)
+    {
+        _lockClocks.Acquire(lockId, threadId);
+        if (!isShared)
+            _sharedLockClocks.TryAcquire(lockId, threadId);
+    }
 
-    public void RecordLockReleased(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
-        => _lockClocks.Release(lockId, threadId);
+    public void RecordLockReleased(ProcessThreadId threadId, ProcessTrackedObjectId lockId, bool isShared = false)
+    {
+        if (isShared)
+            _sharedLockClocks.Release(lockId, threadId);
+        else
+            _lockClocks.Release(lockId, threadId);
+    }
 
     public void RecordObjectWaitCalled(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
         => RecordLockReleased(threadId, lockId);
@@ -174,6 +192,9 @@ internal sealed class FastTrackDetector
 
     public void RecordSemaphoreReleased(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId, int releaseCount)
         => _semaphorePermits.Release(semaphoreId, threadId, releaseCount);
+
+    public void RecordSemaphoreReleaseRetracted(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId, int releaseCount)
+        => _semaphorePermits.Retract(semaphoreId, threadId, releaseCount);
 
     public void RecordEventCreated(ProcessTrackedObjectId eventId, bool initialState)
     {
