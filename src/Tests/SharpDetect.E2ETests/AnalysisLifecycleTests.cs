@@ -99,6 +99,25 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task UnhandledExceptionInTarget_ReportsProcessNotFinished(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_Lifecycle_ThrowsUnhandledException")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var gap = Assert.Single(outcome.Gaps);
+        Assert.Equal(AnalysisGapKind.ProcessNotFinished, gap.Kind);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task ReceiverCannotAttach_ReportsReceiverNotAttached(string sdk)
     {
         // Arrange

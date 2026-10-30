@@ -31,10 +31,11 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
         // Execute
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert
+        Assert.Empty(outcome.Gaps);
         Assert.Null(report);
     }
 

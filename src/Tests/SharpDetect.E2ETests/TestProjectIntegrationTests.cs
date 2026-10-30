@@ -83,7 +83,7 @@ public class TestProjectIntegrationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestFastTrackPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         var subjectReports = plugin.GetSubjectReports().ToList();
         if (expectRace)
@@ -93,6 +93,7 @@ public class TestProjectIntegrationTests(ITestOutputHelper testOutput)
         }
         else
         {
+            Assert.Empty(outcome.Gaps);
             Assert.Empty(subjectReports);
         }
     }

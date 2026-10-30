@@ -1094,6 +1094,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Lifecycle_KillsItself):
                     Test_Lifecycle_KillsItself();
                     break;
+                case nameof(Test_Lifecycle_ThrowsUnhandledException):
+                    Test_Lifecycle_ThrowsUnhandledException();
+                    break;
             }
 
             // Garbage collection events

@@ -857,10 +857,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
         // Execute
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
         var subjectReports = plugin.GetSubjectReports().ToList();
 
         // Assert
+        Assert.Empty(outcome.Gaps);
         Assert.Empty(subjectReports);
     }
 
