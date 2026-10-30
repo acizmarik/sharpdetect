@@ -15,12 +15,15 @@ public static class Program
     public static async Task<int> Main()
     {
         EnvironmentUtils.Initialize();
-        var builder = new CommandLineApplicationBuilder()
+        return await CreateApplicationBuilder().Build().RunAsync();
+    }
+
+    internal static CommandLineApplicationBuilder CreateApplicationBuilder()
+    {
+        return new CommandLineApplicationBuilder()
             .AddCommandsFromThisAssembly()
             .SetTitle(ProgramTitle)
             .SetDescription(ProgramDescription)
             .SetExecutableName(ExecutableName);
-
-        return await builder.Build().RunAsync();
     }
 }

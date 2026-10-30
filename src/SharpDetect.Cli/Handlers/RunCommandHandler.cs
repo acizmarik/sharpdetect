@@ -88,7 +88,7 @@ internal sealed class RunCommandHandler : IDisposable
         }
 
         if (reportSummary.GetAllReports().Any())
-            throw new CommandException("Analysis detected issue(s)");
+            throw new CommandException("Analysis detected issue(s)", (int)ExitCode.IssuesFound);
     }
 
     private Task<string> RenderAndWriteReport(IPlugin plugin, Summary reportSummary, CancellationToken cancellationToken)
