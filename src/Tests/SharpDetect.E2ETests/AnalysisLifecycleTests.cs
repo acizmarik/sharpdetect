@@ -135,6 +135,27 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
         Assert.IsType<InvalidOperationException>(exception.InnerException);
     }
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task DroppedEvents_ReportsEventsDropped(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(ShortSubject)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var receiverProvider = new DroppingReceiverProvider(services.GetRequiredService<IProfilerEventReceiverProvider>(), droppedRecords: 3);
+        var analysisWorker = ActivatorUtilities.CreateInstance<AnalysisWorker>(services, receiverProvider);
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var gap = Assert.Single(outcome.Gaps);
+        Assert.Equal(AnalysisGapKind.EventsDropped, gap.Kind);
+        Assert.StartsWith("3 ", gap.Description);
+    }
+
     private static bool IsRunning(int pid)
     {
         try
@@ -171,6 +192,28 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
     private sealed class FailingReceiverProvider(IProfilerEventReceiverProvider inner) : IProfilerEventReceiverProvider
     {
         public IProfilerEventReceiver Create(uint pid) => new FailingReceiver(inner.Create(pid));
+    }
+
+    private sealed class DroppingReceiverProvider(IProfilerEventReceiverProvider inner, ulong droppedRecords) : IProfilerEventReceiverProvider
+    {
+        public IProfilerEventReceiver Create(uint pid) => new DroppingReceiver(inner.Create(pid), droppedRecords);
+    }
+
+    private sealed class DroppingReceiver(IProfilerEventReceiver inner, ulong droppedRecords) : IProfilerEventReceiver, IDisposable
+    {
+        public int TryReceiveNotifications(Span<RecordedEvent> destination, out int failedRecordsCount)
+        {
+            var count = inner.TryReceiveNotifications(destination, out failedRecordsCount);
+            for (var i = 0; i < count; i++)
+            {
+                if (destination[i].EventArgs is ProfilerDestroyRecordedEvent)
+                    destination[i] = destination[i] with { EventArgs = new ProfilerDestroyRecordedEvent(droppedRecords) };
+            }
+
+            return count;
+        }
+
+        public void Dispose() => (inner as IDisposable)?.Dispose();
     }
 
     private sealed class FailingReceiver(IProfilerEventReceiver inner) : IProfilerEventReceiver, IDisposable

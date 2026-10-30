@@ -23,7 +23,7 @@ public class EventBatchReaderTests
         {
             var pid = BinaryPrimitives.ReadUInt32LittleEndian(input.Span);
             return pid != UnparsableMarker
-                ? new RecordedEvent(new RecordedEventMetadata(pid, new ThreadId(0)), new ProfilerDestroyRecordedEvent())
+                ? new RecordedEvent(new RecordedEventMetadata(pid, new ThreadId(0)), new ProfilerDestroyRecordedEvent(DroppedRecords: 0))
                 : throw new InvalidOperationException("Unparsable record.");
         }
     }

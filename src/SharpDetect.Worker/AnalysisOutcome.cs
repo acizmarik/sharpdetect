@@ -9,6 +9,7 @@ public enum AnalysisGapKind
     ReceiverNotAttached,
     ProcessNotFinished,
     EventsDiscarded,
+    EventsDropped,
     NoTestsRan
 }
 

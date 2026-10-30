@@ -18,7 +18,8 @@ public sealed record ProfilerLoadRecordedEvent(
 public sealed record ProfilerInitializeRecordedEvent() : IRecordedEventArgs;
 
 [MessagePackObject]
-public sealed record ProfilerDestroyRecordedEvent() : IRecordedEventArgs;
+public sealed record ProfilerDestroyRecordedEvent(
+    [property: Key(0)] ulong DroppedRecords) : IRecordedEventArgs;
 
 [MessagePackObject]
 public sealed record ProfilerAbortInitializeEvent(

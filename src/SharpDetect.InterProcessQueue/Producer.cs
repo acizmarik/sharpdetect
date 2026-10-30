@@ -57,6 +57,9 @@ public sealed class Producer : IDisposable
                 return Ok();
             }
 
+            if (result.Error == EnqueueErrorType.MessageTooLarge)
+                return result;
+
             Thread.Yield();
         }
 

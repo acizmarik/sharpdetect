@@ -28,10 +28,10 @@ ProfilerLoadMsg Helpers::CreateProfilerLoadMsg(LibIPC::MetadataMsg&& metadataMsg
     return { std::move(metadataMsg), ProfilerLoadMsgArgsInstance(discriminator, ProfilerLoadMsgArgs(runtime, major, minor, build, qfe)) };
 }
 
-ProfilerDestroyMsg Helpers::CreateProfilerDestroyMsg(LibIPC::MetadataMsg&& metadataMsg)
+ProfilerDestroyMsg Helpers::CreateProfilerDestroyMsg(LibIPC::MetadataMsg&& metadataMsg, UINT64 droppedRecords)
 {
     constexpr auto discriminator = static_cast<INT32>(RecordedEventType::ProfilerDestroy);
-    return { std::move(metadataMsg), ProfilerDestroyMsgArgsInstance(discriminator, ProfilerDestroyMsgArgs()) };
+    return { std::move(metadataMsg), ProfilerDestroyMsgArgsInstance(discriminator, ProfilerDestroyMsgArgs(droppedRecords)) };
 }
 
 ProfilerAbortInitializeMsg Helpers::CreateProfilerAbortInitializeMsg(LibIPC::MetadataMsg&& metadataMsg, const std::string& reason)

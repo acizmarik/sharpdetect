@@ -281,9 +281,10 @@ public sealed class AnalysisWorker : IAnalysisWorker
                     for (; processed < batch.Count; processed++)
                     {
                         var currentEvent = buffer[processed];
-                        if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent)
+                        if (currentEvent.EventArgs is ProfilerDestroyRecordedEvent profilerDestroy)
                         {
                             progress.FinishedPids.Add(currentEvent.Metadata.Pid);
+                            progress.DroppedRecords += profilerDestroy.DroppedRecords;
                             if (currentEvent.Metadata.Pid == rootPid)
                                 return;
                         }
@@ -430,6 +431,9 @@ public sealed class AnalysisWorker : IAnalysisWorker
         if (progress.DiscardedRecords > 0)
             gaps.Add(new AnalysisGap(AnalysisGapKind.EventsDiscarded, $"{progress.DiscardedRecords} unparsable event(s) were discarded."));
 
+        if (progress.DroppedRecords > 0)
+            gaps.Add(new AnalysisGap(AnalysisGapKind.EventsDropped, $"{progress.DroppedRecords} event(s) were dropped before reaching the analysis."));
+
         if (_arguments.Target is { Kind: TargetKind.TestAssembly, Test.Runner: TestRunner.Mtp } && targetExitCode == MtpZeroTestsExitCode)
             gaps.Add(new AnalysisGap(AnalysisGapKind.NoTestsRan, "No tests ran. The test filter matched no tests."));
 
@@ -500,6 +504,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         public readonly List<uint> UnattachedPids = [];
         public readonly HashSet<uint> FinishedPids = [];
         public long DiscardedRecords;
+        public ulong DroppedRecords;
         public Exception? ReceiverFailure;
     }
 
