@@ -59,7 +59,8 @@ public sealed class AnalysisWorker : IAnalysisWorker
             _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
 
             var targetStartTimestamp = Stopwatch.GetTimestamp();
-            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(cancellationToken);
+            using var targetCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(targetCts.Token);
             var rootPid = (uint)targetApplicationProcess.ProcessId;
             AnalysisWorkerMetrics.TargetStarted(rootPid);
             _logger.LogInformation("Started process with PID: {Pid}.", rootPid);
@@ -76,7 +77,17 @@ public sealed class AnalysisWorker : IAnalysisWorker
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
 
-            var processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, cancellationToken);
+            long processTailEnd;
+            try
+            {
+                processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, cancellationToken);
+            }
+            catch
+            {
+                await TerminateTargetAsync(targetCts, targetApplicationProcess.Task, rootPid);
+                throw;
+            }
+
             _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", rootPid);
 
             var commandResult = await targetApplicationProcess;
@@ -103,6 +114,22 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
     
+    private async Task TerminateTargetAsync(CancellationTokenSource targetCts, Task targetTask, uint rootPid)
+    {
+        if (!targetTask.IsCompleted)
+            _logger.LogWarning("Terminating process with PID: {Pid} because the analysis failed.", rootPid);
+
+        await targetCts.CancelAsync();
+        try
+        {
+            await targetTask;
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when the target was still running
+        }
+    }
+
     private Command BuildTargetApplicationCommand()
     {
         var host = _arguments.Runtime.Host?.Path ?? "dotnet";

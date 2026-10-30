@@ -3180,6 +3180,11 @@ namespace SharpDetect.E2ETests.Subject
         {
             lock (new object()) { }
         }
+
+        public static void Test_Lifecycle_RunsUntilKilled()
+        {
+            Thread.Sleep(TimeSpan.FromMinutes(1));
+        }
         
         private static void RunConcurrently(params Action[] actions)
         {

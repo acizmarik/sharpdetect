@@ -1085,6 +1085,14 @@ namespace SharpDetect.E2ETests.Subject
                     break;
             }
 
+            // Analysis lifecycle
+            switch (args[0])
+            {
+                case nameof(Test_Lifecycle_RunsUntilKilled):
+                    Test_Lifecycle_RunsUntilKilled();
+                    break;
+            }
+
             // Garbage collection events
             switch (args[0])
             {
