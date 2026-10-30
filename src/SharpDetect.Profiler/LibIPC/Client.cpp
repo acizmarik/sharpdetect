@@ -88,7 +88,8 @@ void LibIPC::Client::Shutdown()
 
 	// Notify managed that we are gracefully terminating
 	const auto destroyMsg = Helpers::CreateProfilerDestroyMsg(
-		Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), 0));
+		Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), 0),
+		_producer->GetDroppedRecords());
 	msgpack::sbuffer sbuf;
 	msgpack::pack(sbuf, destroyMsg);
 	std::vector<char> buffer;

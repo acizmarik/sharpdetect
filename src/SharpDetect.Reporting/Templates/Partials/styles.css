@@ -163,6 +163,9 @@ body {
 .report-header.no-violations {
     border-left-color: var(--color-success);
 }
+.report-header.incomplete {
+    border-left-color: var(--color-warning);
+}
 .report-header .brand {
     display: flex;
     align-items: center;
@@ -213,6 +216,14 @@ body {
 .status-badge.success {
     background: var(--color-success-subtle);
     color: var(--color-success);
+}
+.status-badge.warning {
+    background: var(--color-warning-subtle);
+    color: var(--color-warning-text);
+}
+.analysis-warnings {
+    margin-top: var(--space-12);
+    padding-left: var(--space-24);
 }
 
 

@@ -9,5 +9,6 @@ public enum EnqueueErrorType
     Unavailable = 1,
     NotEnoughFreeMemory = 3,
     TimeoutExceeded = 4,
-    InternalError = 5
+    InternalError = 5,
+    MessageTooLarge = 6
 }

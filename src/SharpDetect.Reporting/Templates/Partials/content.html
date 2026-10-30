@@ -1,23 +1,48 @@
 <div class="report-container">
 
 <!-- Header -->
-<header class="report-header {{#if reports}}has-violations{{else}}no-violations{{/if}}">
+<header class="report-header {{#if analysisWarnings}}incomplete{{else}}{{#if reports}}has-violations{{else}}no-violations{{/if}}{{/if}}">
     <div class="brand">
         {{> logo}}
         <span class="brand-name">SharpDetect Analysis Report</span>
     </div>
+    {{#if analysisWarnings}}
+    <span class="status-badge warning">
+        Analysis Incomplete
+    </span>
+    {{/if}}
     {{#if reports}}
     <span class="status-badge danger">
         Violations Found
     </span>
     {{else}}
+    {{#unless analysisWarnings}}
     <span class="status-badge success">
         No Violations
     </span>
+    {{/unless}}
     {{/if}}
     <h1>{{title}}</h1>
     <p class="description">{{description}}</p>
 </header>
+
+<!-- Incomplete Analysis Section -->
+{{#if analysisWarnings}}
+<details class="section" open>
+    <summary>
+        <span class="section-icon">🚧</span>
+        Incomplete Analysis
+    </summary>
+    <div class="section-body">
+        <p>Some events or processes are missing from this analysis. Violations can be missing, and missing synchronization can make reported violations false.</p>
+        <ul class="analysis-warnings">
+            {{#each analysisWarnings}}
+            <li>{{this}}</li>
+            {{/each}}
+        </ul>
+    </div>
+</details>
+{{/if}}
 
 <!-- Violations Section (shown first when present) -->
 {{#if reports}}

@@ -97,7 +97,7 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
     }
 
     [Fact]
-    public void InterProcessQueue_Enqueue_MessageLargerThanQueue_ReturnsNotEnoughMemory()
+    public void InterProcessQueue_Enqueue_MessageLargerThanQueue_ReturnsMessageTooLarge()
     {
         // Arrange
         var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
@@ -108,6 +108,21 @@ public class EnqueueDequeueTests : InterProcessQueueTestsBase
         
         // Assert
         Assert.True(result.IsError);
-        Assert.Equal(EnqueueErrorType.NotEnoughFreeMemory, result.Error);
+        Assert.Equal(EnqueueErrorType.MessageTooLarge, result.Error);
+    }
+
+    [Fact]
+    public void InterProcessQueue_EnqueueWithTimeout_MessageLargerThanQueue_ReturnsMessageTooLargeImmediately()
+    {
+        // Arrange
+        var producerOptions = new ProducerMemoryMappedQueueOptions(TestQueueName, TestFileName, TestQueueSize, TestSemaphoreName);
+        using var producer = new Producer(producerOptions, InterProcessSemaphore.CreateOrOpen(TestSemaphoreName, isOwner: true));
+
+        // Act
+        var result = producer.TryEnqueue(new byte[TestQueueSize], TimeSpan.FromMinutes(1));
+
+        // Assert
+        Assert.True(result.IsError);
+        Assert.Equal(EnqueueErrorType.MessageTooLarge, result.Error);
     }
 }

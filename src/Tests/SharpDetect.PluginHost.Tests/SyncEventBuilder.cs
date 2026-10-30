@@ -151,7 +151,7 @@ internal static class SyncEventBuilder
             AccessKind: FieldAccessKind.Regular));
 
     public static RecordedEvent ProfilerDestroy(uint tid)
-        => new(Meta(tid), new ProfilerDestroyRecordedEvent());
+        => new(Meta(tid), new ProfilerDestroyRecordedEvent(DroppedRecords: 0));
 
     public static RecordedEvent ThreadDestroy(uint tid)
         => new(Meta(tid), new ThreadDestroyRecordedEvent(new ThreadId(tid)));

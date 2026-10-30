@@ -48,4 +48,14 @@ sharpdetect run \
 ## Exit Code and Reports
 
 An HTML report is written after every run (see the `Report stored to file:` line printed to the console).
-If the analysis detected any issues, `sharpdetect run` additionally exits with a non-zero exit code.
+`sharpdetect run` exits with one of these codes:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | The analysis completed and found no issues. |
+| 1 | The command line could not be parsed. |
+| 2 | The analysis failed due to an internal error. |
+| 3 | The configuration is invalid, or the plugin failed to load. |
+| 4 | The analysis was cancelled. |
+| 5 | The analysis completed and found one or more issues. |
+| 6 | The analysis finished, but some events or processes are missing from it. The report is still written. |

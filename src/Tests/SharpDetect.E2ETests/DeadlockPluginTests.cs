@@ -31,10 +31,11 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
         // Execute
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
         var report = plugin.CreateDiagnostics().GetAllReports().FirstOrDefault();
 
         // Assert
+        Assert.Empty(outcome.Gaps);
         Assert.Null(report);
     }
 
@@ -78,7 +79,7 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         var summary = plugin.CreateDiagnostics();
-        var context = new SummaryRenderingContext(summary, plugin, plugin.ReportTemplates, ConfigurationJson: string.Empty);
+        var context = new SummaryRenderingContext(summary, plugin, plugin.ReportTemplates, ConfigurationJson: string.Empty, AnalysisWarnings: []);
         var exception = await Record.ExceptionAsync(() => reportWriter.Write(context, reportRenderer, CancellationToken.None));
 
         // Assert

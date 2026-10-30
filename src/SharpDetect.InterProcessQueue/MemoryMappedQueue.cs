@@ -80,7 +80,7 @@ internal sealed unsafe class MemoryMappedQueue : IDisposable
         var header = GetHeader();
         var required = 4L + data.Length;
         if (required > _capacityWithoutHeader)
-            return Error(EnqueueErrorType.NotEnoughFreeMemory);
+            return Error(EnqueueErrorType.MessageTooLarge);
 
         // WriteOffset is owned by this (producer) process; a plain read of our own line suffices.
         var writeOffset = Volatile.Read(ref header->WriteOffset);

@@ -41,6 +41,7 @@ void LibIPC::IpqProducer::Send(std::vector<char>& buffer)
 	if (size > maxRecordSize)
 	{
 		LOG_F(ERROR, "Dropping IPC message (%zu bytes): record exceeds the maximum size.", size);
+		_droppedRecords++;
 		return;
 	}
 
@@ -48,6 +49,7 @@ void LibIPC::IpqProducer::Send(std::vector<char>& buffer)
 	const auto sizeFieldBytes = reinterpret_cast<const char*>(&sizeField);
 	_batch.insert(_batch.end(), sizeFieldBytes, sizeFieldBytes + RecordHeaderSize);
 	_batch.insert(_batch.end(), buffer.begin(), buffer.end());
+	_batchRecords++;
 
 	// An oversized record ends up in a batch of its own
 	if (_batch.size() >= FlushThresholdBytes)
@@ -59,7 +61,9 @@ void LibIPC::IpqProducer::Flush()
 	if (_batch.empty())
 		return;
 
-	SendMessage(_batch.data(), _batch.size());
+	if (!SendMessage(_batch.data(), _batch.size()))
+		_droppedRecords += _batchRecords;
+	_batchRecords = 0;
 
 	// An oversized record grows the batch far past the threshold
 	if (_batch.capacity() > FlushThresholdBytes + BatchSlackBytes)
@@ -74,10 +78,16 @@ void LibIPC::IpqProducer::Flush()
 	}
 }
 
-void LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
+std::uint64_t LibIPC::IpqProducer::GetDroppedRecords() const
+{
+	return _droppedRecords;
+}
+
+bool LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
 {
 	constexpr INT enqueueOk = 0;
 	constexpr INT enqueueNotEnoughFreeMemory = 3;
+	constexpr INT enqueueMessageTooLarge = 6;
 	constexpr auto maxRetryDuration = std::chrono::seconds(5);
 
 	const auto byteStream = reinterpret_cast<BYTE*>(data);
@@ -86,7 +96,13 @@ void LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
 	{
 		const INT result = _library.Enqueue(_handle, byteStream, static_cast<INT>(size));
 		if (result == enqueueOk)
-			return;
+			return true;
+
+		if (result == enqueueMessageTooLarge)
+		{
+			LOG_F(ERROR, "Dropping IPC message (%zu bytes): batch exceeds the queue capacity.", size);
+			return false;
+		}
 
 		if (result != enqueueNotEnoughFreeMemory)
 		{
@@ -95,7 +111,7 @@ void LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
 				"Dropping IPC message (%zu bytes) after non-recoverable enqueue error: %d.",
 				size,
 				result);
-			return;
+			return false;
 		}
 
 		// The retry budget only starts once the ring is actually full, so the common path never reads the clock
@@ -112,7 +128,7 @@ void LibIPC::IpqProducer::SendMessage(char* data, const std::size_t size)
 				"Dropping IPC message (%zu bytes): consumer did not drain the queue within %lld seconds.",
 				size,
 				static_cast<long long>(maxRetryDuration.count()));
-			return;
+			return false;
 		}
 
 		// Backoff when repeatedly accessing queue leads to transient failures

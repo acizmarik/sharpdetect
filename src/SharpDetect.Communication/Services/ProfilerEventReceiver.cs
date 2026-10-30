@@ -54,11 +54,15 @@ internal sealed class ProfilerEventReceiver : IProfilerEventReceiver, IDisposabl
             ReleasePendingMessage();
 
         if (result.Corrupted)
+        {
+            // The unreadable remainder holds at least one record
+            failedRecordsCount = 1;
             _logger.LogError("Discarding the remainder of a malformed profiler event batch.");
+        }
 
         if (result.FailedRecords > 0)
         {
-            failedRecordsCount = result.FailedRecords;
+            failedRecordsCount += result.FailedRecords;
             _logger.LogError(
                 result.LastFailure,
                 "Discarded {FailedRecords} unparsable profiler event(s); the most recent failure is attached.",

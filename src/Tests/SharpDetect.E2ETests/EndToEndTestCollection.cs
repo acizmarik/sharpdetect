@@ -5,6 +5,9 @@ using Xunit;
 
 namespace SharpDetect.E2ETests;
 
+[CollectionDefinition(AnalysisLifecycleTests.CollectionName)]
+public sealed class AnalysisLifecycleTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
+
 [CollectionDefinition(DataRacePluginTests.CollectionName)]
 public sealed class DataRacePluginTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
 

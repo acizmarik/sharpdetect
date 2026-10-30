@@ -39,6 +39,29 @@ public class TestProjectIntegrationTests(ITestOutputHelper testOutput)
     public Task VSTest_CleanFact_Detects_No_Race()
         => AssertDoesNotDetectRace(VsTestRelativePath, TestRunner.VsTest, "FullyQualifiedName~CleanFact");
 
+    [Fact]
+    public async Task Mtp_FilterMatchingNoTests_ReportsNoTestsRan()
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs: string.Empty)
+            .WithCustomTarget(
+                relativeAssemblyPath: MtpRelativePath,
+                kind: TargetKind.TestAssembly,
+                test: new TestTargetConfigurationArgs(runner: TestRunner.Mtp, filter: "/*/*/*/NoSuchFact"))
+            .WithTestPlugin(typeof(TestFastTrackPlugin).FullName!)
+            .WithPluginConfiguration(new { SkipInstrumentationForAssemblies = SkipSystemAssemblies })
+            .Build("net10.0", testOutput, TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled());
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var gap = Assert.Single(outcome.Gaps);
+        Assert.Equal(AnalysisGapKind.NoTestsRan, gap.Kind);
+    }
+
     private Task AssertDetectsRace(string relativePath, TestRunner runner, string filter)
         => RunAndAssert(relativePath, runner, filter, expectRace: true);
 
@@ -60,7 +83,7 @@ public class TestProjectIntegrationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestFastTrackPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         var subjectReports = plugin.GetSubjectReports().ToList();
         if (expectRace)
@@ -70,6 +93,7 @@ public class TestProjectIntegrationTests(ITestOutputHelper testOutput)
         }
         else
         {
+            Assert.Empty(outcome.Gaps);
             Assert.Empty(subjectReports);
         }
     }

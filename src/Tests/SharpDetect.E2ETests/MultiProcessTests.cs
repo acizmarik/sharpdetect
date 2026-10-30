@@ -30,9 +30,10 @@ public class MultiProcessTests(ITestOutputHelper testOutput)
         plugin.ProfilerLoaded += e => loadedPids.Add(e.Metadata.Pid);
 
         // Act
-        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
+        Assert.Empty(outcome.Gaps);
         var distinctLoaded = loadedPids.Distinct().ToList();
         Assert.Equal(2, distinctLoaded.Count);
         var distinctInitialized = initializedPids.Distinct().ToList();

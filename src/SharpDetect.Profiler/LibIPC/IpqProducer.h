@@ -35,11 +35,14 @@ namespace LibIPC
 
 		void Send(std::vector<char>& buffer) override;
 		void Flush() override;
+		[[nodiscard]] std::uint64_t GetDroppedRecords() const;
 
 	private:
-		void SendMessage(char* data, std::size_t size);
+		[[nodiscard]] bool SendMessage(char* data, std::size_t size);
 		const IpqLibrary& _library;
 		PVOID _handle;
 		std::vector<char> _batch;
+		std::size_t _batchRecords = 0;
+		std::uint64_t _droppedRecords = 0;
 	};
 }

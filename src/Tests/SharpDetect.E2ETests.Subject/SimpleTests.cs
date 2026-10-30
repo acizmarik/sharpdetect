@@ -3180,6 +3180,21 @@ namespace SharpDetect.E2ETests.Subject
         {
             lock (new object()) { }
         }
+
+        public static void Test_Lifecycle_RunsUntilKilled()
+        {
+            Thread.Sleep(TimeSpan.FromMinutes(1));
+        }
+
+        public static void Test_Lifecycle_KillsItself()
+        {
+            System.Diagnostics.Process.GetCurrentProcess().Kill();
+        }
+
+        public static void Test_Lifecycle_ThrowsUnhandledException()
+        {
+            throw new InvalidProgramException("Simulate failed instrumentation");
+        }
         
         private static void RunConcurrently(params Action[] actions)
         {
