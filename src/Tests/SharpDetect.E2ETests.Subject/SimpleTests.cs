@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using SharpDetect.E2ETests.Subject.Helpers;
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
@@ -233,6 +234,49 @@ namespace SharpDetect.E2ETests.Subject
             {
                 // Swallow so the entrypoint returns normally.
             }
+        }
+
+        public static void Test_ShadowCallstack_SemaphoreWaitCanceledWhileBlocked()
+        {
+            using var semaphore = new SemaphoreSlim(0);
+            using var cancellationTokenSource = new CancellationTokenSource();
+            var waiter = new Thread(() =>
+            {
+                try
+                {
+                    // The wait catches the cancellation inside its own frame and then throws it again
+                    semaphore.Wait(cancellationTokenSource.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Swallow so the thread finishes normally.
+                }
+            });
+
+            waiter.Start();
+            while ((waiter.ThreadState & ThreadState.WaitSleepJoin) == 0)
+                Thread.Sleep(10);
+
+            cancellationTokenSource.Cancel();
+            waiter.Join();
+        }
+
+        public static void Test_ShadowCallstack_ReflectionInvokedMethodThrowsInsideTaskBody()
+        {
+            using var semaphore = new SemaphoreSlim(1, 1);
+            var release = typeof(SemaphoreSlim).GetMethod(nameof(SemaphoreSlim.Release), [typeof(int)])!;
+            Task.Run(() =>
+            {
+                try
+                {
+                    // The full semaphore throws straight into the reflection invoke, which leaves managed code
+                    release.Invoke(semaphore, [1]);
+                }
+                catch (TargetInvocationException)
+                {
+                    // Swallow so that Task.InnerInvoke returns normally and triggers TaskComplete.
+                }
+            }).Wait();
         }
 
         public static void Test_ShadowCallstack_ValueTypeDictionaryMissingKey()
@@ -1652,6 +1696,16 @@ namespace SharpDetect.E2ETests.Subject
             catch (TypeInitializationException)
             {
             }
+        }
+
+        public static void Test_TypeInitializer_CatchesRethrownException()
+        {
+            _ = TypeInitializerCatchingRethrownException.Value;
+        }
+
+        public static void Test_TypeInitializer_CatchesExceptionEscapingFinally()
+        {
+            _ = TypeInitializerCatchingExceptionEscapingFinally.Value;
         }
 
         public static void Test_NoDataRace_ConcurrentDictionaryPublishThenRead()

@@ -72,7 +72,14 @@ namespace Profiler
 		HRESULT STDMETHODCALLTYPE ThreadCreated(ThreadID threadId) override;
 		HRESULT STDMETHODCALLTYPE ThreadDestroyed(ThreadID threadId) override;
 		HRESULT STDMETHODCALLTYPE ThreadNameChanged(ThreadID threadId, ULONG cchName, WCHAR name[]) override;
+		HRESULT STDMETHODCALLTYPE ExceptionThrown(ObjectID thrownObjectId) override;
+		HRESULT STDMETHODCALLTYPE ExceptionSearchFilterEnter(FunctionID functionId) override;
+		HRESULT STDMETHODCALLTYPE ExceptionSearchFilterLeave() override;
 		HRESULT STDMETHODCALLTYPE ExceptionUnwindFunctionEnter(FunctionID functionId) override;
+		HRESULT STDMETHODCALLTYPE ExceptionUnwindFunctionLeave() override;
+		HRESULT STDMETHODCALLTYPE ExceptionUnwindFinallyEnter(FunctionID functionId) override;
+		HRESULT STDMETHODCALLTYPE ExceptionUnwindFinallyLeave() override;
+		HRESULT STDMETHODCALLTYPE ExceptionCatcherEnter(FunctionID functionId, ObjectID objectId) override;
 
 		HRESULT EnterMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);
 		HRESULT LeaveMethod(FunctionIDOrClientID functionId, COR_PRF_ELT_INFO eltInfo);

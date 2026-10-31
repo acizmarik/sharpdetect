@@ -124,6 +124,64 @@ namespace SharpDetect.E2ETests.Subject.Helpers.DataRaces
         private static int Throw() => throw new InvalidOperationException("Type initializer failure");
     }
 
+    public static class TypeInitializerCatchingRethrownException
+    {
+        public static readonly int Value;
+
+        static TypeInitializerCatchingRethrownException()
+        {
+            try
+            {
+                try
+                {
+                    Throw();
+                }
+                catch (InvalidOperationException)
+                {
+                    throw;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Complete normally
+            }
+
+            Value = 42;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void Throw() => throw new InvalidOperationException("Handled type initializer failure");
+    }
+
+    public static class TypeInitializerCatchingExceptionEscapingFinally
+    {
+        public static readonly int Value;
+
+        static TypeInitializerCatchingExceptionEscapingFinally()
+        {
+            try
+            {
+                try
+                {
+                    Throw();
+                }
+                finally
+                {
+                    throw new ArgumentException("Handled type initializer failure");
+                }
+            }
+            catch (ArgumentException)
+            {
+                // Complete normally
+            }
+
+            Value = 42;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void Throw() => throw new InvalidOperationException("Abandoned type initializer failure");
+    }
+
     public class StaticHelperWrite
     {
         public static int Value;

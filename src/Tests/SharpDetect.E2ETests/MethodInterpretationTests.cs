@@ -667,6 +667,56 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_TypeInitializer_CatchesRethrownException_Completes(string sdk)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject("Test_TypeInitializer_CatchesRethrownException")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput, additionalData);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "TypeInitializerCatchingRethrownException", plugin))
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerExit, "TypeInitializerCatchingRethrownException", plugin))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act & Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        Assert.DoesNotContain("TypeInitializerCatchingRethrownException", TypeInitializerEventTypeNames(events, RecordedEventType.MethodUnwound, plugin));
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_TypeInitializer_CatchesExceptionEscapingFinally_Completes(string sdk)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject("Test_TypeInitializer_CatchesExceptionEscapingFinally")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput, additionalData);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "TypeInitializerCatchingExceptionEscapingFinally", plugin))
+            .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerExit, "TypeInitializerCatchingExceptionEscapingFinally", plugin))
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Act & Assert
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+        Assert.DoesNotContain("TypeInitializerCatchingExceptionEscapingFinally", TypeInitializerEventTypeNames(events, RecordedEventType.MethodUnwound, plugin));
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_TypeInitializer_NotHookedWithoutFieldInstrumentation(string sdk)
     {
         // Arrange

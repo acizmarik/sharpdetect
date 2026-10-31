@@ -1,5 +1,6 @@
 set(SOURCES
     "CorProfilerBase.cpp"
+    "ExceptionUnwindTracker.cpp"
     "StackWalker.cpp"
     "GarbageCollectionContext.cpp"
     "ObjectsTracker.cpp"
@@ -25,7 +26,7 @@ target_include_directories(LibProfilerCore PUBLIC ${INCLUDE_DIRECTORIES})
 apply_profiler_compile_options(LibProfilerCore)
 
 if (WIN32)
-    target_compile_definitions(LibProfilerCore PRIVATE WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(LibProfilerCore PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 endif()
 
 # loguru is linked PUBLIC so the metadata / IL layers inherit it.

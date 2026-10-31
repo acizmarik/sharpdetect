@@ -21,6 +21,7 @@
 #include "../LibMetadata/AssemblyDef.h"
 #include "../LibMetadata/ModuleDef.h"
 #include "../LibIL/Instrumentation.h"
+#include "../LibProfilerCore/ExceptionUnwindTracker.h"
 #include "../LibProfilerCore/PAL.h"
 #include "../LibProfilerCore/StackWalker.h"
 #include "../LibMetadata/WString.h"
@@ -46,6 +47,7 @@ namespace
     };
 
     thread_local EltThreadScratch EltScratch;
+    thread_local LibProfiler::ExceptionUnwindTracker UnwindTracker;
 }
 
 Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
@@ -1041,12 +1043,57 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionThrown(const ObjectID thrownObjectId)
+{
+    const auto leftFunctionId = UnwindTracker.OnExceptionThrown();
+    if (leftFunctionId.has_value() && !_terminating)
+        SendMethodUnwound(leftFunctionId.value());
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionSearchFilterEnter(const FunctionID functionId)
+{
+    UnwindTracker.OnSearchFilterEnter(functionId);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionSearchFilterLeave()
+{
+    UnwindTracker.OnSearchFilterLeave();
+    return S_OK;
+}
+
 HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionEnter(const FunctionID functionId)
 {
-    if (_terminating)
-        return S_OK;
+    UnwindTracker.OnUnwindFunctionEnter(functionId);
+    return S_OK;
+}
 
-    SendMethodUnwound(functionId);
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionLeave()
+{
+    const auto leftFunctionId = UnwindTracker.OnUnwindFunctionLeave();
+    if (leftFunctionId.has_value() && !_terminating)
+        SendMethodUnwound(leftFunctionId.value());
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFinallyEnter(const FunctionID functionId)
+{
+    UnwindTracker.OnUnwindFinallyEnter(functionId);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFinallyLeave()
+{
+    UnwindTracker.OnUnwindFinallyLeave();
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionCatcherEnter(const FunctionID functionId, const ObjectID objectId)
+{
+    UnwindTracker.OnCatcherEnter(functionId);
     return S_OK;
 }
 
