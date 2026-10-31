@@ -26,6 +26,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     private readonly Dictionary<RecordedEventHandlerType, RecordedEventHandler> _customEventHandlers;
     private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
     private readonly Dictionary<ProcessThreadId, string> _threads;
+    private readonly Dictionary<ProcessThreadId, string> _retiredThreadNames;
     private readonly Dictionary<InstrumentationPointId, InstrumentedFieldAccess> _instrumentedFieldAccesses;
     private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
     private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
@@ -50,6 +51,7 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         _customEventHandlers = [];
         _callstacks = [];
         _threads = [];
+        _retiredThreadNames = [];
         _instrumentedFieldAccesses = [];
 
         Threads = _threads;
@@ -131,9 +133,12 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void Visit(RecordedEventMetadata metadata, ThreadDestroyRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
-        var name = Threads[id];
-        _threads.Remove(id);
-        Logger.LogInformation("Destroyed thread {Name}.", name);
+        if (_threads.Remove(id, out var name))
+        {
+            _retiredThreadNames[id] = name;
+            Logger.LogInformation("Destroyed thread {Name}.", name);
+        }
+
         base.Visit(metadata, args);
     }
 
@@ -226,6 +231,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void DefaultVisit(RecordedEventMetadata metadata, IRecordedEventArgs args)
     {
         /* Ignored event */
+    }
+
+    protected string? FindThreadName(ProcessThreadId id)
+    {
+        return _threads.TryGetValue(id, out var name) ? name : _retiredThreadNames.GetValueOrDefault(id);
     }
 
     protected IProfilerCommandSender GetCommandSender(uint pid)
