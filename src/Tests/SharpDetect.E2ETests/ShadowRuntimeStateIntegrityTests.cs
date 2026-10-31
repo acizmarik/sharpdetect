@@ -33,6 +33,29 @@ public class ShadowRuntimeStateIntegrityTests(ITestOutputHelper testOutput)
         return ShadowStateIntegrityTest("Test_ShadowCallstack_FaultedTaskJoinThrows", sdk);
     }
 
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task ShadowCallstack_ValueTypeDictionaryMissingKey(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_ShadowCallstack_ValueTypeDictionaryMissingKey")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var args = services.GetRequiredService<RunCommandArgs>();
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var events = new TestEventsEnumerable(plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
+    }
+
     private async Task ShadowStateIntegrityTest(string subjectArgs, string sdk)
     {
         // Arrange

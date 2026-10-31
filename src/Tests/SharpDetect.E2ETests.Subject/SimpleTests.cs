@@ -235,6 +235,19 @@ namespace SharpDetect.E2ETests.Subject
             }
         }
 
+        public static void Test_ShadowCallstack_ValueTypeDictionaryMissingKey()
+        {
+            var dictionary = new ConcurrentDictionary<string, int>();
+            try
+            {
+                _ = dictionary["missing"];
+            }
+            catch (KeyNotFoundException)
+            {
+                // Swallow so the entrypoint returns normally.
+            }
+        }
+
 #if NET10_0_OR_GREATER
         public static void Test_ShadowCallstack_MonitorExitIfLockTaken()
         {

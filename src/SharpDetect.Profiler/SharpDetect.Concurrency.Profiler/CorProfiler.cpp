@@ -762,11 +762,11 @@ Profiler::EltDecision* Profiler::CorProfiler::GetTypeInitializerEltDecision(
     return stored;
 }
 
-bool Profiler::CorProfiler::IsHookedTypeInitializer(const FunctionID functionId)
+Profiler::EltDecision* Profiler::CorProfiler::FindEltDecision(const FunctionID functionId)
 {
     auto guard = std::lock_guard(_eltDecisionMutex);
     const auto it = _eltDecisionLookup.find(functionId);
-    return it != _eltDecisionLookup.cend() && it->second->descriptor == nullptr;
+    return it != _eltDecisionLookup.cend() ? it->second : nullptr;
 }
 
 HRESULT Profiler::CorProfiler::EnterMethod(const FunctionIDOrClientID functionOrClientId, const COR_PRF_ELT_INFO eltInfo)
@@ -1046,57 +1046,40 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ExceptionUnwindFunctionEnter(co
     if (_terminating)
         return S_OK;
 
-    ModuleID moduleId;
-    mdMethodDef methodDef;
-    HRESULT hr = _corProfilerInfo->GetFunctionInfo(functionId, nullptr, &moduleId, &methodDef);
-    if (FAILED(hr))
-        return S_OK;
+    SendMethodUnwound(functionId);
+    return S_OK;
+}
 
+void Profiler::CorProfiler::SendMethodUnwound(const FunctionID functionId)
+{
+    // Unwinds are reported only for the frames whose enter was reported
+    const auto* decision = FindEltDecision(functionId);
+    if (decision == nullptr || !decision->emitExitEvent)
+        return;
+
+    // An instantiation that is suppressed has not reported its enter
+    if (decision->genericCapture.load(std::memory_order_relaxed) != GenericCaptureState::Allow)
+        return;
+
+    // Only an exit with a custom interpretation is analyzed
     constexpr auto originalMethodExitEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExit);
     constexpr auto originalMethodExitWithArgumentsEvent = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
-    auto const [
-        hasCustomMethodExitEvent,
-        customMethodExitEvent,
-        hasCustomMethodExitWithArgumentsEvent,
-        customMethodExitWithArgumentsEvent] =
-        _rewriteRegistry.FindMethodExitMappings(
-            moduleId,
-            methodDef,
-            originalMethodExitEvent,
-            originalMethodExitWithArgumentsEvent);
-
+    auto const hasCustomMethodExitEvent = decision->exitEventId != originalMethodExitEvent;
+    auto const hasCustomMethodExitWithArgumentsEvent = decision->exitWithArgsEventId != originalMethodExitWithArgumentsEvent;
     if (!hasCustomMethodExitEvent && !hasCustomMethodExitWithArgumentsEvent)
-    {
-        // A type initializer that throws is reported, so that its enter is balanced without completing the type
-        if (IsHookedTypeInitializer(functionId))
-        {
-            _client.Send(LibIPC::Helpers::CreateMethodUnwoundMsg(
-                CreateMetadataMsg(),
-                moduleId,
-                methodDef,
-                static_cast<USHORT>(LibIPC::RecordedEventType::TypeInitializerExit)));
-        }
-
-        return S_OK;
-    }
+        return;
 
     // Balance the per-thread by-ref/return-value argument stack that EnterMethod pushed
-    const auto descriptorPointer = _methodDescriptorRegistry.TryGet(moduleId, methodDef);
-    if (descriptorPointer)
-    {
-        const auto& descriptor = *descriptorPointer.get();
-        auto& argsCallStack = EltScratch.argsCallStack;
-        if (PushesArgumentsFrame(descriptor) && !argsCallStack.empty())
-            argsCallStack.pop();
-    }
+    auto& argsCallStack = EltScratch.argsCallStack;
+    if (decision->pushesArgumentsFrame && !argsCallStack.empty())
+        argsCallStack.pop();
 
-    auto const interpretation = hasCustomMethodExitEvent ? customMethodExitEvent : customMethodExitWithArgumentsEvent;
+    auto const interpretation = hasCustomMethodExitEvent ? decision->exitEventId : decision->exitWithArgsEventId;
     _client.Send(LibIPC::Helpers::CreateMethodUnwoundMsg(
         CreateMetadataMsg(),
-        moduleId,
-        methodDef,
+        decision->moduleId,
+        decision->methodDef,
         interpretation));
-    return S_OK;
 }
 
 HRESULT Profiler::CorProfiler::TailcallMethod(FunctionIDOrClientID functionOrClientId, COR_PRF_ELT_INFO eltInfo)
