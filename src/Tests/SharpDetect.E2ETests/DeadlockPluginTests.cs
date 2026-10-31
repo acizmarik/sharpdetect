@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.Extensions.DependencyInjection;
+using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
 using SharpDetect.E2ETests.Utils;
@@ -123,7 +124,12 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         using var mutex = new Mutex(initiallyOwned: true, mutexName);
         var plugin = services.GetRequiredService<TestDeadlockPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
-        plugin.StackTraceSnapshotsCreated += _ => mutex.ReleaseMutex();
+        StackTraceSnapshotRecordedEvent[]? snapshots = null;
+        plugin.StackTraceSnapshotsCreated += e =>
+        {
+            snapshots = e.Args.Snapshots;
+            mutex.ReleaseMutex();
+        };
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -132,5 +138,8 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         // Assert
         Assert.NotNull(report);
         Assert.Equal(plugin.ReportCategory, report.Category);
+        Assert.NotNull(snapshots);
+        Assert.NotEmpty(snapshots);
+        Assert.All(snapshots, snapshot => Assert.NotEmpty(snapshot.ModuleIds));
     }
 }

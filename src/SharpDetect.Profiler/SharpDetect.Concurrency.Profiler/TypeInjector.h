@@ -4,6 +4,7 @@
 #pragma once
 
 #include <deque>
+#include <functional>
 
 #include "cor.h"
 #include "corprof.h"
@@ -35,7 +36,8 @@ namespace Profiler
 			MetadataStore& metadataStore,
 			MethodDescriptorRegistry& methodDescriptorRegistry,
 			const std::vector<FieldAccessIntrinsicDescriptor>& fieldAccessIntrinsics,
-			RewriteRegistry& rewriteRegistry);
+			RewriteRegistry& rewriteRegistry,
+			std::function<UINT64()> getCurrentThreadId);
 
 		HRESULT InjectTypesForProfilingFeatures(LibProfiler::ModuleDef& moduleDef);
 		HRESULT ImportInjectedTypes(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
@@ -62,6 +64,7 @@ namespace Profiler
 		MethodDescriptorRegistry& _methodDescriptorRegistry;
 		const std::vector<FieldAccessIntrinsicDescriptor>& _fieldAccessIntrinsics;
 		RewriteRegistry& _rewriteRegistry;
+		std::function<UINT64()> _getCurrentThreadId;
 		std::deque<FieldAccessHelperInfo> _fieldAccessHelpers;
 		mdSignature _fieldAccessCallSignature { mdTokenNil };
 		mdSignature _fieldAccessStackCallSignature { mdTokenNil };

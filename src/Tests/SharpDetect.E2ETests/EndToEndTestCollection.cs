@@ -32,6 +32,9 @@ public sealed class ShadowRuntimeStateIntegrityTestsCollection : ICollectionFixt
 [CollectionDefinition(TestProjectIntegrationTests.CollectionName)]
 public sealed class TestProjectIntegrationTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
 
+[CollectionDefinition(ThreadIdentityTests.CollectionName)]
+public sealed class ThreadIdentityTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
+
 public sealed class EndToEndCollectionFixture
 {
 }

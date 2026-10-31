@@ -1190,6 +1190,23 @@ namespace SharpDetect.E2ETests.Subject
                     break;
             }
 
+            // Thread identity across reused runtime ThreadIDs
+            switch (args[0])
+            {
+                case nameof(Test_DataRace_ThreadIdentity_GarbageCollectionBetweenRacingWrites):
+                    Test_DataRace_ThreadIdentity_GarbageCollectionBetweenRacingWrites();
+                    break;
+                case nameof(Test_DataRace_ThreadIdentity_GarbageCollectionBetweenRacingWrites_NoThreadExits):
+                    Test_DataRace_ThreadIdentity_GarbageCollectionBetweenRacingWrites_NoThreadExits();
+                    break;
+                case nameof(Test_DataRace_ThreadIdentity_ExitedThreadNotJoined):
+                    Test_DataRace_ThreadIdentity_ExitedThreadNotJoined();
+                    break;
+                case nameof(Test_ThreadIdentity_SequentialThreadsWithGarbageCollections):
+                    Test_ThreadIdentity_SequentialThreadsWithGarbageCollections();
+                    break;
+            }
+
             // IL verification
             switch (args[0])
             {

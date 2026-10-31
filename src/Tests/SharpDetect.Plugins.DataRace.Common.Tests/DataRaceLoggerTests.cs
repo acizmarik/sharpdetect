@@ -22,11 +22,11 @@ public class DataRaceLoggerTests
     }
 
     [Fact]
-    public void GetThreadDisplayName_UnnamedThread_ReturnsHexThreadId()
+    public void GetThreadDisplayName_UnnamedThread_ReturnsThreadNumber()
     {
-        var access = CreateAccess(threadId: 0x5BFD, threadName: null);
+        var access = CreateAccess(threadId: 23, threadName: null);
 
-        Assert.Equal("Thread-0x5BFD", DataRaceLogger.GetThreadDisplayName(access));
+        Assert.Equal("Thread#23", DataRaceLogger.GetThreadDisplayName(access));
     }
 
     [Fact]

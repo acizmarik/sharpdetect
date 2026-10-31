@@ -33,6 +33,7 @@ namespace LibProfiler
 	HRESULT PatchMethodBody(
 		IN ICorProfilerInfo& corProfilerInfo,
 		IN LibIPC::Client& client,
+		IN UINT64 threadId,
 		IN const ModuleDef& moduleDef,
 		IN mdMethodDef mdMethodDef,
 		IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
@@ -54,6 +55,7 @@ namespace LibProfiler
 	HRESULT InstrumentStaticFieldAccess(
 		IN ICorProfilerInfo& corProfilerInfo,
 		IN LibIPC::Client& client,
+		IN UINT64 threadId,
 		IN ILRewriter& rewriter,
 		IN ILInstr* currentInstruction,
 		IN UINT64 instrumentationMark,
@@ -67,6 +69,7 @@ namespace LibProfiler
 	HRESULT InstrumentFieldAccessIntrinsic(
 		IN ICorProfilerInfo& corProfilerInfo,
 		IN LibIPC::Client& client,
+		IN UINT64 threadId,
 		IN ILRewriter& rewriter,
 		IN ILInstr* callInstruction,
 		IN ILInstr* addressInstruction,
@@ -85,6 +88,7 @@ namespace LibProfiler
 	HRESULT InstrumentInstanceFieldAccess(
 		IN ICorProfilerInfo& corProfilerInfo,
 		IN LibIPC::Client& client,
+		IN UINT64 threadId,
 		IN ILRewriter& rewriter,
 		IN ILInstr* currentInstruction,
 		IN UINT16 importedLocalsCount,

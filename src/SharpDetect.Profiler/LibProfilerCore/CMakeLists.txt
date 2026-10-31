@@ -4,7 +4,8 @@ set(SOURCES
     "StackWalker.cpp"
     "GarbageCollectionContext.cpp"
     "ObjectsTracker.cpp"
-    "PAL.cpp")
+    "PAL.cpp"
+    "ThreadIncarnations.cpp")
 
 set(INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
 
