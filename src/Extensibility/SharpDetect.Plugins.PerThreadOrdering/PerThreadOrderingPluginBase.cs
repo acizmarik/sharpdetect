@@ -73,6 +73,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
                 _lastMutexAcquirers.Remove(new ProcessTrackedObjectId(metadata.Pid, objectId));
         }
 
+        RemoveCollectedThreadObjects(metadata.Pid, args.RemovedTrackedObjectIds);
         base.Visit(metadata, args);
     }
 

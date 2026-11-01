@@ -14,6 +14,11 @@ public sealed class ThreadObjectRegistry
         _objectIdToThreadIdLookup[processThreadObjectId] = processThreadId;
     }
     
+    public void Remove(ProcessTrackedObjectId processThreadObjectId)
+    {
+        _objectIdToThreadIdLookup.Remove(processThreadObjectId);
+    }
+
     public bool TryGetThreadId(ProcessTrackedObjectId processThreadObjectId, out ProcessThreadId processThreadId)
     {
         return _objectIdToThreadIdLookup.TryGetValue(processThreadObjectId, out processThreadId);
