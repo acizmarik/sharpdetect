@@ -18,6 +18,7 @@ internal sealed class FastTrackDetector
     private readonly TimeProvider _timeProvider;
 
     private readonly ThreadClockTable _threadClocks = new();
+    private readonly JoinableThreads _joinableThreads;
     private readonly ObjectClockSlots _forkClocks;
     private readonly ObjectClockSlots _taskStartClocks;
     private readonly ObjectClockSlots _taskFinishClocks;
@@ -45,6 +46,7 @@ internal sealed class FastTrackDetector
         _accessTracker = new AccessTracker(threadNameResolver);
         _fieldResolver = new FieldResolver(metadataContext, logger);
 
+        _joinableThreads = new JoinableThreads(_threadClocks);
         _forkClocks = new ObjectClockSlots(_threadClocks);
         _taskStartClocks = new ObjectClockSlots(_threadClocks);
         _taskFinishClocks = new ObjectClockSlots(_threadClocks);
@@ -71,7 +73,8 @@ internal sealed class FastTrackDetector
             _semaphorePermits,
             _volatileClocks,
             _publications,
-            _writeClassifier
+            _writeClassifier,
+            _joinableThreads
         ];
     }
 
@@ -85,10 +88,7 @@ internal sealed class FastTrackDetector
         => _threadClocks.EnsureExists(threadId);
 
     public void RecordThreadDestroyed(ProcessThreadId threadId)
-    {
-        // Keep the clock around for join operations; it will be cleaned up naturally
-        // Its index in the thread index table must not be given to a different thread either
-    }
+        => _joinableThreads.RecordExited(threadId);
 
     public void RecordGarbageCollectedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
     {
@@ -113,6 +113,7 @@ internal sealed class FastTrackDetector
     {
         _threadClocks.EnsureExists(childThreadId);
         _forkClocks.TryAcquireOnce(threadObjectId, childThreadId);
+        _joinableThreads.RecordStarted(threadObjectId, childThreadId);
     }
 
     public void RecordThreadJoin(ProcessThreadId joinerThreadId, ProcessThreadId joinedThreadId)
