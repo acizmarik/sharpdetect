@@ -34,7 +34,7 @@
         
     <!-- Versioning -->
     <PropertyGroup>
-        <Version>2.2.0-prerelease-07</Version>
+        <Version>2.2.0-prerelease-08</Version>
     </PropertyGroup>
 
     <!-- Static analysis -->
