@@ -31,6 +31,15 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_ShadowCallstack_FaultedTaskJoinThrows):
                     Test_ShadowCallstack_FaultedTaskJoinThrows();
                     break;
+                case nameof(Test_ShadowCallstack_SemaphoreWaitCanceledWhileBlocked):
+                    Test_ShadowCallstack_SemaphoreWaitCanceledWhileBlocked();
+                    break;
+                case nameof(Test_ShadowCallstack_ReflectionInvokedMethodThrowsInsideTaskBody):
+                    Test_ShadowCallstack_ReflectionInvokedMethodThrowsInsideTaskBody();
+                    break;
+                case nameof(Test_ShadowCallstack_ValueTypeDictionaryMissingKey):
+                    Test_ShadowCallstack_ValueTypeDictionaryMissingKey();
+                    break;
 #if NET10_0_OR_GREATER
                 case nameof(Test_ShadowCallstack_MonitorExitIfLockTaken):
                     Test_ShadowCallstack_MonitorExitIfLockTaken();
@@ -772,6 +781,12 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_TypeInitializer_Throws):
                     Test_TypeInitializer_Throws();
+                    break;
+                case nameof(Test_TypeInitializer_CatchesRethrownException):
+                    Test_TypeInitializer_CatchesRethrownException();
+                    break;
+                case nameof(Test_TypeInitializer_CatchesExceptionEscapingFinally):
+                    Test_TypeInitializer_CatchesExceptionEscapingFinally();
                     break;
                 case nameof(Test_NoDataRace_ConcurrentDictionaryPublishThenRead):
                     Test_NoDataRace_ConcurrentDictionaryPublishThenRead();
