@@ -46,10 +46,15 @@ internal sealed class ThreadClockTable
     // Acquire edge between two threads: the joiner absorbs everything the joined thread has done
     public void AcquireFromThread(ProcessThreadId joinerThreadId, ProcessThreadId joinedThreadId)
     {
+        if (!_clocks.TryGetValue(joinedThreadId, out var joined))
+            return;
+
         var joinerVc = GetOrCreateSeen(joinerThreadId);
-        joinerVc.Join(GetOrCreate(joinedThreadId));
+        joinerVc.Join(joined.Clock);
         joinerVc.Increment(joinerThreadId);
     }
+
+    public void Remove(ProcessThreadId threadId) => _clocks.Remove(threadId);
 
     private ThreadClock GetOrCreateEntry(ProcessThreadId threadId)
     {

@@ -46,7 +46,7 @@ public static class DataRaceLogger
 
     public static string GetThreadDisplayName(AccessInfo access)
     {
-        return access.ThreadName ?? $"Thread-0x{access.ProcessThreadId.ThreadId.Value:X}";
+        return access.ThreadName ?? $"Thread#{access.ProcessThreadId.ThreadId.Value}";
     }
 
     public static IReadOnlyList<string> FormatStackTraceLines(IReadOnlyList<StackFrame> frames)

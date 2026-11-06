@@ -7,7 +7,6 @@ using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Loader;
 using SharpDetect.Core.Metadata;
-using SharpDetect.Core.Plugins.Models;
 using SharpDetect.Core.Reporting.Model;
 
 namespace SharpDetect.Core.Plugins;
@@ -24,8 +23,8 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected IReadOnlyDictionary<ProcessThreadId, string> Threads { get; }
     protected IReadOnlyDictionary<InstrumentationPointId, InstrumentedFieldAccess> InstrumentedFieldAccesses { get; }
     private readonly Dictionary<RecordedEventHandlerType, RecordedEventHandler> _customEventHandlers;
-    private readonly Dictionary<ProcessThreadId, Callstack> _callstacks;
     private readonly Dictionary<ProcessThreadId, string> _threads;
+    private readonly Dictionary<ProcessThreadId, string> _retiredThreadNames;
     private readonly Dictionary<InstrumentationPointId, InstrumentedFieldAccess> _instrumentedFieldAccesses;
     private readonly IProfilerCommandSenderProvider _profilerCommandSenderProvider;
     private ImmutableDictionary<int, IProfilerCommandSender> _profilerCommandSenders;
@@ -48,8 +47,8 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         _profilerCommandSenderProvider = profilerCommandSenderProvider;
         _profilerCommandSenders = ImmutableDictionary<int, IProfilerCommandSender>.Empty;
         _customEventHandlers = [];
-        _callstacks = [];
         _threads = [];
+        _retiredThreadNames = [];
         _instrumentedFieldAccesses = [];
 
         Threads = _threads;
@@ -131,9 +130,12 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     protected override void Visit(RecordedEventMetadata metadata, ThreadDestroyRecordedEvent args)
     {
         var id = new ProcessThreadId(metadata.Pid, args.ThreadId);
-        var name = Threads[id];
-        _threads.Remove(id);
-        Logger.LogInformation("Destroyed thread {Name}.", name);
+        if (_threads.Remove(id, out var name))
+        {
+            _retiredThreadNames[id] = name;
+            Logger.LogInformation("Destroyed thread {Name}.", name);
+        }
+
         base.Visit(metadata, args);
     }
 
@@ -165,51 +167,16 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
 
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterRecordedEvent args)
     {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        if (TracksCallstackFrame(args.Interpretation))
-            _callstacks[id].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterCounter();
         base.Visit(metadata, args);
     }
 
     protected override void Visit(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        if (TracksCallstackFrame(args.Interpretation))
-            _callstacks[id].Push(args.ModuleId, args.MethodToken);
         Reporter.IncrementMethodEnterCounter();
         base.Visit(metadata, args);
     }
 
-    protected override void Visit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
-    {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        if (TracksCallstackFrame(args.Interpretation))
-            _callstacks[id].Pop();
-        base.Visit(metadata, args);
-    }
-
-    protected override void Visit(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
-    {
-        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
-        if (TracksCallstackFrame(args.Interpretation))
-            _callstacks[id].Pop();
-        base.Visit(metadata, args);
-    }
-
-    private static bool TracksCallstackFrame(ushort interpretation) => (RecordedEventType)interpretation switch
-    {
-        RecordedEventType.StaticFieldRead
-            or RecordedEventType.StaticFieldWrite
-            or RecordedEventType.GenericStaticFieldRead
-            or RecordedEventType.GenericStaticFieldWrite
-            or RecordedEventType.InstanceFieldRead
-            or RecordedEventType.InstanceFieldWrite
-            or RecordedEventType.TypeInitializerEnter
-            or RecordedEventType.TypeInitializerExit => false,
-        _ => true
-    };
-    
     protected override void Visit(RecordedEventMetadata metadata, FieldAccessInstrumentationRecordedEvent args)
     {
         var instrumentationId = new InstrumentationPointId(metadata.Pid, args.InstrumentationId);
@@ -228,6 +195,11 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
         /* Ignored event */
     }
 
+    protected string? FindThreadName(ProcessThreadId id)
+    {
+        return _threads.TryGetValue(id, out var name) ? name : _retiredThreadNames.GetValueOrDefault(id);
+    }
+
     protected IProfilerCommandSender GetCommandSender(uint pid)
     {
         return !_profilerCommandSenders.TryGetValue((int)pid, out var sender) 
@@ -243,7 +215,6 @@ public abstract class PluginBase : RecordedEventActionVisitorBase, IDisposable
     private void CreateNewThread(ProcessThreadId processThreadId)
     {
         _threads[processThreadId] = $"T{_nextFreeThreadId++}";
-        _callstacks[processThreadId] = new Callstack(processThreadId);
         Logger.LogInformation("Created thread {Name}.", _threads[processThreadId]);
     }
 

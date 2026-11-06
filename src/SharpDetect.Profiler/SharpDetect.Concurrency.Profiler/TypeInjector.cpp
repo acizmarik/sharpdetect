@@ -78,7 +78,8 @@ Profiler::TypeInjector::TypeInjector(
     MetadataStore& metadataStore,
     MethodDescriptorRegistry& methodDescriptorRegistry,
     const std::vector<FieldAccessIntrinsicDescriptor>& fieldAccessIntrinsics,
-    RewriteRegistry& rewriteRegistry) :
+    RewriteRegistry& rewriteRegistry,
+    std::function<UINT64()> getCurrentThreadId) :
     _corProfilerInfo(corProfilerInfo),
     _client(client),
     _configuration(configuration),
@@ -86,16 +87,14 @@ Profiler::TypeInjector::TypeInjector(
     _metadataStore(metadataStore),
     _methodDescriptorRegistry(methodDescriptorRegistry),
     _fieldAccessIntrinsics(fieldAccessIntrinsics),
-    _rewriteRegistry(rewriteRegistry)
+    _rewriteRegistry(rewriteRegistry),
+    _getCurrentThreadId(std::move(getCurrentThreadId))
 {
 }
 
 LibIPC::MetadataMsg Profiler::TypeInjector::CreateMetadataMsg() const
 {
-    ThreadID threadId = 0;
-    if (FAILED(_corProfilerInfo->GetCurrentThreadID(&threadId)))
-        threadId = 0;
-    return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), threadId);
+    return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), _getCurrentThreadId());
 }
 
 static void AppendCompressedToken(mdToken token, std::vector<COR_SIGNATURE>& result)

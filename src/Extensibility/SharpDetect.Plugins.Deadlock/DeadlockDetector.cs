@@ -111,7 +111,7 @@ public partial class DeadlockPlugin
         var waitInfo = graph.GetWaitInfo(currentProcessThreadId) ?? throw new InvalidOperationException(
                 $"Thread {currentProcessThreadId} is in a cycle but has no wait information.");
 
-        var threadName = Threads.TryGetValue(currentProcessThreadId, out var name) ? name : $"Thread-{currentProcessThreadId.ThreadId.Value}";
+        var threadName = Threads.TryGetValue(currentProcessThreadId, out var name) ? name : $"Thread#{currentProcessThreadId.ThreadId.Value}";
         return new DeadlockThreadInfo(
             ProcessThreadId: currentProcessThreadId,
             ThreadName: threadName,

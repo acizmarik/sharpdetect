@@ -104,6 +104,16 @@ public abstract partial class PerThreadOrderingPluginBase
         }
     }
 
+    private void RemoveCollectedThreadObjects(uint processId, TrackedObjectId[] objectIds)
+    {
+        foreach (var objectId in objectIds)
+        {
+            var threadObjectId = new ProcessTrackedObjectId(processId, objectId);
+            _threadObjectRegistry.Remove(threadObjectId);
+            _pendingJoinAttempts.Remove(threadObjectId);
+        }
+    }
+
     protected bool TryGetThreadId(ProcessTrackedObjectId threadObjectId, out ProcessThreadId threadId)
         => _threadObjectRegistry.TryGetThreadId(threadObjectId, out threadId);
 

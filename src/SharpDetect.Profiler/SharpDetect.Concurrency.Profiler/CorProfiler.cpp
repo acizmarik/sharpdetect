@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <algorithm>
+#include <cinttypes>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -79,7 +80,8 @@ Profiler::CorProfiler::CorProfiler(const Configuration &configuration) :
         _metadataStore,
         _methodDescriptorRegistry,
         _fieldAccessIntrinsics,
-        _rewriteRegistry)
+        _rewriteRegistry,
+        [this] { return GetCurrentThreadIdCached(); })
 {
     _terminating = false;
     ProfilerInstance = this;
@@ -237,8 +239,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadCreated(const ThreadID th
     if (_terminating)
         return S_OK;
 
-    LOG_F(INFO, "Thread created %" UINT_PTR_FORMAT ".", threadId);
-    _client.Send(LibIPC::Helpers::CreateThreadCreateMsg(CreateMetadataMsg(), threadId));
+    const auto incarnation = _threadIncarnations.OnThreadCreated(threadId);
+    LOG_F(INFO, "Thread created %" UINT_PTR_FORMAT " (incarnation %" PRIu64 ").", threadId, incarnation);
+    _client.Send(LibIPC::Helpers::CreateThreadCreateMsg(CreateMetadataMsg(), incarnation));
     return S_OK;
 }
 
@@ -247,11 +250,16 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadDestroyed(const ThreadID 
     if (_terminating)
         return S_OK;
 
-    // Invalidate cached ThreadIDs: after a destroy, an OS thread could re-attach and
+    // Before OnThreadDestroyed: the caller can be the destroyed thread
+    auto metadata = CreateMetadataMsg();
+    const auto incarnation = _threadIncarnations.OnThreadDestroyed(threadId);
+
+    // Invalidate cached incarnations: after a destroy, an OS thread could re-attach and
     // receive a different runtime thread (see GetCurrentThreadIdCached)
     _threadIdCacheEpoch.fetch_add(1, std::memory_order_release);
 
-    _client.Send(LibIPC::Helpers::CreateThreadDestroyMsg(CreateMetadataMsg(), threadId));
+    LOG_F(INFO, "Thread destroyed %" UINT_PTR_FORMAT " (incarnation %" PRIu64 ").", threadId, incarnation);
+    _client.Send(LibIPC::Helpers::CreateThreadDestroyMsg(std::move(metadata), incarnation));
     return S_OK;
 }
 
@@ -264,7 +272,8 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ThreadNameChanged(
         return S_OK;
 
     const auto nameString = LibProfiler::ToString(LibProfiler::WSTRING(name, cchName));
-    _client.Send(LibIPC::Helpers::CreateThreadRenameMsg(CreateMetadataMsg(), threadId, nameString));
+    const auto incarnation = _threadIncarnations.GetOrAssign(threadId);
+    _client.Send(LibIPC::Helpers::CreateThreadRenameMsg(CreateMetadataMsg(), incarnation, nameString));
     return S_OK;
 }
 
@@ -466,6 +475,7 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
     if (SUCCEEDED(LibProfiler::PatchMethodBody(
         *_corProfilerInfo,
         _client,
+        GetCurrentThreadIdCached(),
         moduleDef,
         mdMethodDef,
         tokensToRewrite,
@@ -1163,22 +1173,24 @@ HRESULT Profiler::CorProfiler::AbortAttach(const std::string& reason)
 
 UINT64 Profiler::CorProfiler::GetCurrentThreadIdCached() const
 {
-    // A cached ThreadID stays valid only while the OS thread keeps its runtime thread
+    // A cached incarnation stays valid only while the OS thread keeps its runtime thread
     // ThreadDestroyed bumps the epoch, forcing revalidation
-    thread_local UINT64 cachedThreadId = 0;
+    thread_local ThreadID cachedThreadId = 0;
+    thread_local UINT64 cachedIncarnation = LibProfiler::ThreadIncarnations::NoIncarnation;
     thread_local UINT64 cachedEpoch = 0;
 
     const auto epoch = _threadIdCacheEpoch.load(std::memory_order_acquire);
-    if (cachedThreadId == 0 || cachedEpoch != epoch)
+    if (cachedIncarnation == LibProfiler::ThreadIncarnations::NoIncarnation || cachedEpoch != epoch)
     {
         ThreadID threadId = 0;
         if (FAILED(_corProfilerInfo->GetCurrentThreadID(&threadId)))
             threadId = 0;
+        cachedIncarnation = _threadIncarnations.Resolve(threadId, cachedThreadId, cachedIncarnation);
         cachedThreadId = threadId;
         cachedEpoch = epoch;
     }
 
-    return cachedThreadId;
+    return cachedIncarnation;
 }
 
 LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg() const
@@ -1245,11 +1257,18 @@ LibIPC::MetadataMsg Profiler::CorProfiler::CreateMetadataMsg(const UINT64 comman
 
 void Profiler::CorProfiler::OnCreateStackSnapshot(const UINT64 commandId, const UINT64 targetThreadId)
 {
-    LOG_F(INFO, "Received command to create stack snapshot for thread %" UINT_PTR_FORMAT " (commandId: %lu).", targetThreadId, commandId);
+    LOG_F(INFO, "Received command to create stack snapshot for thread %" PRIu64 " (commandId: %lu).", targetThreadId, commandId);
 
-    if (FAILED(CaptureStackTrace(commandId, targetThreadId)))
+    const auto runtimeThreadId = _threadIncarnations.TryGetThreadId(targetThreadId);
+    if (!runtimeThreadId.has_value())
     {
-        LOG_F(ERROR, "Failed to capture stack trace for thread %" UINT_PTR_FORMAT ".", targetThreadId);
+        LOG_F(WARNING, "Cannot capture stack trace for thread %" PRIu64 ": it is not alive.", targetThreadId);
+        return;
+    }
+
+    if (FAILED(CaptureStackTrace(commandId, targetThreadId, *runtimeThreadId)))
+    {
+        LOG_F(ERROR, "Failed to capture stack trace for thread %" PRIu64 ".", targetThreadId);
     }
 }
 
@@ -1257,12 +1276,34 @@ void Profiler::CorProfiler::OnCreateStackSnapshots(const UINT64 commandId, const
 {
     LOG_F(INFO, "Received command to create stack snapshots for %zu threads (commandId: %lu).", targetThreadIds.size(), commandId);
 
-    std::vector<std::vector<LibProfiler::StackFrame>> frames;
-    auto hr = LibProfiler::StackWalker::CaptureStackTraces(_corProfilerInfo, targetThreadIds, frames);
-
-    if (FAILED(hr))
+    std::vector<ThreadID> liveThreadIds;
+    std::vector<size_t> livePositions;
+    _threadIncarnations.GetLiveThreadIds(targetThreadIds, liveThreadIds, livePositions);
+    if (liveThreadIds.size() != targetThreadIds.size())
     {
-        LOG_F(WARNING, "One or more stack traces failed to capture. Error: 0x%x.", hr);
+        LOG_F(WARNING, "Cannot capture stack traces for %zu of %zu threads: they are not alive.",
+            targetThreadIds.size() - liveThreadIds.size(), targetThreadIds.size());
+    }
+
+    std::vector<std::vector<LibProfiler::StackFrame>> frames;
+    if (!liveThreadIds.empty())
+    {
+        std::vector<std::vector<LibProfiler::StackFrame>> liveFrames;
+        const std::vector<UINT64> liveThreadIdValues(liveThreadIds.begin(), liveThreadIds.end());
+        auto hr = LibProfiler::StackWalker::CaptureStackTraces(_corProfilerInfo, liveThreadIdValues, liveFrames);
+
+        if (FAILED(hr))
+        {
+            LOG_F(WARNING, "One or more stack traces failed to capture. Error: 0x%x.", hr);
+        }
+
+        const auto capturedEveryLiveThread = liveFrames.size() == liveThreadIds.size();
+        if (capturedEveryLiveThread)
+            frames = LibProfiler::ScatterToPositions(std::move(liveFrames), livePositions, targetThreadIds.size());
+    }
+    else
+    {
+        frames.resize(targetThreadIds.size());
     }
 
     std::vector<LibIPC::StackTraceSnapshotMsgArgs> snapshots;
@@ -1289,12 +1330,12 @@ void Profiler::CorProfiler::OnCreateStackSnapshots(const UINT64 commandId, const
     LOG_F(INFO, "Sent stack snapshots notification with %zu snapshots (commandId: %lu).", snapshotsCount, commandId);
 }
 
-HRESULT Profiler::CorProfiler::CaptureStackTrace(const UINT64 commandId, const ThreadID threadId)
+HRESULT Profiler::CorProfiler::CaptureStackTrace(const UINT64 commandId, const UINT64 targetThreadId, const ThreadID runtimeThreadId)
 {
     std::vector<UINT64> moduleIds;
     std::vector<UINT32> methodTokens;
 
-    auto hr = LibProfiler::StackWalker::CaptureStackTrace(_corProfilerInfo, threadId, moduleIds, methodTokens);
+    auto hr = LibProfiler::StackWalker::CaptureStackTrace(_corProfilerInfo, runtimeThreadId, moduleIds, methodTokens);
 
     if (FAILED(hr))
     {
@@ -1305,12 +1346,12 @@ HRESULT Profiler::CorProfiler::CaptureStackTrace(const UINT64 commandId, const T
     const auto frameCount = moduleIds.size();
     _client.Send(LibIPC::Helpers::CreateStackTraceSnapshotMsg(
         CreateMetadataMsg(commandId),
-        threadId,
+        targetThreadId,
         std::move(moduleIds),
         std::move(methodTokens)));
 
-    LOG_F(INFO, "Sent stack trace snapshot notification for thread %" UINT_PTR_FORMAT " with %zu frames (commandId: %lu).",
-        threadId, frameCount, commandId);
+    LOG_F(INFO, "Sent stack trace snapshot notification for thread %" PRIu64 " with %zu frames (commandId: %lu).",
+        targetThreadId, frameCount, commandId);
 
     return S_OK;
 }

@@ -142,6 +142,7 @@ static HRESULT ImportLocalVariableSignature(
 HRESULT LibProfiler::PatchMethodBody(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
+	IN const UINT64 threadId,
 	IN const ModuleDef& moduleDef,
 	IN const mdMethodDef mdMethodDef,
 	IN const std::unordered_map<mdToken, mdToken>& tokensToPatch,
@@ -235,6 +236,7 @@ HRESULT LibProfiler::PatchMethodBody(
 						if (SUCCEEDED(InstrumentFieldAccessIntrinsic(
 							corProfilerInfo,
 							client,
+							threadId,
 							rewriter,
 							currentInstruction,
 							addressInstruction,
@@ -271,6 +273,7 @@ HRESULT LibProfiler::PatchMethodBody(
 				if (!FAILED(InstrumentStaticFieldAccess(
 					corProfilerInfo,
 					client,
+					threadId,
 					rewriter,
 					currentInstruction,
 					mark,
@@ -310,6 +313,7 @@ HRESULT LibProfiler::PatchMethodBody(
 				if (!FAILED(InstrumentInstanceFieldAccess(
 					corProfilerInfo,
 					client,
+					threadId,
 					rewriter,
 					currentInstruction,
 					localSignatureVarsCount,
@@ -380,6 +384,7 @@ static HRESULT GetFieldDeclaringType(
 HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
+	IN const UINT64 threadId,
 	IN ILRewriter& rewriter,
 	IN ILInstr* currentInstruction,
 	IN const UINT64 instrumentationMark,
@@ -394,8 +399,6 @@ HRESULT LibProfiler::InstrumentStaticFieldAccess(
 	auto const moduleId = moduleDef.GetModuleId();
 	auto const fieldToken = static_cast<mdToken>(currentInstruction->m_Arg32);
 	auto const originalOffset = currentInstruction->m_offset;
-	ThreadID threadId;
-	corProfilerInfo.GetCurrentThreadID(&threadId);
 
 	BOOL isVolatile;
 	HRESULT hr = IsVolatile(*currentInstruction, &isVolatile);
@@ -675,6 +678,7 @@ static ComparandComparison ClassifyComparand(
 HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
+	IN const UINT64 threadId,
 	IN ILRewriter& rewriter,
 	IN ILInstr* callInstruction,
 	IN ILInstr* addressInstruction,
@@ -696,8 +700,6 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 	auto const originalOffset = addressInstruction->m_offset;
 	auto const callOpcode = callInstruction->m_opcode;
 	auto const callToken = static_cast<mdToken>(callInstruction->m_Arg32);
-	ThreadID threadId;
-	corProfilerInfo.GetCurrentThreadID(&threadId);
 
 	auto kind = intrinsicKind;
 	std::vector<BYTE> comparandSignature;
@@ -927,6 +929,7 @@ HRESULT LibProfiler::InstrumentFieldAccessIntrinsic(
 HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	IN ICorProfilerInfo& corProfilerInfo,
 	IN LibIPC::Client& client,
+	IN const UINT64 threadId,
 	IN ILRewriter& rewriter,
 	IN ILInstr* currentInstruction,
 	IN const UINT16 importedLocalsCount,
@@ -944,8 +947,6 @@ HRESULT LibProfiler::InstrumentInstanceFieldAccess(
 	auto const moduleId = moduleDef.GetModuleId();
 	auto const fieldToken = static_cast<mdToken>(currentInstruction->m_Arg32);
 	auto const originalOffset = currentInstruction->m_offset;
-	ThreadID threadId;
-	corProfilerInfo.GetCurrentThreadID(&threadId);
 
 	if (!currentInstruction->m_objOperandIsObjRef)
 	{

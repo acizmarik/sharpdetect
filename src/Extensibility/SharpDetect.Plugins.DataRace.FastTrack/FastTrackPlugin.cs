@@ -128,7 +128,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private string? GetThreadName(ProcessThreadId threadId)
     {
-        return Threads.GetValueOrDefault(threadId);
+        return FindThreadName(threadId);
     }
 
     private void OnLockAcquireReturned(LockAcquireResultArgs args)

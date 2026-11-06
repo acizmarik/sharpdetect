@@ -20,7 +20,7 @@ internal readonly record struct Epoch(ProcessThreadId ThreadId, int Clock)
         if (IsNone)
             return "⊥";
 
-        var name = threadNameResolver(ThreadId) ?? $"Thread-{ThreadId.ThreadId.Value}";
+        var name = threadNameResolver(ThreadId) ?? $"Thread#{ThreadId.ThreadId.Value}";
         return $"{name}@{Clock}";
     }
 }

@@ -1,7 +1,9 @@
 set(SOURCES
 	"TestMain.cpp"
 	"ExceptionUnwindTrackerTests.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/../LibProfilerCore/ExceptionUnwindTracker.cpp")
+	"ThreadIncarnationsTests.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../LibProfilerCore/ExceptionUnwindTracker.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../LibProfilerCore/ThreadIncarnations.cpp")
 
 add_executable(LibProfilerCore.Tests ${SOURCES})
 

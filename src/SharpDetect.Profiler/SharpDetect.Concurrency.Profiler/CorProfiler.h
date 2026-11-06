@@ -19,6 +19,7 @@
 #include "../LibMetadata/ModuleDef.h"
 #include "../LibMetadata/TypeClassification.h"
 #include "../LibProfilerCore/ObjectsTracker.h"
+#include "../LibProfilerCore/ThreadIncarnations.h"
 #include "../LibDescriptors/Configuration.h"
 #include "../LibDescriptors/FieldAccessIntrinsicDescriptor.h"
 #include "../LibDescriptors/MethodDescriptor.h"
@@ -98,7 +99,7 @@ namespace Profiler
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg() const;
 		[[nodiscard]] LibIPC::MetadataMsg CreateMetadataMsg(UINT64 commandId) const;
 		[[nodiscard]] UINT64 GetCurrentThreadIdCached() const;
-		HRESULT CaptureStackTrace(UINT64 commandId, ThreadID threadId);
+		HRESULT CaptureStackTrace(UINT64 commandId, UINT64 targetThreadId, ThreadID runtimeThreadId);
 		void SendMethodEnter(UINT64 moduleId, UINT32 methodToken, USHORT interpretation);
 		void SendMethodExit(UINT64 moduleId, UINT32 methodToken, USHORT interpretation);
 		void SendMethodEnterWithArguments(
@@ -128,6 +129,7 @@ namespace Profiler
 		ModuleID _coreModule;
 		UINT32 _pid;
 		std::atomic<UINT64> _threadIdCacheEpoch;
+		mutable LibProfiler::ThreadIncarnations _threadIncarnations;
 
 		MetadataStore _metadataStore;
 		LibProfiler::ObjectsTracker _objectsTracker;
