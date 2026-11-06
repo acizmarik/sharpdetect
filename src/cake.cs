@@ -12,6 +12,7 @@ var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
 var sdk = Argument("sdk", GetTargetFramework());
+var strictNuGetAudit = HasArgument("strict-nuget-audit");
 
 string GetTargetFramework()
 {
@@ -54,14 +55,19 @@ var standaloneProjects = new[]
     "./Samples/SimpleDataRaceTestsVSTest/SimpleDataRaceTestsVSTest.csproj"
 };
 
-var warningsAsErrorsSettings = new DotNetMSBuildSettings
-{
-    TreatAllWarningsAs = MSBuildTreatAllWarningsAs.Error
-};
-
 //////////////////////////////////////////////////////////////////////
 //////////////////////////// HELPERS /////////////////////////////////
 //////////////////////////////////////////////////////////////////////
+
+DotNetMSBuildSettings CreateMSBuildSettings(bool warningsAsErrors = false)
+{
+    var settings = new DotNetMSBuildSettings();
+    if (warningsAsErrors)
+        settings.TreatAllWarningsAs = MSBuildTreatAllWarningsAs.Error;
+    if (strictNuGetAudit)
+        settings.WithProperty("StrictNuGetAudit", "true");
+    return settings;
+}
 
 void RunTool(string tool, string description, string? workingDirectory, Action<ProcessArgumentBuilder> configureArguments)
 {
@@ -105,7 +111,7 @@ DotNetBuildSettings CreateBuildSettings() => new DotNetBuildSettings
 {
     Configuration = configuration,
     NoRestore = true,
-    MSBuildSettings = warningsAsErrorsSettings
+    MSBuildSettings = CreateMSBuildSettings(warningsAsErrors: true)
 };
 
 DotNetTestSettings CreateTestSettings(TimeSpan timeout, string? filter = null) => new DotNetTestSettings
@@ -136,6 +142,7 @@ Setup(_ =>
     Information($"Target framework:           {sdk}");
     Information($"Artifacts directory:        {artifactsDirectory}");
     Information($"Native artifacts directory: {nativeArtifactsDirectory}");
+    Information($"Strict NuGet audit:         {(strictNuGetAudit ? "yes" : "no")}");
 });
 
 //////////////////////////////////////////////////////////////////////
@@ -158,9 +165,10 @@ Task("Restore")
     .IsDependentOn("Clean")
     .Does(() =>
 {
-    DotNetRestore(solution);
+    var restoreSettings = new DotNetRestoreSettings { MSBuildSettings = CreateMSBuildSettings() };
+    DotNetRestore(solution, restoreSettings);
     foreach (var project in standaloneProjects)
-        DotNetRestore(project);
+        DotNetRestore(project, restoreSettings);
 });
 
 Task("Build-Managed")
@@ -180,7 +188,8 @@ Task("Build-IPQ")
     DotNetPublish(ipqProject, new DotNetPublishSettings
     {
         Configuration = configuration,
-        Runtime = rid
+        Runtime = rid,
+        MSBuildSettings = CreateMSBuildSettings()
     });
 });
 
@@ -326,7 +335,8 @@ Task("CI-Prepare-Managed")
 {
     DotNetPublish(cliProject, new DotNetPublishSettings
     {
-        Configuration = configuration
+        Configuration = configuration,
+        MSBuildSettings = CreateMSBuildSettings()
     });
 });
 
@@ -339,7 +349,8 @@ Task("CI-Pack")
     DotNetPack(cliProject, new DotNetPackSettings
     {
         Configuration = configuration,
-        OutputDirectory = artifactsDirectory
+        OutputDirectory = artifactsDirectory,
+        MSBuildSettings = CreateMSBuildSettings()
     });
 
     Information($"Package created in: {artifactsDirectory}");

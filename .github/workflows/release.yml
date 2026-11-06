@@ -27,7 +27,7 @@ jobs:
     - name: Build
       run: |
         cd src
-        dotnet cake.cs -- --rid=${{ matrix.rid }} --target="Build-Local-Environment" --configuration=Release
+        dotnet cake.cs -- --rid=${{ matrix.rid }} --target="Build-Local-Environment" --configuration=Release --strict-nuget-audit
     - name: Upload
       uses: actions/upload-artifact@v7
       with:
@@ -49,7 +49,7 @@ jobs:
     - name: Build
       run: |
         cd src
-        dotnet cake.cs -- --rid="linux-x64" --target="CI-Prepare-Managed" --configuration=Release
+        dotnet cake.cs -- --rid="linux-x64" --target="CI-Prepare-Managed" --configuration=Release --strict-nuget-audit
     - name: Download Native
       uses: actions/download-artifact@v8
       with:
@@ -59,7 +59,7 @@ jobs:
       run: |
         cd src
         ls -R artifacts/
-        dotnet cake.cs -- --rid="linux-x64" --target="CI-Pack" --configuration=Release
+        dotnet cake.cs -- --rid="linux-x64" --target="CI-Pack" --configuration=Release --strict-nuget-audit
         ls -R artifacts/
     - name: Upload
       uses: actions/upload-artifact@v7

@@ -41,4 +41,12 @@
     <PropertyGroup>
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
     </PropertyGroup>
+
+    <!-- NuGet audit -->
+    <PropertyGroup Condition="'$(StrictNuGetAudit)' == 'true'">
+        <WarningsAsErrors>$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(StrictNuGetAudit)' != 'true'">
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    </PropertyGroup>
 </Project>
