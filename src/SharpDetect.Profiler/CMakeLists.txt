@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
-project ("SharpDetect.Profiler" VERSION 2.2.0)
+# Cake passes <Version> from src/Directory.Build.props
+set(SHARPDETECT_VERSION "0.0.0" CACHE STRING "SharpDetect version, numeric part only")
+project ("SharpDetect.Profiler" VERSION ${SHARPDETECT_VERSION})
 
 set(PROFILER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PROFILER_LIB_DIR ${PROFILER_ROOT_DIR}/lib)

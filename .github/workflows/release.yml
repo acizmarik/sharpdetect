@@ -1,13 +1,59 @@
 name: Release
 
-on: workflow_dispatch
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Push the package to NuGet'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - name: Check version
+      id: version
+      shell: bash
+      env:
+        PUBLISH_REQUESTED: ${{ inputs.publish }}
+      run: |
+        if [ "$PUBLISH_REQUESTED" = "true" ] && [ "$GITHUB_REF_TYPE" != "tag" ]; then
+          echo "::error::Publishing was requested, but $GITHUB_REF is not a tag. Run the workflow on a v* tag."
+          exit 1
+        fi
+        version=$(python3 -c "import xml.etree.ElementTree as E; print((E.parse('src/Directory.Build.props').getroot().findtext('PropertyGroup/Version') or '').strip())")
+        if [ -z "$version" ]; then
+          echo "::error::Could not read <Version> from src/Directory.Build.props."
+          exit 1
+        fi
+        if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+          echo "::error::Tag $GITHUB_REF_NAME does not match <Version>$version</Version> in src/Directory.Build.props. Bump the version, or tag v$version."
+          exit 1
+        fi
+        if [ "$GITHUB_REF_TYPE" = "tag" ] && ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+          echo "::error::Tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main. Tag a commit on main."
+          exit 1
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
   prepare-native:
+    needs: [validate]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -27,7 +73,7 @@ jobs:
     - name: Build
       run: |
         cd src
-        dotnet cake.cs -- --rid=${{ matrix.rid }} --target="Build-Local-Environment" --configuration=Release --strict-nuget-audit
+        dotnet cake.cs -- --rid=${{ matrix.rid }} --target="Copy-Native-Artifacts" --configuration=Release
     - name: Upload
       uses: actions/upload-artifact@v7
       with:
@@ -36,20 +82,14 @@ jobs:
         if-no-files-found: error
   
   pack:
-    needs: [prepare-native]  
+    needs: [prepare-native]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
-      with:
-        submodules: 'true'
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 10.0.*
-    - name: Build
-      run: |
-        cd src
-        dotnet cake.cs -- --rid="linux-x64" --target="CI-Prepare-Managed" --configuration=Release --strict-nuget-audit
     - name: Download Native
       uses: actions/download-artifact@v8
       with:
@@ -58,12 +98,43 @@ jobs:
     - name: Pack
       run: |
         cd src
-        ls -R artifacts/
-        dotnet cake.cs -- --rid="linux-x64" --target="CI-Pack" --configuration=Release --strict-nuget-audit
-        ls -R artifacts/
+        dotnet cake.cs -- --rid="linux-x64" --target="CI-Pack-Verified" --configuration=Release --strict-nuget-audit
     - name: Upload
       uses: actions/upload-artifact@v7
       with:
         name: NuGet
         path: src/artifacts/SharpDetect*.nupkg
         if-no-files-found: error
+
+  publish:
+    needs: [validate, pack]
+    if: ${{ github.ref_type == 'tag' && (github.event_name == 'push' || inputs.publish) }}
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.*
+    - name: Download package
+      uses: actions/download-artifact@v8
+      with:
+        name: NuGet
+        path: package
+    - name: NuGet login
+      id: login
+      uses: NuGet/login@v1
+      with:
+        user: cizmarik.andrej
+    - name: Push to NuGet
+      shell: bash
+      env:
+        NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+      run: |
+        dotnet nuget push "package/SharpDetect.${{ needs.validate.outputs.version }}.nupkg" \
+          --api-key "$NUGET_API_KEY" \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
