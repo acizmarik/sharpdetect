@@ -77,6 +77,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_PolyfilledLock_EnterScopeLoop_AcquireReleaseBalanced(string sdk)
+    {
+        await MonitorAcquireReleaseBalanced("Test_LockMethods_PolyfilledLockEnterScopeLoop", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Monitor_Wait1(string sdk)
     {
         await MonitorWait("Test_MonitorMethods_Wait1", sdk);

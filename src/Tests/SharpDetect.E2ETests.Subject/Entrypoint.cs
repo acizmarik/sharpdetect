@@ -71,6 +71,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_MonitorMethods_TryEnterExitLoop):
                     Test_MonitorMethods_TryEnterExitLoop();
                     break;
+                case nameof(Test_LockMethods_PolyfilledLockEnterScopeLoop):
+                    Test_LockMethods_PolyfilledLockEnterScopeLoop();
+                    break;
                 case nameof(Test_MonitorMethods_Wait1):
                     Test_MonitorMethods_Wait1();
                     break;

@@ -47,6 +47,7 @@ namespace Profiler
 		HRESULT ResolveFieldAccessIntrinsics(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef) const;
 
 	private:
+		[[nodiscard]] bool ShadowsCoreLibraryType(const LibProfiler::ModuleDef& moduleDef, const std::string& typeFullName);
 		HRESULT ImportMethodWrapper(const LibProfiler::ModuleDef& moduleDef, const LibProfiler::AssemblyRef& assemblyRef, const MethodDescriptor& methodDescriptor);
 		HRESULT CreateFieldAccessHelperBody(
 			LibProfiler::ModuleDef& moduleDef,

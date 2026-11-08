@@ -74,6 +74,11 @@ namespace SharpDetect.E2ETests.Subject
             }
         }
 
+        public static void Test_LockMethods_PolyfilledLockEnterScopeLoop()
+        {
+            SharpDetect.E2ETests.Subject.IL.PolyfilledLock.EnterScopeLoop(MonitorBalanceLoopIterations);
+        }
+
         public static void Test_MonitorMethods_Wait1()
         {
             var obj = new object();

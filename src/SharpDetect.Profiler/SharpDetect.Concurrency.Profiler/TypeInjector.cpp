@@ -92,6 +92,15 @@ Profiler::TypeInjector::TypeInjector(
 {
 }
 
+bool Profiler::TypeInjector::ShadowsCoreLibraryType(const LibProfiler::ModuleDef& moduleDef, const std::string& typeFullName)
+{
+    if (moduleDef.GetModuleId() == _coreModule || !_metadataStore.HasModuleDef(_coreModule))
+        return false;
+
+    mdTypeDef coreTypeDef;
+    return SUCCEEDED(_metadataStore.GetModuleDef(_coreModule)->FindTypeDef(typeFullName, &coreTypeDef));
+}
+
 LibIPC::MetadataMsg Profiler::TypeInjector::CreateMetadataMsg() const
 {
     return LibIPC::Helpers::CreateMetadataMsg(LibProfiler::PAL_GetCurrentPid(), _getCurrentThreadId());
@@ -286,7 +295,7 @@ HRESULT Profiler::TypeInjector::WrapAnalyzedExternMethods(LibProfiler::ModuleDef
 
             mdTypeDef typeDef;
             auto hr = moduleDef.FindTypeDef(declaringTypeFullName, &typeDef);
-            if (FAILED(hr))
+            if (FAILED(hr) || ShadowsCoreLibraryType(moduleDef, declaringTypeFullName))
                 continue;
 
             mdMethodDef methodDef;
@@ -496,7 +505,7 @@ HRESULT Profiler::TypeInjector::ImportCustomRecordedEventTypes(const LibProfiler
         // Get declaring type
         mdTypeDef typeDef;
         HRESULT hr = moduleDef.FindTypeDef(declaringTypeFullName, &typeDef);
-        if (FAILED(hr))
+        if (FAILED(hr) || ShadowsCoreLibraryType(moduleDef, declaringTypeFullName))
             continue;
 
         // Get method
