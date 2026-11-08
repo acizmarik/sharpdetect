@@ -224,7 +224,7 @@ internal sealed class BenchmarkCommandHandler(BenchmarkOptions options)
             Runtime: null,
             Target: new TargetConfigurationArgs(
                 path: options.WorkloadPath,
-                args: $"--iterations {options.Iterations} --threads {options.Threads}"),
+                args: ["--iterations", options.Iterations.ToString(), "--threads", options.Threads.ToString()]),
             Analysis: new AnalysisPluginConfigurationArgs(
                 pluginName: "FastTrack",
                 renderReport: false,

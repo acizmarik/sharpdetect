@@ -120,7 +120,7 @@ internal sealed class E2ETestBuilder
                     logLevel: ProfilerLogLevel)),
             Target: new TargetConfigurationArgs(
                 path: resolvedSubjectPath,
-                args: _customTargetRelativePath is null ? _subjectArgs : null,
+                args: _customTargetRelativePath is null ? [_subjectArgs] : [],
                 additionalEnvironmentVariables: _additionalTargetEnvironmentVariables,
                 kind: _targetKind,
                 test: _testTargetConfiguration),

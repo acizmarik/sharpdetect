@@ -8,7 +8,7 @@ using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Commands;
 
-public abstract partial class AnalysisCommandBase : ICommand
+public abstract partial class AnalysisCommandBase(PassThroughArguments passThroughArguments) : ICommand
 {
     [CommandOption("plugin", 'p', Description = $"Analysis plugin name or plugin type full name. Default: {AnalysisOptions.DefaultPlugin}.")]
     public string? PluginType { get; set; }
@@ -48,6 +48,8 @@ public abstract partial class AnalysisCommandBase : ICommand
             yield return "--instrument-system-libraries";
         if (CollectStackTraces)
             yield return "--stack-traces";
+        if (passThroughArguments.IsSpecified)
+            yield return "-- <arguments>";
     }
 
     protected void ValidateSharedOptions()
@@ -78,7 +80,8 @@ public abstract partial class AnalysisCommandBase : ICommand
             TestFilter: TestFilter,
             InstrumentSystemLibraries: InstrumentSystemLibraries,
             CollectStackTraces: CollectStackTraces,
-            StackTraceDepth: StackTraceDepth);
+            StackTraceDepth: StackTraceDepth,
+            TargetArguments: passThroughArguments.Arguments);
     }
 
     protected static CommandException UsageError(string message)

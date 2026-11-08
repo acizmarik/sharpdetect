@@ -9,7 +9,8 @@ using SharpDetect.Cli.Handlers;
 namespace SharpDetect.Cli.Commands;
 
 [Command("init", Description = "Creates a configuration file for analysis")]
-public sealed partial class InitCommand : AnalysisCommandBase
+public sealed partial class InitCommand(PassThroughArguments passThroughArguments)
+    : AnalysisCommandBase(passThroughArguments)
 {
     [CommandOption("output", 'o', Description = "Output file path for the configuration file")]
     public string OutputFile { get; set; } = "AnalysisDescriptor.json";

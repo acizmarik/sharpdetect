@@ -9,7 +9,8 @@ using SharpDetect.Cli.Handlers;
 namespace SharpDetect.Cli.Commands;
 
 [Command("run", Description = "Executes analysis using inline options, or based on a provided configuration file")]
-public sealed partial class RunCommand : AnalysisCommandBase
+public sealed partial class RunCommand(PassThroughArguments passThroughArguments)
+    : AnalysisCommandBase(passThroughArguments)
 {
     [CommandParameter(0, Description = "Configuration file (omit to use inline options)")]
     public string? ConfigurationFile { get; set; }

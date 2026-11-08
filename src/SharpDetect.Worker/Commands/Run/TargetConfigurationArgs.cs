@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Diagnostics;
 using SharpDetect.Worker.Configuration;
@@ -14,7 +15,8 @@ public sealed class TargetConfigurationArgs
     public string Path { get; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public TargetKind Kind { get; }
-    public string? Args { get; }
+    [JsonConverter(typeof(CommandLineArgumentsJsonConverter))]
+    public ImmutableArray<string> Args { get; }
     public string? WorkingDirectory { get; }
     public KeyValuePair<string, string>[]? AdditionalEnvironmentVariables { get; }
     public RedirectInputOutputConfigurationArgs? RedirectInputOutput { get; }
@@ -23,7 +25,7 @@ public sealed class TargetConfigurationArgs
     [JsonConstructor]
     public TargetConfigurationArgs(
         string path,
-        string? args = null,
+        ImmutableArray<string> args = default,
         string? workingDirectory = null,
         KeyValuePair<string, string>[]? additionalEnvironmentVariables = null,
         RedirectInputOutputConfigurationArgs? redirectInputOutput = null,
@@ -33,7 +35,7 @@ public sealed class TargetConfigurationArgs
         Guard.IsNotNullOrWhiteSpace(path);
         Path = EnvironmentUtils.ExpandEnvironmentVariablesForPath(path);
         Kind = kind;
-        Args = args;
+        Args = args.IsDefault ? [] : args;
         WorkingDirectory = workingDirectory == null ? null : EnvironmentUtils.ExpandEnvironmentVariablesForPath(workingDirectory);
         AdditionalEnvironmentVariables = additionalEnvironmentVariables;
         RedirectInputOutput = redirectInputOutput;

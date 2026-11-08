@@ -31,6 +31,16 @@ See `src/Samples/SimpleDeadlock` for a complete, runnable project using this for
 When `--plugin` is omitted, `FastTrack` (data race detection) is used.
 Run `sharpdetect plugins` to list the available plugins with their descriptions (`--plugin-assembly <path>` inspects a custom plugin assembly).
 
+## Target Arguments
+
+Everything after `--` is passed to the target unchanged, one argument per token:
+
+```bash
+sharpdetect run \
+  --target "bin/Debug/net10.0/MyApp.dll" \
+  -- --port 5000 "two words"
+```
+
 ## Standard Input/Output
 
 By default, the target's stdin/stdout/stderr are wired straight through to the console (`SingleConsoleMode`), so the target behaves the same as if it had been launched with `dotnet MyApp.dll` directly.

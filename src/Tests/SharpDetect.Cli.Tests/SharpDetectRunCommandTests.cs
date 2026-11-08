@@ -13,7 +13,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_InlineForm_DoesNotThrow()
     {
-        var command = new RunCommand { PluginType = "FastTrack", TargetPath = "app.dll" };
+        var command = new RunCommand(PassThroughArguments.None) { PluginType = "FastTrack", TargetPath = "app.dll" };
 
         var exception = Record.Exception(command.ValidateOptions);
 
@@ -23,7 +23,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_InlineFormWithTest_DoesNotThrow()
     {
-        var command = new RunCommand
+        var command = new RunCommand(PassThroughArguments.None)
         {
             PluginType = "FastTrack",
             TargetPath = "tests.dll",
@@ -40,7 +40,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_InlineFormWithoutPlugin_DefaultsToFastTrack()
     {
-        var command = new RunCommand { TargetPath = "app.dll" };
+        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll" };
 
         command.ValidateOptions();
         var options = command.ToAnalysisOptions();
@@ -58,7 +58,7 @@ public class SharpDetectRunCommandTests
         var configurationFile = Path.GetTempFileName();
         try
         {
-            var command = new RunCommand { ConfigurationFile = configurationFile };
+            var command = new RunCommand(PassThroughArguments.None) { ConfigurationFile = configurationFile };
             switch (option)
             {
                 case "--plugin": command.PluginType = "FastTrack"; break;
@@ -81,7 +81,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_NeitherConfigFileNorInlineOptions_ThrowsConfigurationError()
     {
-        var command = new RunCommand();
+        var command = new RunCommand(PassThroughArguments.None);
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 
@@ -91,7 +91,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_InlineFormMissingTarget_ThrowsConfigurationError()
     {
-        var command = new RunCommand { PluginType = "FastTrack" };
+        var command = new RunCommand(PassThroughArguments.None) { PluginType = "FastTrack" };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 
@@ -101,7 +101,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_MissingConfigFile_ThrowsConfigurationError()
     {
-        var command = new RunCommand { ConfigurationFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "missing.json") };
+        var command = new RunCommand(PassThroughArguments.None) { ConfigurationFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "missing.json") };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 
@@ -111,7 +111,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_FilterWithoutTest_ThrowsConfigurationError()
     {
-        var command = new RunCommand { PluginType = "FastTrack", TargetPath = "app.dll", TestFilter = "FullyQualifiedName~Something" };
+        var command = new RunCommand(PassThroughArguments.None) { PluginType = "FastTrack", TargetPath = "app.dll", TestFilter = "FullyQualifiedName~Something" };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 
@@ -123,7 +123,7 @@ public class SharpDetectRunCommandTests
     [InlineData(TestRunner.VsTest)]
     public void Validate_RunnerWithoutTest_ThrowsConfigurationError(TestRunner testRunner)
     {
-        var command = new RunCommand { PluginType = "FastTrack", TargetPath = "app.dll", TestRunner = testRunner };
+        var command = new RunCommand(PassThroughArguments.None) { PluginType = "FastTrack", TargetPath = "app.dll", TestRunner = testRunner };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 
@@ -134,7 +134,7 @@ public class SharpDetectRunCommandTests
     [Fact]
     public void Validate_StackTraceDepthWithoutStackTraces_ThrowsConfigurationError()
     {
-        var command = new RunCommand { TargetPath = "app.dll", StackTraceDepth = 4 };
+        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", StackTraceDepth = 4 };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 
@@ -147,7 +147,7 @@ public class SharpDetectRunCommandTests
     [InlineData(-1)]
     public void Validate_NonPositiveStackTraceDepth_ThrowsConfigurationError(int depth)
     {
-        var command = new RunCommand { TargetPath = "app.dll", CollectStackTraces = true, StackTraceDepth = depth };
+        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", CollectStackTraces = true, StackTraceDepth = depth };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 

@@ -59,6 +59,7 @@ sharpdetect run AnalysisDescriptor.json
   - Target assembly path
 - `Args`
   - Command-line arguments for the target process
+  - See [Command-Line Arguments](#command-line-arguments)
 - `WorkingDirectory`
   - Working directory for the target process
 - `AdditionalEnvironmentVariables`
@@ -84,6 +85,7 @@ sharpdetect run AnalysisDescriptor.json
       - See [Running Analysis Against Unit Tests](running-analysis-against-tests.md) for filter syntax
     - `AdditionalRunnerArgs`
       - Additional arguments to pass to test runner
+      - See [Command-Line Arguments](#command-line-arguments)
 
 ### `Analysis` (required)
 
@@ -158,7 +160,8 @@ Stack-trace collection walks the target thread's call stack at each analyzed acc
       - Path to dotnet host
       - Default is `dotnet`
     - `Args`
-      - Arguments for dotnet host
+      - Arguments for dotnet host, placed before the target path
+      - See [Command-Line Arguments](#command-line-arguments)
     - `AdditionalEnvironmentVariables`
       - Array of `{ "Key": ..., "Value": ... }` pairs merged into the target's environment.
 - `Profiler`
@@ -183,3 +186,18 @@ All path-like fields (`Target.Path`, `Analysis.Path`, `Runtime.Profiler.Path*`, 
 - `SHARPDETECT_PROFILERS`: directory containing the native profiler libraries.
 
 The syntax for environment variable expansion is `%SHARPDETECT_ROOT%`.
+
+## Command-Line Arguments
+
+`Target.Args`, `Target.Test.AdditionalRunnerArgs` and `Runtime.Host.Args` take a JSON array of strings.
+Each element is passed to the process as exactly one argument, so no quoting or escaping is needed:
+
+```json
+"Args": [ "--input", "My Documents/data.txt", "--verbose" ]
+```
+
+On the command line, arguments after `--` are passed through in the same way, to `Target.Args`, or to `Target.Test.AdditionalRunnerArgs` with `--test`:
+
+```bash
+sharpdetect init --target "bin/Debug/net10.0/MyApp.dll" -- --input "My Documents/data.txt" --verbose
+```

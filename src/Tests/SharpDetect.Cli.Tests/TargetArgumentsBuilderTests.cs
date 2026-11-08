@@ -28,7 +28,7 @@ public class TargetArgumentsBuilderTests
     [Fact]
     public void Executable_Includes_Args_When_Provided()
     {
-        var args = CreateArgs(new TargetConfigurationArgs(path: "MyApp.dll", args: "--foo"));
+        var args = CreateArgs(new TargetConfigurationArgs(path: "MyApp.dll", args: ["--foo"]));
 
         var result = TargetArgumentsBuilder.Build(args);
 
@@ -72,7 +72,7 @@ public class TargetArgumentsBuilderTests
             test: new TestTargetConfigurationArgs(
                 runner: TestRunner.Mtp,
                 filter: "/*/*/*/RaceFact",
-                additionalRunnerArgs: "--report-trx")));
+                additionalRunnerArgs: ["--report-trx"])));
 
         var result = TargetArgumentsBuilder.Build(args);
 
@@ -147,5 +147,35 @@ public class TargetArgumentsBuilderTests
             kind: TargetKind.TestAssembly));
 
         Assert.Throws<ArgumentException>(() => TargetArgumentsBuilder.Build(args));
+    }
+
+    [Fact]
+    public void Executable_PassesEachArgumentAsSeparateToken()
+    {
+        var args = new RunCommandArgs(
+            Runtime: new RuntimeConfigurationArgs(
+                Host: new HostConfigurationArgs(args: ["--roll-forward", "Major"]),
+                Profiler: null),
+            Target: new TargetConfigurationArgs(path: "MyApp.dll", args: ["race", "two words", "--flag"]),
+            Analysis: new AnalysisPluginConfigurationArgs(pluginName: "TestPlugin"));
+
+        var result = TargetArgumentsBuilder.Build(args);
+
+        Assert.Equal(new[] { "--roll-forward", "Major", "MyApp.dll", "race", "two words", "--flag" }, result);
+    }
+
+    [Fact]
+    public void VsTest_PassesEachRunnerArgumentAsSeparateToken()
+    {
+        var args = CreateArgs(new TargetConfigurationArgs(
+            path: "MyTests.dll",
+            kind: TargetKind.TestAssembly,
+            test: new TestTargetConfigurationArgs(
+                runner: TestRunner.VsTest,
+                additionalRunnerArgs: ["--logger", "console;verbosity=detailed"])));
+
+        var result = TargetArgumentsBuilder.Build(args);
+
+        Assert.Equal(new[] { "test", "MyTests.dll", "--logger", "console;verbosity=detailed" }, result);
     }
 }

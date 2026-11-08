@@ -172,9 +172,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.TaskSchedule))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -224,10 +224,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.TaskContinuationRegister))
             .Then(EventuallyEventType(RecordedEventType.TaskStart))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -247,9 +247,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.TaskPromiseComplete))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -271,13 +271,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineSuspend))
             .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineResume))
             .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineComplete))
             .Then(EventuallyEventType(RecordedEventType.AsyncStateMachineSegmentComplete));
-        var lifetimeAssert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        var lifetimeAssert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -300,10 +300,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.TaskStart))
             .Then(EventuallyEventType(RecordedEventType.TaskComplete))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -360,12 +360,12 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.TaskSchedule))
             .Then(EventuallyEventType(RecordedEventType.TaskStart))
             .Then(EventuallyEventType(RecordedEventType.TaskComplete))
             .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -535,12 +535,12 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.EventWaitHandleSet))
             .Then(EventuallyEventType(RecordedEventType.EventWaitHandleReset))
             .Then(EventuallyEventType(RecordedEventType.EventWaitHandleSet))
             .Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -562,19 +562,19 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.ValuePublicationMaybeStoreLoad))
             .Then(EventuallyEventType(RecordedEventType.ValuePublicationLoad))
             .Then(EventuallyEventType(RecordedEventType.ValuePublicationLoad))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act && Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var stores = ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad, args.Target.Args!, plugin);
+        var stores = ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad, args.Target.Args.Single(), plugin);
         Assert.Single(stores);
         var lazyContainer = stores[0].Container;
-        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad, args.Target.Args!, plugin)
+        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad, args.Target.Args.Single(), plugin)
             .Where(load => load.Container == lazyContainer)
             .ToList();
         Assert.True(loads.Count >= 2);
@@ -597,21 +597,21 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.ValuePublicationStore))
             .Then(EventuallyEventType(RecordedEventType.ValuePublicationLoad))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act & Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var stores = ValuePublications(events, RecordedEventType.ValuePublicationStore, args.Target.Args!, plugin);
+        var stores = ValuePublications(events, RecordedEventType.ValuePublicationStore, args.Target.Args.Single(), plugin);
         Assert.Single(stores);
-        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad, args.Target.Args!, plugin)
+        var loads = ValuePublications(events, RecordedEventType.ValuePublicationLoad, args.Target.Args.Single(), plugin)
             .Where(load => load.Container == stores[0].Container)
             .ToList();
         Assert.NotEmpty(loads);
-        Assert.Empty(ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad, args.Target.Args!, plugin));
+        Assert.Empty(ValuePublications(events, RecordedEventType.ValuePublicationMaybeStoreLoad, args.Target.Args.Single(), plugin));
         Assert.All(loads, load => Assert.Equal(stores[0].Value, load.Value));
     }
 
@@ -629,10 +629,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "StaticReadonlyHierarchyInit", plugin))
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerExit, "StaticReadonlyHierarchyInit", plugin))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act & Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -654,10 +654,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "ThrowingTypeInitializer", plugin))
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.MethodUnwound, "ThrowingTypeInitializer", plugin))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act & Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -679,10 +679,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "TypeInitializerCatchingRethrownException", plugin))
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerExit, "TypeInitializerCatchingRethrownException", plugin))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act & Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -704,10 +704,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerEnter, "TypeInitializerCatchingExceptionEscapingFinally", plugin))
             .Then(EventuallyTypeInitializerEvent(RecordedEventType.TypeInitializerExit, "TypeInitializerCatchingExceptionEscapingFinally", plugin))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act & Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -728,8 +728,8 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act & Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -829,14 +829,14 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(eventType))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Act && Assert
         await analysisWorker.ExecuteAsync(CancellationToken.None);
         Assert.True(AssertStatus.Satisfied == assert.Evaluate(events), assert.GetDiagnosticInfo());
-        var publications = ValuePublications(events, eventType, args.Target.Args!, plugin);
+        var publications = ValuePublications(events, eventType, args.Target.Args.Single(), plugin);
         var publishedValues = publications.Select(publication => publication.Value).Distinct().ToList();
         Assert.True(
             publishedValues.Count >= expectedCount,
@@ -884,11 +884,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.LockAcquire))
             .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
             .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -908,11 +908,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.LockAcquire))
             .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
             .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -932,13 +932,13 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.LockAcquire))
             .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
             .Then(EventuallyEventType(RecordedEventType.MonitorWaitAttempt))
             .Then(EventuallyEventType(RecordedEventType.MonitorWaitResult))
             .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -958,10 +958,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.ThreadJoinAttempt))
             .Then(EventuallyEventType(RecordedEventType.ThreadJoinResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -981,11 +981,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.ThreadStartCore))
             .Then(EventuallyEventType(RecordedEventType.ThreadCreate))
             .Then(EventuallyEventType(RecordedEventType.ThreadStartCallback))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -1005,9 +1005,9 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -1027,12 +1027,12 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        AssertBase<ulong, RecordedEventType> assert = EventuallyMethodEnter(args.Target.Args!, plugin);
+        AssertBase<ulong, RecordedEventType> assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin);
         for (var i = 0; i < expectedTasks; i++)
             assert = assert.Then(EventuallyEventType(RecordedEventType.TaskStart));
         for (var i = 0; i < expectedTasks; i++)
             assert = assert.Then(EventuallyEventType(RecordedEventType.TaskJoinFinish));
-        assert = assert.Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        assert = assert.Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -1052,11 +1052,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquire))
             .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquireResult))
             .Then(EventuallyEventType(RecordedEventType.SemaphoreReleaseResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -1076,11 +1076,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.LockAcquire))
             .Then(EventuallyEventType(RecordedEventType.LockAcquireResult))
             .Then(EventuallyEventType(RecordedEventType.LockReleaseResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -1100,11 +1100,11 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.EventWaitHandleCreate))
             .Then(EventuallyEventType(RecordedEventType.EventWaitHandleSet))
             .Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -1124,12 +1124,12 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.EventWaitHandleCreate))
             .Then(EventuallyEventType(RecordedEventType.EventWaitHandleCreate));
         for (var i = 0; i < expectedWaitResults; i++)
             assert = assert.Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult));
-        assert = assert.Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        assert = assert.Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -1149,10 +1149,10 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(signalHalfEventType))
             .Then(EventuallyEventType(RecordedEventType.WaitHandleWaitResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);

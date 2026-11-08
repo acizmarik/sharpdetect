@@ -13,7 +13,7 @@ using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Handlers;
 
-internal sealed class InitCommandHandler
+internal sealed class InitCommandHandler(string outputFile, AnalysisOptions options)
 {
     private const string EnableStackTraceCollectionOption = "EnableStackTraceCollection";
     private const string StackTraceCollectionMaxDepthOption = "StackTraceCollectionMaxDepth";
@@ -27,21 +27,12 @@ internal sealed class InitCommandHandler
         PropertyNamingPolicy = null
     };
 
-    private readonly string _outputFile;
-    private readonly AnalysisOptions _options;
-
-    public InitCommandHandler(string outputFile, AnalysisOptions options)
-    {
-        _outputFile = outputFile;
-        _options = options;
-    }
-
     public async ValueTask ExecuteAsync(IConsole console, CancellationToken cancellationToken)
     {
-        var targetAssemblyPath = _options.TargetPath;
+        var targetAssemblyPath = options.TargetPath;
 
-        if (File.Exists(_outputFile))
-            throw new CommandException($"File '{_outputFile}' already exists.", (int)ExitCode.ConfigurationError);
+        if (File.Exists(outputFile))
+            throw new CommandException($"File '{outputFile}' already exists.", (int)ExitCode.ConfigurationError);
 
         if (!File.Exists(targetAssemblyPath))
             throw new CommandException($"File '{targetAssemblyPath}' does not exist. Please specify a valid target application path.", (int)ExitCode.ConfigurationError);
@@ -50,13 +41,13 @@ internal sealed class InitCommandHandler
             throw new CommandException($"File '{targetAssemblyPath}' is not a valid .NET assembly.", (int)ExitCode.ConfigurationError);
 
         var json = CreateTemplateConfigurationJson();
-        await File.WriteAllTextAsync(_outputFile, json, cancellationToken);
-        await console.Output.WriteLineAsync($"Configuration file created: {Path.GetFullPath(_outputFile)}");
+        await File.WriteAllTextAsync(outputFile, json, cancellationToken);
+        await console.Output.WriteLineAsync($"Configuration file created: {Path.GetFullPath(outputFile)}");
     }
 
     internal string CreateTemplateConfigurationJson()
     {
-        var templateArgs = BuildRunCommandArgs(_options);
+        var templateArgs = BuildRunCommandArgs(options);
         return JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
     }
 
@@ -66,9 +57,13 @@ internal sealed class InitCommandHandler
             ? new TargetConfigurationArgs(
                 path: options.TargetPath,
                 kind: TargetKind.TestAssembly,
-                test: new TestTargetConfigurationArgs(options.TestRunner ?? TestTargetConfigurationArgs.DefaultRunner, options.TestFilter))
+                test: new TestTargetConfigurationArgs(
+                    options.TestRunner ?? TestTargetConfigurationArgs.DefaultRunner,
+                    options.TestFilter,
+                    additionalRunnerArgs: options.TargetArguments))
             : new TargetConfigurationArgs(
                 path: options.TargetPath,
+                args: options.TargetArguments,
                 redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true));
 
         var pluginConfiguration = BuildPluginConfiguration(options);

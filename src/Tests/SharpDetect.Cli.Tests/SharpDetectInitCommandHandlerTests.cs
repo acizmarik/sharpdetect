@@ -19,6 +19,7 @@ public class SharpDetectInitCommandHandlerTests
             {
               "Target": {
                 "Path": "TestTarget.dll",
+                "Args": [],
                 "RedirectInputOutput": {
                   "SingleConsoleMode": true
                 }
@@ -68,9 +69,11 @@ public class SharpDetectInitCommandHandlerTests
               "Target": {
                 "Path": "TestTarget.dll",
                 "Kind": "TestAssembly",
+                "Args": [],
                 "Test": {
                   "Runner": "Mtp",
-                  "Filter": "FullyQualifiedName~MyNamespace.RaceFact"
+                  "Filter": "FullyQualifiedName~MyNamespace.RaceFact",
+                  "AdditionalRunnerArgs": []
                 }
               },
               "Analysis": {
