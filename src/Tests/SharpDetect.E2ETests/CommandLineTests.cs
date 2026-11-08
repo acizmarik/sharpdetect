@@ -23,13 +23,13 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
 
         // Act
         var result = await CliRunner.RunAsync(
-            ["run", "-t", CliRunner.GetSubjectPath(Sdk), "--", "Test_EchoArguments", echoFile, "two words", "--flag", "--", ""],
+            ["run", "-t", CliRunner.GetSubjectPath(Sdk), "--no-report", "--", "Test_EchoArguments", echoFile, "two words", "--flag", "--", ""],
             testOutput);
-        DeleteReport(result);
 
         // Assert
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(["two words", "--flag", "--", ""], await File.ReadAllLinesAsync(echoFile));
+        Assert.Null(result.ReportPath);
     }
 
     [Theory]
@@ -126,6 +126,43 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
         finally
         {
             File.Delete(echoFile);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConfigurationFile_ReportOptionsOverrideTheFile(bool noReport)
+    {
+        // Arrange
+        var reportPath = Path.Combine(_directory.FullName, "custom", "race.html");
+        var configurationFile = WriteConfiguration(
+            $$"""
+            {
+              "Target": {
+                "Path": "{{CliRunner.GetSubjectPath(Sdk).Replace('\\', '/')}}",
+                "Args": [ "Test_DataRace_ReferenceType_Static_ReadWriteRace" ]
+              },
+              "Analysis": { "PluginName": "FastTrack", "RenderReport": true, "ReportsFolder": "reports" }
+            }
+            """);
+
+        // Act
+        string[] reportOptions = noReport ? ["--no-report"] : ["--report", reportPath];
+        var result = await CliRunner.RunAsync(["run", configurationFile, "-v", "quiet", .. reportOptions], testOutput);
+
+        // Assert
+        Assert.Equal(5, result.ExitCode);
+        Assert.False(Directory.Exists(Path.Combine(_directory.FullName, "reports")));
+        if (noReport)
+        {
+            Assert.Null(result.ReportPath);
+            Assert.False(File.Exists(reportPath));
+        }
+        else
+        {
+            Assert.Equal(reportPath, result.ReportPath);
+            Assert.True(File.Exists(reportPath));
         }
     }
 

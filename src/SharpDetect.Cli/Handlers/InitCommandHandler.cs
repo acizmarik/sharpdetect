@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using CliFx;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Commands;
+using SharpDetect.Cli.Output;
 using SharpDetect.Plugins.DataRace.Common;
 using SharpDetect.Worker.Commands;
 using SharpDetect.Worker.Commands.Run;
@@ -62,7 +63,9 @@ internal sealed class InitCommandHandler
         var configurationDirectory = Path.GetDirectoryName(_outputFile)!;
         var templateArgs = BuildRunCommandArgs(_options with
         {
-            TargetPath = ConfigurationPathResolver.MakeRelative(_options.TargetPath, _currentDirectory, configurationDirectory)
+            TargetPath = ConfigurationPathResolver.MakeRelative(_options.TargetPath, _currentDirectory, configurationDirectory),
+            Output = (_options.Output ?? OutputOptions.Default).MapReportPath(
+                path => ConfigurationPathResolver.MakeRelative(path, _currentDirectory, configurationDirectory))
         });
         return JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
     }
@@ -94,7 +97,8 @@ internal sealed class InitCommandHandler
                 pluginName: pluginNameOrTypeFullName,
                 renderReport: true);
 
-        return new RunCommandArgs(Runtime: null, target, analysis);
+        var arguments = new RunCommandArgs(Runtime: null, target, analysis);
+        return (options.Output ?? OutputOptions.Default).ApplyTo(arguments);
     }
 
     private static Dictionary<string, object> BuildPluginConfiguration(AnalysisOptions options)

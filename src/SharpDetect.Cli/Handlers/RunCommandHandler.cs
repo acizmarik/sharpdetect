@@ -6,6 +6,7 @@ using CliFx;
 using CliFx.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Cli.Output;
 using SharpDetect.Cli.Plugins;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
@@ -24,14 +25,15 @@ internal sealed class RunCommandHandler : IDisposable
     private readonly string _rawConfigurationJson;
     private bool _disposed;
 
-    public RunCommandHandler(string configurationFilePath)
+    public RunCommandHandler(string configurationFilePath, OutputOptions? outputOverrides = null)
     {
         try
         {
             _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
             var arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
             var configurationDirectory = Path.GetDirectoryName(Path.GetFullPath(configurationFilePath))!;
-            _arguments = ConfigurationPathResolver.Resolve(arguments, configurationDirectory);
+            arguments = ConfigurationPathResolver.Resolve(arguments, configurationDirectory);
+            _arguments = (outputOverrides ?? OutputOptions.Default).MapReportPath(Path.GetFullPath).ApplyTo(arguments);
             _serviceProvider = Initialize(_arguments);
         }
         catch (Exception ex) when (ex is not CommandException)

@@ -32,7 +32,7 @@ public sealed partial class RunCommand(PassThroughArguments passThroughArguments
             }
             else
             {
-                commandHandler = new RunCommandHandler(ConfigurationFile!);
+                commandHandler = new RunCommandHandler(ConfigurationFile!, ToOutputOptions());
             }
 
             var cancellationToken = console.RegisterCancellationHandler();

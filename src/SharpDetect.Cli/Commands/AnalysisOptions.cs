@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Immutable;
+using SharpDetect.Cli.Output;
 using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Commands;
@@ -15,7 +16,8 @@ internal sealed record AnalysisOptions(
     bool InstrumentSystemLibraries = false,
     bool CollectStackTraces = false,
     int? StackTraceDepth = null,
-    ImmutableArray<string> TargetArguments = default)
+    ImmutableArray<string> TargetArguments = default,
+    OutputOptions? Output = null)
 {
     public const string DefaultPlugin = "FastTrack";
 }

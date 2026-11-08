@@ -4,6 +4,7 @@
 using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
+using SharpDetect.Cli.Output;
 using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Commands;
@@ -33,6 +34,15 @@ public abstract partial class AnalysisCommandBase(PassThroughArguments passThrou
 
     [CommandOption("stack-trace-depth", Description = "Maximum number of frames per collected stack trace (requires --stack-traces). Default: 8.")]
     public int? StackTraceDepth { get; set; }
+
+    [CommandOption("verbosity", 'v', Description = "Console output detail. Default: Normal.")]
+    public Verbosity? Verbosity { get; set; }
+
+    [CommandOption("report", Description = "Report file or folder. Default: SharpDetect_Report_<local time>.html in the current directory.")]
+    public string? ReportPath { get; set; }
+
+    [CommandOption("no-report", Description = "Do not write report")]
+    public bool NoReport { get; set; }
 
     public abstract ValueTask ExecuteAsync(IConsole console);
     
@@ -65,6 +75,9 @@ public abstract partial class AnalysisCommandBase(PassThroughArguments passThrou
 
         if (StackTraceDepth is < 1)
             throw UsageError("--stack-trace-depth must be at least 1.");
+
+        if (NoReport && ReportPath is not null)
+            throw UsageError("--report cannot be combined with --no-report.");
     }
 
     internal AnalysisOptions ToAnalysisOptions()
@@ -81,8 +94,12 @@ public abstract partial class AnalysisCommandBase(PassThroughArguments passThrou
             InstrumentSystemLibraries: InstrumentSystemLibraries,
             CollectStackTraces: CollectStackTraces,
             StackTraceDepth: StackTraceDepth,
-            TargetArguments: passThroughArguments.Arguments);
+            TargetArguments: passThroughArguments.Arguments,
+            Output: ToOutputOptions());
     }
+
+    internal OutputOptions ToOutputOptions()
+        => new(Verbosity, ReportPath, NoReport);
 
     protected static CommandException UsageError(string message)
         => new(message, (int)ExitCode.ConfigurationError, showHelp: true);

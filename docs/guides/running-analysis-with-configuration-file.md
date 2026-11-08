@@ -42,7 +42,7 @@ This produces `AnalysisDescriptor.json` with following content:
 }
 ```
 
-Command `init` accepts the same analysis options as command `run` (`--plugin`, `--test`, `--runner`, `--filter`, `--instrument-system-libraries`, `--stack-traces`, `--stack-trace-depth`).
+Command `init` accepts the same analysis options as command `run` (`--plugin`, `--test`, `--runner`, `--filter`, `--instrument-system-libraries`, `--stack-traces`, `--stack-trace-depth`, `-v|--verbosity`, `--report`, `--no-report`).
 Edit the generated file as required, then run it:
 
 ```bash
@@ -108,7 +108,8 @@ sharpdetect run AnalysisDescriptor.json
   - Folder for generated reports
   - Defaults to the directory `sharpdetect run` was started from
 - `ReportFileName`
-  - Name for the generated report file
+  - Name for the generated report file; an existing file with this name is replaced
+  - Defaults to `SharpDetect_Report_<local date>_<local time with milliseconds>.html`
 - `TemporaryFilesFolder`
   - Path where temporary files are stored
 
