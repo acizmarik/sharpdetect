@@ -9,11 +9,12 @@ using CliFx;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Commands;
 using SharpDetect.Plugins.DataRace.Common;
+using SharpDetect.Worker.Commands;
 using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Handlers;
 
-internal sealed class InitCommandHandler(string outputFile, AnalysisOptions options)
+internal sealed class InitCommandHandler
 {
     private const string EnableStackTraceCollectionOption = "EnableStackTraceCollection";
     private const string StackTraceCollectionMaxDepthOption = "StackTraceCollectionMaxDepth";
@@ -27,12 +28,23 @@ internal sealed class InitCommandHandler(string outputFile, AnalysisOptions opti
         PropertyNamingPolicy = null
     };
 
+    private readonly string _outputFile;
+    private readonly string _currentDirectory;
+    private readonly AnalysisOptions _options;
+
+    public InitCommandHandler(string outputFile, AnalysisOptions options, string? currentDirectory = null)
+    {
+        _currentDirectory = currentDirectory ?? Directory.GetCurrentDirectory();
+        _outputFile = Path.GetFullPath(outputFile, _currentDirectory);
+        _options = options;
+    }
+
     public async ValueTask ExecuteAsync(IConsole console, CancellationToken cancellationToken)
     {
-        var targetAssemblyPath = options.TargetPath;
+        var targetAssemblyPath = Path.GetFullPath(_options.TargetPath, _currentDirectory);
 
-        if (File.Exists(outputFile))
-            throw new CommandException($"File '{outputFile}' already exists.", (int)ExitCode.ConfigurationError);
+        if (File.Exists(_outputFile))
+            throw new CommandException($"File '{_outputFile}' already exists.", (int)ExitCode.ConfigurationError);
 
         if (!File.Exists(targetAssemblyPath))
             throw new CommandException($"File '{targetAssemblyPath}' does not exist. Please specify a valid target application path.", (int)ExitCode.ConfigurationError);
@@ -41,13 +53,17 @@ internal sealed class InitCommandHandler(string outputFile, AnalysisOptions opti
             throw new CommandException($"File '{targetAssemblyPath}' is not a valid .NET assembly.", (int)ExitCode.ConfigurationError);
 
         var json = CreateTemplateConfigurationJson();
-        await File.WriteAllTextAsync(outputFile, json, cancellationToken);
-        await console.Output.WriteLineAsync($"Configuration file created: {Path.GetFullPath(outputFile)}");
+        await File.WriteAllTextAsync(_outputFile, json, cancellationToken);
+        await console.Output.WriteLineAsync($"Configuration file created: {_outputFile}");
     }
 
     internal string CreateTemplateConfigurationJson()
     {
-        var templateArgs = BuildRunCommandArgs(options);
+        var configurationDirectory = Path.GetDirectoryName(_outputFile)!;
+        var templateArgs = BuildRunCommandArgs(_options with
+        {
+            TargetPath = ConfigurationPathResolver.MakeRelative(_options.TargetPath, _currentDirectory, configurationDirectory)
+        });
         return JsonSerializer.Serialize(templateArgs, JsonSerializerOptions);
     }
 

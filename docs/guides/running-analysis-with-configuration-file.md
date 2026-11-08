@@ -62,6 +62,7 @@ sharpdetect run AnalysisDescriptor.json
   - See [Command-Line Arguments](#command-line-arguments)
 - `WorkingDirectory`
   - Working directory for the target process
+  - Defaults to the directory `sharpdetect run` was started from
 - `AdditionalEnvironmentVariables`
   - Array of `{ "Key": ..., "Value": ... }` pairs merged into the target's environment.
 - `RedirectInputOutput`
@@ -105,6 +106,7 @@ sharpdetect run AnalysisDescriptor.json
   - Defaults to `Warning`
 - `ReportsFolder`
   - Folder for generated reports
+  - Defaults to the directory `sharpdetect run` was started from
 - `ReportFileName`
   - Name for the generated report file
 - `TemporaryFilesFolder`

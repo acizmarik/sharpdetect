@@ -63,6 +63,72 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
         Assert.Equal(["two words", "--flag"], await File.ReadAllLinesAsync(echoFile));
     }
 
+    [Fact]
+    public async Task ConfigurationFile_PathsAreRelativeToTheFile()
+    {
+        // Arrange
+        var configurationDirectory = _directory.CreateSubdirectory("config");
+        configurationDirectory.CreateSubdirectory("work");
+        var subjectPath = Path.GetRelativePath(configurationDirectory.FullName, CliRunner.GetSubjectPath(Sdk)).Replace('\\', '/');
+        var configurationFile = Path.Combine(configurationDirectory.FullName, "sharpdetect.json");
+        await File.WriteAllTextAsync(
+            configurationFile,
+            $$"""
+            {
+              "Target": {
+                "Path": "{{subjectPath}}",
+                "Args": [ "Test_EchoArguments", "echo.txt", "x" ],
+                "WorkingDirectory": "work"
+              },
+              "Analysis": { "PluginName": "FastTrack", "RenderReport": true, "ReportsFolder": "reports" }
+            }
+            """);
+
+        // Act
+        var result = await CliRunner.RunAsync(["run", configurationFile], testOutput);
+
+        // Assert
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(["x"], await File.ReadAllLinesAsync(Path.Combine(configurationDirectory.FullName, "work", "echo.txt")));
+        Assert.NotNull(result.ReportPath);
+        Assert.Equal(Path.Combine(configurationDirectory.FullName, "reports"), Path.GetDirectoryName(result.ReportPath));
+        Assert.True(File.Exists(result.ReportPath));
+    }
+
+    [Fact]
+    public async Task ConfigurationFile_DefaultsToTheInvokingDirectory()
+    {
+        // Arrange
+        var echoFileName = $"echo-{Guid.NewGuid():N}.txt";
+        var echoFile = Path.Combine(Directory.GetCurrentDirectory(), echoFileName);
+        var configurationFile = WriteConfiguration(
+            $$"""
+            {
+              "Target": {
+                "Path": "{{CliRunner.GetSubjectPath(Sdk).Replace('\\', '/')}}",
+                "Args": [ "Test_EchoArguments", "{{echoFileName}}", "x" ]
+              },
+              "Analysis": { "PluginName": "FastTrack", "RenderReport": true }
+            }
+            """);
+
+        try
+        {
+            // Act
+            var result = await CliRunner.RunAsync(["run", configurationFile], testOutput);
+            DeleteReport(result);
+
+            // Assert
+            Assert.Equal(0, result.ExitCode);
+            Assert.True(File.Exists(echoFile), "The target did not run in the invoking directory.");
+            Assert.Equal(Directory.GetCurrentDirectory(), Path.GetDirectoryName(result.ReportPath));
+        }
+        finally
+        {
+            File.Delete(echoFile);
+        }
+    }
+
     private string WriteConfiguration(string json)
     {
         var path = Path.Combine(_directory.FullName, "sharpdetect.json");

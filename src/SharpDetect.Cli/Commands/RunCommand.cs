@@ -20,7 +20,6 @@ public sealed partial class RunCommand(PassThroughArguments passThroughArguments
         ValidateOptions();
 
         var useInlineForm = string.IsNullOrEmpty(ConfigurationFile);
-        var previousDirectory = Directory.GetCurrentDirectory();
         RunCommandHandler? commandHandler = null;
 
         try
@@ -33,11 +32,7 @@ public sealed partial class RunCommand(PassThroughArguments passThroughArguments
             }
             else
             {
-                var directoryName = Path.GetDirectoryName(ConfigurationFile);
-                var workingDirectory = string.IsNullOrEmpty(directoryName) ? previousDirectory : directoryName;
-                Directory.SetCurrentDirectory(workingDirectory);
-                var fileName = Path.GetFileName(ConfigurationFile!);
-                commandHandler = new RunCommandHandler(fileName);
+                commandHandler = new RunCommandHandler(ConfigurationFile!);
             }
 
             var cancellationToken = console.RegisterCancellationHandler();
@@ -63,7 +58,6 @@ public sealed partial class RunCommand(PassThroughArguments passThroughArguments
         finally
         {
             commandHandler?.Dispose();
-            Directory.SetCurrentDirectory(previousDirectory);
         }
     }
 

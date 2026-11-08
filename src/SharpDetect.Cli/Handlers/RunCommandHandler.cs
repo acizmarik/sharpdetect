@@ -29,7 +29,9 @@ internal sealed class RunCommandHandler : IDisposable
         try
         {
             _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
-            _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
+            var arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
+            var configurationDirectory = Path.GetDirectoryName(Path.GetFullPath(configurationFilePath))!;
+            _arguments = ConfigurationPathResolver.Resolve(arguments, configurationDirectory);
             _serviceProvider = Initialize(_arguments);
         }
         catch (Exception ex) when (ex is not CommandException)
