@@ -138,10 +138,10 @@ public partial class DeadlockPlugin
         
         _deadlocks.Add((deadlock.ProcessId, commandId.Value), deadlock);
 
-        Logger.LogWarning(
-            "[PID={Pid}] Deadlock detected (affects {ThreadsCount} threads).", 
-            deadlock.ProcessId, 
-            deadlock.Cycle.Count);
+        if (Logger.IsEnabled(LogLevel.Information))
+            Logger.LogWarning("{Deadlock}", DeadlockFormatter.FormatBlock(deadlock));
+        else
+            Logger.LogWarning("{DeadlockLine}", DeadlockFormatter.FormatLine(deadlock));
     }
     
     private bool IsDeadlockAlreadyRecorded(DeadlockInfo deadlock)

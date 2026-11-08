@@ -40,10 +40,10 @@ internal static partial class CliRunner
         testOutput.WriteLine(output);
         testOutput.WriteLine(error);
 
-        var reportMatch = ReportPathRegex().Match(output);
+        var reportMatch = ReportPathRegex().Match(error);
         return new CliRunResult(exitCode, output, error, reportMatch.Success ? reportMatch.Groups[1].Value : null);
     }
 
-    [GeneratedRegex(@"Report stored to file: (.+\.html)", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^Report: (.+\.html)\r?$", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
     private static partial Regex ReportPathRegex();
 }

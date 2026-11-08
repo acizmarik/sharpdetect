@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Text.RegularExpressions;
 using SharpDetect.E2ETests.Utils;
 using Xunit;
 using Xunit.Abstractions;
@@ -8,12 +9,18 @@ using Xunit.Abstractions;
 namespace SharpDetect.E2ETests;
 
 [Collection(CollectionName)]
-public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
+public class CommandLineTests : IDisposable
 {
     public const string CollectionName = "E2E_CommandLineTests";
     private const string Sdk = "net10.0";
 
+    private readonly ITestOutputHelper _testOutput;
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("sharpdetect-cli-");
+
+    public CommandLineTests(ITestOutputHelper testOutput)
+    {
+        _testOutput = testOutput;
+    }
 
     [Fact]
     public async Task PassThroughArguments_ReachTargetAsSeparateArguments()
@@ -24,7 +31,7 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
         // Act
         var result = await CliRunner.RunAsync(
             ["run", "-t", CliRunner.GetSubjectPath(Sdk), "--no-report", "--", "Test_EchoArguments", echoFile, "two words", "--flag", "--", ""],
-            testOutput);
+            _testOutput);
 
         // Assert
         Assert.Equal(0, result.ExitCode);
@@ -56,7 +63,7 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
             """);
 
         // Act
-        var result = await CliRunner.RunAsync(["run", configurationFile], testOutput);
+        var result = await CliRunner.RunAsync(["run", configurationFile], _testOutput);
 
         // Assert
         Assert.Equal(0, result.ExitCode);
@@ -85,7 +92,7 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
             """);
 
         // Act
-        var result = await CliRunner.RunAsync(["run", configurationFile], testOutput);
+        var result = await CliRunner.RunAsync(["run", configurationFile], _testOutput);
 
         // Assert
         Assert.Equal(0, result.ExitCode);
@@ -115,7 +122,7 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
         try
         {
             // Act
-            var result = await CliRunner.RunAsync(["run", configurationFile], testOutput);
+            var result = await CliRunner.RunAsync(["run", configurationFile], _testOutput);
             DeleteReport(result);
 
             // Assert
@@ -149,7 +156,7 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
 
         // Act
         string[] reportOptions = noReport ? ["--no-report"] : ["--report", reportPath];
-        var result = await CliRunner.RunAsync(["run", configurationFile, "-v", "quiet", .. reportOptions], testOutput);
+        var result = await CliRunner.RunAsync(["run", configurationFile, "-v", "quiet", .. reportOptions], _testOutput);
 
         // Assert
         Assert.Equal(5, result.ExitCode);
@@ -164,6 +171,47 @@ public class CommandLineTests(ITestOutputHelper testOutput) : IDisposable
             Assert.Equal(reportPath, result.ReportPath);
             Assert.True(File.Exists(reportPath));
         }
+    }
+
+    [Fact]
+    public async Task Summary_MatchesTheReport()
+    {
+        // Arrange
+        var reportPath = Path.Combine(_directory.FullName, "race.html");
+
+        // Act
+        var result = await CliRunner.RunAsync(
+            ["run", "-t", CliRunner.GetSubjectPath(Sdk), "--report", reportPath, "--", "Test_DataRace_ReferenceType_Static_ReadWriteRace"],
+            _testOutput);
+
+        // Assert
+        Assert.Equal(5, result.ExitCode);
+        var headline = Regex.Match(result.Error, @"^FastTrack: (\d+ data races? in \d+ fields?)\r?$", RegexOptions.Multiline);
+        Assert.True(headline.Success, "The summary headline is missing.");
+        Assert.Contains(headline.Groups[1].Value, await File.ReadAllTextAsync(reportPath));
+        var target = Regex.Match(result.Error, @"^  1\. \S+\.Test_DataRace_ReferenceType_Static  \((\d+ races?)\)\r?$", RegexOptions.Multiline);
+        Assert.True(target.Success, "The summary does not list the racy field.");
+        Assert.Contains($">{target.Groups[1].Value}<", await File.ReadAllTextAsync(reportPath));
+        Assert.Contains($"Report: {reportPath}", result.Error);
+        Assert.DoesNotContain("Report:", result.Output);
+    }
+
+    [Fact]
+    public async Task Summary_IsPrintedWhenTheReportCannotBeWritten()
+    {
+        // Arrange
+        var reportPath = Path.Combine(_directory.FullName, "taken.html");
+        Directory.CreateDirectory(reportPath);
+
+        // Act
+        var result = await CliRunner.RunAsync(
+            ["run", "-t", CliRunner.GetSubjectPath(Sdk), "--report", reportPath, "--", "Test_DataRace_ReferenceType_Static_ReadWriteRace"],
+            _testOutput);
+
+        // Assert
+        Assert.Equal(2, result.ExitCode);
+        Assert.Matches(@"(?m)^FastTrack: \d+ data races? in \d+ fields?\r?$", result.Error);
+        Assert.Null(result.ReportPath);
     }
 
     private string WriteConfiguration(string json)

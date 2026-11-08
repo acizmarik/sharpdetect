@@ -6,6 +6,7 @@ using CliFx;
 using CliFx.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using SharpDetect.Cli.Output;
 using SharpDetect.Cli.Plugins;
 using SharpDetect.Core.Plugins;
@@ -64,7 +65,7 @@ internal sealed class RunCommandHandler : IDisposable
             .WithTimeProvider(TimeProvider.System)
             .ConfigureLogging(logging =>
             {
-                logging.AddConsole();
+                logging.AddSharpDetectConsole();
                 logging.SetMinimumLevel(arguments.Analysis.LogLevel);
             })
             .WithPlugin(pluginType)
@@ -87,16 +88,28 @@ internal sealed class RunCommandHandler : IDisposable
         var analysisWarnings = outcome.Gaps.Select(gap => gap.Description).ToArray();
         
         // Persist report summary
-        if (_arguments.Analysis.RenderReport)
+        string? reportPath = null;
+        try
         {
-            var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, analysisWarnings, cancellationToken);
-            await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(reportFullPath)}.");
+            if (_arguments.Analysis.RenderReport)
+                reportPath = Path.GetFullPath(await RenderAndWriteReport(plugin, reportSummary, analysisWarnings, cancellationToken));
+        }
+        finally
+        {
+            FlushConsoleLogs();
+            SummaryPrinter.Print(
+                console.Error,
+                GetPluginName(plugin),
+                reportSummary,
+                outcome,
+                reportPath,
+                VerbosityExtensions.FromAnalysisLogLevel(_arguments.Analysis.LogLevel));
         }
 
         var issuesFound = reportSummary.GetAllReports().Any();
         var exitCode = GetExitCode(outcome, issuesFound);
         if (exitCode != ExitCode.Success)
-            throw new CommandException(GetExitMessage(outcome, issuesFound), (int)exitCode);
+            throw new CommandException(GetExitMessage(exitCode), (int)exitCode);
     }
 
     internal static ExitCode GetExitCode(AnalysisOutcome outcome, bool issuesFound)
@@ -107,15 +120,27 @@ internal sealed class RunCommandHandler : IDisposable
         return issuesFound ? ExitCode.IssuesFound : ExitCode.Success;
     }
 
-    private static string GetExitMessage(AnalysisOutcome outcome, bool issuesFound)
+    private static string GetExitMessage(ExitCode exitCode) => exitCode switch
     {
-        if (outcome.IsComplete)
-            return "Analysis detected issue(s)";
+        ExitCode.IssuesFound => "Issues found.",
+        ExitCode.AnalysisIncomplete => "Analysis is incomplete.",
+        ExitCode.IssuesFoundAnalysisIncomplete => "Issues found, but the analysis is incomplete.",
+        _ => $"Analysis finished with exit code {(int)exitCode}."
+    };
 
-        var gaps = string.Join(" ", outcome.Gaps.Select(gap => gap.Description));
-        return issuesFound
-            ? $"Analysis detected issue(s), but is incomplete: {gaps}"
-            : $"Analysis is incomplete: {gaps}";
+    private static string GetPluginName(IPlugin plugin)
+    {
+        var pluginType = plugin.GetType();
+        return pluginType.GetCustomAttribute<PluginMetadataAttribute>(inherit: true)?.Name ?? pluginType.Name;
+    }
+
+    private void FlushConsoleLogs()
+    {
+        foreach (var loggerProvider in _serviceProvider.GetServices<ILoggerProvider>())
+        {
+            if (loggerProvider is ConsoleLoggerProvider)
+                loggerProvider.Dispose();
+        }
     }
 
     private Task<string> RenderAndWriteReport(

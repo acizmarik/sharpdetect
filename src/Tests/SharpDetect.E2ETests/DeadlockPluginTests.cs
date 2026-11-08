@@ -138,6 +138,12 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         // Assert
         Assert.NotNull(report);
         Assert.Equal(plugin.ReportCategory, report.Category);
+        Assert.StartsWith("Deadlock between ", report.Title);
+        Assert.All(report.GetReportedThreads(), thread =>
+        {
+            Assert.True(report.TryGetReportReason(thread, out var reason));
+            Assert.StartsWith("Waits for ", reason);
+        });
         Assert.NotNull(snapshots);
         Assert.NotEmpty(snapshots);
         Assert.All(snapshots, snapshot => Assert.NotEmpty(snapshot.ModuleIds));
