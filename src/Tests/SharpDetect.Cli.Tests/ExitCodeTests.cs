@@ -18,6 +18,7 @@ public class ExitCodeTests
     [InlineData(ExitCode.Cancelled, 4)]
     [InlineData(ExitCode.IssuesFound, 5)]
     [InlineData(ExitCode.AnalysisIncomplete, 6)]
+    [InlineData(ExitCode.IssuesFoundAnalysisIncomplete, 7)]
     public void ExitCode_ValuesAreStable(ExitCode exitCode, int expected)
     {
         Assert.Equal(expected, (int)exitCode);
@@ -27,8 +28,8 @@ public class ExitCodeTests
     [InlineData(false, false, ExitCode.Success)]
     [InlineData(false, true, ExitCode.IssuesFound)]
     [InlineData(true, false, ExitCode.AnalysisIncomplete)]
-    [InlineData(true, true, ExitCode.AnalysisIncomplete)]
-    public void GetExitCode_IncompleteAnalysisTakesPrecedenceOverIssues(bool incomplete, bool issuesFound, ExitCode expected)
+    [InlineData(true, true, ExitCode.IssuesFoundAnalysisIncomplete)]
+    public void GetExitCode_DistinguishesIssuesAndCompleteness(bool incomplete, bool issuesFound, ExitCode expected)
     {
         AnalysisGap[] gaps = incomplete
             ? [new AnalysisGap(AnalysisGapKind.ProcessNotFinished, "Process 42 did not report the end of its events.")]

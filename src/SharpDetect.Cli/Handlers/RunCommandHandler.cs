@@ -100,7 +100,7 @@ internal sealed class RunCommandHandler : IDisposable
     internal static ExitCode GetExitCode(AnalysisOutcome outcome, bool issuesFound)
     {
         if (!outcome.IsComplete)
-            return ExitCode.AnalysisIncomplete;
+            return issuesFound ? ExitCode.IssuesFoundAnalysisIncomplete : ExitCode.AnalysisIncomplete;
 
         return issuesFound ? ExitCode.IssuesFound : ExitCode.Success;
     }

@@ -17,6 +17,8 @@ public enum ExitCode
     Cancelled = 4,
     /// <summary>Analysis completed and one or more issues were reported by the plugin</summary>
     IssuesFound = 5,
-    /// <summary>Analysis finished, but some events or processes are missing from it</summary>
+    /// <summary>Analysis finished without finding issues, but some events or processes are missing from it</summary>
     AnalysisIncomplete = 6,
+    /// <summary>Analysis found one or more issues, but some events or processes are missing from it</summary>
+    IssuesFoundAnalysisIncomplete = 7,
 }

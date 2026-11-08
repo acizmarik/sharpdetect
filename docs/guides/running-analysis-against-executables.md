@@ -83,4 +83,5 @@ An HTML report is written after every run (see the `Report stored to file:` line
 | 3 | The configuration is invalid, or the plugin failed to load. |
 | 4 | The analysis was cancelled. |
 | 5 | The analysis completed and found one or more issues. |
-| 6 | The analysis finished, but some events or processes are missing from it. The report is still written. |
+| 6 | The analysis finished without finding issues, but some events or processes are missing from it. The report is still written. |
+| 7 | The analysis found one or more issues, but some events or processes are missing from it (for example, the target crashed). The report is still written. |
