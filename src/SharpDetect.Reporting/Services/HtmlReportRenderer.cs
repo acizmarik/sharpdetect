@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Globalization;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using HandlebarsDotNet;
 using SharpDetect.Core.Events.Profiler;
@@ -59,11 +58,7 @@ internal sealed partial class HtmlReportRenderer : IReportSummaryRenderer
 
     private static object BuildDataContext(IPlugin plugin, Summary summary, string configurationJson, IReadOnlyList<string> analysisWarnings)
     {
-        var sharpDetectVersion = typeof(HtmlReportRenderer).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-            .InformationalVersion 
-                      ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
-                      ?? "unknown version";
+        var sharpDetectVersion = SharpDetectVersion.Current;
         
         var rawReports = summary.GetAllReports().ToArray();
         var allReports = plugin.CreateReportDataContext(rawReports).ToArray();

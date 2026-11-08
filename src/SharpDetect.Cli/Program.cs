@@ -4,6 +4,7 @@
 using CliFx;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Commands;
+using SharpDetect.Core.Reporting;
 using SharpDetect.Worker.Configuration;
 
 namespace SharpDetect.Cli;
@@ -37,6 +38,7 @@ public static class Program
             .AddCommandsFromThisAssembly()
             .UseTypeInstantiator(type => CreateCommand(type, passThroughArguments))
             .SetTitle(ProgramTitle)
+            .SetVersion(SharpDetectVersion.Current)
             .SetDescription(ProgramDescription)
             .SetExecutableName(ExecutableName);
     }
