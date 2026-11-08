@@ -1,10 +1,14 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using SharpDetect.Plugins.DataRace.Common;
+
 namespace SharpDetect.Plugins.DataRace.FastTrack;
 
 internal sealed class ShadowVariable
 {
+    private AccessTracker.AccessSlots _accesses;
+
     public Epoch WriteEpoch { get; private set; }
     public Epoch ReadEpoch { get; private set; }
     public VectorClock? ReadVectorClock { get; private set; }
@@ -12,6 +16,7 @@ internal sealed class ShadowVariable
     public AtomicAccessClocks? AtomicAccesses { get; private set; }
     public InFlightAtomicAccesses? InFlightAtomicAccesses { get; private set; }
     public bool HasReadVectorClock => ReadVectorClock != null;
+    public ref AccessTracker.AccessSlots Accesses => ref _accesses;
 
     private ShadowVariable()
     {

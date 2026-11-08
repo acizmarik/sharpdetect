@@ -93,7 +93,6 @@ internal sealed class FastTrackDetector
     public void RecordGarbageCollectedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
     {
         _shadowMemory.RemoveTrackedObjects(processId, removedObjectIds);
-        _accessTracker.RemoveTrackedObjects(processId, removedObjectIds);
 
         foreach (var objectId in removedObjectIds)
         {
@@ -354,16 +353,22 @@ internal sealed class FastTrackDetector
 
         // Write-read race: the last write does not happen-before this read
         var conflict = HasUnorderedWrite(shadow, threadVc, objectId)
-            ? GetConflictingWrite(fieldId, objectId, threadId)
+            ? GetConflictingWrite(shadow, threadId)
             : null;
 
         // A plain read of a value stored atomically cannot tear, so it is reported only on request
         if (_configuration.ReportPlainReadsRacingWithAtomicWrites)
-            conflict ??= FindAtomicConflict(fieldId, objectId, threadId, shadow, threadVc, storesOnly: true);
+            conflict ??= FindAtomicConflict(objectId, threadId, shadow, threadVc, storesOnly: true);
 
         UpdateReadState(threadId, shadow, threadVc);
-        var currentAccess = _accessTracker.RecordAccess(
-            fieldId, objectId, threadId, methodOffset, AccessType.Read, stack, trackReadsByThread: shadow.HasReadVectorClock);
+        var currentAccess = AccessTracker.RecordAccess(
+            ref shadow.Accesses,
+            threadId,
+            methodOffset,
+            AccessType.Read,
+            stack,
+            trackReadsByThread: shadow.HasReadVectorClock);
+        
         if (_configuration.ReportPlainReadsRacingWithAtomicWrites)
             shadow.InFlightAtomicAccesses?.NotePlainAccess(threadId, threadVc, threadVc.GetEpoch(threadId), currentAccess, isWrite: false);
 
@@ -388,11 +393,11 @@ internal sealed class FastTrackDetector
         var writeKind = _writeClassifier.Classify(threadId, fieldId.FieldDef, objectId, stack);
 
         var conflict = writeKind == WriteKind.Regular
-            ? FindWriteConflict(fieldId, objectId, threadId, shadow, threadVc) ??
-              FindAtomicConflict(fieldId, objectId, threadId, shadow, threadVc, storesOnly: false)
+            ? FindWriteConflict(threadId, shadow, threadVc) ??
+              FindAtomicConflict(objectId, threadId, shadow, threadVc, storesOnly: false)
             : null;
 
-        var currentAccess = _accessTracker.RecordAccess(fieldId, objectId, threadId, methodOffset, AccessType.Write, stack);
+        var currentAccess = AccessTracker.RecordAccess(ref shadow.Accesses, threadId, methodOffset, AccessType.Write, stack);
         if (writeKind == WriteKind.Regular)
             shadow.InFlightAtomicAccesses?.NotePlainAccess(threadId, threadVc, currentEpoch, currentAccess, isWrite: true);
 
@@ -426,16 +431,16 @@ internal sealed class FastTrackDetector
         {
             // Plain write and atomic access: a lost update, or a value that is not atomic at all
             conflict = HasUnorderedWrite(shadow, threadVc, objectId)
-                ? GetConflictingWrite(fieldId, objectId, threadId)
+                ? GetConflictingWrite(shadow, threadId)
                 : null;
 
             if (stored && _configuration.ReportPlainReadsRacingWithAtomicWrites && !_writeClassifier.IsFinalizationQueued(objectId))
-                conflict ??= FindReadConflict(fieldId, objectId, threadId, shadow, threadVc);
+                conflict ??= FindReadConflict(threadId, shadow, threadVc);
         }
 
         // What the thread knew at the access decides whether it subsumes earlier atomic accesses
         shadow.GetOrCreateAtomicAccesses().Record(epoch, epochVc, stored, _threadClocks);
-        var currentAccess = _accessTracker.RecordAtomicAccess(fieldId, objectId, threadId, methodOffset, stored, stack);
+        var currentAccess = AccessTracker.RecordAtomicAccess(ref shadow.Accesses, threadId, methodOffset, stored, stack);
         return CreateRaceInfo(threadId, fieldId, objectId, currentAccess, conflict);
     }
 
@@ -448,7 +453,7 @@ internal sealed class FastTrackDetector
         if (!shadow.WriteEpoch.IsNone &&
             shadow.WriteEpoch.ThreadId != threadId &&
             shadow.LastWriteKind == WriteKind.Regular &&
-            _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var lastWrite))
+            AccessTracker.TryGetLastWriteAccess(ref shadow.Accesses, out var lastWrite))
         {
             operation.WriteBefore = new PlainAccess(shadow.WriteEpoch, lastWrite);
         }
@@ -457,7 +462,7 @@ internal sealed class FastTrackDetector
         {
             operation.ReadEpochBefore = shadow.ReadEpoch;
             operation.ReadClockBefore = shadow.ReadVectorClock?.Clone();
-            _accessTracker.CopyLastReadAccesses(fieldId, objectId, operation.GetOrCreateReadsBefore());
+            AccessTracker.CopyLastReadAccesses(ref shadow.Accesses, operation.GetOrCreateReadsBefore());
         }
     }
 
@@ -494,7 +499,6 @@ internal sealed class FastTrackDetector
     }
 
     private AccessRecord? FindAtomicConflict(
-        FieldId fieldId,
         ProcessTrackedObjectId? objectId,
         ProcessThreadId threadId,
         ShadowVariable shadow,
@@ -509,7 +513,7 @@ internal sealed class FastTrackDetector
             : atomicAccesses.FindUnorderedAccess(threadId, threadVc);
 
         return racingThread is { } racer &&
-               _accessTracker.TryGetLastAtomicAccess(fieldId, objectId, racer, storesOnly, out var racingAccess)
+               AccessTracker.TryGetLastAtomicAccess(ref shadow.Accesses, racer, storesOnly, out var racingAccess)
             ? racingAccess
             : null;
     }
@@ -531,8 +535,6 @@ internal sealed class FastTrackDetector
            shadow.LastWriteKind == WriteKind.Regular;
 
     private AccessRecord? FindWriteConflict(
-        FieldId fieldId,
-        ProcessTrackedObjectId? objectId,
         ProcessThreadId threadId,
         ShadowVariable shadow,
         VectorClock threadVc)
@@ -542,22 +544,20 @@ internal sealed class FastTrackDetector
             shadow.WriteEpoch.ThreadId != threadId &&
             !shadow.WriteEpoch.HappensBefore(threadVc))
         {
-            return GetConflictingWrite(fieldId, objectId, threadId);
+            return GetConflictingWrite(shadow, threadId);
         }
 
         // Read-write race: an earlier read does not happen-before this write
-        return FindReadConflict(fieldId, objectId, threadId, shadow, threadVc);
+        return FindReadConflict(threadId, shadow, threadVc);
     }
 
     private AccessRecord? FindReadConflict(
-        FieldId fieldId,
-        ProcessTrackedObjectId? objectId,
         ProcessThreadId threadId,
         ShadowVariable shadow,
         VectorClock threadVc)
     {
         return FindUnorderedReader(threadId, shadow, threadVc) is { } reader &&
-               _accessTracker.TryGetLastReadAccess(fieldId, objectId, reader, out var racingRead)
+               AccessTracker.TryGetLastReadAccess(ref shadow.Accesses, reader, out var racingRead)
             ? racingRead
             : null;
     }
@@ -581,12 +581,9 @@ internal sealed class FastTrackDetector
             : null;
     }
 
-    private AccessRecord? GetConflictingWrite(
-        FieldId fieldId,
-        ProcessTrackedObjectId? objectId,
-        ProcessThreadId threadId)
+    private AccessRecord? GetConflictingWrite(ShadowVariable shadow, ProcessThreadId threadId)
     {
-        return _accessTracker.TryGetLastWriteAccess(fieldId, objectId, out var previous) && previous.ProcessThreadId != threadId
+        return AccessTracker.TryGetLastWriteAccess(ref shadow.Accesses, out var previous) && previous.ProcessThreadId != threadId
             ? previous
             : null;
     }
