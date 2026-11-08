@@ -6,6 +6,7 @@ using CliFx;
 using CliFx.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SharpDetect.Cli.Plugins;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
 using SharpDetect.Core.Reporting.Model;
@@ -152,21 +153,18 @@ internal sealed class RunCommandHandler : IDisposable
         var pluginTypeName = _arguments.Analysis.PluginFullTypeName;
         var pluginName = _arguments.Analysis.PluginName;
 
+        var assembly = PluginCatalog.LoadAssembly(assemblyPath);
         try
         {
-            var assembly = Assembly.LoadFrom(Path.GetFullPath(assemblyPath));
-
             if (!string.IsNullOrWhiteSpace(pluginTypeName))
             {
                 return assembly.ManifestModule.GetType(pluginTypeName, ignoreCase: false, throwOnError: true)
                     ?? throw new TypeLoadException($"Could not find type: \"{pluginTypeName}\" in assembly \"{assembly.FullName}\".");
             }
 
-            var match = assembly
-                .GetTypes().Concat(assembly.GetForwardedTypes())
-                .SingleOrDefault(type =>
-                    type.GetCustomAttribute<PluginMetadataAttribute>()?.Name
-                        .Equals(pluginName, StringComparison.OrdinalIgnoreCase) == true);
+            var match = PluginCatalog.GetPlugins(assembly)
+                .SingleOrDefault(plugin => plugin.Name.Equals(pluginName, StringComparison.OrdinalIgnoreCase))?
+                .Type;
 
             return match
                 ?? throw new TypeLoadException($"Could not find plugin named \"{pluginName}\" in assembly \"{assembly.FullName}\".");

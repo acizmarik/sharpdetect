@@ -3,7 +3,7 @@
 Command `sharpdetect run` accepts a configuration file as its positional argument instead of inline `--plugin`/`--target` options.
 This is useful once you need options that don't have a dedicated CLI flag (working directory, extra environment variables, custom report locations, plugin-specific configuration, ...).
 
-A configuration file and inline options are mutually exclusive — you can't pass both.
+A configuration file and inline analysis options (`--plugin`, `--target`, `--test`, `--instrument-system-libraries`, `--stack-traces`) are mutually exclusive — you can't pass both.
 
 ## Generating a Configuration File
 
@@ -42,7 +42,7 @@ This produces `AnalysisDescriptor.json` with following content:
 }
 ```
 
-Command `init` also accepts `--test`, `--runner`, `--filter` and `--instrument-system-libraries`, mirroring command `run`.
+Command `init` accepts the same analysis options as command `run` (`--plugin`, `--test`, `--runner`, `--filter`, `--instrument-system-libraries`, `--stack-traces`, `--stack-trace-depth`).
 Edit the generated file as required, then run it:
 
 ```bash

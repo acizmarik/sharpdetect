@@ -5,39 +5,20 @@ using CliFx;
 using CliFx.Binding;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Handlers;
-using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Cli.Commands;
 
 [Command("run", Description = "Executes analysis using inline options, or based on a provided configuration file")]
-public sealed partial class RunCommand : ICommand
+public sealed partial class RunCommand : AnalysisCommandBase
 {
     [CommandParameter(0, Description = "Configuration file (omit to use inline options)")]
-    private string? ArgumentsFile { get; set; }
+    public string? ConfigurationFile { get; set; }
 
-    [CommandOption("plugin", 'p', Description = "Plugin type full name")]
-    private string? PluginType { get; set; }
-
-    [CommandOption("target", 't', Description = "Target application path")]
-    private string? TargetPath { get; set; }
-
-    [CommandOption("test", Description = "Treat the target as a test assembly")]
-    private bool IsTest { get; set; }
-
-    [CommandOption("filter", 'f', Description = "Test filter expression (requires --test)")]
-    private string? TestFilter { get; set; }
-
-    [CommandOption("runner", Description = "Test runner: Mtp (default) | VSTest (requires --test)")]
-    private TestRunner? TestRunner { get; set; }
-
-    [CommandOption("instrument-system-libraries", Description = "Instrument system assemblies (System, Microsoft, test frameworks..)")]
-    private bool InstrumentSystemLibraries { get; set; }
-
-    public async ValueTask ExecuteAsync(IConsole console)
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        ValidateOptions(ArgumentsFile, PluginType, TargetPath, IsTest, TestFilter, TestRunner, InstrumentSystemLibraries);
+        ValidateOptions();
 
-        var useInlineForm = string.IsNullOrEmpty(ArgumentsFile);
+        var useInlineForm = string.IsNullOrEmpty(ConfigurationFile);
         var previousDirectory = Directory.GetCurrentDirectory();
         RunCommandHandler? commandHandler = null;
 
@@ -45,22 +26,16 @@ public sealed partial class RunCommand : ICommand
         {
             if (useInlineForm)
             {
-                var arguments = InitCommandHandler.BuildRunCommandArgs(
-                    pluginNameOrTypeFullName: PluginType!,
-                    targetAssemblyPath: TargetPath!,
-                    isTest: IsTest,
-                    testRunner: TestRunner,
-                    testFilter: TestFilter,
-                    instrumentSystemLibraries: InstrumentSystemLibraries);
+                var arguments = InitCommandHandler.BuildRunCommandArgs(ToAnalysisOptions());
                 var rawJson = InitCommandHandler.SerializeRunCommandArgs(arguments);
                 commandHandler = new RunCommandHandler(arguments, rawJson);
             }
             else
             {
-                var directoryName = Path.GetDirectoryName(ArgumentsFile);
+                var directoryName = Path.GetDirectoryName(ConfigurationFile);
                 var workingDirectory = string.IsNullOrEmpty(directoryName) ? previousDirectory : directoryName;
                 Directory.SetCurrentDirectory(workingDirectory);
-                var fileName = Path.GetFileName(ArgumentsFile!);
+                var fileName = Path.GetFileName(ConfigurationFile!);
                 commandHandler = new RunCommandHandler(fileName);
             }
 
@@ -91,59 +66,22 @@ public sealed partial class RunCommand : ICommand
         }
     }
 
-    internal static void ValidateOptions(
-        string? argumentsFile,
-        string? pluginType,
-        string? targetPath,
-        bool isTest,
-        string? testFilter,
-        TestRunner? testRunner,
-        bool instrumentSystemLibraries = false)
+    internal void ValidateOptions()
     {
-        var hasConfigFile = !string.IsNullOrEmpty(argumentsFile);
-        var hasPlugin = !string.IsNullOrEmpty(pluginType);
-        var hasTarget = !string.IsNullOrEmpty(targetPath);
-        var hasInline = hasPlugin || hasTarget;
+        var hasConfigFile = !string.IsNullOrEmpty(ConfigurationFile);
 
-        if (hasConfigFile && !File.Exists(argumentsFile))
+        if (hasConfigFile && !File.Exists(ConfigurationFile))
             throw new CommandException(
-                $"Configuration file {argumentsFile} does not exist.",
+                $"Configuration file {ConfigurationFile} does not exist.",
                 (int)ExitCode.ConfigurationError);
-        
-        if (hasConfigFile && hasInline)
-            throw new CommandException(
-                "Specify either a configuration file or inline options (--plugin and --target), not both.",
-                (int)ExitCode.ConfigurationError,
-                showHelp: true);
 
-        if (!hasConfigFile && !hasInline)
-            throw new CommandException(
-                "Either provide a configuration file or specify inline options (--plugin and --target).",
-                (int)ExitCode.ConfigurationError,
-                showHelp: true);
+        if (hasConfigFile && GetSpecifiedInlineOptions().ToArray() is { Length: > 0 } inlineOptions)
+            throw UsageError(
+                $"{string.Join(", ", inlineOptions)} cannot be combined with a configuration file; set the corresponding values in the file instead.");
 
-        if (hasInline && (!hasPlugin || !hasTarget))
-            throw new CommandException(
-                "Both --plugin and --target are required when using inline options.",
-                (int)ExitCode.ConfigurationError,
-                showHelp: true);
+        if (!hasConfigFile && string.IsNullOrEmpty(TargetPath))
+            throw UsageError("Either provide a configuration file or specify a target (--target).");
 
-        if (!isTest && testFilter is not null)
-            throw new CommandException(
-                "--filter requires --test.",
-                (int)ExitCode.ConfigurationError,
-                showHelp: true);
-
-        if (!isTest && testRunner is not null)
-            throw new CommandException(
-                "--runner requires --test.",
-                (int)ExitCode.ConfigurationError,
-                showHelp: true);
-
-        if (hasConfigFile && instrumentSystemLibraries)
-            throw new CommandException(
-                "--instrument-system-libraries cannot be combined with a configuration file; set SkipInstrumentationForAssemblies in the file instead.",
-                (int)ExitCode.ConfigurationError,
-                showHelp: true);
+        ValidateSharedOptions();
     }
 }
