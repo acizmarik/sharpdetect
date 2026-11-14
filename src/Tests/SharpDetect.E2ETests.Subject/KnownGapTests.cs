@@ -9,7 +9,7 @@ namespace SharpDetect.E2ETests.Subject;
 
 public static partial class Program
 {
-    private static readonly TimeSpan ScheduleSteeringDelay = TimeSpan.FromMilliseconds(300);
+    private const int GateTimeoutMilliseconds = 5000;
 
     public static void Test_DataRace_ArrayElement_WriteWriteRace()
     {
@@ -67,20 +67,21 @@ public static partial class Program
 
     public static void Test_DataRace_Task_UnjoinedTasksOnOnePoolThread()
     {
-        Task.Run(() => DataRace.Test_DataRace_ValueType_Static = 1);
-        Thread.Sleep(ScheduleSteeringDelay);
-        Task.Run(() => DataRace.Test_DataRace_ValueType_Static = 2);
-        Thread.Sleep(ScheduleSteeringDelay);
+        var first = Task.Run(() => DataRace.Test_DataRace_ValueType_Static = 1);
+        var second = Task.Run(() => DataRace.Test_DataRace_ValueType_Static = 2);
+        SpinUntilCompleted(first, second);
     }
 
     public static void Test_NoDataRace_Task_WaitAll_ReadAfterWaitAll()
     {
         var first = new DataRace();
         var second = new DataRace();
+        var caller = Thread.CurrentThread;
         var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
         var secondTask = RunOnDedicatedThread(() =>
         {
-            Thread.Sleep(ScheduleSteeringDelay);
+            // Finish only once the caller blocks inside WaitAll
+            SpinUntilBlocked(caller);
             second.Test_DataRace_ValueType_InstanceProperty = 2;
         });
 
@@ -98,7 +99,7 @@ public static partial class Program
         var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
         var secondTask = RunOnDedicatedThread(() => second.Test_DataRace_ValueType_InstanceProperty = 2);
 
-        Thread.Sleep(ScheduleSteeringDelay);
+        SpinUntilCompleted(firstTask, secondTask);
         Task.WaitAll(firstTask, secondTask);
 
         _ = first.Test_DataRace_ValueType_InstanceProperty;
@@ -112,7 +113,7 @@ public static partial class Program
         var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
         var secondTask = RunOnDedicatedThread(() => second.Test_DataRace_ValueType_InstanceProperty = 2);
 
-        Thread.Sleep(ScheduleSteeringDelay);
+        SpinUntilCompleted(firstTask, secondTask);
         if (!Task.WhenAll(firstTask, secondTask).Wait(WaitTimeout))
             throw new TimeoutException("The tasks did not finish.");
 
@@ -122,21 +123,33 @@ public static partial class Program
 
     public static void Test_NoDataRace_Task_WhenAll_ReadInContinuation()
     {
+        using var continuationRegistered = new ManualResetEventSlim();
         var first = new DataRace();
-        var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
-        var secondTask = RunOnDedicatedThread(() => Thread.Sleep(ScheduleSteeringDelay));
+        var firstTask = RunOnDedicatedThread(() =>
+        {
+            WaitForSignal(continuationRegistered);
+            first.Test_DataRace_ValueType_InstanceProperty = 1;
+        });
+        // Finish last, so the continuation runs on this thread
+        var secondTask = RunOnDedicatedThread(() => SpinUntilCompleted(firstTask));
 
         var continuation = Task.WhenAll(firstTask, secondTask)
             .ContinueWith(_ => Consume(first.Test_DataRace_ValueType_InstanceProperty), TaskContinuationOptions.ExecuteSynchronously);
-        if (!SpinWait.SpinUntil(() => continuation.IsCompleted, WaitTimeout))
-            throw new TimeoutException("The continuation did not run.");
+        continuationRegistered.Set();
+        SpinUntilCompleted(continuation);
     }
 
     public static void Test_NoDataRace_TaskFactory_ContinueWhenAll_ReadInContinuation()
     {
+        using var continuationRegistered = new ManualResetEventSlim();
         var first = new DataRace();
-        var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
-        var secondTask = RunOnDedicatedThread(() => Thread.Sleep(ScheduleSteeringDelay));
+        var firstTask = RunOnDedicatedThread(() =>
+        {
+            WaitForSignal(continuationRegistered);
+            first.Test_DataRace_ValueType_InstanceProperty = 1;
+        });
+        // Finish last, so the continuation runs on this thread
+        var secondTask = RunOnDedicatedThread(() => SpinUntilCompleted(firstTask));
 
         var continuation = Task.Factory.ContinueWhenAll(
             [firstTask, secondTask],
@@ -144,29 +157,37 @@ public static partial class Program
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
-        if (!SpinWait.SpinUntil(() => continuation.IsCompleted, WaitTimeout))
-            throw new TimeoutException("The continuation did not run.");
+        continuationRegistered.Set();
+        SpinUntilCompleted(continuation);
     }
 
     public static void Test_NoDataRace_Task_WhenAllOfResults_ReadAfterWait()
     {
+        using var whenAllCreated = new ManualResetEventSlim();
         var first = new DataRace();
         var firstTask = Task.Factory.StartNew(
-            () => first.Test_DataRace_ValueType_InstanceProperty = 1,
+            () =>
+            {
+                WaitForSignal(whenAllCreated);
+                return first.Test_DataRace_ValueType_InstanceProperty = 1;
+            },
             CancellationToken.None,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
+        // Finish last, so this thread completes the promise
         var secondTask = Task.Factory.StartNew(
             () =>
             {
-                Thread.Sleep(ScheduleSteeringDelay);
+                SpinUntilCompleted(firstTask);
                 return 2;
             },
             CancellationToken.None,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
 
-        if (!Task.WhenAll(firstTask, secondTask).Wait(WaitTimeout))
+        var whenAll = Task.WhenAll(firstTask, secondTask);
+        whenAllCreated.Set();
+        if (!whenAll.Wait(WaitTimeout))
             throw new TimeoutException("The tasks did not finish.");
 
         _ = first.Test_DataRace_ValueType_InstanceProperty;
@@ -179,7 +200,7 @@ public static partial class Program
         var awaitedTask = RunOnDedicatedThread(() => awaited.Test_DataRace_ValueType_InstanceProperty = 1);
         var unawaitedTask = RunOnDedicatedThread(() => unawaited.Test_DataRace_ValueType_InstanceProperty = 2);
 
-        Thread.Sleep(ScheduleSteeringDelay);
+        SpinUntilCompleted(awaitedTask, unawaitedTask);
         Task.WaitAll(awaitedTask);
 
         _ = unawaited.Test_DataRace_ValueType_InstanceProperty;
@@ -194,11 +215,12 @@ public static partial class Program
 
     public static void Test_NoDataRace_ParallelFor_ReadAfterLoop()
     {
+        var interleaving = new ParallelLoopInterleaving();
         var instances = Enumerable.Range(0, 8).Select(_ => new DataRace()).ToArray();
-        Parallel.For(0, instances.Length, i =>
+        Parallel.For(0, instances.Length, interleaving.Options, i =>
         {
+            interleaving.EnterBody();
             instances[i].Test_DataRace_ValueType_InstanceProperty = i;
-            Thread.Sleep(20);
         });
 
         foreach (var instance in instances)
@@ -227,11 +249,12 @@ public static partial class Program
 
     public static void Test_NoDataRace_ParallelForEach_ReadAfterLoop()
     {
+        var interleaving = new ParallelLoopInterleaving();
         var instances = Enumerable.Range(0, 8).Select(_ => new DataRace()).ToArray();
-        Parallel.ForEach(instances.Where(_ => true), instance =>
+        Parallel.ForEach(instances.Where(_ => true), interleaving.Options, instance =>
         {
+            interleaving.EnterBody();
             instance.Test_DataRace_ValueType_InstanceProperty = 1;
-            Thread.Sleep(20);
         });
 
         foreach (var instance in instances)
@@ -240,16 +263,21 @@ public static partial class Program
 
     public static void Test_NoDataRace_ParallelInvoke_ReadAfterInvoke()
     {
+        using var pooledActionStarted = new ManualResetEventSlim();
         var first = new DataRace();
         var second = new DataRace();
-        // The first action runs on the calling thread, so the pooled one has finished before the tasks are awaited
+        // The first action runs on the calling thread; waiting for the pooled one to start keeps WaitAll from inlining it
         Parallel.Invoke(
             () =>
             {
-                Thread.Sleep(ScheduleSteeringDelay);
+                WaitForSignal(pooledActionStarted);
                 first.Test_DataRace_ValueType_InstanceProperty = 1;
             },
-            () => second.Test_DataRace_ValueType_InstanceProperty = 2);
+            () =>
+            {
+                pooledActionStarted.Set();
+                second.Test_DataRace_ValueType_InstanceProperty = 2;
+            });
 
         _ = first.Test_DataRace_ValueType_InstanceProperty;
         _ = second.Test_DataRace_ValueType_InstanceProperty;
@@ -267,14 +295,16 @@ public static partial class Program
     {
         // The lock object lives outside the garbage-collected heap, like every Type object and string literal
         var instance = new DataRace();
-        RunConcurrently(
-            () => IncrementUnderTypeLock(instance),
-            () =>
-            {
-                Thread.Sleep(ScheduleSteeringDelay);
-                GC.Collect();
-                IncrementUnderTypeLock(instance);
-            });
+        var firstTask = RunOnDedicatedThread(() => IncrementUnderTypeLock(instance));
+        var secondTask = RunOnDedicatedThread(() =>
+        {
+            SpinUntilCompleted(firstTask);
+            GC.Collect();
+            IncrementUnderTypeLock(instance);
+        });
+
+        if (!Task.WaitAll([firstTask, secondTask], WaitTimeout))
+            throw new TimeoutException("The tasks did not finish.");
     }
 
     public static void Test_NoDataRace_SynchronizedMethod_ProtectedWriteRead()
@@ -334,29 +364,35 @@ public static partial class Program
         using var cancellation = new CancellationTokenSource();
         var token = cancellation.Token;
         var instance = new DataRace();
-        RunConcurrently(
-            () =>
-            {
-                cancellation.Cancel();
-                instance.Test_DataRace_ValueType_InstanceProperty = 42;
-            },
-            () =>
-            {
-                if (!SpinWait.SpinUntil(() => token.IsCancellationRequested, WaitTimeout))
-                    throw new TimeoutException("Cancellation was not requested.");
-                Thread.Sleep(ScheduleSteeringDelay);
-                _ = instance.Test_DataRace_ValueType_InstanceProperty;
-            });
+        var writer = RunOnDedicatedThread(() =>
+        {
+            cancellation.Cancel();
+            instance.Test_DataRace_ValueType_InstanceProperty = 42;
+        });
+        var reader = RunOnDedicatedThread(() =>
+        {
+            SpinUntilGateOpens(() => token.IsCancellationRequested);
+            SpinUntilCompleted(writer);
+            _ = instance.Test_DataRace_ValueType_InstanceProperty;
+        });
+
+        if (!Task.WaitAll([writer, reader], WaitTimeout))
+            throw new TimeoutException("The tasks did not finish.");
     }
 
     private static async Task ReadAfterWhenAllAsync()
     {
         var first = new DataRace();
         var second = new DataRace();
-        var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
+        var caller = Thread.CurrentThread;
+        var firstTask = RunOnDedicatedThread(() =>
+        {
+            SpinUntilBlocked(caller);
+            first.Test_DataRace_ValueType_InstanceProperty = 1;
+        });
         var secondTask = RunOnDedicatedThread(() =>
         {
-            Thread.Sleep(ScheduleSteeringDelay);
+            SpinUntilCompleted(firstTask);
             second.Test_DataRace_ValueType_InstanceProperty = 2;
         });
 
@@ -368,6 +404,24 @@ public static partial class Program
 
     private static Task RunOnDedicatedThread(Action action)
         => Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+    private static void SpinUntilCompleted(params Task[] tasks)
+        => SpinUntilGateOpens(() => tasks.All(task => task.IsCompleted));
+
+    private static void SpinUntilBlocked(Thread thread)
+        => SpinUntilGateOpens(() => (thread.ThreadState & ThreadState.WaitSleepJoin) != 0);
+
+    private static void SpinUntilGateOpens(Func<bool> condition)
+    {
+        if (!SpinWait.SpinUntil(condition, GateTimeoutMilliseconds))
+            throw new TimeoutException("Timed out while spinning on a condition.");
+    }
+
+    private static void WaitForSignal(ManualResetEventSlim signal)
+    {
+        if (!signal.Wait(GateTimeoutMilliseconds))
+            throw new TimeoutException("The signal was not set.");
+    }
 
     private static void IncrementUnderSpinLock(ref SpinLock spinLock, DataRace instance)
     {
@@ -398,6 +452,45 @@ public static partial class Program
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Consume(int value)
     {
+    }
+
+    private sealed class ParallelLoopInterleaving : TaskScheduler
+    {
+        private readonly Thread _caller = Thread.CurrentThread;
+        private readonly ManualResetEventSlim _callerTookItem = new();
+        private Thread? _worker;
+        private bool _callerHeldItem;
+
+        public ParallelOptions Options => new() { MaxDegreeOfParallelism = 2, TaskScheduler = this };
+
+        public void EnterBody()
+        {
+            if (Thread.CurrentThread != _caller)
+            {
+                WaitForSignal(_callerTookItem);
+                return;
+            }
+
+            if (_callerHeldItem)
+                return;
+
+            _callerHeldItem = true;
+            _callerTookItem.Set();
+            SpinUntilGateOpens(() => _worker is { IsAlive: false });
+        }
+
+        protected override void QueueTask(Task task)
+        {
+            var thread = new Thread(() => TryExecuteTask(task));
+            _worker ??= thread;
+            thread.Start();
+        }
+
+        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
+            => TryExecuteTask(task);
+
+        protected override IEnumerable<Task> GetScheduledTasks()
+            => [];
     }
 
     private sealed class SynchronizedCounter
@@ -431,13 +524,13 @@ public static partial class Program
 
             // `this` escapes to the reader before the field below is initialized
             Reader = new Thread(ReadState);
-            Reader.Start();
+            Reader.Start(Thread.CurrentThread);
             State = 42;
         }
 
-        private void ReadState()
+        private void ReadState(object? creator)
         {
-            Thread.Sleep(300);
+            SpinUntilBlocked((Thread)creator!);
             Consume(State);
         }
     }
