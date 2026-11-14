@@ -1012,10 +1012,15 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task NoDataRace_ConcurrentQueueOfValueType_PublishThenRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentQueueOfValueType_PublishThenRead", sdk, plugin);
 
-    [Theory(Skip = UnmodeledRuntimeSynchronizationGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_CancellationToken_CancelThenObserve(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_CancellationToken_CancelThenObserve", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_CancellationToken_WriteAfterCancel(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_CancellationToken_WriteAfterCancel", sdk, plugin);
 
     private async Task AssertDetectsDataRace(
         string subjectArgs,

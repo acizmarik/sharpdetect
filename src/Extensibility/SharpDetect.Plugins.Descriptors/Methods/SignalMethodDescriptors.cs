@@ -12,6 +12,7 @@ public static class SignalMethodDescriptors
     private const string CountdownEventTypeName = "System.Threading.CountdownEvent";
     private const string BarrierTypeName = "System.Threading.Barrier";
     private const string CancellationTokenTypeName = "System.Threading.CancellationToken";
+    private const string CancellationTokenSourceTypeName = "System.Threading.CancellationTokenSource";
     private const string ParallelReplicaTypeName = "System.Threading.Tasks.TaskReplicator+Replica";
     private const string ParallelReplicaTStateTypeName = "System.Threading.Tasks.TaskReplicator+Replica`1";
 
@@ -37,6 +38,9 @@ public static class SignalMethodDescriptors
         yield return Create(CountdownEventTypeName, "Wait", Boolean, [Int32, CancellationToken], returnsSuccess: true, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult);
 
         yield return Create(BarrierTypeName, "SignalAndWait", Boolean, [Int32, CancellationToken], returnsSuccess: true, RecordedEventType.SignalSet, RecordedEventType.SignalWaitResult);
+
+        yield return Create(CancellationTokenSourceTypeName, "TransitionToCancellationRequested", Boolean, [], returnsSuccess: false, RecordedEventType.SignalSet, RecordedEventType.SignalSetResult);
+        yield return Create(CancellationTokenSourceTypeName, "get_IsCancellationRequested", Boolean, [], returnsSuccess: true, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult);
 
         // Internal API behind Parallel.For and Parallel.ForEach
         yield return Create(ParallelReplicaTStateTypeName, "ExecuteAction", Void, [ArgumentTypeDescriptor.CreateByRef(Boolean)], returnsSuccess: false, RecordedEventType.SignalSetOnReturn, RecordedEventType.SignalSetOnReturnResult);

@@ -1276,6 +1276,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_NoDataRace_ConcurrentQueueOfValueType_PublishThenRead):
                     Test_NoDataRace_ConcurrentQueueOfValueType_PublishThenRead();
                     break;
+                case nameof(Test_DataRace_CancellationToken_WriteAfterCancel):
+                    Test_DataRace_CancellationToken_WriteAfterCancel();
+                    break;
                 case nameof(Test_NoDataRace_CancellationToken_CancelThenObserve):
                     Test_NoDataRace_CancellationToken_CancelThenObserve();
                     break;

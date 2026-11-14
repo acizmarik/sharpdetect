@@ -329,6 +329,26 @@ public static partial class Program
             });
     }
 
+    public static void Test_DataRace_CancellationToken_WriteAfterCancel()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var token = cancellation.Token;
+        var instance = new DataRace();
+        RunConcurrently(
+            () =>
+            {
+                cancellation.Cancel();
+                instance.Test_DataRace_ValueType_InstanceProperty = 42;
+            },
+            () =>
+            {
+                if (!SpinWait.SpinUntil(() => token.IsCancellationRequested, WaitTimeout))
+                    throw new TimeoutException("Cancellation was not requested.");
+                Thread.Sleep(ScheduleSteeringDelay);
+                _ = instance.Test_DataRace_ValueType_InstanceProperty;
+            });
+    }
+
     private static async Task ReadAfterWhenAllAsync()
     {
         var first = new DataRace();
