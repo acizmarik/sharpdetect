@@ -1225,6 +1225,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_RefParameter_WriteWriteRace):
                     Test_DataRace_RefParameter_WriteWriteRace();
                     break;
+                case nameof(Test_DataRace_ConstructorEscape_WriteAfterFirstFieldAndThreadStart):
+                    Test_DataRace_ConstructorEscape_WriteAfterFirstFieldAndThreadStart();
+                    break;
                 case nameof(Test_DataRace_ConstructorEscape_WriteAfterThreadStart):
                     Test_DataRace_ConstructorEscape_WriteAfterThreadStart();
                     break;

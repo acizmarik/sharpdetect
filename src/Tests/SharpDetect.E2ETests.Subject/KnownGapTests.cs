@@ -35,6 +35,13 @@ public static partial class Program
             () => WriteThroughReference(ref instance.Test_DataRace_ValueType_InstanceField, 2));
     }
 
+    public static void Test_DataRace_ConstructorEscape_WriteAfterFirstFieldAndThreadStart()
+    {
+        var instance = new SelfPublishingInstance(initializeBeforeStart: true);
+        if (!instance.Reader.Join(WaitTimeout))
+            throw new TimeoutException("The reader thread did not finish.");
+    }
+
     public static void Test_DataRace_ConstructorEscape_WriteAfterThreadStart()
     {
         var instance = new SelfPublishingInstance();
@@ -395,9 +402,13 @@ public static partial class Program
     {
         public readonly Thread Reader;
         public int State;
+        public int Initialized;
 
-        public SelfPublishingInstance()
+        public SelfPublishingInstance(bool initializeBeforeStart = false)
         {
+            if (initializeBeforeStart)
+                Initialized = 1;
+
             // `this` escapes to the reader before the field below is initialized
             Reader = new Thread(ReadState);
             Reader.Start();
@@ -406,7 +417,7 @@ public static partial class Program
 
         private void ReadState()
         {
-            Thread.Sleep(ScheduleSteeringDelay);
+            Thread.Sleep(300);
             Consume(State);
         }
     }

@@ -14,7 +14,7 @@ public class KnownGapTests
     private const string ThreadKeyedClocksGap =
         "Known limitation of thread-keyed clocks: work items that share a pool thread are ordered by program order, so races between them are missed";
     private const string ConstructorEscapeGap =
-        "Known gap: a constructor write is exempt for as long as no other thread has accessed the object, even after `this` escaped";
+        "Known gap: a constructor write stays exempt when `this` escaped before the constructor touched any field of the object, or through a channel other than a thread or task start or a modeled publication";
     private const string ExitedThreadClockGap =
         "Known gap: the clock of an exited thread that was not started through a tracked Thread object is never forgotten";
 

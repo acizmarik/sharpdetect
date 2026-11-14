@@ -18,8 +18,9 @@ internal sealed class WriteClassifier(
     private readonly MethodResolver _methodResolver = new(metadataContext, logger);
     private readonly Dictionary<ProcessTrackedObjectId, ObjectEscapeState> _escapeStates = [];
     private readonly HashSet<ProcessTrackedObjectId> _finalizationQueuedObjects = [];
+    private readonly Dictionary<ProcessThreadId, int> _handOffCounts = [];
 
-    private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, bool Escaped);
+    private readonly record struct ObjectEscapeState(ProcessThreadId Instantiator, int HandOffCount, bool Escaped);
 
     // Reads participate in escape analysis without being classified themselves
     public void NoteAccess(ProcessThreadId threadId, ProcessTrackedObjectId? objectId)
@@ -53,6 +54,12 @@ internal sealed class WriteClassifier(
             : WriteKind.Regular;
     }
 
+    public void NoteHandOff(ProcessThreadId threadId)
+        => _handOffCounts[threadId] = _handOffCounts.GetValueOrDefault(threadId) + 1;
+
+    public void RemoveThread(ProcessThreadId threadId)
+        => _handOffCounts.Remove(threadId);
+
     public void RecordFinalizationQueued(uint processId, ReadOnlySpan<TrackedObjectId> queuedObjectIds)
     {
         foreach (var objectId in queuedObjectIds)
@@ -76,14 +83,14 @@ internal sealed class WriteClassifier(
 
         if (!_escapeStates.TryGetValue(objId, out var state))
         {
-            _escapeStates[objId] = new ObjectEscapeState(threadId, Escaped: false);
+            _escapeStates[objId] = new ObjectEscapeState(threadId, _handOffCounts.GetValueOrDefault(threadId), Escaped: false);
             return true;
         }
 
         if (state.Escaped)
             return false;
 
-        if (state.Instantiator == threadId)
+        if (state.Instantiator == threadId && state.HandOffCount == _handOffCounts.GetValueOrDefault(threadId))
             return true;
 
         _escapeStates[objId] = state with { Escaped = true };

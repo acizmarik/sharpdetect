@@ -21,7 +21,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     private const string ArrayElementGap = "Known gap: array element accesses are not instrumented";
     private const string EmbeddedStructFieldGap = "Known gap: accesses to a field of a struct embedded in an object are not tracked";
     private const string IndirectAccessGap = "Known gap: accesses through a managed pointer (ref parameter) are not tracked";
-    private const string ConstructorEscapeGap = "Known gap: a constructor write stays exempt after `this` escaped, until another thread accesses the object";
+    private const string ConstructorEscapeGap = "Known gap: a constructor write stays exempt when `this` escaped before the constructor touched any field of the object, or through a channel other than a thread or task start or a modeled publication";
     private const string ThreadKeyedClocksGap = "Known limitation of thread-keyed clocks: tasks that share a pool thread are ordered by program order, so races between them are missed";
     private const string SynchronizedMethodGap = "Known gap: [MethodImpl(MethodImplOptions.Synchronized)] is not modeled on .NET 8 and .NET 9";
     private const string ValueTypePublicationGap = "Known gap: value publication is keyed by the published object, so a value-type item carries no happens-before edge";
@@ -926,6 +926,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     [MemberData(nameof(SdkVersions.BelowNet10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_SynchronizedMethod_ProtectedWriteRead_BeforeNet10(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_SynchronizedMethod_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ConstructorEscape_WriteAfterFirstFieldAndThreadStart(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ConstructorEscape_WriteAfterFirstFieldAndThreadStart", sdk, plugin);
 
     [Theory(Skip = ConstructorEscapeGap)]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]

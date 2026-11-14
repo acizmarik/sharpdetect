@@ -167,6 +167,54 @@ public class WriteClassificationTests
         Assert.True(IsReportedAsRace(field, Instance, CreateStack(ctor)));
     }
 
+    [Theory]
+    [InlineData("thread")]
+    [InlineData("task")]
+    [InlineData("continuation")]
+    [InlineData("publication")]
+    public void InstanceField_ConstructorWriteAfterTheConstructorHandedWorkToAnotherThread_IsReported(string handOff)
+    {
+        var type = _metadata.AddType("Holder");
+        var initializedFirst = _metadata.AddField(type, "InitializedFirst", isStatic: false);
+        var field = _metadata.AddField(type, "Value", isStatic: false);
+        var ctor = _metadata.AddInstanceConstructor(type);
+        var other = new ProcessTrackedObjectId(TestMetadata.ProcessId, new TrackedObjectId(200));
+
+        // The constructor initializes one field, lets `this` reach another thread, and goes on initializing
+        _detector.RecordWrite(Writer, methodOffset: 0, initializedFirst, Instance, declaringTypeHandle: 0, CreateStack(ctor));
+        switch (handOff)
+        {
+            case "thread":
+                _detector.RecordThreadForkRequested(Writer, other);
+                break;
+            case "task":
+                _detector.RecordTaskScheduled(Writer, other);
+                break;
+            case "continuation":
+                _detector.RecordTaskContinuationRegistered(Writer, other);
+                break;
+            default:
+                _detector.RecordValuePublished(Writer, other, Instance);
+                break;
+        }
+
+        Assert.True(IsReportedAsRace(field, Instance, CreateStack(ctor)));
+    }
+
+    [Fact]
+    public void InstanceField_ConstructorWriteAfterAHandOffThatPrecededTheObject_IsNotReported()
+    {
+        var type = _metadata.AddType("Holder");
+        var field = _metadata.AddField(type, "Value", isStatic: false);
+        var ctor = _metadata.AddInstanceConstructor(type);
+        var other = new ProcessTrackedObjectId(TestMetadata.ProcessId, new TrackedObjectId(200));
+
+        // Threads started before the object existed cannot have been handed it by the constructor
+        _detector.RecordThreadForkRequested(Writer, other);
+
+        Assert.False(IsReportedAsRace(field, Instance, CreateStack(ctor)));
+    }
+
     [Fact]
     public void InstanceField_EmptyDeeperFramesBlob_FallsBackWithoutFailing()
     {
