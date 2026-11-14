@@ -24,7 +24,6 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     private const string ConstructorEscapeGap = "Known gap: a constructor write stays exempt after `this` escaped, until another thread accesses the object";
     private const string ThreadKeyedClocksGap = "Known limitation of thread-keyed clocks: tasks that share a pool thread are ordered by program order, so races between them are missed";
     private const string CompositeTaskJoinGap = "Known gap: Task.WaitAll and Task.WhenAll order the waiter only after the thread that completed last, and not at all when every task had already completed";
-    private const string UntypedStackSlotGap = "Known gap: a field access is skipped when the rewriter cannot type its receiver (conditional value in a loop body, `as` cast)";
     private const string FrozenObjectIdentityGap = "Known gap: objects outside the garbage-collected heap (Type objects, string literals) get a new tracked id after a GC";
     private const string SynchronizedMethodGap = "Known gap: [MethodImpl(MethodImplOptions.Synchronized)] is not modeled on .NET 8 and .NET 9";
     private const string ValueTypePublicationGap = "Known gap: value publication is keyed by the published object, so a value-type item carries no happens-before edge";
@@ -900,12 +899,12 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task CanDetectDataRace_RefParameter_WriteWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_RefParameter_WriteWriteRace", sdk, plugin);
 
-    [Theory(Skip = UntypedStackSlotGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_LoopConditionalStore_WriteWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_LoopConditionalStore_WriteWriteRace", sdk, plugin);
 
-    [Theory(Skip = UntypedStackSlotGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task CanDetectDataRace_AsCastReceiver_WriteWriteRace(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_AsCastReceiver_WriteWriteRace", sdk, plugin);

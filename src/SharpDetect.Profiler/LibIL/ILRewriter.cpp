@@ -727,6 +727,13 @@ HRESULT ILRewriter::ComputeStackTypes()
                 MergeProducers(producers, targetIt->second.producers);
             }
         }
+        else if (!stackKnown)
+        {
+            // ECMA-335 III.1.7.5 Backward branch constraints requires empty stack
+            stack.clear();
+            producers.clear();
+            stackKnown = true;
+        }
 
         // Instructions that empty the stack (leave/leave.s, endfinally, throw, rethrow, endfilter)
         if (opcode == CEE_LEAVE || opcode == CEE_LEAVE_S ||
@@ -862,6 +869,11 @@ HRESULT ILRewriter::ComputeStackTypes()
             if (isRef == 1)
             {
                 // PushRef: definitely an object reference
+                kind = SlotObjRef;
+            }
+            else if (opcode == CEE_ISINST)
+            {
+                // The result is always an object reference (or null), whatever the tested type is
                 kind = SlotObjRef;
             }
             else
