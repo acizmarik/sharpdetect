@@ -209,6 +209,93 @@ public class TaskOrderingTests
     }
 
     [Fact]
+    public void PromiseStandingForSeveralTasks_OrdersEveryTaskBeforeTheWaiter()
+    {
+        // Arrange
+        var parent = _harness.NewThread();
+        var firstWorker = _harness.NewThread();
+        var secondWorker = _harness.NewThread();
+        var firstTask = _harness.NewObject();
+        var secondTask = _harness.NewObject();
+        var whenAllPromise = _harness.NewObject();
+        var writtenByFirstTask = _harness.NewStaticField("WrittenByFirstTask");
+        var writtenBySecondTask = _harness.NewStaticField("WrittenBySecondTask");
+
+        // Act - the event stream of `Task.WhenAll(first, second).Wait()`: only the last task completes the promise
+        _harness.Detector.RecordTaskScheduled(parent, firstTask);
+        _harness.Detector.RecordTaskScheduled(parent, secondTask);
+        _harness.Detector.RecordTaskStarted(firstWorker, firstTask);
+        _harness.Write(firstWorker, writtenByFirstTask, instance: null);
+        _harness.Detector.RecordTaskCompleted(firstWorker, firstTask);
+        _harness.Detector.RecordTaskPromiseProgressed(firstWorker, whenAllPromise);
+        _harness.Detector.RecordTaskStarted(secondWorker, secondTask);
+        _harness.Write(secondWorker, writtenBySecondTask, instance: null);
+        _harness.Detector.RecordTaskCompleted(secondWorker, secondTask);
+        _harness.Detector.RecordTaskPromiseProgressed(secondWorker, whenAllPromise);
+        _harness.Detector.RecordTaskPromiseCompleted(secondWorker, whenAllPromise);
+        _harness.Detector.RecordTaskJoinFinished(parent, whenAllPromise);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(parent, writtenBySecondTask, instance: null));
+        Assert.False(_harness.ReadIsRace(parent, writtenByFirstTask, instance: null));
+    }
+
+    [Fact]
+    public void PromiseStandingForSeveralTasks_OrdersEveryTaskBeforeTheThreadThatCompletesIt()
+    {
+        // Arrange
+        var firstWorker = _harness.NewThread();
+        var secondWorker = _harness.NewThread();
+        var whenAllPromise = _harness.NewObject();
+        var writtenByFirstTask = _harness.NewStaticField("WrittenByFirstTask");
+
+        // Act - a continuation of the promise runs on the thread of the task that finished last
+        _harness.Write(firstWorker, writtenByFirstTask, instance: null);
+        _harness.Detector.RecordTaskPromiseProgressed(firstWorker, whenAllPromise);
+        _harness.Detector.RecordTaskPromiseProgressed(secondWorker, whenAllPromise);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(secondWorker, writtenByFirstTask, instance: null));
+    }
+
+    [Fact]
+    public void PromiseCompleter_IsOrderedAfterAContributorThatWasReportedLater()
+    {
+        // Arrange
+        var firstWorker = _harness.NewThread();
+        var completer = _harness.NewThread();
+        var whenAllPromise = _harness.NewObject();
+        var writtenByFirstTask = _harness.NewStaticField("WrittenByFirstTask");
+
+        // Act - the completer reports its contribution first, yet counts down last and completes the promise
+        _harness.Detector.RecordTaskPromiseProgressed(completer, whenAllPromise);
+        _harness.Write(firstWorker, writtenByFirstTask, instance: null);
+        _harness.Detector.RecordTaskPromiseProgressed(firstWorker, whenAllPromise);
+        _harness.Detector.RecordTaskPromiseCompleted(completer, whenAllPromise);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(completer, writtenByFirstTask, instance: null));
+    }
+
+    [Fact]
+    public void PromiseProgress_DoesNotMarkThePromiseCompleted()
+    {
+        // Arrange
+        var worker = _harness.NewThread();
+        var waiter = _harness.NewThread();
+        var whenAllPromise = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act - the waiter gives up (cancellation) while only some of the awaited tasks have completed
+        _harness.Write(worker, field, instance: null);
+        _harness.Detector.RecordTaskPromiseProgressed(worker, whenAllPromise);
+        _harness.Detector.RecordTaskJoinThrew(waiter, whenAllPromise);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(waiter, field, instance: null));
+    }
+
+    [Fact]
     public void RegisteringContinuation_OrdersRegistrarWritesBeforeTheContinuationBody()
     {
         // Arrange

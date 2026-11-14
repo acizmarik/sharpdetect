@@ -148,8 +148,15 @@ internal sealed class FastTrackDetector
 
     public void RecordTaskPromiseCompleted(ProcessThreadId completerThreadId, ProcessTrackedObjectId taskId)
     {
+        _taskFinishClocks.TryAcquire(taskId, completerThreadId);
         _taskFinishClocks.Release(taskId, completerThreadId);
         _completedTasks.Add(taskId);
+    }
+
+    public void RecordTaskPromiseProgressed(ProcessThreadId contributorThreadId, ProcessTrackedObjectId taskId)
+    {
+        _taskFinishClocks.TryAcquire(taskId, contributorThreadId);
+        _taskFinishClocks.Release(taskId, contributorThreadId);
     }
 
     public void RecordTaskJoinFinished(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)

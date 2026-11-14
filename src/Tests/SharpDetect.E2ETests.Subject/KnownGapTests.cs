@@ -84,10 +84,151 @@ public static partial class Program
         _ = second.Test_DataRace_ValueType_InstanceProperty;
     }
 
+    public static void Test_NoDataRace_Task_WaitAll_TasksAlreadyCompleted()
+    {
+        var first = new DataRace();
+        var second = new DataRace();
+        var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
+        var secondTask = RunOnDedicatedThread(() => second.Test_DataRace_ValueType_InstanceProperty = 2);
+
+        Thread.Sleep(ScheduleSteeringDelay);
+        Task.WaitAll(firstTask, secondTask);
+
+        _ = first.Test_DataRace_ValueType_InstanceProperty;
+        _ = second.Test_DataRace_ValueType_InstanceProperty;
+    }
+
+    public static void Test_NoDataRace_Task_WhenAll_TasksAlreadyCompleted()
+    {
+        var first = new DataRace();
+        var second = new DataRace();
+        var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
+        var secondTask = RunOnDedicatedThread(() => second.Test_DataRace_ValueType_InstanceProperty = 2);
+
+        Thread.Sleep(ScheduleSteeringDelay);
+        if (!Task.WhenAll(firstTask, secondTask).Wait(WaitTimeout))
+            throw new TimeoutException("The tasks did not finish.");
+
+        _ = first.Test_DataRace_ValueType_InstanceProperty;
+        _ = second.Test_DataRace_ValueType_InstanceProperty;
+    }
+
+    public static void Test_NoDataRace_Task_WhenAll_ReadInContinuation()
+    {
+        var first = new DataRace();
+        var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
+        var secondTask = RunOnDedicatedThread(() => Thread.Sleep(ScheduleSteeringDelay));
+
+        var continuation = Task.WhenAll(firstTask, secondTask)
+            .ContinueWith(_ => Consume(first.Test_DataRace_ValueType_InstanceProperty), TaskContinuationOptions.ExecuteSynchronously);
+        if (!SpinWait.SpinUntil(() => continuation.IsCompleted, WaitTimeout))
+            throw new TimeoutException("The continuation did not run.");
+    }
+
+    public static void Test_NoDataRace_TaskFactory_ContinueWhenAll_ReadInContinuation()
+    {
+        var first = new DataRace();
+        var firstTask = RunOnDedicatedThread(() => first.Test_DataRace_ValueType_InstanceProperty = 1);
+        var secondTask = RunOnDedicatedThread(() => Thread.Sleep(ScheduleSteeringDelay));
+
+        var continuation = Task.Factory.ContinueWhenAll(
+            [firstTask, secondTask],
+            _ => Consume(first.Test_DataRace_ValueType_InstanceProperty),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        if (!SpinWait.SpinUntil(() => continuation.IsCompleted, WaitTimeout))
+            throw new TimeoutException("The continuation did not run.");
+    }
+
+    public static void Test_NoDataRace_Task_WhenAllOfResults_ReadAfterWait()
+    {
+        var first = new DataRace();
+        var firstTask = Task.Factory.StartNew(
+            () => first.Test_DataRace_ValueType_InstanceProperty = 1,
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
+        var secondTask = Task.Factory.StartNew(
+            () =>
+            {
+                Thread.Sleep(ScheduleSteeringDelay);
+                return 2;
+            },
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
+
+        if (!Task.WhenAll(firstTask, secondTask).Wait(WaitTimeout))
+            throw new TimeoutException("The tasks did not finish.");
+
+        _ = first.Test_DataRace_ValueType_InstanceProperty;
+    }
+
+    public static void Test_DataRace_Task_WaitAll_UnawaitedTaskStaysUnordered()
+    {
+        var awaited = new DataRace();
+        var unawaited = new DataRace();
+        var awaitedTask = RunOnDedicatedThread(() => awaited.Test_DataRace_ValueType_InstanceProperty = 1);
+        var unawaitedTask = RunOnDedicatedThread(() => unawaited.Test_DataRace_ValueType_InstanceProperty = 2);
+
+        Thread.Sleep(ScheduleSteeringDelay);
+        Task.WaitAll(awaitedTask);
+
+        _ = unawaited.Test_DataRace_ValueType_InstanceProperty;
+        GC.KeepAlive(unawaitedTask);
+    }
+
     public static void Test_NoDataRace_Task_WhenAll_ReadAfterAwait()
     {
         if (!ReadAfterWhenAllAsync().Wait(WaitTimeout))
             throw new TimeoutException("The tasks did not finish.");
+    }
+
+    public static void Test_NoDataRace_ParallelFor_ReadAfterLoop()
+    {
+        var instances = Enumerable.Range(0, 8).Select(_ => new DataRace()).ToArray();
+        Parallel.For(0, instances.Length, i =>
+        {
+            instances[i].Test_DataRace_ValueType_InstanceProperty = i;
+            Thread.Sleep(20);
+        });
+
+        foreach (var instance in instances)
+            _ = instance.Test_DataRace_ValueType_InstanceProperty;
+    }
+
+    public static void Test_NoDataRace_ParallelFor_BodyThrows()
+    {
+        var instances = Enumerable.Range(0, 8).Select(_ => new DataRace()).ToArray();
+        try
+        {
+            Parallel.For(0, instances.Length, i =>
+            {
+                instances[i].Test_DataRace_ValueType_InstanceProperty = i;
+                throw new InvalidOperationException("The loop body fails.");
+            });
+        }
+        catch (AggregateException)
+        {
+            // Every body that started has finished by the time the loop rethrows
+        }
+
+        foreach (var instance in instances)
+            _ = instance.Test_DataRace_ValueType_InstanceProperty;
+    }
+
+    public static void Test_NoDataRace_ParallelForEach_ReadAfterLoop()
+    {
+        var instances = Enumerable.Range(0, 8).Select(_ => new DataRace()).ToArray();
+        Parallel.ForEach(instances.Where(_ => true), instance =>
+        {
+            instance.Test_DataRace_ValueType_InstanceProperty = 1;
+            Thread.Sleep(20);
+        });
+
+        foreach (var instance in instances)
+            _ = instance.Test_DataRace_ValueType_InstanceProperty;
     }
 
     public static void Test_NoDataRace_ParallelInvoke_ReadAfterInvoke()

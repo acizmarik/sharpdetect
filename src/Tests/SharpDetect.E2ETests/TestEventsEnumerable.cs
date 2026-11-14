@@ -157,6 +157,7 @@ public sealed class TestEventsEnumerable : IEnumerable<IEvent<ulong, RecordedEve
         (ForkKind.AsyncResumption, ForkFinishKind.SegmentCompleted) => RecordedEventType.AsyncStateMachineSegmentComplete,
         (ForkKind.AsyncResumption, _) => RecordedEventType.AsyncStateMachineComplete,
         (_, ForkFinishKind.PromiseCompleted) => RecordedEventType.TaskPromiseComplete,
+        (_, ForkFinishKind.PromiseProgressed) => RecordedEventType.TaskCompletionForwardToPromise,
         _ => RecordedEventType.TaskComplete
     };
 

@@ -8,6 +8,7 @@ public static class SynchronizationMethodDescriptors
     public static IEnumerable<MethodDescriptor> GetAllMethods()
         => GetLockMethods()
             .Concat(TaskMethodDescriptors.GetAllMethods())
+            .Concat(TaskCompositionMethodDescriptors.GetAllMethods())
             .Concat(AsyncMethodBuilderMethodDescriptors.GetAllMethods())
             .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
             .Concat(WaitHandleMethodDescriptors.GetAllMethods())

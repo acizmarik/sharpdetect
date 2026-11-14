@@ -15,8 +15,6 @@ public class KnownGapTests
         "Known limitation of thread-keyed clocks: work items that share a pool thread are ordered by program order, so races between them are missed";
     private const string ConstructorEscapeGap =
         "Known gap: a constructor write is exempt for as long as no other thread has accessed the object, even after `this` escaped";
-    private const string CompositeJoinGap =
-        "Known gap: a promise completed on behalf of several tasks carries only the clock of the thread that completed it";
     private const string ExitedThreadClockGap =
         "Known gap: the clock of an exited thread that was not started through a tracked Thread object is never forgotten";
 
@@ -122,36 +120,6 @@ public class KnownGapTests
 
         // Assert
         Assert.NotNull(race);
-    }
-
-    [Fact(Skip = CompositeJoinGap)]
-    public void PromiseCompletedByTheLastOfSeveralTasks_OrdersEveryTaskBeforeTheWaiter()
-    {
-        // Arrange
-        var parent = _harness.NewThread();
-        var firstWorker = _harness.NewThread();
-        var secondWorker = _harness.NewThread();
-        var firstTask = _harness.NewObject();
-        var secondTask = _harness.NewObject();
-        var whenAllPromise = _harness.NewObject();
-        var writtenByFirstTask = _harness.NewStaticField("WrittenByFirstTask");
-        var writtenBySecondTask = _harness.NewStaticField("WrittenBySecondTask");
-
-        // Act - the event stream of `Task.WhenAll(first, second).Wait()`: only the last task completes the promise
-        _harness.Detector.RecordTaskScheduled(parent, firstTask);
-        _harness.Detector.RecordTaskScheduled(parent, secondTask);
-        _harness.Detector.RecordTaskStarted(firstWorker, firstTask);
-        _harness.Write(firstWorker, writtenByFirstTask, instance: null);
-        _harness.Detector.RecordTaskCompleted(firstWorker, firstTask);
-        _harness.Detector.RecordTaskStarted(secondWorker, secondTask);
-        _harness.Write(secondWorker, writtenBySecondTask, instance: null);
-        _harness.Detector.RecordTaskCompleted(secondWorker, secondTask);
-        _harness.Detector.RecordTaskPromiseCompleted(secondWorker, whenAllPromise);
-        _harness.Detector.RecordTaskJoinFinished(parent, whenAllPromise);
-
-        // Assert
-        Assert.False(_harness.ReadIsRace(parent, writtenBySecondTask, instance: null));
-        Assert.False(_harness.ReadIsRace(parent, writtenByFirstTask, instance: null));
     }
 
     [Fact(Skip = ExitedThreadClockGap)]

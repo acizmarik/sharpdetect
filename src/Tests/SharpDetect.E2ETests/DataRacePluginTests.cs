@@ -23,7 +23,6 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     private const string IndirectAccessGap = "Known gap: accesses through a managed pointer (ref parameter) are not tracked";
     private const string ConstructorEscapeGap = "Known gap: a constructor write stays exempt after `this` escaped, until another thread accesses the object";
     private const string ThreadKeyedClocksGap = "Known limitation of thread-keyed clocks: tasks that share a pool thread are ordered by program order, so races between them are missed";
-    private const string CompositeTaskJoinGap = "Known gap: Task.WaitAll and Task.WhenAll order the waiter only after the thread that completed last, and not at all when every task had already completed";
     private const string SynchronizedMethodGap = "Known gap: [MethodImpl(MethodImplOptions.Synchronized)] is not modeled on .NET 8 and .NET 9";
     private const string ValueTypePublicationGap = "Known gap: value publication is keyed by the published object, so a value-type item carries no happens-before edge";
     private const string UnmodeledRuntimeSynchronizationGap = "Known gap: synchronization implemented inside the runtime libraries with volatile or interlocked fields is not modeled";
@@ -938,20 +937,65 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task CanDetectDataRace_Task_UnjoinedTasksOnOnePoolThread(string sdk, string plugin)
         => AssertDetectsDataRace("Test_DataRace_Task_UnjoinedTasksOnOnePoolThread", sdk, plugin, targetEnvironmentVariables: SinglePoolWorker);
 
-    [Theory(Skip = CompositeTaskJoinGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_Task_WaitAll_ReadAfterWaitAll(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WaitAll_ReadAfterWaitAll", sdk, plugin);
 
-    [Theory(Skip = CompositeTaskJoinGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_Task_WhenAll_ReadAfterAwait(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAll_ReadAfterAwait", sdk, plugin);
 
-    [Theory(Skip = CompositeTaskJoinGap)]
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WaitAll_TasksAlreadyCompleted(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WaitAll_TasksAlreadyCompleted", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WhenAll_TasksAlreadyCompleted(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAll_TasksAlreadyCompleted", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WhenAll_ReadInContinuation(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAll_ReadInContinuation", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_TaskFactory_ContinueWhenAll_ReadInContinuation(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_TaskFactory_ContinueWhenAll_ReadInContinuation", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WhenAllOfResults_ReadAfterWait(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAllOfResults_ReadAfterWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_Task_WaitAll_UnawaitedTaskStaysUnordered(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_Task_WaitAll_UnawaitedTaskStaysUnordered", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_ParallelInvoke_ReadAfterInvoke(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelInvoke_ReadAfterInvoke", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ParallelFor_ReadAfterLoop(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelFor_ReadAfterLoop", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ParallelFor_BodyThrows(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelFor_BodyThrows", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ParallelForEach_ReadAfterLoop(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelForEach_ReadAfterLoop", sdk, plugin);
 
     [Theory(Skip = UnmodeledRuntimeSynchronizationGap)]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]

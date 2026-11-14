@@ -7,5 +7,6 @@ public enum ForkFinishKind
 {
     Completed,
     SegmentCompleted,
-    PromiseCompleted
+    PromiseCompleted,
+    PromiseProgressed
 }
