@@ -1213,6 +1213,59 @@ namespace SharpDetect.E2ETests.Subject
                     break;
             }
 
+            // Known gaps
+            switch (args[0])
+            {
+                case nameof(Test_DataRace_ArrayElement_WriteWriteRace):
+                    Test_DataRace_ArrayElement_WriteWriteRace();
+                    break;
+                case nameof(Test_DataRace_EmbeddedStructField_WriteWriteRace):
+                    Test_DataRace_EmbeddedStructField_WriteWriteRace();
+                    break;
+                case nameof(Test_DataRace_RefParameter_WriteWriteRace):
+                    Test_DataRace_RefParameter_WriteWriteRace();
+                    break;
+                case nameof(Test_DataRace_ConstructorEscape_WriteAfterThreadStart):
+                    Test_DataRace_ConstructorEscape_WriteAfterThreadStart();
+                    break;
+                case nameof(Test_DataRace_Task_UnjoinedTasksOnOnePoolThread):
+                    Test_DataRace_Task_UnjoinedTasksOnOnePoolThread();
+                    break;
+                case nameof(Test_NoDataRace_Task_WaitAll_ReadAfterWaitAll):
+                    Test_NoDataRace_Task_WaitAll_ReadAfterWaitAll();
+                    break;
+                case nameof(Test_NoDataRace_Task_WhenAll_ReadAfterAwait):
+                    Test_NoDataRace_Task_WhenAll_ReadAfterAwait();
+                    break;
+                case nameof(Test_NoDataRace_ParallelInvoke_ReadAfterInvoke):
+                    Test_NoDataRace_ParallelInvoke_ReadAfterInvoke();
+                    break;
+                case nameof(Test_NoDataRace_SpinLock_ProtectedWriteRead):
+                    Test_NoDataRace_SpinLock_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_ConcurrentQueueOfValueType_PublishThenRead):
+                    Test_NoDataRace_ConcurrentQueueOfValueType_PublishThenRead();
+                    break;
+                case nameof(Test_NoDataRace_CancellationToken_CancelThenObserve):
+                    Test_NoDataRace_CancellationToken_CancelThenObserve();
+                    break;
+                case nameof(Test_DataRace_LoopConditionalStore_WriteWriteRace):
+                    Test_DataRace_LoopConditionalStore_WriteWriteRace();
+                    break;
+                case nameof(Test_DataRace_AsCastReceiver_WriteWriteRace):
+                    Test_DataRace_AsCastReceiver_WriteWriteRace();
+                    break;
+                case nameof(Test_NoDataRace_LockOnTypeObject_ProtectedWriteRead):
+                    Test_NoDataRace_LockOnTypeObject_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_LockOnTypeObject_AcrossGarbageCollection):
+                    Test_NoDataRace_LockOnTypeObject_AcrossGarbageCollection();
+                    break;
+                case nameof(Test_NoDataRace_SynchronizedMethod_ProtectedWriteRead):
+                    Test_NoDataRace_SynchronizedMethod_ProtectedWriteRead();
+                    break;
+            }
+
             // IL verification
             switch (args[0])
             {
