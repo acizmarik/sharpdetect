@@ -30,6 +30,7 @@ namespace LibProfiler
 
 	private:
 
+		void KeepObjectsOutsideGarbageCollectedHeap();
 		INT BinarySearch(ObjectID objId) const;
 		std::unordered_map<ObjectID, TrackedObjectId> _newHeapBuilder;
 		std::unordered_set<TrackedObjectId> _previousTrackedObjects;

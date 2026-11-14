@@ -24,7 +24,6 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     private const string ConstructorEscapeGap = "Known gap: a constructor write stays exempt after `this` escaped, until another thread accesses the object";
     private const string ThreadKeyedClocksGap = "Known limitation of thread-keyed clocks: tasks that share a pool thread are ordered by program order, so races between them are missed";
     private const string CompositeTaskJoinGap = "Known gap: Task.WaitAll and Task.WhenAll order the waiter only after the thread that completed last, and not at all when every task had already completed";
-    private const string FrozenObjectIdentityGap = "Known gap: objects outside the garbage-collected heap (Type objects, string literals) get a new tracked id after a GC";
     private const string SynchronizedMethodGap = "Known gap: [MethodImpl(MethodImplOptions.Synchronized)] is not modeled on .NET 8 and .NET 9";
     private const string ValueTypePublicationGap = "Known gap: value publication is keyed by the published object, so a value-type item carries no happens-before edge";
     private const string UnmodeledRuntimeSynchronizationGap = "Known gap: synchronization implemented inside the runtime libraries with volatile or interlocked fields is not modeled";
@@ -914,7 +913,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task NoDataRace_LockOnTypeObject_ProtectedWriteRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_LockOnTypeObject_ProtectedWriteRead", sdk, plugin);
 
-    [Theory(Skip = FrozenObjectIdentityGap)]
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_LockOnTypeObject_AcrossGarbageCollection(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_LockOnTypeObject_AcrossGarbageCollection", sdk, plugin);
