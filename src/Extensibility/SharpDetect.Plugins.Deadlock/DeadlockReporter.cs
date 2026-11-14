@@ -22,14 +22,14 @@ public partial class DeadlockPlugin
 
     private void PrepareNoViolationDiagnostics()
     {
-        Reporter.SetTitle("No violations found");
-        Reporter.SetDescription("All analyzed synchronizations events were correctly ordered.");
+        Reporter.SetTitle("No deadlocks detected");
+        Reporter.SetDescription("No circular wait dependencies were found.");
     }
 
     private void PrepareViolationDiagnostics()
     {
-        Reporter.SetTitle(_deadlocks.Count == 1 ? "One violation found" : $"Several ({_deadlocks.Count}) violations found");
-        Reporter.SetDescription("See details below for more information.");
+        Reporter.SetTitle(_deadlocks.Count == 1 ? "1 deadlock" : $"{_deadlocks.Count} deadlocks");
+        Reporter.SetDescription("Each deadlock is a cycle of threads that wait for each other.");
 
         var index = 0;
         foreach (var deadlock in _deadlocks)
@@ -40,7 +40,6 @@ public partial class DeadlockPlugin
             var timestamp = deadlock.Value.TimeStamp;
             
             var reportBuilder = new ReportBuilder(index++, ReportCategory, processId, timestamp);
-            var threadNames = cycle.ToDictionary(c => c.ProcessThreadId, c => c.ThreadName);
             var reportedThreads = cycle
                 .Select(t => new ThreadInfo(t.ProcessThreadId.ThreadId.Value, t.ThreadName))
                 .ToDictionary(t => t.Id, t => t);
@@ -62,22 +61,14 @@ public partial class DeadlockPlugin
                 var reportedThreadInfo = reportedThreads[id.ThreadId.Value];
                 var stackTrace = _callStackResolver.Resolve(reportedThreadInfo, callstack);
                 
-                // Generate appropriate reason based on blocking type
-                var reason = threadInfo.BlockedOnType switch
-                {
-                    BlockedOnType.Lock => $"Blocked - waiting for lock object [{threadInfo.ProcessLockObjectId!.Value.ObjectId.Value}] owned by thread {threadNames[threadInfo.BlockedOn]}",
-                    BlockedOnType.Thread => $"Blocked - waiting for thread {threadNames[threadInfo.BlockedOn]} to complete",
-                    _ => throw new InvalidOperationException($"Unknown blocking type: {threadInfo.BlockedOnType}")
-                };
-                
-                reportBuilder.AddReportReason(reportedThreadInfo, reason);
+                reportBuilder.AddReportReason(reportedThreadInfo, DeadlockFormatter.FormatReason(deadlock.Value, threadInfo));
                 stackTraces.Add(reportedThreadInfo, stackTrace);
             }
 
-            reportBuilder.SetTitle($"Deadlock {reportBuilder.Identifier}");
-            var description = $"Multiple threads ({reportedThreads.Count}) are blocked in a cycle. See details below for more information.";
+            reportBuilder.SetTitle(DeadlockFormatter.FormatTitle(deadlock.Value));
+            var description = DeadlockFormatter.FormatDescription(deadlock.Value);
             if (!hasStackTraces)
-                description += " Note: Stack traces are unavailable because the program terminated before they could be captured.";
+                description += " Stack traces are unavailable because the program terminated before they could be captured.";
             reportBuilder.SetDescription(description);
             foreach (var threadInfo in reportedThreads.Values)
                 reportBuilder.AddThread(threadInfo);

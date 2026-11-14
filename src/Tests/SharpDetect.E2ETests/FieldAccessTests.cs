@@ -656,9 +656,9 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyFieldAccessInAssembly(assemblyName, eventType, plugin, requireAccessKind))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -689,10 +689,10 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        AssertBase<ulong, RecordedEventType> assert = EventuallyMethodEnter(args.Target.Args!, plugin);
+        AssertBase<ulong, RecordedEventType> assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin);
         foreach (var (eventType, accessKind) in expectedAccesses)
             assert = assert.Then(EventuallyFieldAccessInAssembly(assemblyName, eventType, plugin, accessKind));
-        assert = assert.Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        assert = assert.Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -726,8 +726,8 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -758,9 +758,9 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var events = new TestEventsEnumerable(plugin);
 
         // Verify: method enters and exits successfully (no crash from skipped instrumentation)
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
-        var instrumented = EventuallyFieldAccessInMethod(args.Target.Args!, eventType, plugin);
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
+        var instrumented = EventuallyFieldAccessInMethod(args.Target.Args.Single(), eventType, plugin);
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -782,9 +782,9 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyFieldAccessInAssembly(SubjectAssemblyName, eventType, plugin, requireAccessKind: FieldAccessKind.Volatile))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);

@@ -42,6 +42,7 @@
     <Project Path="Tests/SharpDetect.PluginHost.Tests/SharpDetect.PluginHost.Tests.csproj" />
     <Project Path="Tests/SharpDetect.Plugins.DataRace.Common.Tests/SharpDetect.Plugins.DataRace.Common.Tests.csproj" />
     <Project Path="Tests/SharpDetect.Plugins.DataRace.FastTrack.Tests/SharpDetect.Plugins.DataRace.FastTrack.Tests.csproj" />
+    <Project Path="Tests/SharpDetect.Plugins.Deadlock.Tests/SharpDetect.Plugins.Deadlock.Tests.csproj" />
     <Project Path="Tests/SharpDetect.Plugins.PerThreadOrdering.Tests/SharpDetect.Plugins.PerThreadOrdering.Tests.csproj" />
     <Project Path="Tests/SharpDetect.Reporting.Tests/SharpDetect.Reporting.Tests.csproj" />
     <Project Path="Tests/SharpDetect.TemporalAsserts/SharpDetect.TemporalAsserts.csproj" />

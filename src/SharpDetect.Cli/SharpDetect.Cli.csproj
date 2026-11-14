@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SharpDetect.Cli.Tests" />
+    <InternalsVisibleTo Include="SharpDetect.E2ETests" />
   </ItemGroup>
 
   <ItemGroup>

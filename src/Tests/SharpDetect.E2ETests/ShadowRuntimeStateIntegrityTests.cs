@@ -54,10 +54,10 @@ public class ShadowRuntimeStateIntegrityTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquire))
             .Then(EventuallyEventType(RecordedEventType.SemaphoreAcquireResult))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -83,8 +83,8 @@ public class ShadowRuntimeStateIntegrityTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);
@@ -104,11 +104,11 @@ public class ShadowRuntimeStateIntegrityTests(ITestOutputHelper testOutput)
         var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
         var events = new TestEventsEnumerable(plugin);
-        var assert = EventuallyMethodEnter(args.Target.Args!, plugin)
+        var assert = EventuallyMethodEnter(args.Target.Args.Single(), plugin)
             .Then(EventuallyEventType(RecordedEventType.TaskStart))
             .Then(EventuallyEventType(RecordedEventType.TaskComplete))
             .Then(EventuallyEventType(RecordedEventType.TaskJoinFinish))
-            .Then(EventuallyMethodExit(args.Target.Args!, plugin));
+            .Then(EventuallyMethodExit(args.Target.Args.Single(), plugin));
 
         // Execute
         await analysisWorker.ExecuteAsync(CancellationToken.None);

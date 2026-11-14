@@ -30,12 +30,11 @@ public static class TargetArgumentsBuilder
     private static List<string> BuildExecutableArguments(RunCommandArgs arguments)
     {
         var argsBuilder = new List<string>(capacity: 3);
-        if (arguments.Runtime.Host?.Args is { } hostArgs)
-            argsBuilder.Add(hostArgs);
+        if (arguments.Runtime.Host is { } host)
+            argsBuilder.AddRange(host.Args);
         
         argsBuilder.Add(arguments.Target.Path);
-        if (arguments.Target.Args is { } targetArgs)
-            argsBuilder.Add(targetArgs);
+        argsBuilder.AddRange(arguments.Target.Args);
         
         return argsBuilder;
     }
@@ -44,8 +43,8 @@ public static class TargetArgumentsBuilder
     {
         var test = arguments.Target.Test!;
         var argsBuilder = new List<string>(capacity: 5);
-        if (arguments.Runtime.Host?.Args is { } hostArgs)
-            argsBuilder.Add(hostArgs);
+        if (arguments.Runtime.Host is { } host)
+            argsBuilder.AddRange(host.Args);
         
         argsBuilder.Add(arguments.Target.Path);
         
@@ -55,11 +54,9 @@ public static class TargetArgumentsBuilder
             argsBuilder.Add(filter);
         }
         
-        if (test.AdditionalRunnerArgs is { } extra)
-            argsBuilder.Add(extra);
+        argsBuilder.AddRange(test.AdditionalRunnerArgs);
         
-        if (arguments.Target.Args is { } targetArgs)
-            argsBuilder.Add(targetArgs);
+        argsBuilder.AddRange(arguments.Target.Args);
         
         return argsBuilder;
     }
@@ -70,8 +67,8 @@ public static class TargetArgumentsBuilder
     {
         var test = arguments.Target.Test!;
         var argsBuilder = new List<string>(capacity: 8 + environmentVariables.Count * 2);
-        if (arguments.Runtime.Host?.Args is { } hostArgs)
-            argsBuilder.Add(hostArgs);
+        if (arguments.Runtime.Host is { } host)
+            argsBuilder.AddRange(host.Args);
         
         argsBuilder.Add("test");
         argsBuilder.Add(arguments.Target.Path);
@@ -88,11 +85,9 @@ public static class TargetArgumentsBuilder
             argsBuilder.Add(filter);
         }
         
-        if (test.AdditionalRunnerArgs is { } extra)
-            argsBuilder.Add(extra);
+        argsBuilder.AddRange(test.AdditionalRunnerArgs);
         
-        if (arguments.Target.Args is { } targetArgs)
-            argsBuilder.Add(targetArgs);
+        argsBuilder.AddRange(arguments.Target.Args);
         
         return argsBuilder;
     }

@@ -3,7 +3,7 @@
 Command `sharpdetect run` accepts a configuration file as its positional argument instead of inline `--plugin`/`--target` options.
 This is useful once you need options that don't have a dedicated CLI flag (working directory, extra environment variables, custom report locations, plugin-specific configuration, ...).
 
-A configuration file and inline options are mutually exclusive — you can't pass both.
+A configuration file and inline analysis options (`--plugin`, `--target`, `--test`, `--instrument-system-libraries`, `--stack-traces`) are mutually exclusive — you can't pass both.
 
 ## Generating a Configuration File
 
@@ -42,7 +42,7 @@ This produces `AnalysisDescriptor.json` with following content:
 }
 ```
 
-Command `init` also accepts `--test`, `--runner`, `--filter` and `--instrument-system-libraries`, mirroring command `run`.
+Command `init` accepts the same analysis options as command `run` (`--plugin`, `--test`, `--runner`, `--filter`, `--instrument-system-libraries`, `--stack-traces`, `--stack-trace-depth`, `-v|--verbosity`, `--report`, `--no-report`).
 Edit the generated file as required, then run it:
 
 ```bash
@@ -59,8 +59,10 @@ sharpdetect run AnalysisDescriptor.json
   - Target assembly path
 - `Args`
   - Command-line arguments for the target process
+  - See [Command-Line Arguments](#command-line-arguments)
 - `WorkingDirectory`
   - Working directory for the target process
+  - Defaults to the directory `sharpdetect run` was started from
 - `AdditionalEnvironmentVariables`
   - Array of `{ "Key": ..., "Value": ... }` pairs merged into the target's environment.
 - `RedirectInputOutput`
@@ -84,6 +86,7 @@ sharpdetect run AnalysisDescriptor.json
       - See [Running Analysis Against Unit Tests](running-analysis-against-tests.md) for filter syntax
     - `AdditionalRunnerArgs`
       - Additional arguments to pass to test runner
+      - See [Command-Line Arguments](#command-line-arguments)
 
 ### `Analysis` (required)
 
@@ -103,8 +106,10 @@ sharpdetect run AnalysisDescriptor.json
   - Defaults to `Warning`
 - `ReportsFolder`
   - Folder for generated reports
+  - Defaults to the directory `sharpdetect run` was started from
 - `ReportFileName`
-  - Name for the generated report file
+  - Name for the generated report file; an existing file with this name is replaced
+  - Defaults to `SharpDetect_Report_<local date>_<local time with milliseconds>.html`
 - `TemporaryFilesFolder`
   - Path where temporary files are stored
 
@@ -158,7 +163,8 @@ Stack-trace collection walks the target thread's call stack at each analyzed acc
       - Path to dotnet host
       - Default is `dotnet`
     - `Args`
-      - Arguments for dotnet host
+      - Arguments for dotnet host, placed before the target path
+      - See [Command-Line Arguments](#command-line-arguments)
     - `AdditionalEnvironmentVariables`
       - Array of `{ "Key": ..., "Value": ... }` pairs merged into the target's environment.
 - `Profiler`
@@ -183,3 +189,18 @@ All path-like fields (`Target.Path`, `Analysis.Path`, `Runtime.Profiler.Path*`, 
 - `SHARPDETECT_PROFILERS`: directory containing the native profiler libraries.
 
 The syntax for environment variable expansion is `%SHARPDETECT_ROOT%`.
+
+## Command-Line Arguments
+
+`Target.Args`, `Target.Test.AdditionalRunnerArgs` and `Runtime.Host.Args` take a JSON array of strings.
+Each element is passed to the process as exactly one argument, so no quoting or escaping is needed:
+
+```json
+"Args": [ "--input", "My Documents/data.txt", "--verbose" ]
+```
+
+On the command line, arguments after `--` are passed through in the same way, to `Target.Args`, or to `Target.Test.AdditionalRunnerArgs` with `--test`:
+
+```bash
+sharpdetect init --target "bin/Debug/net10.0/MyApp.dll" -- --input "My Documents/data.txt" --verbose
+```

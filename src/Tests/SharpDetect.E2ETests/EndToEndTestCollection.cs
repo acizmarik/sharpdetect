@@ -8,6 +8,9 @@ namespace SharpDetect.E2ETests;
 [CollectionDefinition(AnalysisLifecycleTests.CollectionName)]
 public sealed class AnalysisLifecycleTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
 
+[CollectionDefinition(CommandLineTests.CollectionName)]
+public sealed class CommandLineTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
+
 [CollectionDefinition(DataRacePluginTests.CollectionName)]
 public sealed class DataRacePluginTestsCollection : ICollectionFixture<EndToEndCollectionFixture> { }
 

@@ -36,3 +36,14 @@ See `src/Samples/SimpleDataRaceTestsVSTest` for a complete, runnable project usi
 
 Filter syntax depends on the runner: MTP uses [`/*/*/*/<test>`](https://github.com/Microsoft/vstest-docs/blob/main/docs/filter.md)-style hierarchical filters, VSTest uses [`--filter` expressions](https://learn.microsoft.com/dotnet/core/testing/selective-unit-tests) like `FullyQualifiedName~<test>`.
 If no filter is provided, then all tests from given assembly will be run.
+
+## Additional Runner Arguments
+
+With `--test`, everything after `--` is passed to the test runner (the MTP test application, or `dotnet test` for VSTest):
+
+```bash
+sharpdetect run \
+  --target "bin/Debug/net10.0/MyTests.dll" \
+  --test \
+  -- --report-trx
+```

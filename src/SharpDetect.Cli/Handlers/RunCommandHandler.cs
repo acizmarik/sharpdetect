@@ -6,6 +6,9 @@ using CliFx;
 using CliFx.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
+using SharpDetect.Cli.Output;
+using SharpDetect.Cli.Plugins;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
 using SharpDetect.Core.Reporting.Model;
@@ -23,12 +26,15 @@ internal sealed class RunCommandHandler : IDisposable
     private readonly string _rawConfigurationJson;
     private bool _disposed;
 
-    public RunCommandHandler(string configurationFilePath)
+    public RunCommandHandler(string configurationFilePath, OutputOptions? outputOverrides = null)
     {
         try
         {
             _rawConfigurationJson = LoadConfigurationJson(configurationFilePath);
-            _arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
+            var arguments = CommandDeserializer.DeserializeCommandArguments<RunCommandArgs>(_rawConfigurationJson);
+            var configurationDirectory = Path.GetDirectoryName(Path.GetFullPath(configurationFilePath))!;
+            arguments = ConfigurationPathResolver.Resolve(arguments, configurationDirectory);
+            _arguments = (outputOverrides ?? OutputOptions.Default).MapReportPath(Path.GetFullPath).ApplyTo(arguments);
             _serviceProvider = Initialize(_arguments);
         }
         catch (Exception ex) when (ex is not CommandException)
@@ -59,7 +65,7 @@ internal sealed class RunCommandHandler : IDisposable
             .WithTimeProvider(TimeProvider.System)
             .ConfigureLogging(logging =>
             {
-                logging.AddConsole();
+                logging.AddSharpDetectConsole();
                 logging.SetMinimumLevel(arguments.Analysis.LogLevel);
             })
             .WithPlugin(pluginType)
@@ -82,35 +88,59 @@ internal sealed class RunCommandHandler : IDisposable
         var analysisWarnings = outcome.Gaps.Select(gap => gap.Description).ToArray();
         
         // Persist report summary
-        if (_arguments.Analysis.RenderReport)
+        string? reportPath = null;
+        try
         {
-            var reportFullPath = await RenderAndWriteReport(plugin, reportSummary, analysisWarnings, cancellationToken);
-            await console.Output.WriteLineAsync($"Report stored to file: {Path.GetFullPath(reportFullPath)}.");
+            if (_arguments.Analysis.RenderReport)
+                reportPath = Path.GetFullPath(await RenderAndWriteReport(plugin, reportSummary, analysisWarnings, cancellationToken));
+        }
+        finally
+        {
+            FlushConsoleLogs();
+            SummaryPrinter.Print(
+                console.Error,
+                GetPluginName(plugin),
+                reportSummary,
+                outcome,
+                reportPath,
+                VerbosityExtensions.FromAnalysisLogLevel(_arguments.Analysis.LogLevel));
         }
 
         var issuesFound = reportSummary.GetAllReports().Any();
         var exitCode = GetExitCode(outcome, issuesFound);
         if (exitCode != ExitCode.Success)
-            throw new CommandException(GetExitMessage(outcome, issuesFound), (int)exitCode);
+            throw new CommandException(GetExitMessage(exitCode), (int)exitCode);
     }
 
     internal static ExitCode GetExitCode(AnalysisOutcome outcome, bool issuesFound)
     {
         if (!outcome.IsComplete)
-            return ExitCode.AnalysisIncomplete;
+            return issuesFound ? ExitCode.IssuesFoundAnalysisIncomplete : ExitCode.AnalysisIncomplete;
 
         return issuesFound ? ExitCode.IssuesFound : ExitCode.Success;
     }
 
-    private static string GetExitMessage(AnalysisOutcome outcome, bool issuesFound)
+    private static string GetExitMessage(ExitCode exitCode) => exitCode switch
     {
-        if (outcome.IsComplete)
-            return "Analysis detected issue(s)";
+        ExitCode.IssuesFound => "Issues found.",
+        ExitCode.AnalysisIncomplete => "Analysis is incomplete.",
+        ExitCode.IssuesFoundAnalysisIncomplete => "Issues found, but the analysis is incomplete.",
+        _ => $"Analysis finished with exit code {(int)exitCode}."
+    };
 
-        var gaps = string.Join(" ", outcome.Gaps.Select(gap => gap.Description));
-        return issuesFound
-            ? $"Analysis detected issue(s), but is incomplete: {gaps}"
-            : $"Analysis is incomplete: {gaps}";
+    private static string GetPluginName(IPlugin plugin)
+    {
+        var pluginType = plugin.GetType();
+        return pluginType.GetCustomAttribute<PluginMetadataAttribute>(inherit: true)?.Name ?? pluginType.Name;
+    }
+
+    private void FlushConsoleLogs()
+    {
+        foreach (var loggerProvider in _serviceProvider.GetServices<ILoggerProvider>())
+        {
+            if (loggerProvider is ConsoleLoggerProvider)
+                loggerProvider.Dispose();
+        }
     }
 
     private Task<string> RenderAndWriteReport(
@@ -152,21 +182,18 @@ internal sealed class RunCommandHandler : IDisposable
         var pluginTypeName = _arguments.Analysis.PluginFullTypeName;
         var pluginName = _arguments.Analysis.PluginName;
 
+        var assembly = PluginCatalog.LoadAssembly(assemblyPath);
         try
         {
-            var assembly = Assembly.LoadFrom(Path.GetFullPath(assemblyPath));
-
             if (!string.IsNullOrWhiteSpace(pluginTypeName))
             {
                 return assembly.ManifestModule.GetType(pluginTypeName, ignoreCase: false, throwOnError: true)
                     ?? throw new TypeLoadException($"Could not find type: \"{pluginTypeName}\" in assembly \"{assembly.FullName}\".");
             }
 
-            var match = assembly
-                .GetTypes().Concat(assembly.GetForwardedTypes())
-                .SingleOrDefault(type =>
-                    type.GetCustomAttribute<PluginMetadataAttribute>()?.Name
-                        .Equals(pluginName, StringComparison.OrdinalIgnoreCase) == true);
+            var match = PluginCatalog.GetPlugins(assembly)
+                .SingleOrDefault(plugin => plugin.Name.Equals(pluginName, StringComparison.OrdinalIgnoreCase))?
+                .Type;
 
             return match
                 ?? throw new TypeLoadException($"Could not find plugin named \"{pluginName}\" in assembly \"{assembly.FullName}\".");

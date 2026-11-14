@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 
 namespace SharpDetect.Worker.Commands.Run;
@@ -11,16 +12,17 @@ public sealed class TestTargetConfigurationArgs
 
     public TestRunner Runner { get; }
     public string? Filter { get; }
-    public string? AdditionalRunnerArgs { get; }
+    [JsonConverter(typeof(CommandLineArgumentsJsonConverter))]
+    public ImmutableArray<string> AdditionalRunnerArgs { get; }
 
     [JsonConstructor]
     public TestTargetConfigurationArgs(
         TestRunner runner = DefaultRunner,
         string? filter = null,
-        string? additionalRunnerArgs = null)
+        ImmutableArray<string> additionalRunnerArgs = default)
     {
         Runner = runner;
         Filter = filter;
-        AdditionalRunnerArgs = additionalRunnerArgs;
+        AdditionalRunnerArgs = additionalRunnerArgs.IsDefault ? [] : additionalRunnerArgs;
     }
 }

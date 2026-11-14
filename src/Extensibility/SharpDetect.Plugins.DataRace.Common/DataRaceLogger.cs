@@ -17,26 +17,47 @@ public static class DataRaceLogger
         ISymbolResolver symbolResolver)
     {
         var fieldName = GetFieldDisplayName(raceInfo.FieldId);
-        var field = raceInfo.ObjectId is { } instance
-            ? $"instance field {fieldName} on object {instance.ObjectId.Value}"
+        var field = raceInfo.ObjectId is not null
+            ? $"instance field {fieldName}"
             : $"static field {fieldName}";
         
         logger.LogWarning(
             """
             [PID={ProcessId}] Data race on {Field}
-                Current {CurrentAccessType} by thread {CurrentThread}:
-            {CurrentAccessStackTrace}
-                Previous {PreviousAccessType} by thread {PreviousThread}:
-            {PreviousAccessStackTrace}
+                Earlier {EarlierAccessType} by thread {EarlierThread}:
+            {EarlierAccessStackTrace}
+                Later {LaterAccessType} by thread {LaterThread}:
+            {LaterAccessStackTrace}
             """,
             raceInfo.ProcessId,
             field,
-            GetAccessTypeDisplayString(raceInfo.CurrentAccess),
-            GetThreadDisplayName(raceInfo.CurrentAccess),
-            FormatAccessStackTrace(raceInfo.CurrentAccess, metadataContext, symbolResolver),
             GetAccessTypeDisplayString(raceInfo.LastAccess),
             GetThreadDisplayName(raceInfo.LastAccess),
-            FormatAccessStackTrace(raceInfo.LastAccess, metadataContext, symbolResolver));
+            FormatAccessStackTrace(raceInfo.LastAccess, metadataContext, symbolResolver),
+            GetAccessTypeDisplayString(raceInfo.CurrentAccess),
+            GetThreadDisplayName(raceInfo.CurrentAccess),
+            FormatAccessStackTrace(raceInfo.CurrentAccess, metadataContext, symbolResolver));
+    }
+
+    public static void LogDataRaceLine(
+        ILogger logger,
+        DataRaceInfo raceInfo,
+        IMetadataContext metadataContext,
+        ISymbolResolver symbolResolver)
+    {
+        var processId = raceInfo.ProcessId;
+        var earlierFrames = DataRaceStackTraceResolver.ResolveFrames(processId, raceInfo.LastAccess, metadataContext, symbolResolver);
+        var laterFrames = DataRaceStackTraceResolver.ResolveFrames(processId, raceInfo.CurrentAccess, metadataContext, symbolResolver);
+        logger.LogWarning("{RaceLine}", FormatDataRaceLine(raceInfo, earlierFrames, laterFrames));
+    }
+
+    public static string FormatDataRaceLine(
+        DataRaceInfo raceInfo,
+        IReadOnlyList<StackFrame> earlierFrames,
+        IReadOnlyList<StackFrame> laterFrames)
+    {
+        return $"data race on {GetFieldDisplayName(raceInfo.FieldId)}: " +
+               $"{FormatShortAccess(raceInfo.LastAccess, earlierFrames)} ↔ {FormatShortAccess(raceInfo.CurrentAccess, laterFrames)}";
     }
     
     public static string GetFieldDisplayName(FieldId fieldId)
@@ -92,10 +113,18 @@ public static class DataRaceLogger
         return string.Join(Environment.NewLine, FormatStackTraceLines(frames).Select(line => $"        {line}"));
     }
 
+    private static string FormatShortAccess(AccessInfo access, IReadOnlyList<StackFrame> frames)
+    {
+        var location = frames.Count == 0 ? "<unresolved-method>"
+            : frames[0].Source is { } source ? SourceLocationFormatter.FormatShort(source)
+            : frames[0].MethodName;
+        return $"{GetAccessTypeDisplayString(access)} by {GetThreadDisplayName(access)} at {location}";
+    }
+
     private static string FormatFrameLocation(StackFrame frame)
     {
         if (frame.Source is { } source)
-            return $"{frame.MethodName} in {source.DocumentPath}:{source.Line}";
+            return $"{frame.MethodName} in {SourceLocationFormatter.FormatFull(source)}";
 
         return frame.Il is { } il
             ? $"{frame.MethodName}:{InstructionsFormatter.FormatIlOffset(il.Offset)}"

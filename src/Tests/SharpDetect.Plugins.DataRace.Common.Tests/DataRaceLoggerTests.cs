@@ -45,6 +45,19 @@ public class DataRaceLoggerTests
     }
 
     [Fact]
+    public void FormatStackTraceLines_SourceModifiedSinceBuild_MarksTheLocation()
+    {
+        var frame = CreateFrame(UserModule, methodName: "Program.Main()", methodOffset: 2) with
+        {
+            Source = new SourceLocation("/app/Program.cs", 8, SourceCodeSnippet.OutOfDate)
+        };
+
+        var lines = DataRaceLogger.FormatStackTraceLines([frame]);
+
+        Assert.Equal("at Program.Main() in /app/Program.cs:8 (modified since build)", lines.Single());
+    }
+
+    [Fact]
     public void FormatStackTraceLines_FrameWithoutSourceInfo_FallsBackToIlOffset()
     {
         var frame = CreateFrame(UserModule, methodName: "Program.Main()", methodOffset: 0x1A);
