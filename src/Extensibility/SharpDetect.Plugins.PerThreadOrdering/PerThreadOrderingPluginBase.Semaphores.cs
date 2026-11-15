@@ -32,8 +32,9 @@ public abstract partial class PerThreadOrderingPluginBase
         var (id, arguments, semaphoreId) = ExtractSynchronizationContext(metadata, args);
         using var _ = arguments;
         var initialCount = (int)arguments[1].Value.AsPrimitive;
+        var maximumCount = arguments.Count > 2 ? (int)arguments[2].Value.AsPrimitive : int.MaxValue;
         _waitHandleKinds[semaphoreId] = WaitHandleKind.Semaphore;
-        RaisePermitsCreated(new(id, args.ModuleId, args.MethodToken, semaphoreId, initialCount));
+        RaisePermitsCreated(new(id, args.ModuleId, args.MethodToken, semaphoreId, initialCount, maximumCount));
     }
 
     private void OnSemaphoreAcquireEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)

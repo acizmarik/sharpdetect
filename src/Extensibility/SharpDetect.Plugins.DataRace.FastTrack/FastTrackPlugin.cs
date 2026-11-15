@@ -318,7 +318,7 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
 
     private void OnPermitsCreated(PermitsCreatedArgs args)
     {
-        _detector.RecordSemaphoreCreated(args.PermitPoolId, args.InitialCount);
+        _detector.RecordSemaphoreCreated(args.PermitPoolId, args.InitialCount, args.MaximumCount);
     }
 
     private void OnValuePublication(ValuePublicationArgs args)

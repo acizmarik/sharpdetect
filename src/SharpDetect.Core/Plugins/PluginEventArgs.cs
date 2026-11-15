@@ -27,7 +27,7 @@ public readonly record struct ForkJoinArgs(ProcessThreadId ProcessThreadId, Proc
 {
     public bool IsSuccess => Outcome == TaskJoinOutcome.Completed;
 }
-public readonly record struct PermitsCreatedArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId PermitPoolId, int InitialCount);
+public readonly record struct PermitsCreatedArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId PermitPoolId, int InitialCount, int MaximumCount = int.MaxValue);
 public readonly record struct PermitAcquireAttemptArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId PermitPoolId);
 public readonly record struct PermitAcquireResultArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId PermitPoolId, bool IsSuccess, bool IsAsyncContinuation = false);
 public readonly record struct PermitsReleaseArgs(ProcessThreadId ProcessThreadId, ModuleId ModuleId, MdMethodDef MethodToken, ProcessTrackedObjectId PermitPoolId, int ReleaseCount);
