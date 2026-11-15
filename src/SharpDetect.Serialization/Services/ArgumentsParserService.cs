@@ -14,17 +14,12 @@ using static OperationResult.Helpers;
 
 namespace SharpDetect.Serialization.Services;
 
-internal sealed class ArgumentsParserService : IArgumentsParser
+internal sealed class ArgumentsParserService(IMetadataContext metadataContext, ILogger<ArgumentsParserService> logger)
+    : IArgumentsParser
 {
-    private readonly IMetadataContext _metadataContext;
-    private readonly ILogger<ArgumentsParserService> _logger;
-    private static readonly ArrayPool<RuntimeArgumentInfo> _arrayPool = ArrayPool<RuntimeArgumentInfo>.Shared;
-
-    public ArgumentsParserService(IMetadataContext metadataContext, ILogger<ArgumentsParserService> logger)
-    {
-        _metadataContext = metadataContext;
-        _logger = logger;
-    }
+    private static readonly ArrayPool<RuntimeArgumentInfo> ArrayPool = ArrayPool<RuntimeArgumentInfo>.Shared;
+    private readonly Dictionary<MethodDef, ParameterKind[]> _parameterKinds = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<(uint Pid, ModuleId ModuleId, MdMethodDef MethodToken), (MethodDef Method, ParameterKind[] ParameterKinds)> _resolvedMethods = [];
 
     public Result<RuntimeArgumentList, ArgumentParserErrorType> ParseArguments(
         RecordedEventMetadata metadata,
@@ -33,18 +28,25 @@ internal sealed class ArgumentsParserService : IArgumentsParser
         ReadOnlySpan<byte> values,
         ReadOnlySpan<byte> offsets)
     {
-        var resolveMethodResult = _metadataContext
-            .GetResolver(metadata.Pid)
-            .ResolveMethod(metadata, moduleId, methodToken);
-
-        if (resolveMethodResult.IsError)
+        var key = (metadata.Pid, moduleId, methodToken);
+        if (!_resolvedMethods.TryGetValue(key, out var resolved))
         {
-            _logger.LogError("Failed to resolve method definition");
-            return Error(ArgumentParserErrorType.UnresolvableMethodToken);
+            var resolveMethodResult = metadataContext
+                .GetResolver(metadata.Pid)
+                .ResolveMethod(metadata, moduleId, methodToken);
+
+            if (resolveMethodResult.IsError)
+            {
+                logger.LogError("Failed to resolve method definition");
+                return Error(ArgumentParserErrorType.UnresolvableMethodToken);
+            }
+
+            var methodDef = resolveMethodResult.Value;
+            resolved = (methodDef, GetParameterKinds(methodDef));
+            _resolvedMethods.Add(key, resolved);
         }
 
-        var methodDef = resolveMethodResult.Value;
-        return ParseArguments(methodDef, values, offsets);
+        return ParseArguments(resolved.Method, resolved.ParameterKinds, values, offsets);
     }
 
     public Result<RuntimeArgumentList, ArgumentParserErrorType> ParseArguments(
@@ -52,9 +54,18 @@ internal sealed class ArgumentsParserService : IArgumentsParser
         ReadOnlySpan<byte> values,
         ReadOnlySpan<byte> offsets)
     {
+        return ParseArguments(method, GetParameterKinds(method), values, offsets);
+    }
+
+    private static Result<RuntimeArgumentList, ArgumentParserErrorType> ParseArguments(
+        MethodDef method,
+        ParameterKind[] parameterKinds,
+        ReadOnlySpan<byte> values,
+        ReadOnlySpan<byte> offsets)
+    {
         var pValues = 0;
         var argInfos = MemoryMarshal.Cast<byte, uint>(offsets);
-        var arguments = _arrayPool.Rent(argInfos.Length);
+        var arguments = ArrayPool.Rent(argInfos.Length);
 
         try
         {
@@ -67,7 +78,7 @@ internal sealed class ArgumentsParserService : IArgumentsParser
                 var size = (ushort)(argInfos[i] & 0x0000FFFF);
 
                 // Retrieve argument
-                var argument = ParseArgumentValue(method.Parameters[index].Type, values.Slice(pValues, size));
+                var argument = ParseArgumentValue(method, index, parameterKinds[index], values.Slice(pValues, size));
                 arguments[i] = new(index, argument);
 
                 // Move values pointer
@@ -76,51 +87,83 @@ internal sealed class ArgumentsParserService : IArgumentsParser
         }
         catch
         {
-            _arrayPool.Return(arguments);
+            ArrayPool.Return(arguments);
             throw;
         }
 
         return RuntimeArgumentList.Rent(arguments, argInfos.Length);
     }
 
-    private static ArgumentValue ParseArgumentValue(TypeSig parameter, ReadOnlySpan<byte> value)
+    private ParameterKind[] GetParameterKinds(MethodDef method)
+    {
+        if (_parameterKinds.TryGetValue(method, out var kinds))
+            return kinds;
+
+        var parameters = method.Parameters;
+        kinds = new ParameterKind[parameters.Count];
+        for (var i = 0; i < kinds.Length; i++)
+            kinds[i] = ClassifyParameter(parameters[i].Type);
+
+        _parameterKinds.Add(method, kinds);
+        return kinds;
+    }
+
+    private static ParameterKind ClassifyParameter(TypeSig parameter)
     {
         // If it is indirect, profiler already resolved the actual value
         var paramSig = parameter.IsByRef ? parameter.Next : parameter;
 
         // Handle SZArray of reference types (e.g., Task[])
         if (paramSig.IsSZArray)
-        {
-            return ArgumentValue.TrackedArray(ParseReferenceArrayValue(value));
-        }
+            return ParameterKind.ReferenceArray;
 
         // If its not a value type then just load the reference
         if (!paramSig.IsValueType)
-        {
-            // If pointer == 0 it is a null
-            // Otherwise, make sure we do not create new instances for identical pointers
-            var pointer = new nuint(MemoryMarshal.Read<ulong>(value));
-            return ArgumentValue.Tracked(new TrackedObjectId(pointer));
-        }
+            return ParameterKind.Reference;
 
-        // Otherwise try parse value type
         return paramSig.ElementType switch
         {
-            ElementType.Boolean => ArgumentValue.Primitive(MemoryMarshal.Read<bool>(value) ? 1UL : 0UL, PrimitiveKind.Boolean),
-            ElementType.Char => ArgumentValue.Primitive((ulong)MemoryMarshal.Read<char>(value), PrimitiveKind.Char),
-            ElementType.I1 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<sbyte>(value)), PrimitiveKind.I1),
-            ElementType.U1 => ArgumentValue.Primitive(MemoryMarshal.Read<byte>(value), PrimitiveKind.U1),
-            ElementType.I2 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<short>(value)), PrimitiveKind.I2),
-            ElementType.U2 => ArgumentValue.Primitive(MemoryMarshal.Read<ushort>(value), PrimitiveKind.U2),
-            ElementType.I4 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<int>(value)), PrimitiveKind.I4),
-            ElementType.U4 => ArgumentValue.Primitive(MemoryMarshal.Read<uint>(value), PrimitiveKind.U4),
-            ElementType.I8 => ArgumentValue.Primitive(unchecked((ulong)MemoryMarshal.Read<long>(value)), PrimitiveKind.I8),
-            ElementType.U8 => ArgumentValue.Primitive(MemoryMarshal.Read<ulong>(value), PrimitiveKind.U8),
-            ElementType.R4 => ArgumentValue.Primitive(BitConverter.SingleToUInt32Bits(MemoryMarshal.Read<float>(value)), PrimitiveKind.R4),
-            ElementType.R8 => ArgumentValue.Primitive(BitConverter.DoubleToUInt64Bits(MemoryMarshal.Read<double>(value)), PrimitiveKind.R8),
-            ElementType.I => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<nint>(value)), PrimitiveKind.I),
-            ElementType.U => ArgumentValue.Primitive(MemoryMarshal.Read<nuint>(value), PrimitiveKind.U),
-            _ => throw new NotSupportedException($"Could not parse parameter {paramSig}."),
+            ElementType.Boolean => ParameterKind.Boolean,
+            ElementType.Char => ParameterKind.Char,
+            ElementType.I1 => ParameterKind.I1,
+            ElementType.U1 => ParameterKind.U1,
+            ElementType.I2 => ParameterKind.I2,
+            ElementType.U2 => ParameterKind.U2,
+            ElementType.I4 => ParameterKind.I4,
+            ElementType.U4 => ParameterKind.U4,
+            ElementType.I8 => ParameterKind.I8,
+            ElementType.U8 => ParameterKind.U8,
+            ElementType.R4 => ParameterKind.R4,
+            ElementType.R8 => ParameterKind.R8,
+            ElementType.I => ParameterKind.I,
+            ElementType.U => ParameterKind.U,
+            _ => ParameterKind.Unsupported,
+        };
+    }
+
+    private static ArgumentValue ParseArgumentValue(MethodDef method, int index, ParameterKind kind, ReadOnlySpan<byte> value)
+    {
+        return kind switch
+        {
+            ParameterKind.ReferenceArray => ArgumentValue.TrackedArray(ParseReferenceArrayValue(value)),
+            // If pointer == 0 it is a null
+            // Otherwise, make sure we do not create new instances for identical pointers
+            ParameterKind.Reference => ArgumentValue.Tracked(new TrackedObjectId(new nuint(MemoryMarshal.Read<ulong>(value)))),
+            ParameterKind.Boolean => ArgumentValue.Primitive(MemoryMarshal.Read<bool>(value) ? 1UL : 0UL, PrimitiveKind.Boolean),
+            ParameterKind.Char => ArgumentValue.Primitive((ulong)MemoryMarshal.Read<char>(value), PrimitiveKind.Char),
+            ParameterKind.I1 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<sbyte>(value)), PrimitiveKind.I1),
+            ParameterKind.U1 => ArgumentValue.Primitive(MemoryMarshal.Read<byte>(value), PrimitiveKind.U1),
+            ParameterKind.I2 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<short>(value)), PrimitiveKind.I2),
+            ParameterKind.U2 => ArgumentValue.Primitive(MemoryMarshal.Read<ushort>(value), PrimitiveKind.U2),
+            ParameterKind.I4 => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<int>(value)), PrimitiveKind.I4),
+            ParameterKind.U4 => ArgumentValue.Primitive(MemoryMarshal.Read<uint>(value), PrimitiveKind.U4),
+            ParameterKind.I8 => ArgumentValue.Primitive(unchecked((ulong)MemoryMarshal.Read<long>(value)), PrimitiveKind.I8),
+            ParameterKind.U8 => ArgumentValue.Primitive(MemoryMarshal.Read<ulong>(value), PrimitiveKind.U8),
+            ParameterKind.R4 => ArgumentValue.Primitive(BitConverter.SingleToUInt32Bits(MemoryMarshal.Read<float>(value)), PrimitiveKind.R4),
+            ParameterKind.R8 => ArgumentValue.Primitive(BitConverter.DoubleToUInt64Bits(MemoryMarshal.Read<double>(value)), PrimitiveKind.R8),
+            ParameterKind.I => ArgumentValue.Primitive(unchecked((ulong)(long)MemoryMarshal.Read<nint>(value)), PrimitiveKind.I),
+            ParameterKind.U => ArgumentValue.Primitive(MemoryMarshal.Read<nuint>(value), PrimitiveKind.U),
+            _ => throw new NotSupportedException($"Could not parse parameter {method.Parameters[index].Type}."),
         };
     }
 
