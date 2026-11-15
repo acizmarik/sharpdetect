@@ -1138,6 +1138,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject):
                     Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject();
                     break;
+                case nameof(Test_GarbageCollection_ReleasesStateOfDeadObjects):
+                    Test_GarbageCollection_ReleasesStateOfDeadObjects();
+                    break;
             }
 
             // Synchronization primitives modeled through descriptors only

@@ -58,10 +58,15 @@ internal abstract class PluginHostBase : IPluginHost, IDisposable
         // Native threads don't have managed thread ID (native threads are represented with Tid = 0)
         // Profiler initialize & load are sent from native thread during runtime initialization
         // Command responses are emitted by the profiler's command dispatcher thread
+        // Garbage collections run on native threads under Server GC and for background collections
         return recordedEvent.Metadata.Tid != default ||
                recordedEvent.Metadata.CommandId is not null ||
                recordedEvent.EventArgs is ProfilerInitializeRecordedEvent ||
-               recordedEvent.EventArgs is ProfilerLoadRecordedEvent;
+               recordedEvent.EventArgs is ProfilerLoadRecordedEvent ||
+               recordedEvent.EventArgs is GarbageCollectionStartRecordedEvent ||
+               recordedEvent.EventArgs is GarbageCollectionFinishRecordedEvent ||
+               recordedEvent.EventArgs is GarbageCollectedTrackedObjectsRecordedEvent ||
+               recordedEvent.EventArgs is FinalizationQueuedTrackedObjectsRecordedEvent;
     }
 
     public void Dispose()
