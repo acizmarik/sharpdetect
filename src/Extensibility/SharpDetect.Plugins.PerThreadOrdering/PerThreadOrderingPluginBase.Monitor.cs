@@ -17,13 +17,10 @@ public abstract partial class PerThreadOrderingPluginBase
         Bind<MethodExitRecordedEvent>(RecordedEventType.LockAcquireResult, OnLockAcquireExit);
         Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.LockAcquireResult, OnLockAcquireExitWithArguments);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.LockRelease, OnLockReleaseEnter);
-        Bind<MethodExitRecordedEvent>(RecordedEventType.LockReleaseResult, OnLockReleaseResultExit);
-        Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.LockReleaseResult, OnLockReleaseResultExitWithArguments);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SharedLockAcquire, OnSharedLockAcquireEnter);
         Bind<MethodExitRecordedEvent>(RecordedEventType.SharedLockAcquireResult, OnSharedLockAcquireExit);
         Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.SharedLockAcquireResult, OnSharedLockAcquireExitWithArguments);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SharedLockRelease, OnSharedLockReleaseEnter);
-        Bind<MethodExitRecordedEvent>(RecordedEventType.SharedLockReleaseResult, OnLockReleaseResultExit);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MonitorPulseOneAttempt, OnMonitorPulseOneAttempt);
         Bind<MethodExitRecordedEvent>(RecordedEventType.MonitorPulseOneResult, OnMonitorPulseOneResult);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.MonitorPulseAllAttempt, OnMonitorPulseAllAttempt);
@@ -49,7 +46,8 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private void OnLockReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, arguments, lockId) = PushSynchronizationContext(metadata, args);
+        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
+        using var _ = arguments;
         var lockTaken = arguments.Count == 1 || (bool)arguments[1].Value.AsPrimitive;
         if (lockTaken)
             ProcessLockRelease(id, args.ModuleId, args.MethodToken, lockId);
@@ -72,15 +70,10 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private void OnSharedLockReleaseEnter(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
     {
-        var (id, _, lockId) = PushSynchronizationContext(metadata, args);
+        var (id, arguments, lockId) = ExtractSynchronizationContext(metadata, args);
+        using var _ = arguments;
         RaiseLockReleased(new(id, args.ModuleId, args.MethodToken, lockId, IsShared: true));
     }
-
-    private void OnLockReleaseResultExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
-        => PopFrame(metadata, args.ModuleId, args.MethodToken);
-
-    private void OnLockReleaseResultExitWithArguments(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
-        => PopFrame(metadata, args.ModuleId, args.MethodToken);
 
     private void OnMonitorPulseOneAttempt(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
         => PushArgumentsOnCallStack(metadata, args);

@@ -716,8 +716,8 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     decision.hasArguments = !descriptor.rewritingDescriptor.arguments.empty();
     decision.hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
     decision.hasIndirects = HasIndirects(descriptor);
-    decision.pushesArgumentsFrame = PushesArgumentsFrame(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
+    decision.pushesArgumentsFrame = decision.emitExitEvent && PushesArgumentsFrame(descriptor);
     decision.genericCapture.store(genericCapture, std::memory_order_relaxed);
 
     auto* stored = &decision;

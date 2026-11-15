@@ -221,12 +221,9 @@ public static class MonitorMethodDescriptors
         CreateSignature(
             CorElementType.ELEMENT_TYPE_VOID,
             ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)),
-        CreateRewritingDescriptor(
+        CreateReleaseRewritingDescriptor(
             injectManagedWrapper: true,
-            arguments: [ObjectRefArg],
-            returnValue: null,
-            RecordedEventType.LockRelease,
-            RecordedEventType.LockReleaseResult));
+            arguments: [ObjectRefArg]));
 
     private static MethodDescriptor CreateExitDescriptor_v10() => new(
         "Exit",
@@ -235,12 +232,9 @@ public static class MonitorMethodDescriptors
         CreateSignature(
             CorElementType.ELEMENT_TYPE_VOID,
             ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)),
-        CreateRewritingDescriptor(
+        CreateReleaseRewritingDescriptor(
             injectManagedWrapper: false,
-            arguments: [ObjectRefArg],
-            returnValue: null,
-            RecordedEventType.LockRelease,
-            RecordedEventType.LockReleaseResult));
+            arguments: [ObjectRefArg]));
     
     private static MethodDescriptor CreateExitIfLockTaken_V10() => new(
         "ExitIfLockTaken",
@@ -250,12 +244,9 @@ public static class MonitorMethodDescriptors
             CorElementType.ELEMENT_TYPE_VOID,
             ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT),
             ArgumentTypeDescriptor.CreateByRef(ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN))),
-        CreateRewritingDescriptor(
+        CreateReleaseRewritingDescriptor(
             injectManagedWrapper: false,
-            arguments: [ObjectRefArg, BoolRefArg],
-            returnValue: null,
-            RecordedEventType.LockRelease,
-            RecordedEventType.LockReleaseResult));
+            arguments: [ObjectRefArg, BoolRefArg]));
 
     // Signal method descriptors
     private static MethodDescriptor CreatePulseDescriptor() => new(
@@ -323,6 +314,17 @@ public static class MonitorMethodDescriptors
             ReturnValue: returnValue,
             (ushort)beforeEventType,
             (ushort)afterEventType);
+
+    private static MethodRewritingDescriptor CreateReleaseRewritingDescriptor(
+        bool injectManagedWrapper,
+        CapturedArgumentDescriptor[] arguments) => new(
+            InjectHooks: true,
+            InjectManagedWrapper: injectManagedWrapper,
+            Arguments: arguments,
+            ReturnValue: null,
+            MethodEnterInterpretation: (ushort)RecordedEventType.LockRelease,
+            MethodExitInterpretation: null,
+            EmitExitEvent: false);
 
     #endregion
 

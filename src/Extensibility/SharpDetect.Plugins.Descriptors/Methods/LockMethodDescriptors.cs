@@ -76,7 +76,8 @@ public static class LockMethodDescriptors
                 Arguments: [ ObjectRefArg ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.LockRelease,
-                MethodExitInterpretation: (ushort)RecordedEventType.LockReleaseResult));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
         
         ExitThreadId = new MethodDescriptor(
             MethodName: "Exit",
@@ -93,7 +94,8 @@ public static class LockMethodDescriptors
                 Arguments: [ ObjectRefArg ],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.LockRelease,
-                MethodExitInterpretation: (ushort)RecordedEventType.LockReleaseResult));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
         
         TryEnter = new MethodDescriptor(
             MethodName: "TryEnter",

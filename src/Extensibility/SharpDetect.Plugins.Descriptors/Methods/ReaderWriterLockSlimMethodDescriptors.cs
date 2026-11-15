@@ -22,7 +22,7 @@ public static class ReaderWriterLockSlimMethodDescriptors
     {
         yield return CreateTryEnter("TryEnterReadLock", Int32, RecordedEventType.SharedLockAcquire, RecordedEventType.SharedLockAcquireResult);
         yield return CreateTryEnter("TryEnterReadLock", TimeSpan, RecordedEventType.SharedLockAcquire, RecordedEventType.SharedLockAcquireResult);
-        yield return CreateExit("ExitReadLock", RecordedEventType.SharedLockRelease, RecordedEventType.SharedLockReleaseResult);
+        yield return CreateExit("ExitReadLock", RecordedEventType.SharedLockRelease);
 
         foreach (var name in (string[])["TryEnterUpgradeableReadLock", "TryEnterWriteLock"])
         {
@@ -30,8 +30,8 @@ public static class ReaderWriterLockSlimMethodDescriptors
             yield return CreateTryEnter(name, TimeSpan, RecordedEventType.LockTryAcquire, RecordedEventType.LockAcquireResult);
         }
 
-        yield return CreateExit("ExitUpgradeableReadLock", RecordedEventType.LockRelease, RecordedEventType.LockReleaseResult);
-        yield return CreateExit("ExitWriteLock", RecordedEventType.LockRelease, RecordedEventType.LockReleaseResult);
+        yield return CreateExit("ExitUpgradeableReadLock", RecordedEventType.LockRelease);
+        yield return CreateExit("ExitWriteLock", RecordedEventType.LockRelease);
     }
 
     private static MethodDescriptor CreateTryEnter(
@@ -60,8 +60,7 @@ public static class ReaderWriterLockSlimMethodDescriptors
 
     private static MethodDescriptor CreateExit(
         string methodName,
-        RecordedEventType enterInterpretation,
-        RecordedEventType exitInterpretation)
+        RecordedEventType enterInterpretation)
     {
         return new MethodDescriptor(
             MethodName: methodName,
@@ -78,6 +77,7 @@ public static class ReaderWriterLockSlimMethodDescriptors
                 Arguments: [ObjectRefArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)enterInterpretation,
-                MethodExitInterpretation: (ushort)exitInterpretation));
+                MethodExitInterpretation: null,
+                EmitExitEvent: false));
     }
 }
