@@ -88,7 +88,10 @@ internal sealed class FastTrackDetector
         => _threadClocks.EnsureExists(threadId);
 
     public void RecordThreadDestroyed(ProcessThreadId threadId)
-        => _joinableThreads.RecordExited(threadId);
+    {
+        _joinableThreads.RecordExited(threadId);
+        _writeClassifier.RemoveThread(threadId);
+    }
 
     public void RecordGarbageCollectedObjects(uint processId, ReadOnlySpan<TrackedObjectId> removedObjectIds)
     {
@@ -107,7 +110,10 @@ internal sealed class FastTrackDetector
         => _writeClassifier.RecordFinalizationQueued(processId, queuedObjectIds);
 
     public void RecordThreadForkRequested(ProcessThreadId parentThreadId, ProcessTrackedObjectId threadObjectId)
-        => _forkClocks.ReleaseSnapshot(threadObjectId, parentThreadId);
+    {
+        _forkClocks.ReleaseSnapshot(threadObjectId, parentThreadId);
+        _writeClassifier.NoteHandOff(parentThreadId);
+    }
 
     public void RecordThreadFork(ProcessTrackedObjectId threadObjectId, ProcessThreadId childThreadId)
     {
@@ -120,12 +126,18 @@ internal sealed class FastTrackDetector
         => _threadClocks.AcquireFromThread(joinerThreadId, joinedThreadId);
 
     public void RecordTaskScheduled(ProcessThreadId parentThreadId, ProcessTrackedObjectId taskId)
-        => _taskStartClocks.ReleaseSnapshot(taskId, parentThreadId);
+    {
+        _taskStartClocks.ReleaseSnapshot(taskId, parentThreadId);
+        _writeClassifier.NoteHandOff(parentThreadId);
+    }
 
     public void RecordTaskContinuationRegistered(
         ProcessThreadId registeringThreadId,
         ProcessTrackedObjectId continuationTaskId)
-        => _taskRegistrationClocks.ReleaseSnapshot(continuationTaskId, registeringThreadId);
+    {
+        _taskRegistrationClocks.ReleaseSnapshot(continuationTaskId, registeringThreadId);
+        _writeClassifier.NoteHandOff(registeringThreadId);
+    }
 
     public void RecordTaskStarted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
     {
@@ -148,8 +160,15 @@ internal sealed class FastTrackDetector
 
     public void RecordTaskPromiseCompleted(ProcessThreadId completerThreadId, ProcessTrackedObjectId taskId)
     {
+        _taskFinishClocks.TryAcquire(taskId, completerThreadId);
         _taskFinishClocks.Release(taskId, completerThreadId);
         _completedTasks.Add(taskId);
+    }
+
+    public void RecordTaskPromiseProgressed(ProcessThreadId contributorThreadId, ProcessTrackedObjectId taskId)
+    {
+        _taskFinishClocks.TryAcquire(taskId, contributorThreadId);
+        _taskFinishClocks.Release(taskId, contributorThreadId);
     }
 
     public void RecordTaskJoinFinished(ProcessThreadId waiterThreadId, ProcessTrackedObjectId taskId)
@@ -319,7 +338,10 @@ internal sealed class FastTrackDetector
         ProcessTrackedObjectId containerId,
         ProcessTrackedObjectId valueId,
         bool onlyIfAbsent = false)
-        => _publications.RecordPublished(threadId, containerId, valueId, onlyIfAbsent);
+    {
+        _publications.RecordPublished(threadId, containerId, valueId, onlyIfAbsent);
+        _writeClassifier.NoteHandOff(threadId);
+    }
 
     public void RecordValueObserved(
         ProcessThreadId threadId,

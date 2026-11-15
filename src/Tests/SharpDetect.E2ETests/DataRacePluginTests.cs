@@ -18,6 +18,20 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     private const string IndirectReferenceGap = "Known gap: Interlocked calls are recognized only when the ref argument is a direct field address";
     private const string StructFieldReceiverGap = "Known gap: a field address is not recognized when its receiver is a managed pointer (field of a struct)";
     private const string LazyInitializerGap = "Known gap: LazyInitializer.EnsureInitialized is not modeled";
+    private const string ArrayElementGap = "Known gap: array element accesses are not instrumented";
+    private const string EmbeddedStructFieldGap = "Known gap: accesses to a field of a struct embedded in an object are not tracked";
+    private const string IndirectAccessGap = "Known gap: accesses through a managed pointer (ref parameter) are not tracked";
+    private const string ConstructorEscapeGap = "Known gap: a constructor write stays exempt when `this` escaped before the constructor touched any field of the object, or through a channel other than a thread or task start or a modeled publication";
+    private const string ThreadKeyedClocksGap = "Known limitation of thread-keyed clocks: tasks that share a pool thread are ordered by program order, so races between them are missed";
+    private const string SynchronizedMethodGap = "Known gap: [MethodImpl(MethodImplOptions.Synchronized)] is not modeled on .NET 8 and .NET 9";
+    private const string ValueTypePublicationGap = "Known gap: value publication is keyed by the published object, so a value-type item carries no happens-before edge";
+    private const string UnmodeledRuntimeSynchronizationGap = "Known gap: synchronization implemented inside the runtime libraries with volatile or interlocked fields is not modeled";
+
+    private static readonly KeyValuePair<string, string>[] SinglePoolWorker =
+    [
+        new("DOTNET_PROCESSOR_COUNT", "1"),
+        new("DOTNET_ThreadPool_ForceMaxWorkerThreads", "1")
+    ];
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
@@ -868,19 +882,162 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
     public Task NoDataRace_Semaphore_FullReleaseDoesNotShiftPermits(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_Semaphore_FullReleaseDoesNotShiftPermits", sdk, plugin);
 
+    [Theory(Skip = ArrayElementGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ArrayElement_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ArrayElement_WriteWriteRace", sdk, plugin);
+
+    [Theory(Skip = EmbeddedStructFieldGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_EmbeddedStructField_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_EmbeddedStructField_WriteWriteRace", sdk, plugin);
+
+    [Theory(Skip = IndirectAccessGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_RefParameter_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_RefParameter_WriteWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_LoopConditionalStore_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_LoopConditionalStore_WriteWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_AsCastReceiver_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_AsCastReceiver_WriteWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LockOnTypeObject_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LockOnTypeObject_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LockOnTypeObject_AcrossGarbageCollection(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LockOnTypeObject_AcrossGarbageCollection", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SynchronizedMethod_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SynchronizedMethod_ProtectedWriteRead", sdk, plugin);
+
+    [Theory(Skip = SynchronizedMethodGap)]
+    [MemberData(nameof(SdkVersions.BelowNet10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SynchronizedMethod_ProtectedWriteRead_BeforeNet10(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SynchronizedMethod_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ConstructorEscape_WriteAfterFirstFieldAndThreadStart(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ConstructorEscape_WriteAfterFirstFieldAndThreadStart", sdk, plugin);
+
+    [Theory(Skip = ConstructorEscapeGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_ConstructorEscape_WriteAfterThreadStart(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_ConstructorEscape_WriteAfterThreadStart", sdk, plugin);
+
+    [Theory(Skip = ThreadKeyedClocksGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_Task_UnjoinedTasksOnOnePoolThread(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_Task_UnjoinedTasksOnOnePoolThread", sdk, plugin, targetEnvironmentVariables: SinglePoolWorker);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WaitAll_ReadAfterWaitAll(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WaitAll_ReadAfterWaitAll", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WhenAll_ReadAfterAwait(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAll_ReadAfterAwait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WaitAll_TasksAlreadyCompleted(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WaitAll_TasksAlreadyCompleted", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WhenAll_TasksAlreadyCompleted(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAll_TasksAlreadyCompleted", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WhenAll_ReadInContinuation(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAll_ReadInContinuation", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_TaskFactory_ContinueWhenAll_ReadInContinuation(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_TaskFactory_ContinueWhenAll_ReadInContinuation", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_Task_WhenAllOfResults_ReadAfterWait(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_Task_WhenAllOfResults_ReadAfterWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_Task_WaitAll_UnawaitedTaskStaysUnordered(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_Task_WaitAll_UnawaitedTaskStaysUnordered", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ParallelInvoke_ReadAfterInvoke(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelInvoke_ReadAfterInvoke", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ParallelFor_ReadAfterLoop(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelFor_ReadAfterLoop", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ParallelFor_BodyThrows(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelFor_BodyThrows", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ParallelForEach_ReadAfterLoop(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ParallelForEach_ReadAfterLoop", sdk, plugin);
+
+    [Theory(Skip = UnmodeledRuntimeSynchronizationGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SpinLock_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SpinLock_ProtectedWriteRead", sdk, plugin);
+
+    [Theory(Skip = ValueTypePublicationGap)]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_ConcurrentQueueOfValueType_PublishThenRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_ConcurrentQueueOfValueType_PublishThenRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_CancellationToken_CancelThenObserve(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_CancellationToken_CancelThenObserve", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_CancellationToken_WriteAfterCancel(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_CancellationToken_WriteAfterCancel", sdk, plugin);
+
     private async Task AssertDetectsDataRace(
         string subjectArgs,
         string sdk,
         string pluginFullTypeName,
-        bool enableStackTraceCollection = false)
+        bool enableStackTraceCollection = false,
+        KeyValuePair<string, string>[]? targetEnvironmentVariables = null)
     {
         // Arrange
         var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
-        using var services = E2ETestBuilder
+        var builder = E2ETestBuilder
             .ForSubject(subjectArgs)
             .WithTestPlugin(pluginFullTypeName)
-            .WithPluginConfiguration(CreateConfiguration(enableStackTraceCollection))
-            .Build(sdk, testOutput, additionalData);
+            .WithPluginConfiguration(CreateConfiguration(enableStackTraceCollection));
+        if (targetEnvironmentVariables is not null)
+            builder.WithTargetEnvironmentVariables(targetEnvironmentVariables);
+        using var services = builder.Build(sdk, testOutput, additionalData);
         var plugin = GetTestPlugin(services);
         var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
 

@@ -14,6 +14,8 @@ public abstract partial class PerThreadOrderingPluginBase
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SignalSet, OnSignalSetEnter);
         Bind<MethodExitRecordedEvent>(RecordedEventType.SignalSetResult, OnSignalExit);
         Bind<MethodExitWithArgumentsRecordedEvent>(RecordedEventType.SignalSetResult, OnSignalExitWithArguments);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SignalSetOnReturn, OnSignalWaitEnter);
+        Bind<MethodExitRecordedEvent>(RecordedEventType.SignalSetOnReturnResult, OnSignalSetOnReturnExit);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SignalReset, OnSignalResetEnter);
         Bind<MethodExitRecordedEvent>(RecordedEventType.SignalResetResult, OnSignalExit);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.SignalWait, OnSignalWaitEnter);
@@ -41,6 +43,14 @@ public abstract partial class PerThreadOrderingPluginBase
 
     private void OnSignalExitWithArguments(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
         => PopFrame(metadata, args.ModuleId, args.MethodToken);
+
+    private void OnSignalSetOnReturnExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        using var frameLease = _callStackTracker.PopFrame(id, args.ModuleId, args.MethodToken);
+        var signalId = ExtractSynchronizationObjectIdFromFrame(id, frameLease.Frame);
+        RaiseSignaled(new(id, args.ModuleId, args.MethodToken, signalId, IsAutoReset: false));
+    }
 
     private void OnSignalWaitExit(RecordedEventMetadata metadata, MethodExitRecordedEvent args)
         => HandleSignalWaitExit(metadata, args.ModuleId, args.MethodToken, isSuccess: true);

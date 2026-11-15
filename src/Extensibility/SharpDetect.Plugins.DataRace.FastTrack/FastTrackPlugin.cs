@@ -299,6 +299,9 @@ public partial class FastTrackPlugin : PerThreadOrderingPluginBase, IPlugin
             case ForkFinishKind.SegmentCompleted:
                 _detector.RecordTaskSegmentCompleted(args.ProcessThreadId, args.ChildId);
                 break;
+            case ForkFinishKind.PromiseProgressed:
+                _detector.RecordTaskPromiseProgressed(args.ProcessThreadId, args.ChildId);
+                break;
             case ForkFinishKind.PromiseCompleted:
                 _detector.RecordTaskPromiseCompleted(args.ProcessThreadId, args.ChildId);
                 break;

@@ -49,6 +49,17 @@ internal static class SdkVersions
         }
     }
 
+    public static TheoryData<string, string> BelowNet10WithFastTrackOnly
+    {
+        get
+        {
+            var data = new TheoryData<string, string>();
+            data.Add("net8.0", typeof(TestFastTrackPlugin).FullName!);
+            data.Add("net9.0", typeof(TestFastTrackPlugin).FullName!);
+            return data;
+        }
+    }
+
     public static TheoryData<string, string> Net10WithFastTrackOnly
     {
         get

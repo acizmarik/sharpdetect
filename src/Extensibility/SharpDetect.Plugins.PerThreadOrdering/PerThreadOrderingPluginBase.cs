@@ -35,6 +35,7 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
         RegisterSignalBindings();
         RegisterThreadBindings();
         RegisterTaskBindings();
+        RegisterTaskCompositionBindings();
         RegisterAsyncContinuationBindings();
         RegisterFieldAccessBindings();
         RegisterValuePublicationBindings();
@@ -117,6 +118,13 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
             {
                 var signalId = ExtractSynchronizationObjectIdFromFrame(id, frame);
                 RaiseSignalWaitReturned(new(id, args.ModuleId, args.MethodToken, signalId, IsAutoReset: false, IsSuccess: false));
+                break;
+            }
+
+            case RecordedEventType.SignalSetOnReturnResult:
+            {
+                var signalId = ExtractSynchronizationObjectIdFromFrame(id, frame);
+                RaiseSignaled(new(id, args.ModuleId, args.MethodToken, signalId, IsAutoReset: false));
                 break;
             }
 

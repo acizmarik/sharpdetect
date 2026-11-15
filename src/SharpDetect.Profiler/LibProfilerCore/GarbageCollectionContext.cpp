@@ -42,6 +42,8 @@ LibProfiler::GarbageCollectionContext::GarbageCollectionContext(
 
 		ProcessSurvivingReferences(std::span<ObjectID>(&bound.rangeStart, 1), std::span<SIZE_T>(&bound.rangeLength, 1));
 	}
+
+	KeepObjectsOutsideGarbageCollectedHeap();
 }
 
 void LibProfiler::GarbageCollectionContext::ProcessSurvivingReferences(
@@ -106,6 +108,27 @@ void LibProfiler::GarbageCollectionContext::ProcessMovingReferences(
 			_newHeapBuilder.insert(std::make_pair(newStartingIndex, currentTrackedObjectId));
 			_nextTrackedObjects.insert(currentTrackedObjectId);
 		}
+	}
+}
+
+void LibProfiler::GarbageCollectionContext::KeepObjectsOutsideGarbageCollectedHeap()
+{
+	/* Objects on the frozen (non-GC) heap, such as string literals and type objects, are never collected or moved */
+	std::vector<std::pair<ObjectID, ObjectID>> ranges;
+	ranges.reserve(_bounds.size());
+	for (auto&& bound : _bounds)
+		ranges.emplace_back(bound.rangeStart, bound.rangeStart + std::max(bound.rangeLength, bound.rangeLengthReserved));
+	std::ranges::sort(ranges);
+
+	for (auto&& [objectId, trackedObjectId] : _previousSortedHeap)
+	{
+		// The last range that starts at or before the object is the only one that can contain it
+		auto const next = std::ranges::upper_bound(ranges, objectId, { }, &std::pair<ObjectID, ObjectID>::first);
+		if (next != ranges.cbegin() && objectId < std::prev(next)->second)
+			continue;
+
+		_newHeapBuilder.insert(std::make_pair(objectId, trackedObjectId));
+		_nextTrackedObjects.insert(trackedObjectId);
 	}
 }
 

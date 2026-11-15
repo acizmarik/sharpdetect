@@ -117,6 +117,8 @@ public enum RecordedEventType : ushort
     SignalResetResult = 150,
     SignalWait = 151,
     SignalWaitResult = 152,
+    SignalSetOnReturn = 153,
+    SignalSetOnReturnResult = 154,
 
     /* Task synchronization */
     TaskSchedule = 200,
@@ -126,6 +128,8 @@ public enum RecordedEventType : ushort
     TaskJoinFinish = 204,
     TaskPromiseComplete = 205,
     TaskContinuationRegister = 206,
+    TaskCompletionObserved = 207,
+    TaskCompletionForwardToPromise = 208,
 
     /* Async state-machine continuations */
     AsyncStateMachineSuspend = 210,
