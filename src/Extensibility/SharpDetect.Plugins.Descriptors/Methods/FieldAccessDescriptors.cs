@@ -36,37 +36,18 @@ public static class FieldAccessDescriptors
         RecordedEventType enterInterpretation,
         bool isGenericStatic)
     {
-        CapturedArgumentDescriptor[] arguments = (isInstance, isGenericStatic) switch
-        {
-            (true, _) =>
-            [
-                new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue)),
-                new(1, new((byte)nint.Size, CapturedValue.CaptureAsReference)),
-            ],
-            (false, true) =>
-            [
-                new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue)),
-                new(1, new((byte)nint.Size, CapturedValue.CaptureAsValue)),
-            ],
-            (false, false) =>
-            [
-                new(0, new(sizeof(ulong), CapturedValue.CaptureAsValue))
-            ]
-        };
+        var builder = MethodDescriptor.ForStaticMethod("SharpDetect", methodName)
+            .WithoutHooks()
+            .Parameters(FieldAccessHelperSignature.GetParameterTypes(isInstance, isGenericStatic))
+            .CaptureParameter(0, Capture.Int64)
+            .OnEnter(enterInterpretation);
 
-        return new MethodDescriptor(
-            MethodName: methodName,
-            DeclaringTypeFullName: "SharpDetect",
-            VersionDescriptor: null,
-            SignatureDescriptor: FieldAccessHelperSignature.Create(isInstance, isGenericStatic),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: false,
-                InjectManagedWrapper: false,
-                Arguments: arguments,
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)enterInterpretation,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
+        if (isInstance)
+            builder.CaptureParameter(1, Capture.Reference);
+        else if (isGenericStatic)
+            builder.CaptureParameter(1, Capture.NativeInt);
+
+        return builder.Build();
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;

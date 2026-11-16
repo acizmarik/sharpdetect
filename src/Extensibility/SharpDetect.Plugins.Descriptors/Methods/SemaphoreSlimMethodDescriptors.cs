@@ -2,181 +2,71 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Events;
-using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.Descriptors.Methods;
 
 public static class SemaphoreSlimMethodDescriptors
 {
     private const string SemaphoreSlimTypeName = "System.Threading.SemaphoreSlim";
-    private const string CancellationTokenTypeName = "System.Threading.CancellationToken";
     private const string TaskTResultTypeName = "System.Threading.Tasks.Task`1";
 
-    private static readonly Version Version8 = new(8, 0, 0);
-    private static readonly Version Version9Max = new(9, int.MaxValue, int.MaxValue);
-    private static readonly Version Version10 = new(10, 0, 0);
-    private static readonly Version Version10Max = new(10, int.MaxValue, int.MaxValue);
-    
-    private static readonly CapturedArgumentDescriptor ObjectRefArg =
-        new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference));
-
-    private static readonly CapturedArgumentDescriptor ReleaseCountArg =
-        new(1, new(sizeof(int), CapturedValue.CaptureAsValue));
-    
-    private static readonly CapturedArgumentDescriptor InitialCountArg =
-        new(1, new(sizeof(int), CapturedValue.CaptureAsValue));
-    
-    private static readonly CapturedArgumentDescriptor MaximumCountArg =
-        new(2, new(sizeof(int), CapturedValue.CaptureAsValue));
-
-    private static readonly MethodDescriptor CtorWithMaxCount;
-    private static readonly MethodDescriptor WaitV8;
-    private static readonly MethodDescriptor WaitCoreV10;
-    private static readonly MethodDescriptor WaitAsyncV8;
-    private static readonly MethodDescriptor WaitAsyncCoreV10;
-    private static readonly MethodDescriptor ReleaseWithCount;
-
-    static SemaphoreSlimMethodDescriptors()
-    {
-        CtorWithMaxCount = new MethodDescriptor(
-            MethodName: ".ctor",
-            DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg, InitialCountArg, MaximumCountArg],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreCreate,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
-
-        WaitV8 = new MethodDescriptor(
-            MethodName: "Wait",
-            DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: MethodVersionDescriptor.Create(Version8, Version9Max),
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
-                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: new CapturedValueDescriptor(sizeof(bool), CapturedValue.CaptureAsValue),
-                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreTryAcquire,
-                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreAcquireResult));
-        
-        WaitCoreV10 = new MethodDescriptor(
-            MethodName: "WaitCore",
-            DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: MethodVersionDescriptor.Create(Version10, Version10Max),
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: new CapturedValueDescriptor(sizeof(bool), CapturedValue.CaptureAsValue),
-                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreTryAcquire,
-                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreAcquireResult));
-
-        WaitAsyncV8 = new MethodDescriptor(
-            MethodName: "WaitAsync",
-            DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: MethodVersionDescriptor.Create(Version8, Version9Max),
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateGenericInst(
-                    TaskTResultTypeName,
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN)),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
-                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: new CapturedValueDescriptor((byte)nint.Size, CapturedValue.CaptureAsReference),
-                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsync,
-                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsyncResult));
-
-        WaitAsyncCoreV10 = new MethodDescriptor(
-            MethodName: "WaitAsyncCore",
-            DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: MethodVersionDescriptor.Create(Version10, Version10Max),
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateGenericInst(
-                    TaskTResultTypeName,
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN)),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: new CapturedValueDescriptor((byte)nint.Size, CapturedValue.CaptureAsReference),
-                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsync,
-                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreWaitAsyncResult));
-
-        ReleaseWithCount = new MethodDescriptor(
-            MethodName: "Release",
-            DeclaringTypeFullName: SemaphoreSlimTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 1,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
-                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4)]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ ObjectRefArg, ReleaseCountArg ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.SemaphoreRelease,
-                MethodExitInterpretation: (ushort)RecordedEventType.SemaphoreReleaseResult));
-    }
-
-    public static IEnumerable<MethodDescriptor> GetAllMethods()
-    {
+    private static readonly MethodDescriptor[] AllMethods =
+    [
         // Public API
-        yield return CtorWithMaxCount;
-        yield return ReleaseWithCount;
+        MethodDescriptor.ForInstanceMethod(SemaphoreSlimTypeName, ".ctor")
+            .Parameters(Sig.Int32, Sig.Int32)
+            .CaptureThis()
+            .CaptureParameter(0, Capture.Int32)
+            .CaptureParameter(1, Capture.Int32)
+            .OnEnter(RecordedEventType.SemaphoreCreate)
+            .Build(),
+        MethodDescriptor.ForInstanceMethod(SemaphoreSlimTypeName, "Release")
+            .Parameters(Sig.Int32)
+            .Returns(Sig.Int32)
+            .CaptureThis()
+            .CaptureParameter(0, Capture.Int32)
+            .OnEnter(RecordedEventType.SemaphoreRelease)
+            .OnExit(RecordedEventType.SemaphoreReleaseResult)
+            .Build(),
 
         // Internal API
-        yield return WaitV8;
-        yield return WaitCoreV10;
-        yield return WaitAsyncV8;
-        yield return WaitAsyncCoreV10;
+        CreateWait("Wait", RuntimeVersions.Net8To9, Sig.Int32),
+        CreateWait("WaitCore", RuntimeVersions.Net10, Sig.Int64),
+        CreateWaitAsync("WaitAsync", RuntimeVersions.Net8To9, Sig.Int32),
+        CreateWaitAsync("WaitAsyncCore", RuntimeVersions.Net10, Sig.Int64),
+    ];
+
+    public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;
+
+    private static MethodDescriptor CreateWait(
+        string methodName,
+        MethodVersionDescriptor version,
+        ArgumentTypeDescriptor timeoutType)
+    {
+        return MethodDescriptor.ForInstanceMethod(SemaphoreSlimTypeName, methodName)
+            .OnRuntime(version)
+            .Parameters(timeoutType, Sig.CancellationToken)
+            .Returns(Sig.Boolean)
+            .CaptureThis()
+            .CaptureReturnValue(Capture.Boolean)
+            .OnEnter(RecordedEventType.SemaphoreTryAcquire)
+            .OnExit(RecordedEventType.SemaphoreAcquireResult)
+            .Build();
+    }
+
+    private static MethodDescriptor CreateWaitAsync(
+        string methodName,
+        MethodVersionDescriptor version,
+        ArgumentTypeDescriptor timeoutType)
+    {
+        return MethodDescriptor.ForInstanceMethod(SemaphoreSlimTypeName, methodName)
+            .OnRuntime(version)
+            .Parameters(timeoutType, Sig.CancellationToken)
+            .Returns(Sig.Generic(TaskTResultTypeName, Sig.Boolean))
+            .CaptureThis()
+            .CaptureReturnValue(Capture.Reference)
+            .OnEnter(RecordedEventType.SemaphoreWaitAsync)
+            .OnExit(RecordedEventType.SemaphoreWaitAsyncResult)
+            .Build();
     }
 }
-

@@ -9,4 +9,11 @@ public record MethodDescriptor(
     MethodVersionDescriptor? VersionDescriptor,
     MethodSignatureDescriptor SignatureDescriptor,
     MethodRewritingDescriptor RewritingDescriptor,
-    string DeclaringAssemblyName = DeclaringAssemblies.CoreLib);
+    string DeclaringAssemblyName)
+{
+    public static MethodDescriptorBuilder ForStaticMethod(string declaringTypeFullName, string methodName)
+        => new(declaringTypeFullName, methodName, isInstance: false);
+
+    public static MethodDescriptorBuilder ForInstanceMethod(string declaringTypeFullName, string methodName)
+        => new(declaringTypeFullName, methodName, isInstance: true);
+}

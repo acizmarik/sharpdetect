@@ -28,22 +28,20 @@ public static class VolatileIntrinsicDescriptors
 
     private static readonly FieldAccessIntrinsicDescriptor[] AllIntrinsics =
     [
-        .. PrimitiveTypes.Select(type => CreateRead(ArgumentTypeDescriptor.CreateSimple(type), genericParametersCount: 0)),
-        .. PrimitiveTypes.Select(type => CreateWrite(ArgumentTypeDescriptor.CreateSimple(type), genericParametersCount: 0)),
-        CreateRead(ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0), genericParametersCount: 1),
-        CreateWrite(ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0), genericParametersCount: 1),
+        .. PrimitiveTypes.Select(type => CreateRead(Sig.Simple(type), genericParametersCount: 0)),
+        .. PrimitiveTypes.Select(type => CreateWrite(Sig.Simple(type), genericParametersCount: 0)),
+        CreateRead(Sig.MethodTypeParameter(0), genericParametersCount: 1),
+        CreateWrite(Sig.MethodTypeParameter(0), genericParametersCount: 1),
     ];
 
     private static FieldAccessIntrinsicDescriptor CreateRead(ArgumentTypeDescriptor valueType, byte genericParametersCount)
     {
         return Create(
             methodName: "Read",
-            signature: new MethodSignatureDescriptor(
-                CallingConvention: GetCallingConvention(genericParametersCount),
-                ParametersCount: 1,
-                ReturnType: valueType,
-                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType)],
-                GenericParametersCount: genericParametersCount),
+            signature: MethodSignatureDescriptor.ForStaticMethod(
+                returnType: valueType,
+                parameterTypes: [Sig.ByRef(valueType)],
+                genericParametersCount),
             interpretation: FieldAccessIntrinsicInterpretation.VolatileRead);
     }
 
@@ -51,19 +49,12 @@ public static class VolatileIntrinsicDescriptors
     {
         return Create(
             methodName: "Write",
-            signature: new MethodSignatureDescriptor(
-                CallingConvention: GetCallingConvention(genericParametersCount),
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateByRef(valueType), valueType],
-                GenericParametersCount: genericParametersCount),
+            signature: MethodSignatureDescriptor.ForStaticMethod(
+                returnType: Sig.Void,
+                parameterTypes: [Sig.ByRef(valueType), valueType],
+                genericParametersCount),
             interpretation: FieldAccessIntrinsicInterpretation.VolatileWrite);
     }
-
-    private static CorCallingConvention GetCallingConvention(byte genericParametersCount)
-        => genericParametersCount != 0
-            ? CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT | CorCallingConvention.IMAGE_CEE_CS_CALLCONV_GENERIC
-            : CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT;
 
     private static FieldAccessIntrinsicDescriptor Create(
         string methodName,
