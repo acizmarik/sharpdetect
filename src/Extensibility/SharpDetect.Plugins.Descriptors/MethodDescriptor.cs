@@ -8,4 +8,5 @@ public record MethodDescriptor(
     string DeclaringTypeFullName,
     MethodVersionDescriptor? VersionDescriptor,
     MethodSignatureDescriptor SignatureDescriptor,
-    MethodRewritingDescriptor RewritingDescriptor);
+    MethodRewritingDescriptor RewritingDescriptor,
+    string DeclaringAssemblyName = DeclaringAssemblies.CoreLib);

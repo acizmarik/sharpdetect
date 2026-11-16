@@ -56,7 +56,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
                 MethodExitInterpretation: null,
-                EmitExitEvent: false));
+                EmitExitEvent: false),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         SetItem = new MethodDescriptor(
             MethodName: "set_Item",
@@ -74,7 +75,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
                 MethodExitInterpretation: null,
-                EmitExitEvent: false));
+                EmitExitEvent: false),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         GetItem = new MethodDescriptor(
             MethodName: "get_Item",
@@ -91,7 +93,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoad));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoad),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         GetOrAddValue = new MethodDescriptor(
             MethodName: "GetOrAdd",
@@ -108,7 +111,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationMaybeStoreLoad));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationMaybeStoreLoad),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         GetOrAddFactory = new MethodDescriptor(
             MethodName: "GetOrAdd",
@@ -129,7 +133,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationMaybeStoreLoad));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationMaybeStoreLoad),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
         
         TryGetValue = new MethodDescriptor(
             MethodName: "TryGetValue",
@@ -146,7 +151,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ContainerArg, OutValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         TryRemove = new MethodDescriptor(
             MethodName: "TryRemove",
@@ -163,7 +169,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ContainerArg, OutValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         TryUpdate = new MethodDescriptor(
             MethodName: "TryUpdate",
@@ -181,7 +188,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
                 MethodExitInterpretation: null,
-                EmitExitEvent: false));
+                EmitExitEvent: false),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         AddOrUpdateValue = new MethodDescriptor(
             MethodName: "AddOrUpdate",
@@ -203,7 +211,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationStoreLoad));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationStoreLoad),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
 
         AddOrUpdateFactory = new MethodDescriptor(
             MethodName: "AddOrUpdate",
@@ -225,7 +234,8 @@ public static class ConcurrentDictionaryMethodDescriptors
                 Arguments: [ContainerArg],
                 ReturnValue: ReturnedValue,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationStoreLoad));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationStoreLoad),
+            DeclaringAssemblyName: DeclaringAssemblies.CollectionsConcurrent);
     }
 
     public static IEnumerable<MethodDescriptor> GetAllMethods()

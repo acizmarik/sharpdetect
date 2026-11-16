@@ -21,6 +21,7 @@ namespace Profiler
         std::optional<MethodVersionDescriptor> versionDescriptor;
         MethodSignatureDescriptor signatureDescriptor;
         MethodRewritingDescriptor rewritingDescriptor;
+        std::string declaringAssemblyName;
     };
 
     void to_json(nlohmann::json& json, const MethodDescriptor& descriptor);

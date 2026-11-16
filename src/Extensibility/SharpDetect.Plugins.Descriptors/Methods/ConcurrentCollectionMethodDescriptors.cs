@@ -28,15 +28,18 @@ public static class ConcurrentCollectionMethodDescriptors
         yield return CreateStore(ConcurrentQueueTypeName, "Enqueue");
         yield return CreateLoad(ConcurrentQueueTypeName, "TryDequeue");
         yield return CreateLoad(ConcurrentQueueTypeName, "TryPeek");
-        yield return CreateStore(ConcurrentStackTypeName, "Push");
-        yield return CreateLoad(ConcurrentStackTypeName, "TryPop");
-        yield return CreateLoad(ConcurrentStackTypeName, "TryPeek");
-        yield return CreateStore(ConcurrentBagTypeName, "Add");
-        yield return CreateLoad(ConcurrentBagTypeName, "TryTake");
-        yield return CreateLoad(ConcurrentBagTypeName, "TryPeek");
+        yield return CreateStore(ConcurrentStackTypeName, "Push", DeclaringAssemblies.CollectionsConcurrent);
+        yield return CreateLoad(ConcurrentStackTypeName, "TryPop", DeclaringAssemblies.CollectionsConcurrent);
+        yield return CreateLoad(ConcurrentStackTypeName, "TryPeek", DeclaringAssemblies.CollectionsConcurrent);
+        yield return CreateStore(ConcurrentBagTypeName, "Add", DeclaringAssemblies.CollectionsConcurrent);
+        yield return CreateLoad(ConcurrentBagTypeName, "TryTake", DeclaringAssemblies.CollectionsConcurrent);
+        yield return CreateLoad(ConcurrentBagTypeName, "TryPeek", DeclaringAssemblies.CollectionsConcurrent);
     }
 
-    private static MethodDescriptor CreateStore(string declaringTypeName, string methodName)
+    private static MethodDescriptor CreateStore(
+        string declaringTypeName,
+        string methodName,
+        string declaringAssemblyName = DeclaringAssemblies.CoreLib)
     {
         return new MethodDescriptor(
             MethodName: methodName,
@@ -54,10 +57,14 @@ public static class ConcurrentCollectionMethodDescriptors
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationStore,
                 MethodExitInterpretation: null,
-                EmitExitEvent: false));
+                EmitExitEvent: false),
+            DeclaringAssemblyName: declaringAssemblyName);
     }
 
-    private static MethodDescriptor CreateLoad(string declaringTypeName, string methodName)
+    private static MethodDescriptor CreateLoad(
+        string declaringTypeName,
+        string methodName,
+        string declaringAssemblyName = DeclaringAssemblies.CoreLib)
     {
         return new MethodDescriptor(
             MethodName: methodName,
@@ -74,6 +81,7 @@ public static class ConcurrentCollectionMethodDescriptors
                 Arguments: [ContainerArg, OutValueArg],
                 ReturnValue: null,
                 MethodEnterInterpretation: (ushort)RecordedEventType.ValuePublicationContainerEnter,
-                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef));
+                MethodExitInterpretation: (ushort)RecordedEventType.ValuePublicationLoadByRef),
+            DeclaringAssemblyName: declaringAssemblyName);
     }
 }

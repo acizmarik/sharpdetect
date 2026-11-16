@@ -446,9 +446,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
         _typeInjector.ImportInjectedTypes(assemblyDef, moduleDef);
     }
 
-    _typeInjector.WrapAnalyzedExternMethods(moduleDef);
+    _typeInjector.WrapAnalyzedExternMethods(assemblyDef, moduleDef);
     _typeInjector.ImportMethodWrappers(assemblyDef, moduleDef);
-    _typeInjector.ImportCustomRecordedEventTypes(moduleDef);
+    _typeInjector.ImportCustomRecordedEventTypes(assemblyDef, moduleDef);
     _typeInjector.ResolveFieldAccessIntrinsics(assemblyDef, moduleDef);
 
     _client.Send(LibIPC::Helpers::CreateAssemblyLoadMsg(CreateMetadataMsg(), assemblyDef.GetAssemblyId(), assemblyDef.GetName()));

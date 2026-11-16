@@ -49,6 +49,7 @@ internal static class TestMethodDescriptors
             DeclaringTypeFullName: SubjectEntryType.FullName!,
             VersionDescriptor: null,
             VoidMethodNoArgsSignature,
-            InjectHooksRewritingDescriptor);
+            InjectHooksRewritingDescriptor,
+            DeclaringAssemblyName: SubjectEntryType.Assembly.GetName().Name!);
     }
 }

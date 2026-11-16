@@ -32,19 +32,19 @@ public static class SignalMethodDescriptors
         yield return Create(ManualResetEventSlimTypeName, "Reset", Void, [], returnsSuccess: false, RecordedEventType.SignalReset, RecordedEventType.SignalResetResult);
         yield return Create(ManualResetEventSlimTypeName, "Wait", Boolean, [Int32, CancellationToken], returnsSuccess: true, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult);
 
-        yield return Create(CountdownEventTypeName, "Signal", Boolean, [], returnsSuccess: false, RecordedEventType.SignalSet, RecordedEventType.SignalSetResult);
-        yield return Create(CountdownEventTypeName, "Signal", Boolean, [Int32], returnsSuccess: false, RecordedEventType.SignalSet, RecordedEventType.SignalSetResult);
-        yield return Create(CountdownEventTypeName, "Reset", Void, [Int32], returnsSuccess: false, RecordedEventType.SignalReset, RecordedEventType.SignalResetResult);
-        yield return Create(CountdownEventTypeName, "Wait", Boolean, [Int32, CancellationToken], returnsSuccess: true, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult);
+        yield return Create(CountdownEventTypeName, "Signal", Boolean, [], returnsSuccess: false, RecordedEventType.SignalSet, RecordedEventType.SignalSetResult, DeclaringAssemblies.Threading);
+        yield return Create(CountdownEventTypeName, "Signal", Boolean, [Int32], returnsSuccess: false, RecordedEventType.SignalSet, RecordedEventType.SignalSetResult, DeclaringAssemblies.Threading);
+        yield return Create(CountdownEventTypeName, "Reset", Void, [Int32], returnsSuccess: false, RecordedEventType.SignalReset, RecordedEventType.SignalResetResult, DeclaringAssemblies.Threading);
+        yield return Create(CountdownEventTypeName, "Wait", Boolean, [Int32, CancellationToken], returnsSuccess: true, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult, DeclaringAssemblies.Threading);
 
-        yield return Create(BarrierTypeName, "SignalAndWait", Boolean, [Int32, CancellationToken], returnsSuccess: true, RecordedEventType.SignalSet, RecordedEventType.SignalWaitResult);
+        yield return Create(BarrierTypeName, "SignalAndWait", Boolean, [Int32, CancellationToken], returnsSuccess: true, RecordedEventType.SignalSet, RecordedEventType.SignalWaitResult, DeclaringAssemblies.Threading);
 
         yield return Create(CancellationTokenSourceTypeName, "TransitionToCancellationRequested", Boolean, [], returnsSuccess: false, RecordedEventType.SignalSet, RecordedEventType.SignalSetResult);
         yield return Create(CancellationTokenSourceTypeName, "get_IsCancellationRequested", Boolean, [], returnsSuccess: true, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult);
 
         // Internal API behind Parallel.For and Parallel.ForEach
-        yield return Create(ParallelReplicaTStateTypeName, "ExecuteAction", Void, [ArgumentTypeDescriptor.CreateByRef(Boolean)], returnsSuccess: false, RecordedEventType.SignalSetOnReturn, RecordedEventType.SignalSetOnReturnResult);
-        yield return Create(ParallelReplicaTypeName, "Wait", Void, [], returnsSuccess: false, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult);
+        yield return Create(ParallelReplicaTStateTypeName, "ExecuteAction", Void, [ArgumentTypeDescriptor.CreateByRef(Boolean)], returnsSuccess: false, RecordedEventType.SignalSetOnReturn, RecordedEventType.SignalSetOnReturnResult, DeclaringAssemblies.ThreadingTasksParallel);
+        yield return Create(ParallelReplicaTypeName, "Wait", Void, [], returnsSuccess: false, RecordedEventType.SignalWait, RecordedEventType.SignalWaitResult, DeclaringAssemblies.ThreadingTasksParallel);
     }
 
     private static MethodDescriptor Create(
@@ -54,7 +54,8 @@ public static class SignalMethodDescriptors
         ArgumentTypeDescriptor[] parameterTypes,
         bool returnsSuccess,
         RecordedEventType enterInterpretation,
-        RecordedEventType exitInterpretation)
+        RecordedEventType exitInterpretation,
+        string declaringAssemblyName = DeclaringAssemblies.CoreLib)
     {
         return new MethodDescriptor(
             MethodName: methodName,
@@ -71,6 +72,7 @@ public static class SignalMethodDescriptors
                 Arguments: [ObjectRefArg],
                 ReturnValue: returnsSuccess ? ReturnedSuccess : null,
                 MethodEnterInterpretation: (ushort)enterInterpretation,
-                MethodExitInterpretation: (ushort)exitInterpretation));
+                MethodExitInterpretation: (ushort)exitInterpretation),
+            DeclaringAssemblyName: declaringAssemblyName);
     }
 }

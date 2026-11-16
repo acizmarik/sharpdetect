@@ -414,6 +414,11 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => 42).ContinueWith(_ => 0).Wait();
         }
 
+        public static void Test_LockMethods_PolyfillOutsideCoreLib()
+        {
+            LockPolyfill.EnterExit();
+        }
+
 #if NET9_0_OR_GREATER
         public static void Test_LockMethods_EnterExit1()
         {

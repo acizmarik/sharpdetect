@@ -189,6 +189,34 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Lock_PolyfillOutsideCoreLibIsNotHooked(string sdk)
+    {
+        // Arrange
+        const string polyfillModuleFileName = "SharpDetect.E2ETests.Subject.IL.dll";
+        using var services = E2ETestBuilder
+            .ForSubject("Test_LockMethods_PolyfillOutsideCoreLib")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var modulePaths = new Dictionary<ModuleId, string>();
+        var lockEventModules = new HashSet<ModuleId>();
+        plugin.ModuleLoaded += e => modulePaths[e.Args.ModuleId] = e.Args.Path;
+        plugin.LockAcquireAttempted += e => lockEventModules.Add(e.ModuleId);
+        plugin.LockAcquireReturned += e => lockEventModules.Add(e.ModuleId);
+        plugin.LockReleased += e => lockEventModules.Add(e.ModuleId);
+
+        // Execute
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Empty(outcome.Gaps);
+        Assert.Contains(modulePaths.Values, path => Path.GetFileName(path) == polyfillModuleFileName);
+        Assert.DoesNotContain(lockEventModules, moduleId => Path.GetFileName(modulePaths[moduleId]) == polyfillModuleFileName);
+    }
+
+    [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Task_ScheduleAndStart1(string sdk)
     {
