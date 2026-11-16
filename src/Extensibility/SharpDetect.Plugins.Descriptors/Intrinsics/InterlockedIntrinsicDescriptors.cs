@@ -68,7 +68,7 @@ public static class InterlockedIntrinsicDescriptors
         [
             .. elementTypes.Select(type => Create(
                 methodName,
-                ArgumentTypeDescriptor.CreateSimple(type),
+                Sig.Simple(type),
                 additionalParametersCount,
                 genericParametersCount: 0,
                 interpretation))
@@ -82,7 +82,7 @@ public static class InterlockedIntrinsicDescriptors
     {
         return Create(
             methodName,
-            ArgumentTypeDescriptor.CreateGenericMethodTypeParam(0),
+            Sig.MethodTypeParameter(0),
             additionalParametersCount,
             genericParametersCount: 1,
             interpretation);
@@ -95,24 +95,14 @@ public static class InterlockedIntrinsicDescriptors
         byte genericParametersCount,
         FieldAccessIntrinsicInterpretation interpretation)
     {
-        var callingConvention = genericParametersCount != 0
-            ? CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT | CorCallingConvention.IMAGE_CEE_CS_CALLCONV_GENERIC
-            : CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT;
-
         return new FieldAccessIntrinsicDescriptor(
             MethodName: methodName,
             DeclaringTypeFullName: InterlockedTypeName,
             VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: callingConvention,
-                ParametersCount: (byte)(additionalParametersCount + 1),
-                ReturnType: valueType,
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateByRef(valueType),
-                    .. Enumerable.Repeat(valueType, additionalParametersCount)
-                ],
-                GenericParametersCount: genericParametersCount),
+            SignatureDescriptor: MethodSignatureDescriptor.ForStaticMethod(
+                returnType: valueType,
+                parameterTypes: [Sig.ByRef(valueType), .. Enumerable.Repeat(valueType, additionalParametersCount)],
+                genericParametersCount),
             Interpretation: interpretation);
     }
 

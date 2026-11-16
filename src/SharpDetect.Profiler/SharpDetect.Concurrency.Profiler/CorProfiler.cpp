@@ -446,9 +446,9 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::ModuleLoadFinished(ModuleID mod
         _typeInjector.ImportInjectedTypes(assemblyDef, moduleDef);
     }
 
-    _typeInjector.WrapAnalyzedExternMethods(moduleDef);
+    _typeInjector.WrapAnalyzedExternMethods(assemblyDef, moduleDef);
     _typeInjector.ImportMethodWrappers(assemblyDef, moduleDef);
-    _typeInjector.ImportCustomRecordedEventTypes(moduleDef);
+    _typeInjector.ImportCustomRecordedEventTypes(assemblyDef, moduleDef);
     _typeInjector.ResolveFieldAccessIntrinsics(assemblyDef, moduleDef);
 
     _client.Send(LibIPC::Helpers::CreateAssemblyLoadMsg(CreateMetadataMsg(), assemblyDef.GetAssemblyId(), assemblyDef.GetName()));
@@ -716,8 +716,8 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     decision.hasArguments = !descriptor.rewritingDescriptor.arguments.empty();
     decision.hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
     decision.hasIndirects = HasIndirects(descriptor);
-    decision.pushesArgumentsFrame = PushesArgumentsFrame(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
+    decision.pushesArgumentsFrame = decision.emitExitEvent && PushesArgumentsFrame(descriptor);
     decision.genericCapture.store(genericCapture, std::memory_order_relaxed);
 
     auto* stored = &decision;

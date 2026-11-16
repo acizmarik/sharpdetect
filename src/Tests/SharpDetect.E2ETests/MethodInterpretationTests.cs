@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Core.Events;
+using SharpDetect.Core.Events.Profiler;
 using SharpDetect.Core.Plugins;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.TemporalAsserts;
@@ -125,6 +126,34 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_ReleaseReportsNoMethodExit(string sdk)
+    {
+        await LockReleaseReportsNoMethodExit("Test_MonitorMethods_EnterExitLoop", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10Only), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_ExitIfLockTakenReportsNoMethodExit(string sdk)
+    {
+        await LockReleaseReportsNoMethodExit("Test_MonitorMethods_ExitIfLockTaken", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Lock_ReleaseReportsNoMethodExit(string sdk)
+    {
+        await LockReleaseReportsNoMethodExit("Test_LockMethods_EnterExit1", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_ReaderWriterLockSlim_ReleaseReportsNoMethodExit(string sdk)
+    {
+        await LockReleaseReportsNoMethodExit("Test_NoDataRace_ReaderWriterLockSlim_WriteThenRead", sdk);
+    }
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Lock_EnterExit1(string sdk)
     {
@@ -157,6 +186,34 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_Lock_TryEnterExit3(string sdk)
     {
         await LockEnterExit("Test_LockMethods_TryEnterExit3", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Lock_PolyfillOutsideCoreLibIsNotHooked(string sdk)
+    {
+        // Arrange
+        const string polyfillModuleFileName = "SharpDetect.E2ETests.Subject.IL.dll";
+        using var services = E2ETestBuilder
+            .ForSubject("Test_LockMethods_PolyfillOutsideCoreLib")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var modulePaths = new Dictionary<ModuleId, string>();
+        var lockEventModules = new HashSet<ModuleId>();
+        plugin.ModuleLoaded += e => modulePaths[e.Args.ModuleId] = e.Args.Path;
+        plugin.LockAcquireAttempted += e => lockEventModules.Add(e.ModuleId);
+        plugin.LockAcquireReturned += e => lockEventModules.Add(e.ModuleId);
+        plugin.LockReleased += e => lockEventModules.Add(e.ModuleId);
+
+        // Execute
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Empty(outcome.Gaps);
+        Assert.Contains(modulePaths.Values, path => Path.GetFileName(path) == polyfillModuleFileName);
+        Assert.DoesNotContain(lockEventModules, moduleId => Path.GetFileName(modulePaths[moduleId]) == polyfillModuleFileName);
     }
 
     [Theory]
@@ -871,6 +928,35 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
             acquireResults >= Subject.Program.MonitorBalanceLoopIterations,
             $"Expected at least {Subject.Program.MonitorBalanceLoopIterations} acquire results, observed {acquireResults}.");
         Assert.Equal(releaseResults, acquireResults);
+    }
+
+    private async Task LockReleaseReportsNoMethodExit(string subjectArgs, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var releases = 0;
+        var releaseMethods = new HashSet<(ModuleId, MdMethodDef)>();
+        var exits = new List<(ModuleId, MdMethodDef)>();
+        plugin.LockReleased += e =>
+        {
+            releases++;
+            releaseMethods.Add((e.ModuleId, e.MethodToken));
+        };
+        plugin.MethodExited += e => exits.Add((e.Args.ModuleId, e.Args.MethodToken));
+        plugin.MethodExitedWithArguments += e => exits.Add((e.Args.ModuleId, e.Args.MethodToken));
+
+        // Execute
+        var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Empty(outcome.Gaps);
+        Assert.NotEqual(0, releases);
+        Assert.DoesNotContain(exits, exit => releaseMethods.Contains(exit));
     }
 
     private async Task MonitorEnterExit(string subjectArgs, string sdk)

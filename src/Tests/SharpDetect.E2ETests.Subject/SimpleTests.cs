@@ -414,6 +414,11 @@ namespace SharpDetect.E2ETests.Subject
             Task.Run(() => 42).ContinueWith(_ => 0).Wait();
         }
 
+        public static void Test_LockMethods_PolyfillOutsideCoreLib()
+        {
+            LockPolyfill.EnterExit();
+        }
+
 #if NET9_0_OR_GREATER
         public static void Test_LockMethods_EnterExit1()
         {
@@ -3216,6 +3221,30 @@ namespace SharpDetect.E2ETests.Subject
             new object();
             new object();
         }
+
+        // Keep in sync with ObjectTrackingTests in SharpDetect.E2ETests
+        private const int ShortLivedBoxRounds = 10;
+        private const int ShortLivedBoxesPerRound = 500;
+
+        private sealed class ShortLivedBox
+        {
+            public int Value;
+        }
+
+        public static void Test_GarbageCollection_ReleasesStateOfDeadObjects()
+        {
+            for (var round = 0; round < ShortLivedBoxRounds; round++)
+            {
+                for (var i = 0; i < ShortLivedBoxesPerRound; i++)
+                    WriteShortLivedBox(i);
+
+                GC.Collect(2, GCCollectionMode.Forced, true, true);
+                GC.WaitForPendingFinalizers();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void WriteShortLivedBox(int value) => new ShortLivedBox().Value = value;
 
         public static void Test_NonDisposedAnalysis_CustomDisposable_NonDisposed()
         {

@@ -11,6 +11,7 @@ void Profiler::to_json(nlohmann::json& json, const MethodDescriptor& descriptor)
         json["versionDescriptor"] = descriptor.versionDescriptor.value();
     json["signatureDescriptor"] = descriptor.signatureDescriptor;
     json["rewritingDescriptor"] = descriptor.rewritingDescriptor;
+    json["declaringAssemblyName"] = descriptor.declaringAssemblyName;
 }
 
 void Profiler::from_json(const nlohmann::json& json, MethodDescriptor& descriptor)
@@ -22,4 +23,5 @@ void Profiler::from_json(const nlohmann::json& json, MethodDescriptor& descripto
         descriptor.versionDescriptor = json.at("versionDescriptor");
     descriptor.signatureDescriptor = json.at("signatureDescriptor");
     descriptor.rewritingDescriptor = json.at("rewritingDescriptor");
+    descriptor.declaringAssemblyName = json.at("declaringAssemblyName");
 }

@@ -83,6 +83,7 @@ internal sealed class FastTrackDetector
     public int GetTrackedPublicationCount() => _publications.PublicationCount;
     internal int GetIndexedPublicationParticipantCount() => _publications.IndexedParticipantCount;
     internal int GetPublicationObserverEntryCount() => _publications.PendingObservationCount;
+    internal int GetReleasedSemaphorePermitClockCount(ProcessTrackedObjectId semaphoreId) => _semaphorePermits.GetReleasedPermitClockCount(semaphoreId);
 
     public void RecordThreadCreated(ProcessThreadId threadId)
         => _threadClocks.EnsureExists(threadId);
@@ -204,8 +205,8 @@ internal sealed class FastTrackDetector
     public void RecordObjectWaitReturned(ProcessThreadId threadId, ProcessTrackedObjectId lockId)
         => RecordLockAcquired(threadId, lockId);
 
-    public void RecordSemaphoreCreated(ProcessTrackedObjectId semaphoreId, int initialCount)
-        => _semaphorePermits.Create(semaphoreId, initialCount);
+    public void RecordSemaphoreCreated(ProcessTrackedObjectId semaphoreId, int initialCount, int maximumCount = int.MaxValue)
+        => _semaphorePermits.Create(semaphoreId, initialCount, maximumCount);
 
     public void RecordSemaphoreAcquired(ProcessThreadId threadId, ProcessTrackedObjectId semaphoreId)
         => _semaphorePermits.Acquire(semaphoreId, threadId);

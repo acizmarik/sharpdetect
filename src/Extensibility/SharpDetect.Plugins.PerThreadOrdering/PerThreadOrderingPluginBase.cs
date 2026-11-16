@@ -89,6 +89,12 @@ public abstract partial class PerThreadOrderingPluginBase : PluginBase
             return;
         }
 
+        if ((RecordedEventType)args.Interpretation is RecordedEventType.LockReleaseResult or RecordedEventType.SharedLockReleaseResult)
+        {
+            // A release pushes no frame on the shadow call stack
+            return;
+        }
+
         if ((RecordedEventType)args.Interpretation == RecordedEventType.TypeInitializerExit)
         {
             OnTypeInitializerUnwound(id, args);

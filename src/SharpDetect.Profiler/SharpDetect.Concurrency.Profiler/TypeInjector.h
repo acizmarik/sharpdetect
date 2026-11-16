@@ -41,9 +41,9 @@ namespace Profiler
 
 		HRESULT InjectTypesForProfilingFeatures(LibProfiler::ModuleDef& moduleDef);
 		HRESULT ImportInjectedTypes(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
-		HRESULT WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef);
+		HRESULT WrapAnalyzedExternMethods(const LibProfiler::AssemblyDef& assemblyDef, LibProfiler::ModuleDef& moduleDef);
 		HRESULT ImportMethodWrappers(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
-		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef);
+		HRESULT ImportCustomRecordedEventTypes(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef);
 		HRESULT ResolveFieldAccessIntrinsics(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef) const;
 
 	private:

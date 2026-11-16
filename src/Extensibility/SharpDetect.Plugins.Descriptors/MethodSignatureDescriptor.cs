@@ -10,4 +10,34 @@ public record MethodSignatureDescriptor(
     byte ParametersCount,
     ArgumentTypeDescriptor ReturnType,
     ArgumentTypeDescriptor[] ArgumentTypeElements,
-    byte GenericParametersCount = 0);
+    byte GenericParametersCount)
+{
+    public static MethodSignatureDescriptor ForStaticMethod(
+        ArgumentTypeDescriptor returnType,
+        ArgumentTypeDescriptor[] parameterTypes,
+        byte genericParametersCount = 0)
+        => Create(CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT, returnType, parameterTypes, genericParametersCount);
+
+    public static MethodSignatureDescriptor ForInstanceMethod(
+        ArgumentTypeDescriptor returnType,
+        ArgumentTypeDescriptor[] parameterTypes,
+        byte genericParametersCount = 0)
+        => Create(CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS, returnType, parameterTypes, genericParametersCount);
+
+    private static MethodSignatureDescriptor Create(
+        CorCallingConvention callingConvention,
+        ArgumentTypeDescriptor returnType,
+        ArgumentTypeDescriptor[] parameterTypes,
+        byte genericParametersCount)
+    {
+        if (genericParametersCount != 0)
+            callingConvention |= CorCallingConvention.IMAGE_CEE_CS_CALLCONV_GENERIC;
+
+        return new MethodSignatureDescriptor(
+            callingConvention,
+            checked((byte)parameterTypes.Length),
+            returnType,
+            parameterTypes,
+            genericParametersCount);
+    }
+}

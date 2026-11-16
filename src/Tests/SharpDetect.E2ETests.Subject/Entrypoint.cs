@@ -162,6 +162,9 @@ namespace SharpDetect.E2ETests.Subject
                     Test_NoDataRace_Lock_TryEnterWithTimeSpan();
                     break;
 #endif
+                case nameof(Test_LockMethods_PolyfillOutsideCoreLib):
+                    Test_LockMethods_PolyfillOutsideCoreLib();
+                    break;
                 case nameof(Test_SemaphoreSlimMethods_WaitRelease1):
                     Test_SemaphoreSlimMethods_WaitRelease1();
                     break;
@@ -1137,6 +1140,9 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject):
                     Test_SingleGarbageCollection_ObjectTracking_MovedLockedObject();
+                    break;
+                case nameof(Test_GarbageCollection_ReleasesStateOfDeadObjects):
+                    Test_GarbageCollection_ReleasesStateOfDeadObjects();
                     break;
             }
 

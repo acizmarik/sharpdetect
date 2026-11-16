@@ -21,4 +21,15 @@ public record MethodVersionDescriptor(
             to.Minor,
             to.Build);
     }
+
+    public static MethodVersionDescriptor ForMajorVersions(int firstMajor, int lastMajor)
+    {
+        return new MethodVersionDescriptor(
+            firstMajor,
+            FromMinorVersion: 0,
+            FromBuildVersion: 0,
+            lastMajor,
+            ToMinorVersion: int.MaxValue,
+            ToBuildVersion: int.MaxValue);
+    }
 }

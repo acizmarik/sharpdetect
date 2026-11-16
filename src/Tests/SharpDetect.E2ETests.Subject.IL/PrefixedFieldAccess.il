@@ -113,3 +113,37 @@
         ret
     }
 }
+
+.class private auto ansi sealed beforefieldinit System.Threading.Lock
+    extends [System.Runtime]System.Object
+{
+    .method public hidebysig specialname rtspecialname instance void .ctor() cil managed
+    {
+        ldarg.0
+        call instance void [System.Runtime]System.Object::.ctor()
+        ret
+    }
+
+    .method public hidebysig instance void Enter() cil managed noinlining
+    {
+        ret
+    }
+
+    .method public hidebysig instance void Exit() cil managed noinlining
+    {
+        ret
+    }
+}
+
+.class public abstract auto ansi sealed beforefieldinit SharpDetect.E2ETests.Subject.IL.LockPolyfill
+    extends [System.Runtime]System.Object
+{
+    .method public hidebysig static void EnterExit() cil managed
+    {
+        newobj instance void System.Threading.Lock::.ctor()
+        dup
+        call instance void System.Threading.Lock::Enter()
+        call instance void System.Threading.Lock::Exit()
+        ret
+    }
+}

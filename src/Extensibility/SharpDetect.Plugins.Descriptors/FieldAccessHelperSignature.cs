@@ -1,37 +1,28 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-using SharpDetect.Core.Events.Profiler;
-
 namespace SharpDetect.Plugins.Descriptors;
 
 public static class FieldAccessHelperSignature
 {
-    private static ArgumentTypeDescriptor[] CreateArgumentTypes(bool isInstance, bool isGenericStatic) => (isInstance, isGenericStatic) switch
+    public static ArgumentTypeDescriptor[] GetParameterTypes(bool isInstance, bool isGenericStatic = false) => (isInstance, isGenericStatic) switch
     {
         (true, _) =>
         [
-            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT)
+            Sig.Int64,
+            Sig.Object
         ],
         (false, true) =>
         [
-            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8),
-            ArgumentTypeDescriptor.CreateValueType("System.RuntimeTypeHandle")
+            Sig.Int64,
+            Sig.ValueType("System.RuntimeTypeHandle")
         ],
         (false, false) =>
         [
-            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I8)
+            Sig.Int64
         ]
     };
 
     public static MethodSignatureDescriptor Create(bool isInstance, bool isGenericStatic = false)
-    {
-        var argumentTypes = CreateArgumentTypes(isInstance, isGenericStatic);
-        return new MethodSignatureDescriptor(
-            CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-            ParametersCount: (byte)argumentTypes.Length,
-            ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-            ArgumentTypeElements: argumentTypes);
-    }
+        => MethodSignatureDescriptor.ForStaticMethod(Sig.Void, GetParameterTypes(isInstance, isGenericStatic));
 }

@@ -266,7 +266,7 @@ static std::vector<COR_SIGNATURE> SerializeMethodSignatureDescriptor(
     return result;
 }
 
-HRESULT Profiler::TypeInjector::WrapAnalyzedExternMethods(LibProfiler::ModuleDef& moduleDef)
+HRESULT Profiler::TypeInjector::WrapAnalyzedExternMethods(const LibProfiler::AssemblyDef& assemblyDef, LibProfiler::ModuleDef& moduleDef)
 {
     std::unordered_map<mdToken, mdToken> rewritingsBuilder;
 
@@ -278,10 +278,14 @@ HRESULT Profiler::TypeInjector::WrapAnalyzedExternMethods(LibProfiler::ModuleDef
                 declaringTypeFullName,
                 versionDescriptor,
                 signatureDescriptor,
-                rewritingDescriptor] = *methodPtr.get();
+                rewritingDescriptor,
+                declaringAssemblyName] = *methodPtr.get();
 
             // Method should be marked for wrapper injection in order to continue
             if (!rewritingDescriptor.injectManagedWrapper)
+                continue;
+
+            if (declaringAssemblyName != assemblyDef.GetName())
                 continue;
 
             mdTypeDef typeDef;
@@ -480,7 +484,7 @@ HRESULT Profiler::TypeInjector::ResolveFieldAccessIntrinsics(
     return S_OK;
 }
 
-HRESULT Profiler::TypeInjector::ImportCustomRecordedEventTypes(const LibProfiler::ModuleDef& moduleDef)
+HRESULT Profiler::TypeInjector::ImportCustomRecordedEventTypes(const LibProfiler::AssemblyDef& assemblyDef, const LibProfiler::ModuleDef& moduleDef)
 {
     const auto moduleRewritings = _rewriteRegistry.GetModuleRewritings(moduleDef.GetModuleId());
 
@@ -491,7 +495,11 @@ HRESULT Profiler::TypeInjector::ImportCustomRecordedEventTypes(const LibProfiler
             declaringTypeFullName,
             versionDescriptor,
             signatureDescriptor,
-            rewritingDescriptor] = *methodPointer.get();
+            rewritingDescriptor,
+            declaringAssemblyName] = *methodPointer.get();
+
+        if (declaringAssemblyName != assemblyDef.GetName())
+            continue;
 
         // Get declaring type
         mdTypeDef typeDef;

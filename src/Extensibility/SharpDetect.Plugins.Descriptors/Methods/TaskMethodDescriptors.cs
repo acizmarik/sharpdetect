@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using SharpDetect.Core.Events;
-using SharpDetect.Core.Events.Profiler;
 
 namespace SharpDetect.Plugins.Descriptors.Methods;
 
@@ -10,7 +9,6 @@ public static class TaskMethodDescriptors
 {
     private const string TaskTypeName = "System.Threading.Tasks.Task";
     private const string TaskTResultTypeName = "System.Threading.Tasks.Task`1";
-    private const string CancellationTokenTypeName = "System.Threading.CancellationToken";
     private const string ContinuationTaskFromTaskTypeName = "System.Threading.Tasks.ContinuationTaskFromTask";
     private const string ContinuationResultTaskFromTaskTypeName = "System.Threading.Tasks.ContinuationResultTaskFromTask`1";
     private const string ContinuationTaskFromResultTaskTypeName = "System.Threading.Tasks.ContinuationTaskFromResultTask`1";
@@ -20,235 +18,79 @@ public static class TaskMethodDescriptors
     private const string TaskSchedulerTypeName = "System.Threading.Tasks.TaskScheduler";
     private const string TaskContinuationOptionsTypeName = "System.Threading.Tasks.TaskContinuationOptions";
 
-    private static readonly CapturedArgumentDescriptor ObjectRefArg =
-        new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference));
-
-    private static readonly CapturedArgumentDescriptor ContinuationTaskArg =
-        new(1, new((byte)nint.Size, CapturedValue.CaptureAsReference));
-
-    private static readonly MethodDescriptor TaskScheduleAndStart;
-    private static readonly MethodDescriptor TaskInnerInvoke;
-    private static readonly MethodDescriptor TaskTResultInnerInvoke;
-    private static readonly MethodDescriptor ContinuationTaskFromTaskInnerInvoke;
-    private static readonly MethodDescriptor ContinuationResultTaskFromTaskInnerInvoke;
-    private static readonly MethodDescriptor ContinuationTaskFromResultTaskInnerInvoke;
-    private static readonly MethodDescriptor ContinuationResultTaskFromResultTaskInnerInvoke;
-    private static readonly MethodDescriptor TaskWait;
-    private static readonly MethodDescriptor TaskResult;
-    private static readonly MethodDescriptor TaskAwaiterValidateEnd;
-    private static readonly MethodDescriptor TaskTResultTrySetResult;
-    private static readonly MethodDescriptor TaskTrySetResult;
-    private static readonly MethodDescriptor TaskTrySetException;
-    private static readonly MethodDescriptor TaskTrySetCanceled;
-    private static readonly MethodDescriptor TaskTrySetCanceledWithException;
-    private static readonly MethodDescriptor TaskContinueWithCore;
-
-    static TaskMethodDescriptors()
-    {
-        TaskScheduleAndStart = new MethodDescriptor(
-            MethodName: "ScheduleAndStart",
-            DeclaringTypeFullName: TaskTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 1,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: [ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN)]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskSchedule,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
-
-        TaskInnerInvoke = CreateInnerInvokeMethodDescriptorForType(TaskTypeName);
-
-        TaskTResultInnerInvoke = CreateInnerInvokeMethodDescriptorForType(TaskTResultTypeName);
-        
-        ContinuationTaskFromTaskInnerInvoke = CreateInnerInvokeMethodDescriptorForType(ContinuationTaskFromTaskTypeName);
-        
-        ContinuationResultTaskFromTaskInnerInvoke = CreateInnerInvokeMethodDescriptorForType(ContinuationResultTaskFromTaskTypeName);
-        
-        ContinuationTaskFromResultTaskInnerInvoke = CreateInnerInvokeMethodDescriptorForType(ContinuationTaskFromResultTaskTypeName);
-        
-        ContinuationResultTaskFromResultTaskInnerInvoke = CreateInnerInvokeMethodDescriptorForType(ContinuationResultTaskFromResultTaskTypeName);
-        
-        TaskWait = new MethodDescriptor(
-            MethodName: "Wait",
-            DeclaringTypeFullName: TaskTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_I4),
-                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: new CapturedValueDescriptor(sizeof(bool), CapturedValue.CaptureAsValue),
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
-                MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
-        
-        TaskResult = new MethodDescriptor(
-            MethodName: "get_Result",
-            DeclaringTypeFullName: TaskTResultTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 0,
-                ReturnType: ArgumentTypeDescriptor.CreateGenericTypeParam(0),
-                ArgumentTypeElements: []),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
-                MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
-        
-        TaskAwaiterValidateEnd = new MethodDescriptor(
-            MethodName: "ValidateEnd",
-            DeclaringTypeFullName: TaskAwaiterTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_DEFAULT,
-                ParametersCount: 2,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateClass(TaskTypeName),
-                    ArgumentTypeDescriptor.CreateValueType(ConfigureAwaitOptionsTypeName)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ new(0, new((byte)nint.Size, CapturedValue.CaptureAsReference)) ],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskJoinStart,
-                MethodExitInterpretation: (ushort)RecordedEventType.TaskJoinFinish));
-
-        TaskTResultTrySetResult = CreatePromiseCompletionMethodDescriptor(
-            TaskTResultTypeName,
-            "TrySetResult",
-            ArgumentTypeDescriptor.CreateGenericTypeParam(0));
-
-        TaskTrySetResult = CreatePromiseCompletionMethodDescriptor(
-            TaskTypeName,
-            "TrySetResult");
-
-        TaskTrySetException = CreatePromiseCompletionMethodDescriptor(
-            TaskTypeName,
-            "TrySetException",
-            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT));
-
-        TaskTrySetCanceled = CreatePromiseCompletionMethodDescriptor(
-            TaskTypeName,
-            "TrySetCanceled",
-            ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName));
-
-        TaskTrySetCanceledWithException = CreatePromiseCompletionMethodDescriptor(
-            TaskTypeName,
-            "TrySetCanceled",
-            ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName),
-            ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_OBJECT));
-
-        TaskContinueWithCore = new MethodDescriptor(
-            MethodName: "ContinueWithCore",
-            DeclaringTypeFullName: TaskTypeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 4,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements:
-                [
-                    ArgumentTypeDescriptor.CreateClass(TaskTypeName),
-                    ArgumentTypeDescriptor.CreateClass(TaskSchedulerTypeName),
-                    ArgumentTypeDescriptor.CreateValueType(CancellationTokenTypeName),
-                    ArgumentTypeDescriptor.CreateValueType(TaskContinuationOptionsTypeName)
-                ]),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ContinuationTaskArg],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskContinuationRegister,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
-    }
-
-    private static MethodDescriptor CreatePromiseCompletionMethodDescriptor(
-        string typeName,
-        string methodName,
-        params ArgumentTypeDescriptor[] parameters)
-    {
-        return new MethodDescriptor(
-            MethodName: methodName,
-            DeclaringTypeFullName: typeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: (byte)parameters.Length,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_BOOLEAN),
-                ArgumentTypeElements: parameters),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskPromiseComplete,
-                MethodExitInterpretation: null,
-                EmitExitEvent: false));
-    }
-
-    private static MethodDescriptor CreateInnerInvokeMethodDescriptorForType(string typeName)
-    {
-        return new MethodDescriptor(
-            MethodName: "InnerInvoke",
-            DeclaringTypeFullName: typeName,
-            VersionDescriptor: null,
-            SignatureDescriptor: new MethodSignatureDescriptor(
-                CallingConvention: CorCallingConvention.IMAGE_CEE_CS_CALLCONV_HASTHIS,
-                ParametersCount: 0,
-                ReturnType: ArgumentTypeDescriptor.CreateSimple(CorElementType.ELEMENT_TYPE_VOID),
-                ArgumentTypeElements: []),
-            RewritingDescriptor: new MethodRewritingDescriptor(
-                InjectHooks: true,
-                InjectManagedWrapper: false,
-                Arguments: [ObjectRefArg],
-                ReturnValue: null,
-                MethodEnterInterpretation: (ushort)RecordedEventType.TaskStart,
-                MethodExitInterpretation: (ushort)RecordedEventType.TaskComplete));
-    }
-    
-    public static IEnumerable<MethodDescriptor> GetAllMethods()
-    {
+    private static readonly MethodDescriptor[] AllMethods =
+    [
         // Internal API
-        yield return TaskScheduleAndStart;
-        yield return TaskInnerInvoke;
-        yield return TaskTResultInnerInvoke;
-        yield return ContinuationTaskFromTaskInnerInvoke;
-        yield return ContinuationResultTaskFromTaskInnerInvoke;
-        yield return ContinuationTaskFromResultTaskInnerInvoke;
-        yield return ContinuationResultTaskFromResultTaskInnerInvoke;
-        yield return TaskAwaiterValidateEnd;
-        yield return TaskTResultTrySetResult;
-        yield return TaskTrySetResult;
-        yield return TaskTrySetException;
-        yield return TaskTrySetCanceled;
-        yield return TaskTrySetCanceledWithException;
-        yield return TaskContinueWithCore;
+        MethodDescriptor.ForInstanceMethod(TaskTypeName, "ScheduleAndStart")
+            .Parameters(Sig.Boolean)
+            .CaptureThis()
+            .OnEnter(RecordedEventType.TaskSchedule)
+            .Build(),
+        CreateInnerInvoke(TaskTypeName),
+        CreateInnerInvoke(TaskTResultTypeName),
+        CreateInnerInvoke(ContinuationTaskFromTaskTypeName),
+        CreateInnerInvoke(ContinuationResultTaskFromTaskTypeName),
+        CreateInnerInvoke(ContinuationTaskFromResultTaskTypeName),
+        CreateInnerInvoke(ContinuationResultTaskFromResultTaskTypeName),
+        MethodDescriptor.ForStaticMethod(TaskAwaiterTypeName, "ValidateEnd")
+            .Parameters(Sig.Class(TaskTypeName), Sig.ValueType(ConfigureAwaitOptionsTypeName))
+            .CaptureParameter(0, Capture.Reference)
+            .OnEnter(RecordedEventType.TaskJoinStart)
+            .OnExit(RecordedEventType.TaskJoinFinish)
+            .Build(),
+        CreatePromiseCompletion(TaskTResultTypeName, "TrySetResult", Sig.TypeParameter(0)),
+        CreatePromiseCompletion(TaskTypeName, "TrySetResult"),
+        CreatePromiseCompletion(TaskTypeName, "TrySetException", Sig.Object),
+        CreatePromiseCompletion(TaskTypeName, "TrySetCanceled", Sig.CancellationToken),
+        CreatePromiseCompletion(TaskTypeName, "TrySetCanceled", Sig.CancellationToken, Sig.Object),
+        MethodDescriptor.ForInstanceMethod(TaskTypeName, "ContinueWithCore")
+            .Parameters(
+                Sig.Class(TaskTypeName),
+                Sig.Class(TaskSchedulerTypeName),
+                Sig.CancellationToken,
+                Sig.ValueType(TaskContinuationOptionsTypeName))
+            .CaptureParameter(0, Capture.Reference)
+            .OnEnter(RecordedEventType.TaskContinuationRegister)
+            .Build(),
 
         // Common public API
-        yield return TaskWait;
-        yield return TaskResult;
+        MethodDescriptor.ForInstanceMethod(TaskTypeName, "Wait")
+            .Parameters(Sig.Int32, Sig.CancellationToken)
+            .Returns(Sig.Boolean)
+            .CaptureThis()
+            .CaptureReturnValue(Capture.Boolean)
+            .OnEnter(RecordedEventType.TaskJoinStart)
+            .OnExit(RecordedEventType.TaskJoinFinish)
+            .Build(),
+        MethodDescriptor.ForInstanceMethod(TaskTResultTypeName, "get_Result")
+            .Returns(Sig.TypeParameter(0))
+            .CaptureThis()
+            .OnEnter(RecordedEventType.TaskJoinStart)
+            .OnExit(RecordedEventType.TaskJoinFinish)
+            .Build(),
+    ];
+
+    public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;
+
+    private static MethodDescriptor CreatePromiseCompletion(
+        string typeName,
+        string methodName,
+        params ArgumentTypeDescriptor[] parameterTypes)
+    {
+        return MethodDescriptor.ForInstanceMethod(typeName, methodName)
+            .Parameters(parameterTypes)
+            .Returns(Sig.Boolean)
+            .CaptureThis()
+            .OnEnter(RecordedEventType.TaskPromiseComplete)
+            .Build();
+    }
+
+    private static MethodDescriptor CreateInnerInvoke(string typeName)
+    {
+        return MethodDescriptor.ForInstanceMethod(typeName, "InnerInvoke")
+            .CaptureThis()
+            .OnEnter(RecordedEventType.TaskStart)
+            .OnExit(RecordedEventType.TaskComplete)
+            .Build();
     }
 }
-
