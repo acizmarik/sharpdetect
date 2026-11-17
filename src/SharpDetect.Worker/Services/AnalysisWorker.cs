@@ -60,11 +60,13 @@ public sealed class AnalysisWorker : IAnalysisWorker
             _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
 
             var targetStartTimestamp = Stopwatch.GetTimestamp();
-            using var targetCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(targetCts.Token);
+            using var targetCts = new CancellationTokenSource();
+            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(targetCts.Token, cancellationToken);
             var rootPid = (uint)targetApplicationProcess.ProcessId;
             AnalysisWorkerMetrics.TargetStarted(rootPid);
             _logger.LogInformation("Started process with PID: {Pid}.", rootPid);
+            await using var interruptLogging = cancellationToken.Register(
+                () => _logger.LogInformation("Interrupting process with PID: {Pid}.", rootPid));
 
             var targetDoneTimestamp = new StrongBox<long>(0L);
             var targetExitTimestamp = targetApplicationProcess.Task.ContinueWith(
@@ -82,7 +84,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
             long processTailEnd;
             try
             {
-                processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, progress, cancellationToken);
+                processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, progress, CancellationToken.None);
             }
             catch
             {
@@ -92,23 +94,16 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
             _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", rootPid);
 
-            var commandResult = await targetApplicationProcess;
+            var targetExitCode = await GetTargetExitCodeAsync(targetApplicationProcess);
             var targetExit = await targetExitTimestamp;
             AnalysisWorkerMetrics.TargetWallCompleted(
                 Stopwatch.GetElapsedTime(targetStartTimestamp, targetExit));
             var processTail = Stopwatch.GetElapsedTime(targetExit, processTailEnd);
             AnalysisWorkerMetrics.ProcessTailCompleted(processTail > TimeSpan.Zero ? processTail : TimeSpan.Zero);
-            if (commandResult.ExitCode != 0)
-            {
-                var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
-                _logger.Log(
-                    level,
-                    "Target process exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}).",
-                    commandResult.ExitCode,
-                    commandResult.ExitCode);
-            }
+            if (targetExitCode is { } exitCode and not 0)
+                LogNonZeroExitCode(exitCode);
 
-            return CreateOutcome(progress, commandResult.ExitCode);
+            return CreateOutcome(progress, targetExitCode);
         }
         finally
         {
@@ -118,6 +113,39 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
     
+    private void LogNonZeroExitCode(int exitCode)
+    {
+        if (_arguments.Target.Kind != TargetKind.TestAssembly)
+        {
+            _logger.LogWarning("Target process exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}).", exitCode, exitCode);
+            return;
+        }
+
+        if (IsMtpZeroTestsExitCode(exitCode))
+            return;
+
+        _logger.LogWarning(
+            "Test runner exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}). A test failed, or the tests could not be run.",
+            exitCode,
+            exitCode);
+    }
+
+    private bool IsMtpZeroTestsExitCode(int? exitCode)
+        => _arguments.Target is { Kind: TargetKind.TestAssembly, Test.Runner: TestRunner.Mtp } && exitCode == MtpZeroTestsExitCode;
+
+    private static async Task<int?> GetTargetExitCodeAsync(CommandTask<CommandResult> targetProcess)
+    {
+        try
+        {
+            return (await targetProcess).ExitCode;
+        }
+        catch (OperationCanceledException)
+        {
+            // The target was interrupted on request; its exit code is not reported in that case
+            return null;
+        }
+    }
+
     private async Task TerminateTargetAsync(CancellationTokenSource targetCts, Task targetTask, uint rootPid)
     {
         if (!targetTask.IsCompleted)
@@ -412,7 +440,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
     
-    private AnalysisOutcome CreateOutcome(AnalysisProgress progress, int targetExitCode)
+    private AnalysisOutcome CreateOutcome(AnalysisProgress progress, int? targetExitCode)
     {
         var gaps = new List<AnalysisGap>();
         if (progress.RegisteredPids.Count == 0)
@@ -434,11 +462,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
         if (progress.DroppedRecords > 0)
             gaps.Add(new AnalysisGap(AnalysisGapKind.EventsDropped, $"{progress.DroppedRecords} event(s) were dropped before reaching the analysis."));
 
-        if (_arguments.Target is { Kind: TargetKind.TestAssembly, Test.Runner: TestRunner.Mtp } && targetExitCode == MtpZeroTestsExitCode)
+        if (IsMtpZeroTestsExitCode(targetExitCode))
             gaps.Add(new AnalysisGap(AnalysisGapKind.NoTestsRan, "No tests ran. The test filter matched no tests."));
 
         foreach (var gap in gaps)
-            _logger.LogWarning("Analysis is incomplete: {Gap}", gap.Description);
+            _logger.LogInformation("Analysis is incomplete: {Gap}", gap.Description);
 
         return new AnalysisOutcome(gaps);
     }

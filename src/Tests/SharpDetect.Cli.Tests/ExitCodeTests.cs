@@ -41,6 +41,18 @@ public class ExitCodeTests
     }
 
     [Theory]
+    [InlineData(false, ExitCode.AnalysisIncomplete)]
+    [InlineData(true, ExitCode.IssuesFoundAnalysisIncomplete)]
+    public void GetExitCode_StoppedByUser_IsIncomplete(bool issuesFound, ExitCode expected)
+    {
+        var outcome = new AnalysisOutcome([]).WithGap(new AnalysisGap(AnalysisGapKind.StoppedByUser, "Analysis was stopped by the user."));
+
+        var exitCode = RunCommandHandler.GetExitCode(outcome, issuesFound);
+
+        Assert.Equal(expected, exitCode);
+    }
+
+    [Theory]
     [InlineData("run", "--nonexisting")]
     [InlineData("run", "--test", "--runner", "RandomNonExisting", "--plugin", "FastTrack", "--target", "tests.dll")]
     public async Task CommandLineParseError_ExitsWithUsageError(params string[] args)

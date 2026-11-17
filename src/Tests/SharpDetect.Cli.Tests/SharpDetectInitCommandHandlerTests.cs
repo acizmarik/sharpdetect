@@ -70,6 +70,9 @@ public class SharpDetectInitCommandHandlerTests
                 "Path": "TestTarget.dll",
                 "Kind": "TestAssembly",
                 "Args": [],
+                "RedirectInputOutput": {
+                  "SingleConsoleMode": true
+                },
                 "Test": {
                   "Runner": "Mtp",
                   "Filter": "FullyQualifiedName~MyNamespace.RaceFact",

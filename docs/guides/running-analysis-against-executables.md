@@ -134,7 +134,7 @@ These output options can also be combined with a configuration file (`sharpdetec
 | 1 | The command line could not be parsed. |
 | 2 | The analysis failed due to an internal error. |
 | 3 | The configuration is invalid, or the plugin failed to load. |
-| 4 | The analysis was cancelled. |
+| 4 | Not used. A second Ctrl+C terminates the tool immediately, without a report. |
 | 5 | The analysis completed and found one or more issues. |
 | 6 | The analysis finished without finding issues, but some events or processes are missing from it. The report is still written. |
 | 7 | The analysis found one or more issues, but some events or processes are missing from it (for example, the target crashed). The report is still written. |
