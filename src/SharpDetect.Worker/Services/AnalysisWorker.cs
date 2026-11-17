@@ -101,14 +101,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
             var processTail = Stopwatch.GetElapsedTime(targetExit, processTailEnd);
             AnalysisWorkerMetrics.ProcessTailCompleted(processTail > TimeSpan.Zero ? processTail : TimeSpan.Zero);
             if (targetExitCode is { } exitCode and not 0)
-            {
-                var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
-                _logger.Log(
-                    level,
-                    "Target process exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}).",
-                    exitCode,
-                    exitCode);
-            }
+                LogNonZeroExitCode(exitCode);
 
             return CreateOutcome(progress, targetExitCode);
         }
@@ -120,6 +113,26 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
     
+    private void LogNonZeroExitCode(int exitCode)
+    {
+        if (_arguments.Target.Kind != TargetKind.TestAssembly)
+        {
+            _logger.LogWarning("Target process exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}).", exitCode, exitCode);
+            return;
+        }
+
+        if (IsMtpZeroTestsExitCode(exitCode))
+            return;
+
+        _logger.LogWarning(
+            "Test runner exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}). A test failed, or the tests could not be run.",
+            exitCode,
+            exitCode);
+    }
+
+    private bool IsMtpZeroTestsExitCode(int? exitCode)
+        => _arguments.Target is { Kind: TargetKind.TestAssembly, Test.Runner: TestRunner.Mtp } && exitCode == MtpZeroTestsExitCode;
+
     private static async Task<int?> GetTargetExitCodeAsync(CommandTask<CommandResult> targetProcess)
     {
         try
@@ -449,11 +462,11 @@ public sealed class AnalysisWorker : IAnalysisWorker
         if (progress.DroppedRecords > 0)
             gaps.Add(new AnalysisGap(AnalysisGapKind.EventsDropped, $"{progress.DroppedRecords} event(s) were dropped before reaching the analysis."));
 
-        if (_arguments.Target is { Kind: TargetKind.TestAssembly, Test.Runner: TestRunner.Mtp } && targetExitCode == MtpZeroTestsExitCode)
+        if (IsMtpZeroTestsExitCode(targetExitCode))
             gaps.Add(new AnalysisGap(AnalysisGapKind.NoTestsRan, "No tests ran. The test filter matched no tests."));
 
         foreach (var gap in gaps)
-            _logger.LogWarning("Analysis is incomplete: {Gap}", gap.Description);
+            _logger.LogInformation("Analysis is incomplete: {Gap}", gap.Description);
 
         return new AnalysisOutcome(gaps);
     }

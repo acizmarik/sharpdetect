@@ -79,7 +79,8 @@ internal sealed class InitCommandHandler
                 test: new TestTargetConfigurationArgs(
                     options.TestRunner ?? TestTargetConfigurationArgs.DefaultRunner,
                     options.TestFilter,
-                    additionalRunnerArgs: options.TargetArguments))
+                    additionalRunnerArgs: options.TargetArguments),
+                redirectInputOutput: new RedirectInputOutputConfigurationArgs(singleConsoleMode: true))
             : new TargetConfigurationArgs(
                 path: options.TargetPath,
                 args: options.TargetArguments,
