@@ -266,6 +266,12 @@ Task("Verify-Native-Compatibility")
         if (headers.Contains("libstdc++.so"))
             throw new Exception($"{name} must link libstdc++ statically.");
     }
+
+    foreach (var (name, headers) in ReadStagedNativeLibraryHeaders("win-x64"))
+    {
+        if (Regex.IsMatch(headers, @"DLL Name: (MSVCP|VCRUNTIME)", RegexOptions.IgnoreCase))
+            throw new Exception($"{name} must link the MSVC runtime statically.");
+    }
 });
 
 IEnumerable<(string Name, string Headers)> ReadStagedNativeLibraryHeaders(string runtimeIdentifier)
