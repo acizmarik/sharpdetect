@@ -115,12 +115,10 @@ internal sealed class InitCommandHandler
             [SkipInstrumentationForAssembliesOption] = instrumentationSkipList
         };
 
-        if (options.CollectStackTraces)
-        {
-            configuration[EnableStackTraceCollectionOption] = true;
-            if (options.StackTraceDepth is { } depth)
-                configuration[StackTraceCollectionMaxDepthOption] = depth;
-        }
+        if (!options.CollectStackTraces)
+            configuration[EnableStackTraceCollectionOption] = false;
+        else if (options.StackTraceDepth is { } depth)
+            configuration[StackTraceCollectionMaxDepthOption] = depth;
 
         return configuration;
     }

@@ -16,7 +16,7 @@ public sealed class FastTrackPluginConfiguration : PluginOptionsConfiguration, I
     public ImmutableArray<string> SkipInstrumentationForAssemblies { get; init; } = WellKnownModules.SystemModulePrefixes;
     
     // Stack trace collection
-    public bool EnableStackTraceCollection { get; init; } = false;
+    public bool EnableStackTraceCollection { get; init; } = true;
     public int StackTraceCollectionMaxDepth { get; init; } = DataRaceStackTraceOptions.DefaultMaxDepth;
     public ImmutableArray<string> StackTraceCollectionForFields { get; init; } = [];
 

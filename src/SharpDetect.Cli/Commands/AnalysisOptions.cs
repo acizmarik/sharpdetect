@@ -14,7 +14,7 @@ internal sealed record AnalysisOptions(
     TestRunner? TestRunner = null,
     string? TestFilter = null,
     bool InstrumentSystemLibraries = false,
-    bool CollectStackTraces = false,
+    bool CollectStackTraces = true,
     int? StackTraceDepth = null,
     ImmutableArray<string> TargetArguments = default,
     OutputOptions? Output = null)

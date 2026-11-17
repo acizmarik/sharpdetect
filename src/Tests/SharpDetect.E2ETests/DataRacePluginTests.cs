@@ -794,7 +794,11 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
                 StackTraceCollectionMaxDepth = 8,
                 StackTraceCollectionForFields = Array.Empty<string>()
             }
-            : new { SkipInstrumentationForAssemblies = SkipSystemAssemblies };
+            : new
+            {
+                SkipInstrumentationForAssemblies = SkipSystemAssemblies,
+                EnableStackTraceCollection = false
+            };
     }
 
     [Theory]
