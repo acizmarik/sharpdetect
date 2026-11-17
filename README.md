@@ -154,7 +154,7 @@ dotnet cake.cs
 ## Platform Support
 
 SharpDetect supports analysis of programs targeting .NET 8, 9, and 10.
-Supported operating systems are Windows and Linux. Supported architecture is x64.
+Supported operating systems are Windows and Linux (glibc 2.34 or newer). Supported architecture is x64.
 
 ## Acknowledgments
 
