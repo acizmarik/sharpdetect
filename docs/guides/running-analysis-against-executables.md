@@ -59,16 +59,16 @@ sharpdetect run \
 
 ## Stack Traces
 
-By default, data race reports show a single frame for each conflicting access.
-Pass `--stack-traces` to collect a stack trace for every analyzed access, and `--stack-trace-depth <n>` to change the maximum number of frames (8 by default).
-Stack-trace collection adds overhead; to restrict it to specific fields, use `StackTraceCollectionForFields` in a [configuration file](running-analysis-with-configuration-file.md#data-race-plugin-options).
+By default, data race reports show a stack trace for each conflicting access.
+Pass `--stack-trace-depth <n>` to change the maximum number of frames (5 by default):
 
 ```bash
 sharpdetect run \
   --target "bin/Debug/net10.0/MyApp.dll" \
-  --stack-traces \
   --stack-trace-depth 16
 ```
+
+Stack-trace collection adds overhead. Pass `--no-stack-traces` to report only the frame at the point of each access, or restrict collection to specific fields with `StackTraceCollectionForFields` in a [configuration file](running-analysis-with-configuration-file.md#data-race-plugin-options).
 
 ## Console Output
 
