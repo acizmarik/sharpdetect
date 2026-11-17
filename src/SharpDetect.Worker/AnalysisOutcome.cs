@@ -10,7 +10,8 @@ public enum AnalysisGapKind
     ProcessNotFinished,
     EventsDiscarded,
     EventsDropped,
-    NoTestsRan
+    NoTestsRan,
+    StoppedByUser
 }
 
 public sealed record AnalysisGap(AnalysisGapKind Kind, string Description);
@@ -18,4 +19,6 @@ public sealed record AnalysisGap(AnalysisGapKind Kind, string Description);
 public sealed record AnalysisOutcome(IReadOnlyList<AnalysisGap> Gaps)
 {
     public bool IsComplete => Gaps.Count == 0;
+
+    public AnalysisOutcome WithGap(AnalysisGap gap) => this with { Gaps = [.. Gaps, gap] };
 }

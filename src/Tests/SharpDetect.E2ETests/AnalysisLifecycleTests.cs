@@ -20,6 +20,9 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
     public const string CollectionName = "E2E_AnalysisLifecycleTests";
     private const string ShortSubject = "Test_MultiProcess_Child_LockAndExit";
 
+    // Keep in sync with Program.WaitingForInterruptThreadName in SharpDetect.E2ETests.Subject
+    private const string WaitingForInterruptThreadName = "WaitingForInterrupt";
+
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task AnalysisFailure_TerminatesTarget(string sdk)
@@ -55,6 +58,27 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
         var outcome = await analysisWorker.ExecuteAsync(CancellationToken.None);
 
         // Assert
+        Assert.Empty(outcome.Gaps);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task InterruptedTarget_AnalysisIsComplete(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_Lifecycle_StopsOnInterrupt")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        using var interrupt = new CancellationTokenSource();
+        var pluginHost = new InterruptingPluginHost(services.GetRequiredService<IPluginHost>(), interrupt);
+        var analysisWorker = ActivatorUtilities.CreateInstance<AnalysisWorker>(services, pluginHost);
+
+        // Act
+        var outcome = await analysisWorker.ExecuteAsync(interrupt.Token);
+
+        // Assert
+        Assert.True(interrupt.IsCancellationRequested);
         Assert.Empty(outcome.Gaps);
     }
 
@@ -185,6 +209,17 @@ public class AnalysisLifecycleTests(ITestOutputHelper testOutput)
         catch (ArgumentException)
         {
             return false;
+        }
+    }
+
+    private sealed class InterruptingPluginHost(IPluginHost inner, CancellationTokenSource interrupt) : IPluginHost
+    {
+        public RecordedEventState ProcessEvent(RecordedEvent recordedEvent)
+        {
+            if (recordedEvent.EventArgs is ThreadRenameRecordedEvent { NewName: WaitingForInterruptThreadName })
+                interrupt.Cancel();
+
+            return inner.ProcessEvent(recordedEvent);
         }
     }
 

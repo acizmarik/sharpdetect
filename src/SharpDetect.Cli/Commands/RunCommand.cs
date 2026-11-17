@@ -21,6 +21,7 @@ public sealed partial class RunCommand(PassThroughArguments passThroughArguments
 
         var useInlineForm = string.IsNullOrEmpty(ConfigurationFile);
         RunCommandHandler? commandHandler = null;
+        var stopToken = console.RegisterCancellationHandler();
 
         try
         {
@@ -35,18 +36,11 @@ public sealed partial class RunCommand(PassThroughArguments passThroughArguments
                 commandHandler = new RunCommandHandler(ConfigurationFile!, ToOutputOptions());
             }
 
-            var cancellationToken = console.RegisterCancellationHandler();
-            await commandHandler.ExecuteAsync(console, cancellationToken);
+            await commandHandler.ExecuteAsync(console, stopToken);
         }
         catch (CommandException)
         {
             throw;
-        }
-        catch (OperationCanceledException)
-        {
-            throw new CommandException(
-                message: "Analysis was cancelled by user",
-                exitCode: (int)ExitCode.Cancelled);
         }
         catch (Exception exception)
         {

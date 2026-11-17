@@ -76,11 +76,14 @@ internal sealed class RunCommandHandler : IDisposable
         return provider;
     }
 
-    public async ValueTask ExecuteAsync(IConsole console, CancellationToken cancellationToken)
+    public async ValueTask ExecuteAsync(IConsole console, CancellationToken stopToken)
     {
         // Execute analysis
         var worker = _serviceProvider.GetRequiredService<IAnalysisWorker>();
-        var outcome = await worker.ExecuteAsync(cancellationToken);
+        var interruptTargetToken = OperatingSystem.IsWindows() ? stopToken : CancellationToken.None;
+        var outcome = await worker.ExecuteAsync(interruptTargetToken);
+        if (stopToken.IsCancellationRequested)
+            outcome = outcome.WithGap(new AnalysisGap(AnalysisGapKind.StoppedByUser, "Analysis was stopped by the user."));
         
         // Create report summary
         var plugin = _serviceProvider.GetRequiredService<IPlugin>();
@@ -92,7 +95,7 @@ internal sealed class RunCommandHandler : IDisposable
         try
         {
             if (_arguments.Analysis.RenderReport)
-                reportPath = Path.GetFullPath(await RenderAndWriteReport(plugin, reportSummary, analysisWarnings, cancellationToken));
+                reportPath = Path.GetFullPath(await RenderAndWriteReport(plugin, reportSummary, analysisWarnings));
         }
         finally
         {
@@ -146,8 +149,7 @@ internal sealed class RunCommandHandler : IDisposable
     private Task<string> RenderAndWriteReport(
         IPlugin plugin,
         Summary reportSummary,
-        IReadOnlyList<string> analysisWarnings,
-        CancellationToken cancellationToken)
+        IReadOnlyList<string> analysisWarnings)
     {
         var reportDirectory = _arguments.Analysis.ReportsFolder;
         var reportFileName = _arguments.Analysis.ReportFileName;
@@ -159,7 +161,7 @@ internal sealed class RunCommandHandler : IDisposable
             plugin.ReportTemplates,
             _rawConfigurationJson,
             analysisWarnings);
-        return writer.Write(reportFileName, reportDirectory, context, renderer, cancellationToken);
+        return writer.Write(reportFileName, reportDirectory, context, renderer, CancellationToken.None);
     }
 
     private static string LoadConfigurationJson(string configurationPath)

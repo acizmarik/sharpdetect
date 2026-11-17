@@ -3287,6 +3287,23 @@ namespace SharpDetect.E2ETests.Subject
             System.Diagnostics.Process.GetCurrentProcess().Kill();
         }
 
+        // Keep in sync with AnalysisLifecycleTests in SharpDetect.E2ETests
+        private const string WaitingForInterruptThreadName = "WaitingForInterrupt";
+
+        public static void Test_Lifecycle_StopsOnInterrupt()
+        {
+            using var interrupted = new ManualResetEventSlim();
+            Console.CancelKeyPress += (_, args) =>
+            {
+                args.Cancel = true;
+                interrupted.Set();
+            };
+
+            Thread.CurrentThread.Name = WaitingForInterruptThreadName;
+            if (!interrupted.Wait(TimeSpan.FromMinutes(1)))
+                System.Diagnostics.Process.GetCurrentProcess().Kill();
+        }
+
         public static void Test_Lifecycle_ThrowsUnhandledException()
         {
             throw new InvalidProgramException("Simulate failed instrumentation");

@@ -60,11 +60,13 @@ public sealed class AnalysisWorker : IAnalysisWorker
             _logger.LogTrace("Serialized analyzed method descriptors into file: \"{Path}\".", configurationPath);
 
             var targetStartTimestamp = Stopwatch.GetTimestamp();
-            using var targetCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(targetCts.Token);
+            using var targetCts = new CancellationTokenSource();
+            var targetApplicationProcess = BuildTargetApplicationCommand().ExecuteAsync(targetCts.Token, cancellationToken);
             var rootPid = (uint)targetApplicationProcess.ProcessId;
             AnalysisWorkerMetrics.TargetStarted(rootPid);
             _logger.LogInformation("Started process with PID: {Pid}.", rootPid);
+            await using var interruptLogging = cancellationToken.Register(
+                () => _logger.LogInformation("Interrupting process with PID: {Pid}.", rootPid));
 
             var targetDoneTimestamp = new StrongBox<long>(0L);
             var targetExitTimestamp = targetApplicationProcess.Task.ContinueWith(
@@ -82,7 +84,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
             long processTailEnd;
             try
             {
-                processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, progress, cancellationToken);
+                processTailEnd = ExecuteAnalysis(targetApplicationProcess.Task, rootPid, targetDoneTimestamp, progress, CancellationToken.None);
             }
             catch
             {
@@ -92,23 +94,23 @@ public sealed class AnalysisWorker : IAnalysisWorker
 
             _logger.LogInformation("Terminating analysis of process with PID: {Pid}.", rootPid);
 
-            var commandResult = await targetApplicationProcess;
+            var targetExitCode = await GetTargetExitCodeAsync(targetApplicationProcess);
             var targetExit = await targetExitTimestamp;
             AnalysisWorkerMetrics.TargetWallCompleted(
                 Stopwatch.GetElapsedTime(targetStartTimestamp, targetExit));
             var processTail = Stopwatch.GetElapsedTime(targetExit, processTailEnd);
             AnalysisWorkerMetrics.ProcessTailCompleted(processTail > TimeSpan.Zero ? processTail : TimeSpan.Zero);
-            if (commandResult.ExitCode != 0)
+            if (targetExitCode is { } exitCode and not 0)
             {
                 var level = _arguments.Target.Kind == TargetKind.TestAssembly ? LogLevel.Information : LogLevel.Warning;
                 _logger.Log(
                     level,
                     "Target process exited with non-zero exit code: {ExitCode} (0x{ExitCodeHex:X8}).",
-                    commandResult.ExitCode,
-                    commandResult.ExitCode);
+                    exitCode,
+                    exitCode);
             }
 
-            return CreateOutcome(progress, commandResult.ExitCode);
+            return CreateOutcome(progress, targetExitCode);
         }
         finally
         {
@@ -118,6 +120,19 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
     
+    private static async Task<int?> GetTargetExitCodeAsync(CommandTask<CommandResult> targetProcess)
+    {
+        try
+        {
+            return (await targetProcess).ExitCode;
+        }
+        catch (OperationCanceledException)
+        {
+            // The target was interrupted on request; its exit code is not reported in that case
+            return null;
+        }
+    }
+
     private async Task TerminateTargetAsync(CancellationTokenSource targetCts, Task targetTask, uint rootPid)
     {
         if (!targetTask.IsCompleted)
@@ -412,7 +427,7 @@ public sealed class AnalysisWorker : IAnalysisWorker
         }
     }
     
-    private AnalysisOutcome CreateOutcome(AnalysisProgress progress, int targetExitCode)
+    private AnalysisOutcome CreateOutcome(AnalysisProgress progress, int? targetExitCode)
     {
         var gaps = new List<AnalysisGap>();
         if (progress.RegisteredPids.Count == 0)
