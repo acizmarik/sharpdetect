@@ -45,11 +45,25 @@ public class ExitCodeTests
     [InlineData(true, ExitCode.IssuesFoundAnalysisIncomplete)]
     public void GetExitCode_StoppedByUser_IsIncomplete(bool issuesFound, ExitCode expected)
     {
-        var outcome = new AnalysisOutcome([]).WithGap(new AnalysisGap(AnalysisGapKind.StoppedByUser, "Analysis was stopped by the user."));
+        var outcome = new AnalysisOutcome([]).StoppedByUser();
 
         var exitCode = RunCommandHandler.GetExitCode(outcome, issuesFound);
 
         Assert.Equal(expected, exitCode);
+    }
+
+    [Fact]
+    public void StoppedByUser_ReplacesUnfinishedProcessesAndKeepsOtherGaps()
+    {
+        var outcome = new AnalysisOutcome(
+        [
+            new AnalysisGap(AnalysisGapKind.ProcessNotFinished, "Process 42 did not report the end of its events."),
+            new AnalysisGap(AnalysisGapKind.EventsDropped, "3 event(s) were dropped before reaching the analysis.")
+        ]);
+
+        var stopped = outcome.StoppedByUser();
+
+        Assert.Equal([AnalysisGapKind.EventsDropped, AnalysisGapKind.StoppedByUser], stopped.Gaps.Select(gap => gap.Kind));
     }
 
     [Theory]
