@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
 using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Worker.Commands;
@@ -11,6 +10,10 @@ public static class CommandArgumentsValidator
 {
     public static void ValidateRunCommandArguments(RunCommandArgs arguments)
     {
+        var platform = PlatformSupport.CheckCurrentPlatform();
+        if (platform.IsError)
+            throw new PlatformNotSupportedException(platform.Error);
+
         var errors = new List<string>();
 
         TargetConfigurationArgs? target = arguments.Target;
@@ -21,7 +24,7 @@ public static class CommandArgumentsValidator
         else
             ValidateTargetConfiguration(target, errors);
 
-        ValidateRuntimeConfiguration(arguments.Runtime, errors);
+        ValidateRuntimeConfiguration(arguments.Runtime, platform.Value, errors);
 
         if (analysis is null)
             errors.Add($"Configuration is missing the required section \"{nameof(RunCommandArgs.Analysis)}\".");
@@ -118,30 +121,18 @@ public static class CommandArgumentsValidator
         }
     }
 
-    private static void ValidateRuntimeConfiguration(RuntimeConfigurationArgs configArgs, List<string> errors)
+    private static void ValidateRuntimeConfiguration(RuntimeConfigurationArgs configArgs, SupportedPlatform platform, List<string> errors)
     {
         var profilerClsid = configArgs.Profiler.Clsid;
 
         if (!Guid.TryParse(profilerClsid, out var parsedClsid) || parsedClsid == Guid.Empty)
             errors.Add($"Invalid profiler CLSID: \"{profilerClsid}\".");
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            var windowsProfilerPath = configArgs.Profiler.PathWindowsX64;
-            if (string.IsNullOrEmpty(windowsProfilerPath))
-                errors.Add("No profiler path specified for Windows x64 platform.");
-            else if (!File.Exists(windowsProfilerPath))
-                errors.Add($"Could not find Windows x64 profiler library: \"{windowsProfilerPath}\".");
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            var linuxProfilerPath = configArgs.Profiler.PathLinuxX64;
-            if (string.IsNullOrEmpty(linuxProfilerPath))
-                errors.Add("No profiler path specified for Linux x64 platform.");
-            else if (!File.Exists(linuxProfilerPath))
-                errors.Add($"Could not find Linux x64 profiler library: \"{linuxProfilerPath}\".");
-        }
+        var profilerPath = configArgs.Profiler.GetPath(platform);
+        if (string.IsNullOrEmpty(profilerPath))
+            errors.Add($"No profiler path specified for {platform} platform.");
+        else if (!File.Exists(profilerPath))
+            errors.Add($"Could not find {platform} profiler library: \"{profilerPath}\".");
 
         if (configArgs.Host is { } host)
         {

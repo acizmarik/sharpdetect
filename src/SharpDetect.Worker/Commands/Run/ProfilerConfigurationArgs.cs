@@ -44,4 +44,11 @@ public sealed class ProfilerConfigurationArgs
         Clsid = clsidRaw ?? DefaultClsid;
         LogLevel = logLevel;
     }
+
+    public string GetPath(SupportedPlatform platform) => platform switch
+    {
+        SupportedPlatform.WindowsX64 => PathWindowsX64,
+        SupportedPlatform.LinuxX64 => PathLinuxX64,
+        _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, null)
+    };
 }

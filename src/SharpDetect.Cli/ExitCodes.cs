@@ -11,7 +11,7 @@ public enum ExitCode
     UsageError = 1,
     /// <summary>Analysis failed due to an internal error</summary>
     AnalysisError = 2,
-    /// <summary>Invalid or missing configuration, or plugin failed to load</summary>
+    /// <summary>Invalid or missing configuration, plugin failed to load, or unsupported platform</summary>
     ConfigurationError = 3,
     /// <summary>Analysis was cancelled</summary>
     Cancelled = 4,

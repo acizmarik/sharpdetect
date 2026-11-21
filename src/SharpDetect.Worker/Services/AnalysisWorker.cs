@@ -4,13 +4,13 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using CliWrap;
 using Microsoft.Extensions.Logging;
 using SharpDetect.Core.Communication;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
 using SharpDetect.InterProcessQueue;
+using SharpDetect.Worker.Commands;
 using SharpDetect.Worker.Commands.Run;
 
 namespace SharpDetect.Worker.Services;
@@ -473,16 +473,10 @@ public sealed class AnalysisWorker : IAnalysisWorker
     
     private string GetProfilerPath()
     {
-        var path = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? _arguments.Runtime.Profiler.PathWindowsX64
-            : RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
-                ? _arguments.Runtime.Profiler.PathLinuxX64
-                : throw new PlatformNotSupportedException($"OS: {RuntimeInformation.OSDescription}.");
-        
-        if (path is null)
-            throw new ArgumentException($"Profiler path for {RuntimeInformation.OSDescription} was not configured.");
-        
-        return Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
+        var platform = PlatformSupport.CheckCurrentPlatform();
+        return platform.IsSuccess 
+            ? Path.GetFullPath(_arguments.Runtime.Profiler.GetPath(platform.Value))
+            : throw new PlatformNotSupportedException(platform.Error);
     }
     
     private string GetFullConfigurationPath()
