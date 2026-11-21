@@ -212,7 +212,7 @@ void LibIPC::EventDispatcher::ParkDrain()
 		return;
 	}
 
-	_drainSignal.try_acquire_for(std::chrono::milliseconds(200));
+	(void)_drainSignal.try_acquire_for(std::chrono::milliseconds(200));
 	_drainParked.store(false, std::memory_order_relaxed);
 }
 

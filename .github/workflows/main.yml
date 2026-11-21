@@ -14,6 +14,7 @@ env:
 jobs:
   native-unit-tests:
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     permissions:
       contents: read
       actions: read
@@ -25,8 +26,17 @@ jobs:
           - os: windows-latest
             rid: win-x64
           - os: ubuntu-latest
+            container: ubuntu:22.04
             rid: linux-x64
     steps:
+    - name: Prepare container
+      if: matrix.container
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        apt-get update
+        apt-get install -y build-essential cmake git curl ca-certificates libicu70
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
     - uses: actions/checkout@v6
       with:
         submodules: 'true'

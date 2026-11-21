@@ -3,7 +3,7 @@
 Command `sharpdetect run` accepts a configuration file as its positional argument instead of inline `--plugin`/`--target` options.
 This is useful once you need options that don't have a dedicated CLI flag (working directory, extra environment variables, custom report locations, plugin-specific configuration, ...).
 
-A configuration file and inline analysis options (`--plugin`, `--target`, `--test`, `--instrument-system-libraries`, `--stack-traces`) are mutually exclusive — you can't pass both.
+A configuration file and inline analysis options (`--plugin`, `--target`, `--test`, `--instrument-system-libraries`, `--no-stack-traces`, `--stack-trace-depth`) are mutually exclusive — you can't pass both.
 
 ## Generating a Configuration File
 
@@ -42,7 +42,7 @@ This produces `AnalysisDescriptor.json` with following content:
 }
 ```
 
-Command `init` accepts the same analysis options as command `run` (`--plugin`, `--test`, `--runner`, `--filter`, `--instrument-system-libraries`, `--stack-traces`, `--stack-trace-depth`, `-v|--verbosity`, `--report`, `--no-report`).
+Command `init` accepts the same analysis options as command `run` (`--plugin`, `--test`, `--runner`, `--filter`, `--instrument-system-libraries`, `--no-stack-traces`, `--stack-trace-depth`, `-v|--verbosity`, `--report`, `--no-report`).
 Edit the generated file as required, then run it:
 
 ```bash
@@ -124,11 +124,11 @@ Data race analysis accepts the following `Analysis.Configuration` properties.
   - Defaults to `[ "System.", "Microsoft." ]`
 - `EnableStackTraceCollection`
   - Capture stack traces for conflicting accesses instead of the single frame
-  - Either `true` or `false` (default)
+  - Either `true` (default) or `false`
   - When disabled, reports show only the frame at the point of the access
 - `StackTraceCollectionMaxDepth`
   - Maximum number of frames captured per access when `EnableStackTraceCollection` is `true`
-  - Defaults to `8`
+  - Defaults to `5`
 - `StackTraceCollectionForFields`
   - Array of fully-qualified field names (`Namespace.Type.Field`) to restrict stack-trace collection to
   - Matching is by prefix, so a value ending in `.` matches every field of a type (e.g. `MyApp.Test.` matches `MyApp.Test.Field` and `MyApp.Test.AnotherField`)
@@ -147,8 +147,7 @@ Stack-trace collection walks the target thread's call stack at each analyzed acc
     "PluginName": "FastTrack",
     "RenderReport": true,
     "Configuration": {
-      "EnableStackTraceCollection": true,
-      "StackTraceCollectionMaxDepth": 8,
+      "StackTraceCollectionMaxDepth": 16,
       "StackTraceCollectionForFields": [ "MyApp.Test.Field" ]
     }
   }

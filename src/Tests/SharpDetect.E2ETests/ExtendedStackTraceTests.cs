@@ -49,7 +49,22 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
-    public async Task DeepStack_WhenDisabledByDefault_ReportsSingleFrame(string sdk, string plugin)
+    public async Task DeepStack_WhenDisabled_ReportsSingleFrame(string sdk, string plugin)
+    {
+        var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
+        {
+            SkipInstrumentationForAssemblies = SkipSystemAssemblies,
+            EnableStackTraceCollection = false
+        });
+
+        var stackTraces = GetStackTraces(reports).ToList();
+        Assert.NotEmpty(stackTraces);
+        Assert.All(stackTraces, st => Assert.Single(st.Frames));
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public async Task DeepStack_ByDefault_ReportsMultipleFrames(string sdk, string plugin)
     {
         var reports = await RunDeepStackSubjectAsync(sdk, plugin, new
         {
@@ -58,7 +73,7 @@ public class ExtendedStackTraceTests(ITestOutputHelper testOutput)
 
         var stackTraces = GetStackTraces(reports).ToList();
         Assert.NotEmpty(stackTraces);
-        Assert.All(stackTraces, st => Assert.Single(st.Frames));
+        Assert.Contains(stackTraces, st => st.Frames.Length > 1);
     }
 
     [Theory]

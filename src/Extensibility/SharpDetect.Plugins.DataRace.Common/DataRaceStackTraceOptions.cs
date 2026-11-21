@@ -5,5 +5,5 @@ namespace SharpDetect.Plugins.DataRace.Common;
 
 public static class DataRaceStackTraceOptions
 {
-    public const int DefaultMaxDepth = 8;
+    public const int DefaultMaxDepth = 5;
 }
