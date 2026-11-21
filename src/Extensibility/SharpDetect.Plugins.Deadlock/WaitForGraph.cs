@@ -9,7 +9,7 @@ namespace SharpDetect.Plugins.Deadlock;
 internal sealed class WaitForGraph
 {
     public readonly uint ProcessId;
-    private readonly Dictionary<ProcessThreadId, HashSet<ProcessThreadId>> _edges = [];
+    private readonly Dictionary<ProcessThreadId, ProcessThreadId?> _edges = [];
     private readonly Dictionary<ProcessThreadId, WaitInfo> _waitInfo = [];
 
     public WaitForGraph(uint processId)
@@ -24,17 +24,15 @@ internal sealed class WaitForGraph
     
     public void SetThreadWaiting(ProcessThreadId processThreadId, ProcessThreadId waitingFor, WaitInfo waitInfo)
     {
-        EnsureThreadExists(processThreadId);
         EnsureThreadExists(waitingFor);
         
-        _edges[processThreadId].Add(waitingFor);
+        _edges[processThreadId] = waitingFor;
         _waitInfo[processThreadId] = waitInfo;
     }
     
     public void ClearThreadWaiting(ProcessThreadId processThreadId)
     {
-        EnsureThreadExists(processThreadId);
-        _edges[processThreadId].Clear();
+        _edges[processThreadId] = null;
         _waitInfo.Remove(processThreadId);
     }
     
@@ -51,7 +49,7 @@ internal sealed class WaitForGraph
             {
                 // Only consider SCCs with 2 or more nodes as deadlocks
                 if (scc.Length > 1)
-                    yield return scc;
+                    yield return OrderByWaitEdges(scc[^1], scc.Length);
             }
         }
     }
@@ -65,20 +63,17 @@ internal sealed class WaitForGraph
         state.Stack.Push(node);
         state.OnStack.Add(node);
 
-        if (_edges.TryGetValue(node, out var successors))
+        if (_edges.GetValueOrDefault(node) is { } successor)
         {
-            foreach (var successor in successors)
+            if (!state.Indices.TryGetValue(successor, out var index))
             {
-                if (!state.Indices.TryGetValue(successor, out var index))
-                {
-                    foreach (var scc in StrongConnect(successor, state))
-                        yield return scc;
-                    
-                    state.LowLinks[node] = Math.Min(state.LowLinks[node], state.LowLinks[successor]);
-                }
-                else if (state.OnStack.Contains(successor))
-                    state.LowLinks[node] = Math.Min(state.LowLinks[node], index);
+                foreach (var scc in StrongConnect(successor, state))
+                    yield return scc;
+                
+                state.LowLinks[node] = Math.Min(state.LowLinks[node], state.LowLinks[successor]);
             }
+            else if (state.OnStack.Contains(successor))
+                state.LowLinks[node] = Math.Min(state.LowLinks[node], index);
         }
         
         if (state.LowLinks[node] != state.Indices[node])
@@ -96,12 +91,22 @@ internal sealed class WaitForGraph
         yield return sccBuilder.ToImmutable();
     }
     
+    private ImmutableArray<ProcessThreadId> OrderByWaitEdges(ProcessThreadId start, int length)
+    {
+        var builder = ImmutableArray.CreateBuilder<ProcessThreadId>(length);
+        var current = start;
+        do
+        {
+            builder.Add(current);
+            current = _edges[current]!.Value;
+        } while (current != start);
+
+        return builder.MoveToImmutable();
+    }
+    
     private void EnsureThreadExists(ProcessThreadId processThreadId)
     {
-        if (!_edges.ContainsKey(processThreadId))
-        {
-            _edges[processThreadId] = [];
-        }
+        _edges.TryAdd(processThreadId, null);
     }
 }
 

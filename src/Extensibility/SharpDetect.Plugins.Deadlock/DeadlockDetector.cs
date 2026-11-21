@@ -148,6 +148,6 @@ public partial class DeadlockPlugin
     {
         return _deadlocks.Any(d => 
             d.Key.Pid == deadlock.ProcessId && 
-            d.Value.Cycle.SequenceEqual(deadlock.Cycle));
+            Cycles.AreEqualUpToRotation(d.Value.Cycle, deadlock.Cycle));
     }
 }
