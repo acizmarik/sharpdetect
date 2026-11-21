@@ -3,8 +3,8 @@
     <PropertyGroup>
         <Authors>Andrej Čižmárik</Authors>
         <Copyright>Copyright © Andrej Čižmárik</Copyright>
-        <Description>Dynamic analysis framework for .NET programs</Description>
-        <PackageTags>dotnet;analysis;profiling;instrumentation</PackageTags>
+        <Description>Dynamic analysis framework for .NET. Runs an application or a test suite with a CoreCLR profiler attached and reports observed concurrency issues during the run.</Description>
+        <PackageTags>data-race;race-detector;deadlock;concurrency;threading;thread-safety;multithreading;testing;dotnet-tool;profiler;dynamic-analysis</PackageTags>
         <RepositoryType>git</RepositoryType>
         <RepositoryBranch Condition="'$(GITHUB_REF_NAME)' != ''">$(GITHUB_REF_NAME)</RepositoryBranch>
         <RepositoryCommit Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</RepositoryCommit>

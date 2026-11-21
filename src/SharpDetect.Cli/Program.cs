@@ -1,6 +1,7 @@
 // Copyright 2026 Andrej Čižmárik and Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Reflection;
 using CliFx;
 using CliFx.Infrastructure;
 using SharpDetect.Cli.Commands;
@@ -12,7 +13,6 @@ namespace SharpDetect.Cli;
 public static class Program
 {
     private const string ProgramTitle = "SharpDetect";
-    private const string ProgramDescription = "Dynamic analysis framework for .NET programs";
     private const string ExecutableName = "sharpdetect";
     
     public static async Task<int> Main(string[] args)
@@ -39,7 +39,7 @@ public static class Program
             .UseTypeInstantiator(type => CreateCommand(type, passThroughArguments))
             .SetTitle(ProgramTitle)
             .SetVersion(SharpDetectVersion.Current)
-            .SetDescription(ProgramDescription)
+            .SetDescription(typeof(Program).Assembly.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description)
             .SetExecutableName(ExecutableName);
     }
 
