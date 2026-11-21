@@ -1341,6 +1341,58 @@ namespace SharpDetect.E2ETests.Subject
             mutex.WaitOne(WaitTimeout);
         }
 
+        public static void Test_Deadlock_ThreeThreadLockCycle()
+        {
+            using var mutex = Mutex.OpenExisting(GetSynchronizationMutexName());
+            var lockObj1 = new object();
+            var lockObj2 = new object();
+            var lockObj3 = new object();
+            var thread1HoldsLock1 = new SemaphoreSlim(0, 1);
+            var thread2HoldsLock2 = new SemaphoreSlim(0, 1);
+            var thread3HoldsLock3 = new SemaphoreSlim(0, 1);
+
+            var thread1 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread1";
+                lock (lockObj1)
+                {
+                    thread1HoldsLock1.Release();
+                    thread2HoldsLock2.Wait();
+                    lock (lockObj2) { }
+                }
+            });
+
+            var thread2 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread2";
+                lock (lockObj2)
+                {
+                    thread2HoldsLock2.Release();
+                    thread3HoldsLock3.Wait();
+                    lock (lockObj3) { }
+                }
+            });
+
+            var thread3 = new Thread(() =>
+            {
+                Thread.CurrentThread.Name = "TEST_Thread3";
+                lock (lockObj3)
+                {
+                    thread3HoldsLock3.Release();
+                    thread1HoldsLock1.Wait();
+                    lock (lockObj1) { }
+                }
+            });
+
+            thread1.IsBackground = true;
+            thread2.IsBackground = true;
+            thread3.IsBackground = true;
+            thread1.Start();
+            thread2.Start();
+            thread3.Start();
+            mutex.WaitOne(WaitTimeout);
+        }
+
         public static void Test_DataRace_ReferenceType_Static_ReadWriteRace()
         {
             DataRace.Test_DataRace_ReferenceType_Static = new object();

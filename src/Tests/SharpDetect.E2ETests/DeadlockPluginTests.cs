@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SharpDetect.Core.Events;
 using SharpDetect.Core.Plugins;
 using SharpDetect.Core.Reporting;
+using SharpDetect.Core.Reporting.Model;
 using SharpDetect.E2ETests.Utils;
 using SharpDetect.Worker;
 using Xunit;
@@ -86,6 +87,28 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         => CanDetectDeadlock("Test_Deadlock_MixedMonitorAndThreadJoinDeadlock", sdk);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task DeadlockPlugin_ThreeThreadLockCycle_ReportsWaitEdges(string sdk)
+    {
+        // Act
+        var report = await DetectDeadlock("Test_Deadlock_ThreeThreadLockCycle", sdk);
+
+        // Assert
+        var threads = report.GetReportedThreads().ToArray();
+        Assert.Equal(3, threads.Length);
+        AssertBlockedOn("TEST_Thread1", "TEST_Thread2");
+        AssertBlockedOn("TEST_Thread2", "TEST_Thread3");
+        AssertBlockedOn("TEST_Thread3", "TEST_Thread1");
+
+        void AssertBlockedOn(string blockedThread, string ownerThread)
+        {
+            var thread = Assert.Single(threads, t => t.Name.EndsWith($"({blockedThread})"));
+            Assert.True(report.TryGetReportReason(thread, out var reason));
+            Assert.EndsWith($"({ownerThread})", reason!);
+        }
+    }
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net10Only), MemberType = typeof(SdkVersions))]
     public async Task DeadlockPlugin_CanRenderReport(string sdk)
     {
@@ -112,7 +135,10 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         Assert.Null(exception);
     }
 
-    private async Task CanDetectDeadlock(string subjectArgs, string sdk)
+    private Task CanDetectDeadlock(string subjectArgs, string sdk)
+        => DetectDeadlock(subjectArgs, sdk);
+
+    private async Task<Report> DetectDeadlock(string subjectArgs, string sdk)
     {
         // Arrange
         var mutexName = $"SharpDetect_E2E_Deadlock_{Guid.NewGuid():N}";
@@ -147,5 +173,6 @@ public class DeadlockPluginTests(ITestOutputHelper testOutput)
         Assert.NotNull(snapshots);
         Assert.NotEmpty(snapshots);
         Assert.All(snapshots, snapshot => Assert.NotEmpty(snapshot.ModuleIds));
+        return report;
     }
 }

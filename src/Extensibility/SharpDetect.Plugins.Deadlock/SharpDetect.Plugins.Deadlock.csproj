@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
+        <InternalsVisibleTo Include="SharpDetect.Plugins.Deadlock.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\..\SharpDetect.Core\SharpDetect.Core.csproj" />
         <ProjectReference Include="..\SharpDetect.Plugins.Descriptors\SharpDetect.Plugins.Descriptors.csproj" />
         <ProjectReference Include="..\SharpDetect.Plugins.PerThreadOrdering\SharpDetect.Plugins.PerThreadOrdering.csproj" />
