@@ -1,4 +1,4 @@
-<img src="docs/assets/logo/sharpdetect-logo.svg" alt="SharpDetect">
+![SharpDetect](https://raw.githubusercontent.com/acizmarik/sharpdetect/main/docs/assets/logo/sharpdetect-logo.svg)
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/acizmarik/sharpdetect/blob/main/LICENSE)
 [![GitHub Actions](https://github.com/acizmarik/sharpdetect/actions/workflows/main.yml/badge.svg)](https://github.com/acizmarik/sharpdetect/actions)
@@ -55,75 +55,55 @@ The command above launches target application, attaches profiler and configures 
 
 ### 3. View the Report
 
-When a data race is detected, a log message is emitted:
+Each racy field is printed as one line while the target runs.
+When the target exits, a summary of the detected races and the path to the generated report are printed:
 
 ```text
-warn: SharpDetect.Plugins.DataRace.FastTrack.FastTrackPlugin[0]
-      [PID=65758] Data race on static field Example.Test.Field
-          Current write by thread T3:
-              at Program/<>c.<<Main>$>b__0_1:IL_0002
-          Previous write by thread T2:
-              at Program/<>c.<<Main>$>b__0_0:IL_0002
+data race on Example.Test.Field: write by T2 at Program.cs:2 ↔ write by T3 at Program.cs:3
+
+FastTrack: 1 data race in 1 field
+  1. Example.Test.Field  (1 race)
+     - T2  Write Program.<>c.<<Main>$>b__0_0()  Program.cs:2
+       T3  Write Program.<>c.<<Main>$>b__0_1()  Program.cs:3
+       1 occurrence · static field
+Report: /home/user/TestApp/SharpDetect_Report_20261117_164559_335.html
+Issues found.
 ```
 
-When the target application terminates, the path to the generated report is printed:
-
-```text
-Report stored to file: /home/user/Workspace/SharpDetect_Report_20251223_095828.html.
-```
-
-![Example HTML report showing the detected data race](docs/assets/report-example.png)
+The exit code is `5` when issues were found and `0` when none were.
 
 Reports are self-contained HTML files. Each report includes:
 - The affected field
 - The participating threads
-- Stack frames at the point of the conflicting accesses (a single frame by default, or a multi-frame stack trace when [stack-trace collection](docs/guides/running-analysis-with-configuration-file.md#data-race-plugin-options) is enabled)
+- Stack traces of the conflicting accesses (or a single frame when [stack-trace collection](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/running-analysis-against-executables.md#stack-traces) is disabled)
+
+The same stack traces are printed to the console with `-v detailed`:
+
+```text
+[PID=64385] Data race on static field Example.Test.Field
+    Earlier write by thread T2:
+        at Program.<>c.<<Main>$>b__0_0() in /home/user/TestApp/Program.cs:2
+        at System.Threading.Thread.StartHelper.RunWorker() (+2 more)
+    Later write by thread T3:
+        at Program.<>c.<<Main>$>b__0_1() in /home/user/TestApp/Program.cs:3
+        at System.Threading.Thread.StartHelper.RunWorker() (+2 more)
+```
 
 ## Documentation
 
 More details for running and configuring analysis is described in `docs` folder.
-- [Running analysis against regular .NET assembly](docs/guides/running-analysis-against-executables.md)
-- [Running analysis against .NET test assembly](docs/guides/running-analysis-against-tests.md)
-- [Advanced analysis configuration](docs/guides/running-analysis-with-configuration-file.md)
+- [Running analysis against regular .NET assembly](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/running-analysis-against-executables.md)
+- [Running analysis against .NET test assembly](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/running-analysis-against-tests.md)
+- [Advanced analysis configuration](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/running-analysis-with-configuration-file.md)
+- [Supported synchronization primitives](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/supported-primitives.md)
+- [Limitations / known issues](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/limitations.md)
 
 ## Analysis Plugins
 
 ### Data Race Detection — FastTrack
 
 The `FastTrack` plugin detects data races using the FastTrack algorithm (Flanagan & Freund, 2009).
-
-#### Supported Synchronization Primitives
-- `System.Threading.Monitor`
-- `System.Threading.Lock`
-- `System.Threading.SemaphoreSlim`
-- `System.Threading.Mutex` (unnamed)
-- `System.Threading.Semaphore` (unnamed)
-- `System.Threading.EventWaitHandle` (`AutoResetEvent`, `ManualResetEvent`)
-- `System.Threading.ReaderWriterLockSlim`
-- `System.Threading.ManualResetEventSlim`
-- `System.Threading.CountdownEvent`
-- `System.Threading.Barrier`
-
-#### Supported Thread and Task Lifecycle
-- `System.Threading.Thread`
-- `System.Threading.Tasks.Task`
-- `System.Threading.ThreadPool.QueueUserWorkItem` (through the thread pool's global queue)
-
-#### Supported Value Publication
-- `System.Lazy<T>`
-- `System.Collections.Concurrent.ConcurrentDictionary<TKey, TValue>`
-- `System.Collections.Concurrent.ConcurrentQueue<T>`, `ConcurrentStack<T>`, `ConcurrentBag<T>`
-- `System.Threading.Channels` unbounded channels (through their `ConcurrentQueue<T>`)
-
-#### Supported Memory Accesses
-- Regular field access
-   - Statics (`LDSFLD`, `STSFLD`); Instance (`LDFLD`, `STFLD`)
-- Volatile field access
-   - Statics and instance using `volatile` keyword (`LDSFLD`, `STSFLD`, `LDFLD`, `STFLD`) 
-   - Statics and instance using `Volatile` class and some methods from `Interlocked` class (`LDSFLDA`, `LDFLDA`)
-- Atomic field access
-   - Statics and instance using some methods from `Interlocked` class (`LDSFLDA`, `LDFLDA`)
-- Volatile and atomic accesses never race with each other, but they do race with unordered plain accesses of the same field
+See [supported synchronization primitives](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/supported-primitives.md#data-race-detection--fasttrack) and [limitations](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/limitations.md#data-race-detection).
 
 #### Configuration
 
@@ -139,14 +119,7 @@ sharpdetect init \
 ### Deadlock Detection
 
 The `Deadlock` plugin detects deadlocks by tracking lock acquisition order across threads and identifying circular wait conditions.
-
-#### Supported Synchronization Primitives
-- `System.Threading.Monitor`
-- `System.Threading.Lock`
-- `System.Threading.ReaderWriterLockSlim`
-
-#### Supported Thread Lifecycle
-- `System.Threading.Thread`
+See [supported synchronization primitives](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/supported-primitives.md#deadlock-detection) and [limitations](https://github.com/acizmarik/sharpdetect/blob/main/docs/guides/limitations.md#deadlock-detection).
 
 #### Configuration
 
@@ -158,33 +131,6 @@ sharpdetect init \
   --target "<path/to/YourExecutableDotNetAssembly.dll>" \
   --output "AnalysisConfiguration.json"
 ```
-
-## Limitations / Known Issues
-
-### Data Race Detection
-
-- **False positives**:
-   - Memory accesses guarded by unsupported synchronization primitives may report data races.
-   - Value publication is tracked by the identity of the published object, so it covers reference types only.
-   - `Interlocked` and `Volatile` calls are recognized only when their `ref` argument is a direct field address.
-- **False negatives**: 
-   - Array element accesses are not analyzed.
-   - Heuristics for determining object publication is responsible for missing some data races.
-- **Performance overhead**:
-   - Every analyzed memory access needs to be instrumented and emits runtime event.
-   - Every analyzed synchronization operation (acquire, release, ...) emits runtime event.
-   - Every thread lifecycle action (start, join, ...) emits runtime event.
-   - Every task lifecycle action (schedule, start, ...) emits runtime event.
-   - Programs that heavily utilize operations above will observe significant slowdowns.
-
-### Deadlock Detection
-
-- **False negatives**:
-   - Deadlocks involving unsupported synchronization primitives will not be detected.
-- **Performance**: 
-   - Every analyzed synchronization operation (acquire, release, ...) emits runtime event.
-   - Every thread lifecycle action (start, join, ...) emits runtime event.
-   - Programs that heavily utilize operations above will observe significant slowdowns.
 
 ## Building from Source
 
@@ -208,13 +154,13 @@ dotnet cake.cs
 ## Platform Support
 
 SharpDetect supports analysis of programs targeting .NET 8, 9, and 10.
-Supported operating systems are Windows and Linux. Supported architecture is x64.
+Supported operating systems are Windows and Linux (glibc 2.34 or newer). Supported architecture is x64.
 
 ## Acknowledgments
 
 SharpDetect is built with the help of numerous open-source libraries and components.
-For detailed licensing information and full copyright notices, please see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+For detailed licensing information and full copyright notices, please see [THIRD-PARTY-NOTICES.md](https://github.com/acizmarik/sharpdetect/blob/main/THIRD-PARTY-NOTICES.md).
 
 ## License
 
-This project is licensed under the [Apache-2.0 license](LICENSE).
+This project is licensed under the [Apache-2.0 license](https://github.com/acizmarik/sharpdetect/blob/main/LICENSE).

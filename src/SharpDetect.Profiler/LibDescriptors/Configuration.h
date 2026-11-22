@@ -40,7 +40,7 @@ namespace Profiler
         BOOL enableFieldsAccessInstrumentation;
         std::vector<std::string> skipInstrumentationForAssemblies;
         BOOL enableStackTraceCollection {FALSE};
-        UINT stackTraceCollectionMaxDepth {8};
+        UINT stackTraceCollectionMaxDepth {5};
         std::vector<std::string> stackTraceCollectionForFields;
     };
 

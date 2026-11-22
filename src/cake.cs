@@ -3,12 +3,14 @@
 
 #:sdk Cake.Sdk@6.2.0
 
+using System.Text.RegularExpressions;
+
 //////////////////////////////////////////////////////////////////////
 ////////////////////////// ARGUMENTS /////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
 var rid = Argument("rid", GetDefaultRuntimeIdentifier());
-var libraryExtension = rid.StartsWith("win") ? "dll" : "so";
+var libraryExtension = GetLibraryExtension(rid);
 var target = Argument("target", "Build-Local-Environment");
 var configuration = Argument("configuration", "Debug");
 var sdk = Argument("sdk", GetTargetFramework());
@@ -230,6 +232,12 @@ Task("Copy-Native-Artifacts")
     }
 });
 
+string GetLibraryExtension(string runtimeIdentifier) => runtimeIdentifier.StartsWith("win") ? "dll" : "so";
+
+IEnumerable<string> GetNativeLibraryPaths(string runtimeIdentifier) =>
+    profilers.Append("SharpDetect.InterProcessQueue")
+        .Select(name => $"Profilers/{runtimeIdentifier}/{name}.{GetLibraryExtension(runtimeIdentifier)}");
+
 string GetProfilerLibraryPath(string profilerName)
 {
     var baseDirectory = $"{profilerBuildDirectory}/{profilerName}";
@@ -241,6 +249,51 @@ string GetProfilerLibraryPath(string profilerName)
 Task("Build-Local-Environment")
     .IsDependentOn("Build-Managed")
     .IsDependentOn("Copy-Native-Artifacts");
+
+Task("Verify-Native-Compatibility")
+    .Does(() =>
+{
+    var supportedGlibc = new Version(2, 34);
+    foreach (var (name, headers) in ReadStagedNativeLibraryHeaders("linux-x64"))
+    {
+        var requiredGlibc = Regex.Matches(headers, @"GLIBC_([\d.]+)")
+            .Select(match => Version.Parse(match.Groups[1].Value))
+            .Max() ?? throw new Exception($"{name} does not reference any glibc version.");
+        Information($"{name} requires glibc {requiredGlibc}");
+
+        if (requiredGlibc > supportedGlibc)
+            throw new Exception($"{name} requires glibc {requiredGlibc}, but only {supportedGlibc} is supported.");
+        if (headers.Contains("libstdc++.so"))
+            throw new Exception($"{name} must link libstdc++ statically.");
+    }
+
+    foreach (var (name, headers) in ReadStagedNativeLibraryHeaders("win-x64"))
+    {
+        if (Regex.IsMatch(headers, @"DLL Name: (MSVCP|VCRUNTIME)", RegexOptions.IgnoreCase))
+            throw new Exception($"{name} must link the MSVC runtime statically.");
+    }
+});
+
+IEnumerable<(string Name, string Headers)> ReadStagedNativeLibraryHeaders(string runtimeIdentifier)
+{
+    foreach (var path in GetNativeLibraryPaths(runtimeIdentifier))
+    {
+        FilePath library = $"{artifactsDirectory}/{path}";
+        if (!FileExists(library))
+            throw new Exception($"Native library not found: {library}");
+
+        var settings = new ProcessSettings
+        {
+            Arguments = new ProcessArgumentBuilder().Append("-p").AppendQuoted(library.FullPath),
+            RedirectStandardOutput = true
+        };
+        var exitCode = StartProcess("objdump", settings, out var output);
+        if (exitCode != 0)
+            throw new Exception($"objdump {library} failed with exit code: {exitCode}");
+
+        yield return (library.GetFilename().ToString(), string.Join('\n', output));
+    }
+}
 
 Task("Test-Unit-Managed")
     .IsDependentOn("Build-Managed")
@@ -354,6 +407,7 @@ Task("CI-Pack")
 });
 
 Task("CI-Pack-Verified")
+    .IsDependentOn("Verify-Native-Compatibility")
     .IsDependentOn("CI-Pack")
     .Does(() =>
 {
@@ -363,13 +417,11 @@ Task("CI-Pack-Verified")
 
     using var archive = System.IO.Compression.ZipFile.OpenRead(packagePath);
     var entries = archive.Entries.Select(entry => entry.FullName).ToHashSet(StringComparer.Ordinal);
-    var missing = (
-        from runtimeIdentifier in supportedRuntimeIdentifiers
-        let extension = runtimeIdentifier.StartsWith("win") ? "dll" : "so"
-        from library in profilers.Append("SharpDetect.InterProcessQueue")
-        let entry = $"tools/{sdk}/any/Profilers/{runtimeIdentifier}/{library}.{extension}"
-        where !entries.Contains(entry)
-        select entry).ToList();
+    var missing = supportedRuntimeIdentifiers
+        .SelectMany(GetNativeLibraryPaths)
+        .Select(path => $"tools/{sdk}/any/{path}")
+        .Where(entry => !entries.Contains(entry))
+        .ToList();
 
     if (missing.Count > 0)
         throw new Exception($"Native libraries missing in {packagePath}:{Environment.NewLine}  {string.Join($"{Environment.NewLine}  ", missing)}");

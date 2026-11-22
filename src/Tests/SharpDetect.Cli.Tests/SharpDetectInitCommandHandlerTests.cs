@@ -183,7 +183,7 @@ public class SharpDetectInitCommandHandlerTests
     }
 
     [Fact]
-    public void Init_StackTraces_EnablesCollectionWithDepth()
+    public void Init_StackTraceDepth_SetsDepthOnly()
     {
         var actualTemplate =
             new InitCommandHandler(
@@ -191,16 +191,15 @@ public class SharpDetectInitCommandHandlerTests
                 new AnalysisOptions(
                     PluginNameOrTypeFullName: "FastTrack",
                     TargetPath: "TestTarget.dll",
-                    CollectStackTraces: true,
                     StackTraceDepth: 16))
             .CreateTemplateConfigurationJson();
 
-        Assert.Contains("\"EnableStackTraceCollection\": true", actualTemplate);
         Assert.Contains("\"StackTraceCollectionMaxDepth\": 16", actualTemplate);
+        Assert.DoesNotContain("EnableStackTraceCollection", actualTemplate);
     }
 
     [Fact]
-    public void Init_StackTracesWithoutDepth_KeepsPluginDefaultDepth()
+    public void Init_NoStackTraces_DisablesCollection()
     {
         var actualTemplate =
             new InitCommandHandler(
@@ -208,15 +207,15 @@ public class SharpDetectInitCommandHandlerTests
                 new AnalysisOptions(
                     PluginNameOrTypeFullName: "FastTrack",
                     TargetPath: "TestTarget.dll",
-                    CollectStackTraces: true))
+                    CollectStackTraces: false))
             .CreateTemplateConfigurationJson();
 
-        Assert.Contains("\"EnableStackTraceCollection\": true", actualTemplate);
+        Assert.Contains("\"EnableStackTraceCollection\": false", actualTemplate);
         Assert.DoesNotContain("StackTraceCollectionMaxDepth", actualTemplate);
     }
 
     [Fact]
-    public void Init_WithoutStackTraces_DoesNotMentionStackTraces()
+    public void Init_ByDefault_KeepsPluginStackTraceDefaults()
     {
         var actualTemplate =
             new InitCommandHandler(

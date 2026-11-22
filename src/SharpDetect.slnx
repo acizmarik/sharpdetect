@@ -14,6 +14,8 @@
     <File Path="../docs/guides/running-analysis-against-executables.md" />
     <File Path="../docs/guides/running-analysis-against-tests.md" />
     <File Path="../docs/guides/running-analysis-with-configuration-file.md" />
+    <File Path="../docs/guides/limitations.md" />
+    <File Path="../docs/guides/supported-primitives.md" />
   </Folder>
   <Folder Name="/Extensibility/">
     <Project Path="Extensibility/SharpDetect.PluginHost/SharpDetect.PluginHost.csproj" />

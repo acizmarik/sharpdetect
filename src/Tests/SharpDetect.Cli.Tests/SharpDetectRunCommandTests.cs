@@ -52,7 +52,8 @@ public class SharpDetectRunCommandTests
     [InlineData("--plugin")]
     [InlineData("--target")]
     [InlineData("--instrument-system-libraries")]
-    [InlineData("--stack-traces")]
+    [InlineData("--no-stack-traces")]
+    [InlineData("--stack-trace-depth")]
     public void Validate_ConfigFileWithInlineOption_ThrowsConfigurationError(string option)
     {
         var configurationFile = Path.GetTempFileName();
@@ -64,7 +65,8 @@ public class SharpDetectRunCommandTests
                 case "--plugin": command.PluginType = "FastTrack"; break;
                 case "--target": command.TargetPath = "app.dll"; break;
                 case "--instrument-system-libraries": command.InstrumentSystemLibraries = true; break;
-                case "--stack-traces": command.CollectStackTraces = true; break;
+                case "--no-stack-traces": command.NoStackTraces = true; break;
+                case "--stack-trace-depth": command.StackTraceDepth = 4; break;
             }
 
             var exception = Assert.Throws<CommandException>(command.ValidateOptions);
@@ -132,14 +134,37 @@ public class SharpDetectRunCommandTests
     }
 
     [Fact]
-    public void Validate_StackTraceDepthWithoutStackTraces_ThrowsConfigurationError()
+    public void Validate_StackTraceDepthWithNoStackTraces_ThrowsConfigurationError()
     {
-        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", StackTraceDepth = 4 };
+        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", NoStackTraces = true, StackTraceDepth = 4 };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 
         Assert.Equal((int)ExitCode.ConfigurationError, exception.ExitCode);
-        Assert.Contains("--stack-trace-depth requires --stack-traces", exception.Message);
+        Assert.Contains("--stack-trace-depth cannot be combined with --no-stack-traces", exception.Message);
+    }
+
+    [Fact]
+    public void ToAnalysisOptions_ByDefault_CollectsStackTraces()
+    {
+        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", StackTraceDepth = 4 };
+
+        command.ValidateOptions();
+        var options = command.ToAnalysisOptions();
+
+        Assert.True(options.CollectStackTraces);
+        Assert.Equal(4, options.StackTraceDepth);
+    }
+
+    [Fact]
+    public void ToAnalysisOptions_NoStackTraces_DisablesCollection()
+    {
+        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", NoStackTraces = true };
+
+        command.ValidateOptions();
+        var options = command.ToAnalysisOptions();
+
+        Assert.False(options.CollectStackTraces);
     }
 
     [Theory]
@@ -147,7 +172,7 @@ public class SharpDetectRunCommandTests
     [InlineData(-1)]
     public void Validate_NonPositiveStackTraceDepth_ThrowsConfigurationError(int depth)
     {
-        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", CollectStackTraces = true, StackTraceDepth = depth };
+        var command = new RunCommand(PassThroughArguments.None) { TargetPath = "app.dll", StackTraceDepth = depth };
 
         var exception = Assert.Throws<CommandException>(command.ValidateOptions);
 

@@ -34,7 +34,7 @@ See `src/Samples/SimpleDataRaceTestsVSTest` for a complete, runnable project usi
 
 ## Filtering Tests
 
-Filter syntax depends on the runner: MTP uses [`/*/*/*/<test>`](https://github.com/Microsoft/vstest-docs/blob/main/docs/filter.md)-style hierarchical filters, VSTest uses [`--filter` expressions](https://learn.microsoft.com/dotnet/core/testing/selective-unit-tests) like `FullyQualifiedName~<test>`.
+Filter syntax depends on the runner: MTP uses [`/*/*/*/<test>`](https://github.com/microsoft/testfx/blob/main/docs/mstest-runner-graphqueryfiltering/graph-query-filtering.md)-style hierarchical filters (passed as `--treenode-filter`), VSTest uses [`--filter` expressions](https://learn.microsoft.com/dotnet/core/testing/selective-unit-tests) like `FullyQualifiedName~<test>`.
 If no filter is provided, then all tests from given assembly will be run.
 
 ## Additional Runner Arguments

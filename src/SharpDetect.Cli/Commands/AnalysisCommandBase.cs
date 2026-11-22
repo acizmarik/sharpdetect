@@ -29,10 +29,10 @@ public abstract partial class AnalysisCommandBase(PassThroughArguments passThrou
     [CommandOption("instrument-system-libraries", Description = "Instrument system assemblies (System, Microsoft, test frameworks..)")]
     public bool InstrumentSystemLibraries { get; set; }
 
-    [CommandOption("stack-traces", Description = "Collect stack traces for racing accesses instead of a single frame")]
-    public bool CollectStackTraces { get; set; }
+    [CommandOption("no-stack-traces", Description = "Report a single frame for racing accesses instead of a stack trace")]
+    public bool NoStackTraces { get; set; }
 
-    [CommandOption("stack-trace-depth", Description = "Maximum number of frames per collected stack trace (requires --stack-traces). Default: 8.")]
+    [CommandOption("stack-trace-depth", Description = "Maximum number of frames per collected stack trace. Default: 5.")]
     public int? StackTraceDepth { get; set; }
 
     [CommandOption("verbosity", 'v', Description = "Console output detail. Default: Normal.")]
@@ -56,8 +56,10 @@ public abstract partial class AnalysisCommandBase(PassThroughArguments passThrou
             yield return "--test";
         if (InstrumentSystemLibraries)
             yield return "--instrument-system-libraries";
-        if (CollectStackTraces)
-            yield return "--stack-traces";
+        if (NoStackTraces)
+            yield return "--no-stack-traces";
+        if (StackTraceDepth is not null)
+            yield return "--stack-trace-depth";
         if (passThroughArguments.IsSpecified)
             yield return "-- <arguments>";
     }
@@ -70,8 +72,8 @@ public abstract partial class AnalysisCommandBase(PassThroughArguments passThrou
         if (!IsTest && TestRunner is not null)
             throw UsageError("--runner requires --test.");
 
-        if (!CollectStackTraces && StackTraceDepth is not null)
-            throw UsageError("--stack-trace-depth requires --stack-traces.");
+        if (NoStackTraces && StackTraceDepth is not null)
+            throw UsageError("--stack-trace-depth cannot be combined with --no-stack-traces.");
 
         if (StackTraceDepth is < 1)
             throw UsageError("--stack-trace-depth must be at least 1.");
@@ -92,7 +94,7 @@ public abstract partial class AnalysisCommandBase(PassThroughArguments passThrou
             TestRunner: TestRunner,
             TestFilter: TestFilter,
             InstrumentSystemLibraries: InstrumentSystemLibraries,
-            CollectStackTraces: CollectStackTraces,
+            CollectStackTraces: !NoStackTraces,
             StackTraceDepth: StackTraceDepth,
             TargetArguments: passThroughArguments.Arguments,
             Output: ToOutputOptions());

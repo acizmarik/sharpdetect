@@ -83,7 +83,7 @@ internal sealed class RunCommandHandler : IDisposable
         var interruptTargetToken = OperatingSystem.IsWindows() ? stopToken : CancellationToken.None;
         var outcome = await worker.ExecuteAsync(interruptTargetToken);
         if (stopToken.IsCancellationRequested)
-            outcome = outcome.WithGap(new AnalysisGap(AnalysisGapKind.StoppedByUser, "Analysis was stopped by the user."));
+            outcome = outcome.StoppedByUser();
         
         // Create report summary
         var plugin = _serviceProvider.GetRequiredService<IPlugin>();

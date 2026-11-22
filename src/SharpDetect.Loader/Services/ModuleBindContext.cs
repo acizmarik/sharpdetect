@@ -61,7 +61,7 @@ internal class ModuleBindContext : IModuleBindContext
                 // Dynamically generated assembly (this is not supported)
                 // There is not an easy way to obtain a dynamically emitted assembly
                 _dynamicModules.Add(new ModuleEntry(metadata.Pid, moduleId));
-                _logger.LogWarning("[PID={Pid}] Could not load assembly \"{Path}\" for module with identifier={Id}. It was probably generated during runtime.",
+                _logger.LogInformation("[PID={Pid}] Could not load assembly \"{Path}\" for module with identifier={Id}. It was probably generated during runtime.",
                     metadata.Pid, path, moduleId.Value);
             }
             else
