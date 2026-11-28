@@ -47,7 +47,7 @@ namespace Profiler
 		USHORT exitWithArgsEventId;
 		bool hasArguments;
 		bool hasReturnValue;
-		bool hasIndirects;
+		bool reloadsArgumentsOnExit;
 		bool pushesArgumentsFrame;
 		bool emitExitEvent;
 		std::atomic<GenericCaptureState> genericCapture;

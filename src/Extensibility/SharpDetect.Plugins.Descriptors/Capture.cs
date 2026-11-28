@@ -12,9 +12,14 @@ public static class Capture
     public static CapturedValueDescriptor Int64 { get; } = new(sizeof(long), CapturedValue.CaptureAsValue);
     public static CapturedValueDescriptor NativeInt { get; } = new((byte)nint.Size, CapturedValue.CaptureAsValue);
 
-    public static CapturedValueDescriptor ByRefReference { get; } = Dereferenced(Reference);
-    public static CapturedValueDescriptor ByRefBoolean { get; } = Dereferenced(Boolean);
+    public static CapturedValueDescriptor DereferencedReference { get; } = Dereferenced(Reference);
+    public static CapturedValueDescriptor DereferencedBoolean { get; } = Dereferenced(Boolean);
+    public static CapturedValueDescriptor OutReference { get; } = WrittenByCallee(Reference);
+    public static CapturedValueDescriptor OutBoolean { get; } = WrittenByCallee(Boolean);
 
     private static CapturedValueDescriptor Dereferenced(CapturedValueDescriptor value)
-        => value with { Flags = value.Flags | CapturedValue.IndirectLoad };
+        => value with { Flags = value.Flags | CapturedValue.Dereference };
+
+    private static CapturedValueDescriptor WrittenByCallee(CapturedValueDescriptor value)
+        => value with { Flags = value.Flags | CapturedValue.Dereference | CapturedValue.ReloadOnExit };
 }

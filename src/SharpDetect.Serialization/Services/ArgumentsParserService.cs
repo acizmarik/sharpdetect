@@ -110,8 +110,8 @@ internal sealed class ArgumentsParserService(IMetadataContext metadataContext, I
 
     private static ParameterKind ClassifyParameter(TypeSig parameter)
     {
-        // If it is indirect, profiler already resolved the actual value
-        var paramSig = parameter.IsByRef ? parameter.Next : parameter;
+        // Descriptors must dereference every captured by-ref and pointer, so the profiler sends their targets
+        var paramSig = parameter.IsByRef || parameter.IsPointer ? parameter.Next : parameter;
 
         // Handle SZArray of reference types (e.g., Task[])
         if (paramSig.IsSZArray)

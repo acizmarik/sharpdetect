@@ -50,7 +50,7 @@ public static class ConcurrentCollectionMethodDescriptors
             .Parameters(Sig.ByRef(T))
             .Returns(Sig.Boolean)
             .CaptureThis()
-            .CaptureParameter(0, Capture.ByRefReference)
+            .CaptureParameter(0, Capture.OutReference)
             .OnEnter(RecordedEventType.ValuePublicationContainerEnter)
             .OnExit(RecordedEventType.ValuePublicationLoadByRef)
             .Build();

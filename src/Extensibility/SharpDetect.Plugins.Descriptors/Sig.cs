@@ -28,6 +28,9 @@ public static class Sig
     public static ArgumentTypeDescriptor ByRef(ArgumentTypeDescriptor innerType)
         => ArgumentTypeDescriptor.CreateByRef(innerType);
 
+    public static ArgumentTypeDescriptor Pointer(ArgumentTypeDescriptor innerType)
+        => ArgumentTypeDescriptor.CreatePointer(innerType);
+
     public static ArgumentTypeDescriptor ArrayOf(ArgumentTypeDescriptor elementType)
         => ArgumentTypeDescriptor.CreateSZArray(elementType);
 

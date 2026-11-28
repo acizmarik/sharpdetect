@@ -149,7 +149,76 @@ public class MethodDescriptorBuilderTests
     {
         var builder = MethodDescriptor.ForStaticMethod(TypeName, "Method")
             .Parameters(Sig.Boolean)
-            .CaptureParameter(0, Capture.ByRefBoolean);
+            .CaptureParameter(0, Capture.OutBoolean);
+
+        Assert.Throws<InvalidOperationException>(builder.Build);
+    }
+
+    [Fact]
+    public void Build_CapturingByRefParameterWithoutDereference_Throws()
+    {
+        var builder = MethodDescriptor.ForStaticMethod(TypeName, "Method")
+            .Parameters(Sig.ByRef(Sig.Boolean))
+            .CaptureParameter(0, Capture.Boolean)
+            .OnExit(RecordedEventType.LockAcquireResult);
+
+        Assert.Throws<InvalidOperationException>(builder.Build);
+    }
+
+    [Fact]
+    public void Build_CapturingPointerParameterWithoutDereference_Throws()
+    {
+        var builder = MethodDescriptor.ForStaticMethod(TypeName, "Method")
+            .Parameters(Sig.Pointer(Sig.Object))
+            .CaptureParameter(0, Capture.Reference)
+            .OnEnter(RecordedEventType.LockTryAcquire);
+
+        Assert.Throws<InvalidOperationException>(builder.Build);
+    }
+
+    [Fact]
+    public void Build_DereferencingPointerParameter_CapturesOnEnterOnly()
+    {
+        var descriptor = MethodDescriptor.ForStaticMethod(TypeName, "Method")
+            .Parameters(Sig.Pointer(Sig.Object))
+            .CaptureParameter(0, Capture.DereferencedReference)
+            .OnEnter(RecordedEventType.LockTryAcquire)
+            .Build();
+
+        var flags = Assert.Single(descriptor.RewritingDescriptor.Arguments).Value.Flags;
+        Assert.True(flags.HasFlag(CapturedValue.Dereference));
+        Assert.False(flags.HasFlag(CapturedValue.ReloadOnExit));
+    }
+
+    [Fact]
+    public void Build_ReloadingPointerParameterOnExit_Throws()
+    {
+        var builder = MethodDescriptor.ForStaticMethod(TypeName, "Method")
+            .Parameters(Sig.Pointer(Sig.Object))
+            .CaptureParameter(0, Capture.OutReference)
+            .OnExit(RecordedEventType.LockAcquireResult);
+
+        Assert.Throws<InvalidOperationException>(builder.Build);
+    }
+
+    [Fact]
+    public void Build_ReloadingParameterOnExitWithoutExitEvent_Throws()
+    {
+        var builder = MethodDescriptor.ForStaticMethod(TypeName, "Method")
+            .Parameters(Sig.ByRef(Sig.Boolean))
+            .CaptureParameter(0, Capture.OutBoolean)
+            .OnEnter(RecordedEventType.LockTryAcquire);
+
+        Assert.Throws<InvalidOperationException>(builder.Build);
+    }
+
+    [Fact]
+    public void Build_DereferencingReturnValue_Throws()
+    {
+        var builder = MethodDescriptor.ForStaticMethod(TypeName, "Method")
+            .Returns(Sig.Object)
+            .CaptureReturnValue(Capture.DereferencedReference)
+            .OnExit(RecordedEventType.LockAcquireResult);
 
         Assert.Throws<InvalidOperationException>(builder.Build);
     }

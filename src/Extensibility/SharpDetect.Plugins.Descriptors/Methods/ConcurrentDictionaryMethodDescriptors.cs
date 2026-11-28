@@ -66,7 +66,7 @@ public static class ConcurrentDictionaryMethodDescriptors
         return ConcurrentDictionary(methodName)
             .Parameters(TKey, Sig.ByRef(TValue))
             .Returns(Sig.Boolean)
-            .CaptureParameter(1, Capture.ByRefReference)
+            .CaptureParameter(1, Capture.OutReference)
             .OnEnter(RecordedEventType.ValuePublicationContainerEnter)
             .OnExit(RecordedEventType.ValuePublicationLoadByRef)
             .Build();

@@ -161,19 +161,45 @@ public sealed class MethodDescriptorBuilder
             if (position >= _parameterTypes.Length)
                 throw Invalid($"captures parameter {position} but declares only {_parameterTypes.Length} parameter(s)");
 
-            var isByRef = _parameterTypes[position].ElementTypes[0] == CorElementType.ELEMENT_TYPE_BYREF;
-            if (value.Flags.HasFlag(CapturedValue.IndirectLoad) && !isByRef)
-                throw Invalid($"parameter {position} is captured through a reference but is not passed by reference");
+            ValidateParameterCapture(position, _parameterTypes[position].ElementTypes[0], value.Flags);
         }
 
-        if (_capturedReturnValue is null)
+        if (_capturedReturnValue is not { } returnValue)
             return;
+
+        if ((returnValue.Flags & (CapturedValue.Dereference | CapturedValue.ReloadOnExit)) != 0)
+            throw Invalid("dereferences the return value");
 
         if (!_emitExitEvent)
             throw Invalid("captures the return value but reports no exit event");
 
         if (_returnType.ElementTypes[0] == CorElementType.ELEMENT_TYPE_VOID)
             throw Invalid("captures the return value of a method returning void");
+    }
+
+    private void ValidateParameterCapture(int position, CorElementType parameterType, CapturedValue flags)
+    {
+        var isByRef = parameterType == CorElementType.ELEMENT_TYPE_BYREF;
+        var isAddress = isByRef || parameterType == CorElementType.ELEMENT_TYPE_PTR;
+        var isDereferenced = flags.HasFlag(CapturedValue.Dereference);
+
+        if (isDereferenced && !isAddress)
+            throw Invalid($"parameter {position} is dereferenced but is neither passed by reference nor a pointer");
+
+        if (isAddress && !isDereferenced)
+            throw Invalid($"parameter {position} is passed by reference or as a pointer but is not dereferenced");
+
+        if (isDereferenced && flags.HasFlag(CapturedValue.CaptureAsReferenceArray))
+            throw Invalid($"parameter {position} is a dereferenced reference array, which cannot be captured");
+
+        if (!flags.HasFlag(CapturedValue.ReloadOnExit))
+            return;
+
+        if (!isByRef)
+            throw Invalid($"parameter {position} is reloaded on exit but is not passed by reference");
+
+        if (!_emitExitEvent)
+            throw Invalid($"parameter {position} is reloaded on exit but no exit event is reported");
     }
 
     private InvalidOperationException Invalid(string reason)

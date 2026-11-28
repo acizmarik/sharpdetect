@@ -21,7 +21,7 @@ public static class MonitorMethodDescriptors
         Monitor("Enter", Sig.Object, Sig.ByRef(Sig.Boolean))
             .OnRuntime(RuntimeVersions.Net8To9)
             .WithManagedWrapper()
-            .CaptureParameter(1, Capture.ByRefBoolean)
+            .CaptureParameter(1, Capture.OutBoolean)
             .OnEnter(RecordedEventType.LockAcquire)
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
@@ -30,7 +30,7 @@ public static class MonitorMethodDescriptors
         Monitor("ReliableEnterTimeout", Sig.Object, Sig.Int32, Sig.ByRef(Sig.Boolean))
             .OnRuntime(RuntimeVersions.Net8To9)
             .WithManagedWrapper()
-            .CaptureParameter(2, Capture.ByRefBoolean)
+            .CaptureParameter(2, Capture.OutBoolean)
             .OnEnter(RecordedEventType.LockTryAcquire)
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
@@ -48,7 +48,7 @@ public static class MonitorMethodDescriptors
             .Build(),
         Monitor("Enter", Sig.Object, Sig.ByRef(Sig.Boolean))
             .OnRuntime(RuntimeVersions.Net10)
-            .CaptureParameter(1, Capture.ByRefBoolean)
+            .CaptureParameter(1, Capture.OutBoolean)
             .OnEnter(RecordedEventType.LockAcquire)
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
@@ -68,13 +68,13 @@ public static class MonitorMethodDescriptors
             .Build(),
         Monitor("TryEnter", Sig.Object, Sig.ByRef(Sig.Boolean))
             .OnRuntime(RuntimeVersions.Net10)
-            .CaptureParameter(1, Capture.ByRefBoolean)
+            .CaptureParameter(1, Capture.OutBoolean)
             .OnEnter(RecordedEventType.LockTryAcquire)
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
         Monitor("TryEnter", Sig.Object, Sig.Int32, Sig.ByRef(Sig.Boolean))
             .OnRuntime(RuntimeVersions.Net10)
-            .CaptureParameter(2, Capture.ByRefBoolean)
+            .CaptureParameter(2, Capture.OutBoolean)
             .OnEnter(RecordedEventType.LockTryAcquire)
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
@@ -84,7 +84,7 @@ public static class MonitorMethodDescriptors
             .Build(),
         Monitor("ExitIfLockTaken", Sig.Object, Sig.ByRef(Sig.Boolean))
             .OnRuntime(RuntimeVersions.Net10)
-            .CaptureParameter(1, Capture.ByRefBoolean)
+            .CaptureParameter(1, Capture.DereferencedBoolean)
             .OnEnter(RecordedEventType.LockRelease)
             .Build(),
 

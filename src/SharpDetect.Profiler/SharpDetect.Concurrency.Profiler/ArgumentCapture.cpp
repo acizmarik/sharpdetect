@@ -66,7 +66,7 @@ HRESULT Profiler::ArgumentCapture::GetArguments(
     return S_OK;
 }
 
-HRESULT Profiler::ArgumentCapture::GetByRefArguments(
+HRESULT Profiler::ArgumentCapture::GetArgumentsReloadedOnExit(
     const MethodDescriptor& methodDescriptor,
     const std::vector<UINT_PTR>& indirects,
     std::span<BYTE> indirectValues,
@@ -75,12 +75,15 @@ HRESULT Profiler::ArgumentCapture::GetByRefArguments(
     auto indirectsPointer = 0;
     for (const auto&[index, value] : methodDescriptor.rewritingDescriptor.arguments)
     {
-        if ((static_cast<UINT>(value.flags) & static_cast<UINT>(CapturedValueFlags::IndirectLoad)) == 0)
+        if ((static_cast<UINT>(value.flags) & static_cast<UINT>(CapturedValueFlags::ReloadOnExit)) == 0)
             continue;
 
         const UINT argInfo = EncodeArgumentInfo(index, value.size);
         const UINT_PTR indirectAddress = indirects[indirectsPointer];
-        std::memcpy(indirectValues.data(), reinterpret_cast<LPVOID>(indirectAddress), value.size);
+        if (indirectAddress != 0)
+            std::memcpy(indirectValues.data(), reinterpret_cast<LPVOID>(indirectAddress), value.size);
+        else
+            std::memset(indirectValues.data(), 0, value.size);
 
         if ((static_cast<UINT>(value.flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
             TranslateToTrackedObject(indirectValues.data(), indirectValues.data());
@@ -109,23 +112,25 @@ HRESULT Profiler::ArgumentCapture::GetArgument(
         return GetReferenceArrayArgument(argument, range, argValues, argOffsets);
     }
 
-    if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::IndirectLoad)) != 0)
+    auto const isReloadedOnExit = (static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::ReloadOnExit)) != 0;
+    auto const prevSize = argValues.size();
+    if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::Dereference)) != 0)
     {
-        // Get pointer to the value
-        UINT_PTR pointer;
-        std::memcpy(&pointer, reinterpret_cast<LPVOID>(range.startAddress), sizeof(UINT_PTR));
-        indirects.push_back(pointer);
+        UINT_PTR address;
+        std::memcpy(&address, reinterpret_cast<LPVOID>(range.startAddress), sizeof(UINT_PTR));
+        if (isReloadedOnExit)
+            indirects.push_back(address);
 
-        // Read the value
-        auto const prevSize = argValues.size();
         argValues.resize(prevSize + argument.value.size);
-        std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(pointer), argument.value.size);
+        if (address != 0)
+            std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(address), argument.value.size);
+        else
+            std::memset(argValues.data() + prevSize, 0, argument.value.size);
+
         AppendArgumentInfo(argOffsets, argument.index, argument.value.size);
     }
     else
     {
-        // Read the value
-        auto const prevSize = argValues.size();
         argValues.resize(prevSize + range.length);
         std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(range.startAddress), range.length);
         AppendArgumentInfo(argOffsets, argument.index, range.length);
@@ -134,9 +139,9 @@ HRESULT Profiler::ArgumentCapture::GetArgument(
     if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
     {
         auto* const slot = argValues.data() + argValues.size() - sizeof(ObjectID);
-        if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::IndirectLoad)) != 0)
+        if (isReloadedOnExit)
         {
-            // The pointed-to reference is only settled at method exit - leave a placeholder until then
+            // The callee settles the pointed-to reference - leave a placeholder until method exit
             constexpr LibProfiler::TrackedObjectId notTrackedYet = 0;
             std::memcpy(slot, &notTrackedYet, sizeof(notTrackedYet));
         }

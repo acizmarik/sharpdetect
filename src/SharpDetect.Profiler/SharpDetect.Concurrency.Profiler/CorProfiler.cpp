@@ -497,15 +497,15 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
     return E_FAIL;
 }
 
-static BOOL HasIndirects(const Profiler::MethodDescriptor& descriptor)
+static BOOL ReloadsArgumentsOnExit(const Profiler::MethodDescriptor& descriptor)
 {
     auto const indirectIt = std::ranges::find_if(
         descriptor.rewritingDescriptor.arguments,
         [](const Profiler::CapturedArgumentDescriptor& d)
         {
             auto const flags = static_cast<UINT>(d.value.flags);
-            constexpr auto indirect = static_cast<UINT>(Profiler::CapturedValueFlags::IndirectLoad);
-            return (flags & indirect) != 0;
+            constexpr auto reloadOnExit = static_cast<UINT>(Profiler::CapturedValueFlags::ReloadOnExit);
+            return (flags & reloadOnExit) != 0;
         });
 
     return indirectIt != descriptor.rewritingDescriptor.arguments.cend();
@@ -516,7 +516,7 @@ static BOOL PushesArgumentsFrame(const Profiler::MethodDescriptor& descriptor)
     if (descriptor.rewritingDescriptor.arguments.empty())
         return FALSE;
 
-    return descriptor.rewritingDescriptor.returnValue.has_value() || HasIndirects(descriptor);
+    return descriptor.rewritingDescriptor.returnValue.has_value() || ReloadsArgumentsOnExit(descriptor);
 }
 
 static Profiler::GenericCaptureState CombineGenericCaptureStates(
@@ -715,7 +715,7 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     decision.exitWithArgsEventId = exitMappings.hasWithArgsEvent ? exitMappings.withArgsEventMapping : originalMethodExitWithArgumentsEvent;
     decision.hasArguments = !descriptor.rewritingDescriptor.arguments.empty();
     decision.hasReturnValue = descriptor.rewritingDescriptor.returnValue.has_value();
-    decision.hasIndirects = HasIndirects(descriptor);
+    decision.reloadsArgumentsOnExit = ReloadsArgumentsOnExit(descriptor);
     decision.emitExitEvent = descriptor.rewritingDescriptor.emitExitEvent;
     decision.pushesArgumentsFrame = decision.emitExitEvent && PushesArgumentsFrame(descriptor);
     decision.genericCapture.store(genericCapture, std::memory_order_relaxed);
@@ -764,7 +764,7 @@ Profiler::EltDecision* Profiler::CorProfiler::GetTypeInitializerEltDecision(
     decision.exitWithArgsEventId = static_cast<USHORT>(LibIPC::RecordedEventType::MethodExitWithArguments);
     decision.hasArguments = false;
     decision.hasReturnValue = false;
-    decision.hasIndirects = false;
+    decision.reloadsArgumentsOnExit = false;
     decision.pushesArgumentsFrame = false;
     decision.emitExitEvent = true;
     decision.genericCapture.store(GenericCaptureState::Allow, std::memory_order_relaxed);
@@ -959,7 +959,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     const auto moduleId = decision->moduleId;
     const auto methodDef = decision->methodDef;
 
-    if (decision->descriptor == nullptr || (!decision->hasReturnValue && !decision->hasIndirects))
+    if (decision->descriptor == nullptr || (!decision->hasReturnValue && !decision->reloadsArgumentsOnExit))
     {
         // Notify about method leave without arguments
         SendMethodExit(moduleId, methodDef, decision->exitEventId);
@@ -968,7 +968,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
 
     // Retrieve information about arguments
     const auto& descriptor = *decision->descriptor;
-    auto const hasIndirects = decision->hasIndirects;
+    auto const reloadsArgumentsOnExit = decision->reloadsArgumentsOnExit;
     auto const hasReturnValue = decision->hasReturnValue;
     auto const pushesArgumentsFrame = decision->pushesArgumentsFrame;
     auto& scratch = EltScratch;
@@ -997,7 +997,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         }
     }
 
-    // Retrieve by-ref arguments data
+    // Retrieve arguments reloaded on exit
     auto& argumentValues = scratch.argumentValues;
     auto& argumentOffsets = scratch.argumentOffsets;
     argumentValues.clear();
@@ -1005,7 +1005,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
     if (pushesArgumentsFrame && !scratch.argsCallStack.empty())
     {
         hr = S_OK;
-        if (hasIndirects)
+        if (reloadsArgumentsOnExit)
         {
             const auto& indirects = scratch.argsCallStack.top();
             if (!indirects.empty())
@@ -1016,8 +1016,8 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
                     0, [](const INT sum, const CapturedArgumentDescriptor& d)
                     {
                         auto const flags = static_cast<UINT>(d.value.flags);
-                        constexpr auto indirect = static_cast<UINT>(CapturedValueFlags::IndirectLoad);
-                        if ((flags & indirect) == 0)
+                        constexpr auto reloadOnExit = static_cast<UINT>(CapturedValueFlags::ReloadOnExit);
+                        if ((flags & reloadOnExit) == 0)
                             return sum;
 
                         return sum + d.value.size;
@@ -1025,7 +1025,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
                 auto const argumentOffsetsLength = indirects.size() * sizeof(UINT);
                 argumentValues.resize(argumentValuesLength);
                 argumentOffsets.resize(argumentOffsetsLength);
-                hr = _argumentCapture.GetByRefArguments(
+                hr = _argumentCapture.GetArgumentsReloadedOnExit(
                     descriptor,
                     indirects,
                     std::span(argumentValues.data(), argumentValues.size()),
@@ -1036,7 +1036,7 @@ HRESULT Profiler::CorProfiler::LeaveMethod(const FunctionIDOrClientID functionOr
         scratch.argsCallStack.pop();
         if (FAILED(hr))
         {
-            LOG_F(ERROR, "Could not parse by-ref arguments data for method %d. Error: 0x%x.", methodDef, hr);
+            LOG_F(ERROR, "Could not parse arguments reloaded on exit for method %d. Error: 0x%x.", methodDef, hr);
             return E_FAIL;
         }
     }

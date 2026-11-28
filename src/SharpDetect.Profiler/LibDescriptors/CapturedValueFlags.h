@@ -10,7 +10,8 @@ namespace Profiler
 		None = 0, 
 		CaptureAsValue = 1, 
 		CaptureAsReference = 2, 
-		IndirectLoad = 4,
-		CaptureAsReferenceArray = 8
+		Dereference = 4,
+		CaptureAsReferenceArray = 8,
+		ReloadOnExit = 16
 	};
 }
