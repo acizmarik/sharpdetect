@@ -9,6 +9,19 @@
 
 #include "ArgumentCapture.h"
 
+static UINT EncodeArgumentInfo(const BYTE index, const UINT size)
+{
+    return (static_cast<UINT>(index) << 16) | size;
+}
+
+static void AppendArgumentInfo(std::vector<BYTE>& argOffsets, const BYTE index, const UINT size)
+{
+    const UINT argInfo = EncodeArgumentInfo(index, size);
+    auto const prevSize = argOffsets.size();
+    argOffsets.resize(prevSize + sizeof(UINT));
+    std::memcpy(argOffsets.data() + prevSize, &argInfo, sizeof(UINT));
+}
+
 Profiler::ArgumentCapture::ArgumentCapture(ICorProfilerInfo10*& corProfilerInfo, LibProfiler::ObjectsTracker& objectsTracker) :
     _corProfilerInfo(corProfilerInfo),
     _objectsTracker(objectsTracker)
@@ -65,7 +78,7 @@ HRESULT Profiler::ArgumentCapture::GetByRefArguments(
         if ((static_cast<UINT>(value.flags) & static_cast<UINT>(CapturedValueFlags::IndirectLoad)) == 0)
             continue;
 
-        UINT argInfo = index << 16 | value.size;
+        const UINT argInfo = EncodeArgumentInfo(index, value.size);
         const UINT_PTR indirectAddress = indirects[indirectsPointer];
         std::memcpy(indirectValues.data(), reinterpret_cast<LPVOID>(indirectAddress), value.size);
 
@@ -107,21 +120,15 @@ HRESULT Profiler::ArgumentCapture::GetArgument(
         auto const prevSize = argValues.size();
         argValues.resize(prevSize + argument.value.size);
         std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(pointer), argument.value.size);
-        const UINT argInfo = (argument.index << 16) | argument.value.size;
-        auto const prevOffsetSize = argOffsets.size();
-        argOffsets.resize(prevOffsetSize + sizeof(UINT));
-        std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
+        AppendArgumentInfo(argOffsets, argument.index, argument.value.size);
     }
     else
     {
         // Read the value
         auto const prevSize = argValues.size();
         argValues.resize(prevSize + range.length);
-        const UINT argInfo = (argument.index << 16) | range.length;
         std::memcpy(argValues.data() + prevSize, reinterpret_cast<LPVOID>(range.startAddress), range.length);
-        auto const prevOffsetSize = argOffsets.size();
-        argOffsets.resize(prevOffsetSize + sizeof(UINT));
-        std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
+        AppendArgumentInfo(argOffsets, argument.index, range.length);
     }
 
     if ((static_cast<UINT>(flags) & static_cast<UINT>(CapturedValueFlags::CaptureAsReference)) != 0)
@@ -160,11 +167,7 @@ HRESULT Profiler::ArgumentCapture::GetReferenceArrayArgument(
         constexpr UINT count = 0;
         std::memcpy(argValues.data() + prevSize, &count, sizeof(UINT));
 
-        constexpr UINT totalSize = sizeof(UINT);
-        const UINT argInfo = (argument.index << 16) | totalSize;
-        auto const prevOffsetSize = argOffsets.size();
-        argOffsets.resize(prevOffsetSize + sizeof(UINT));
-        std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
+        AppendArgumentInfo(argOffsets, argument.index, sizeof(UINT));
         return S_OK;
     }
 
@@ -197,11 +200,7 @@ HRESULT Profiler::ArgumentCapture::GetReferenceArrayArgument(
         writePtr += elementSize;
     }
 
-    // Write offset info
-    const UINT argInfo = (argument.index << 16) | totalSize;
-    auto const prevOffsetSize = argOffsets.size();
-    argOffsets.resize(prevOffsetSize + sizeof(UINT));
-    std::memcpy(argOffsets.data() + prevOffsetSize, &argInfo, sizeof(UINT));
+    AppendArgumentInfo(argOffsets, argument.index, totalSize);
 
     return S_OK;
 }
