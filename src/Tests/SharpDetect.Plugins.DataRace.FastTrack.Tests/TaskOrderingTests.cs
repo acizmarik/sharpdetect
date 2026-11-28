@@ -171,6 +171,53 @@ public class TaskOrderingTests
     }
 
     [Fact]
+    public void LateSegmentCompletion_DoesNotHideALaterSegmentFromTheNextResumption()
+    {
+        // Arrange
+        var firstWorker = _harness.NewThread();
+        var secondWorker = _harness.NewThread();
+        var thirdWorker = _harness.NewThread();
+        var box = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act - the first worker hands the continuation over and leaves its segment only after the second one did
+        _harness.Detector.RecordTaskStarted(firstWorker, box);
+        _harness.Detector.RecordTaskScheduled(firstWorker, box);
+        _harness.Detector.RecordTaskStarted(secondWorker, box);
+        _harness.Write(secondWorker, field, instance: null);
+        _harness.Detector.RecordTaskScheduled(secondWorker, box);
+        _harness.Detector.RecordTaskSegmentCompleted(firstWorker, box);
+        _harness.Detector.RecordTaskStarted(thirdWorker, box);
+
+        // Assert
+        Assert.False(_harness.ReadIsRace(thirdWorker, field, instance: null));
+    }
+
+    [Fact]
+    public void InlineContinuationAfterCompletion_IsNotOrderedBeforeLaterJoiners()
+    {
+        // Arrange
+        var parent = _harness.NewThread();
+        var worker = _harness.NewThread();
+        var box = _harness.NewObject();
+        var continuation = _harness.NewObject();
+        var field = _harness.NewStaticField("Shared");
+
+        // Act - completing the box runs an unrelated continuation inline before the segment ends
+        _harness.Detector.RecordTaskContinuationRegistered(parent, continuation);
+        _harness.Detector.RecordTaskStarted(worker, box);
+        _harness.Detector.RecordTaskPromiseCompleted(worker, box);
+        _harness.Detector.RecordTaskStarted(worker, continuation);
+        _harness.Write(worker, field, instance: null);
+        _harness.Detector.RecordTaskCompleted(worker, continuation);
+        _harness.Detector.RecordTaskSegmentCompleted(worker, box);
+        _harness.Detector.RecordTaskJoinFinished(parent, box);
+
+        // Assert
+        Assert.True(_harness.ReadIsRace(parent, field, instance: null));
+    }
+
+    [Fact]
     public void CompletingPromise_OrdersTheCompleterBeforeEveryLaterJoiner()
     {
         // Arrange

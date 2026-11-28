@@ -153,10 +153,13 @@ internal sealed class FastTrackDetector
         _completedTasks.Add(taskId);
     }
 
+    // The segment end is observed after the task was already handed over or completed, so it must not replace what
+    // a later segment released, nor order an inline continuation of the completed task before its joiners
     public void RecordTaskSegmentCompleted(ProcessThreadId workerThreadId, ProcessTrackedObjectId taskId)
     {
-        _taskStartClocks.ReleaseSnapshot(taskId, workerThreadId);
-        _taskFinishClocks.ReleaseSnapshot(taskId, workerThreadId);
+        _taskStartClocks.Release(taskId, workerThreadId);
+        if (!_completedTasks.Contains(taskId))
+            _taskFinishClocks.Release(taskId, workerThreadId);
     }
 
     public void RecordTaskPromiseCompleted(ProcessThreadId completerThreadId, ProcessTrackedObjectId taskId)
