@@ -609,6 +609,21 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDetectsDataRace("Test_DataRace_AsyncContinuation_ConcurrentResumes_WriteWriteRace", sdk, plugin);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_HighContention_WriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_HighContention_WriteRead", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAndSynchronousWaiters_HighContention_WriteRead(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAndSynchronousWaiters_HighContention_WriteRead", sdk, plugin);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_SemaphoreSlim_ProtectedWriteRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlim_ProtectedWriteRead", sdk, plugin);

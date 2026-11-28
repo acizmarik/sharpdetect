@@ -441,6 +441,55 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     }
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_RuntimeAsync_AwaitedTaskReturningMethods_OnlyOrdinaryCallsReported(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_RuntimeAsync_HookedTaskReturningMethods")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var enters = new Dictionary<string, int>();
+        var exits = new Dictionary<string, int>();
+        var returnValueSizes = new HashSet<int>();
+        string? GetHookedMethodName(RecordedEventMetadata metadata, Core.Events.Profiler.ModuleId moduleId, Core.Events.Profiler.MdMethodDef methodToken)
+        {
+            var method = plugin.Resolve(metadata, moduleId, methodToken);
+            return !method.IsError && method.Value.Name.StartsWith("RuntimeAsyncHooked_", StringComparison.Ordinal)
+                ? method.Value.Name.String
+                : null;
+        }
+        plugin.MethodEntered += args =>
+        {
+            if (GetHookedMethodName(args.Metadata, args.Args.ModuleId, args.Args.MethodToken) is { } name)
+                enters[name] = enters.GetValueOrDefault(name) + 1;
+        };
+        plugin.MethodExitedWithArguments += args =>
+        {
+            if (GetHookedMethodName(args.Metadata, args.Args.ModuleId, args.Args.MethodToken) is not { } name)
+                return;
+            exits[name] = exits.GetValueOrDefault(name) + 1;
+            returnValueSizes.Add(args.Args.ReturnValue.Length);
+        };
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var expected = new Dictionary<string, int>
+        {
+            ["RuntimeAsyncHooked_TaskReturning"] = 1,
+            ["RuntimeAsyncHooked_RuntimeAsync"] = 1,
+            ["RuntimeAsyncHooked_GenericTaskReturning"] = 2
+        };
+        Assert.Equal(expected, enters);
+        Assert.Equal(expected, exits);
+        Assert.Equal([nint.Size], returnValueSizes);
+    }
+
+    [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Task_InnerInvoke1(string sdk)
     {

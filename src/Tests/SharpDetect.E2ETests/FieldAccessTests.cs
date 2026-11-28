@@ -548,6 +548,26 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
             expectedReads: 0);
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public Task StaticField_RuntimeAsyncMethod_EachAccessReportedOnce(string sdk)
+        => StaticFieldAccessCountInMethod(
+            "Test_Field_RuntimeAsync_Static_WriteRead",
+            sdk,
+            "RuntimeAsyncWriteAwaitReadAsync",
+            expectedWrites: 1,
+            expectedReads: 1);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public Task StaticField_TaskReturningMethodAwaitedByRuntimeAsyncCode_EachWriteReportedOnce(string sdk)
+        => StaticFieldAccessCountInMethod(
+            "Test_Field_TaskReturningAwaitedByRuntimeAsync_Static_Write",
+            sdk,
+            "WriteStaticTaskReturning",
+            expectedWrites: 2,
+            expectedReads: 0);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_CompareExchange_OfByte(string sdk)
         => FieldAccessSequence(

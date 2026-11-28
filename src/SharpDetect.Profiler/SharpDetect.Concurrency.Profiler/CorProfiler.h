@@ -91,6 +91,7 @@ namespace Profiler
 		[[nodiscard]] EltDecision* GetEltDecision(FunctionID functionId, BOOL* pbHookFunction);
 
 	private:
+		[[nodiscard]] bool IsRuntimeAsyncVariant(FunctionID functionId, ModuleID moduleId, mdMethodDef methodDef, const MethodDescriptor& descriptor);
 		[[nodiscard]] bool IsAnalyzedTypeInitializer(ModuleID moduleId, mdMethodDef methodDef);
 		[[nodiscard]] EltDecision* GetTypeInitializerEltDecision(FunctionID functionId, ModuleID moduleId, mdMethodDef methodDef);
 		[[nodiscard]] EltDecision* FindEltDecision(FunctionID functionId);

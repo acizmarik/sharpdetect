@@ -524,6 +524,18 @@ static BOOL PushesArgumentsFrame(const Profiler::MethodDescriptor& descriptor)
     return descriptor.rewritingDescriptor.returnValue.has_value() || ReloadsArgumentsOnExit(descriptor);
 }
 
+static BOOL ReturnsTaskOrValueTask(const Profiler::MethodDescriptor& descriptor)
+{
+    auto const& typeName = descriptor.signatureDescriptor.returnType.typeName;
+    if (!typeName.has_value())
+        return FALSE;
+
+    return *typeName == "System.Threading.Tasks.Task" ||
+           *typeName == "System.Threading.Tasks.Task`1" ||
+           *typeName == "System.Threading.Tasks.ValueTask" ||
+           *typeName == "System.Threading.Tasks.ValueTask`1";
+}
+
 static Profiler::GenericCaptureState CombineGenericCaptureStates(
     const Profiler::GenericCaptureState left,
     const Profiler::GenericCaptureState right)
@@ -688,6 +700,9 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     }
 
     const auto& descriptor = *descriptorPointer.get();
+    if (IsRuntimeAsyncVariant(functionId, moduleId, methodDef, descriptor))
+        return nullptr;
+
     auto const genericCapture = ClassifyGenericValueCapture(functionId, 0, descriptor);
     if (genericCapture == GenericCaptureState::Suppress)
         return nullptr;
@@ -728,6 +743,40 @@ Profiler::EltDecision* Profiler::CorProfiler::GetEltDecision(const FunctionID fu
     auto* stored = &decision;
     _eltDecisionLookup.emplace(functionId, stored);
     return stored;
+}
+
+bool Profiler::CorProfiler::IsRuntimeAsyncVariant(
+    const FunctionID functionId,
+    const ModuleID moduleId,
+    const mdMethodDef methodDef,
+    const MethodDescriptor& descriptor)
+{
+    if (!ReturnsTaskOrValueTask(descriptor))
+        return false;
+
+    FunctionID ordinaryFunctionId = 0;
+    auto hr = _corProfilerInfo->GetFunctionFromToken(moduleId, methodDef, &ordinaryFunctionId);
+    if (hr == CORPROF_E_FUNCTION_IS_PARAMETERIZED)
+    {
+        ClassID classId = 0;
+        ULONG32 typeArgsCount = 0;
+        if (FAILED(_corProfilerInfo->GetFunctionInfo2(functionId, 0, &classId, nullptr, nullptr, 0, &typeArgsCount, nullptr)))
+            return false;
+
+        std::vector<ClassID> typeArgs(typeArgsCount);
+        if (FAILED(_corProfilerInfo->GetFunctionInfo2(
+            functionId, 0, &classId, nullptr, nullptr, typeArgsCount, &typeArgsCount, typeArgs.data())))
+            return false;
+
+        hr = _corProfilerInfo->GetFunctionFromTokenAndTypeArgs(
+            moduleId, methodDef, classId, typeArgsCount, typeArgs.data(), &ordinaryFunctionId);
+    }
+
+    if (FAILED(hr) || ordinaryFunctionId == functionId)
+        return false;
+
+    LOG_F(INFO, "Not hooking runtime async variant of method TOK = %d (Function ID = %" UINT_PTR_FORMAT ").", methodDef, functionId);
+    return true;
 }
 
 bool Profiler::CorProfiler::IsAnalyzedTypeInitializer(const ModuleID moduleId, const mdMethodDef methodDef)

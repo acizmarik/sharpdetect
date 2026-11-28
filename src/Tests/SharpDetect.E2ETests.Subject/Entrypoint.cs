@@ -1048,6 +1048,26 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_DataRace_AsyncContinuation_ConcurrentResumes_WriteWriteRace):
                     Test_DataRace_AsyncContinuation_ConcurrentResumes_WriteWriteRace();
                     break;
+#if NET11_0_OR_GREATER
+                case nameof(Test_RuntimeAsync_HookedTaskReturningMethods):
+                    Test_RuntimeAsync_HookedTaskReturningMethods();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead):
+                    Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_HighContention_WriteRead):
+                    Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_HighContention_WriteRead();
+                    break;
+                case nameof(Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAndSynchronousWaiters_HighContention_WriteRead):
+                    Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAndSynchronousWaiters_HighContention_WriteRead();
+                    break;
+                case nameof(Test_Field_RuntimeAsync_Static_WriteRead):
+                    Test_Field_RuntimeAsync_Static_WriteRead();
+                    break;
+                case nameof(Test_Field_TaskReturningAwaitedByRuntimeAsync_Static_Write):
+                    Test_Field_TaskReturningAwaitedByRuntimeAsync_Static_Write();
+                    break;
+#endif
                 case nameof(Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace):
                     Test_NoDataRace_GenericType_Static_DifferentInstantiations_WriteWrite_NoRace();
                     break;
