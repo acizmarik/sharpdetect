@@ -1,6 +1,8 @@
 set(SOURCES
 	"TestMain.cpp"
+	"MethodBodyPatchStatesTests.cpp"
 	"SignatureUtilsTests.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/../LibMetadata/MethodBodyPatchStates.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../LibMetadata/SignatureUtils.cpp")
 
 add_executable(LibMetadata.Tests ${SOURCES})

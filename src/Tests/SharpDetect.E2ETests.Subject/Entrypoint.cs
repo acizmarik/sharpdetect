@@ -463,6 +463,9 @@ namespace SharpDetect.E2ETests.Subject
                 case nameof(Test_Field_VolatileCall_ValueType_GenericStatic_Write):
                     Test_Field_VolatileCall_ValueType_GenericStatic_Write();
                     break;
+                case nameof(Test_Field_GenericMethodInstantiations_Static_Write):
+                    Test_Field_GenericMethodInstantiations_Static_Write();
+                    break;
                 case nameof(Test_Field_Atomic_ValueType_Instance_Increment):
                     Test_Field_Atomic_ValueType_Instance_Increment();
                     break;

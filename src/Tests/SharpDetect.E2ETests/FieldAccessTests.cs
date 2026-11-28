@@ -538,6 +538,16 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
             (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
 
     [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public Task StaticField_GenericMethodInstantiations_EachWriteReportedOnce(string sdk)
+        => StaticFieldAccessCountInMethod(
+            "Test_Field_GenericMethodInstantiations_Static_Write",
+            sdk,
+            "WriteStaticInGenericMethod",
+            expectedWrites: 3,
+            expectedReads: 0);
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_CompareExchange_OfByte(string sdk)
         => FieldAccessSequence(
@@ -760,6 +770,48 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
             RecordedEventType.InstanceFieldWrite => evt.Get<(RecordedEventMetadata, InstanceFieldWriteArgs)>().Item2.AccessKind,
             _ => throw new ArgumentOutOfRangeException(nameof(eventType), eventType, "Not a field access event.")
         } == accessKind);
+    }
+
+    private async Task StaticFieldAccessCountInMethod(
+        string subjectArgs,
+        string sdk,
+        string methodName,
+        int expectedWrites,
+        int expectedReads)
+    {
+        // Arrange
+        var additionalData = TestPluginAdditionalData.CreateWithFieldsAccessInstrumentationEnabled();
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput, additionalData);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var writes = 0;
+        var reads = 0;
+        bool IsAccessedInMethod(ProcessThreadId threadId, CapturedStackTrace stack)
+        {
+            var metadata = new RecordedEventMetadata(threadId.ProcessId, threadId.ThreadId);
+            var method = plugin.Resolve(metadata, stack.Top.ModuleId, stack.Top.MethodToken);
+            return !method.IsError && method.Value.Name == methodName;
+        }
+        plugin.StaticFieldWritten += args =>
+        {
+            if (IsAccessedInMethod(args.ProcessThreadId, args.Stack))
+                writes++;
+        };
+        plugin.StaticFieldRead += args =>
+        {
+            if (IsAccessedInMethod(args.ProcessThreadId, args.Stack))
+                reads++;
+        };
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Equal(expectedWrites, writes);
+        Assert.Equal(expectedReads, reads);
     }
 
     private async Task FieldAccessNotInstrumented(string subjectArgs, string sdk, RecordedEventType eventType)

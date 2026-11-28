@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "corprof.h"
 
 #include "ComPtr.h"
+#include "MethodBodyPatchStates.h"
 
 namespace LibProfiler
 {
@@ -26,7 +28,8 @@ namespace LibProfiler
 			_methodMalloc(),
 			_objectTypeDef(mdTypeDefNil),
 			_objectCtorDef(mdMethodDefNil),
-			_objectCtorRva(0)
+			_objectCtorRva(0),
+			_methodBodyPatchStates()
 		{
 
 		}
@@ -42,7 +45,8 @@ namespace LibProfiler
 			_methodMalloc(std::move(other._methodMalloc)),
 			_objectTypeDef(other._objectTypeDef),
 			_objectCtorDef(other._objectCtorDef),
-			_objectCtorRva(other._objectCtorRva)
+			_objectCtorRva(other._objectCtorRva),
+			_methodBodyPatchStates(std::move(other._methodBodyPatchStates))
 		{
 
 		}
@@ -208,12 +212,14 @@ namespace LibProfiler
 		[[nodiscard]] const std::string& GetFullPath() const { return _fullPath; }
 		[[nodiscard]] constexpr AssemblyID GetAssemblyId() const { return _assemblyId; }
 		[[nodiscard]] constexpr ModuleID GetModuleId() const { return _moduleId; }
+		[[nodiscard]] MethodBodyPatchStates& GetMethodBodyPatchStates() const { return *_methodBodyPatchStates; }
 
 	private:
 		[[nodiscard]] IMetaDataImport2& GetMetadataImport() const;
 		[[nodiscard]] IMetaDataEmit2& GetMetadataEmit() const;
 		[[nodiscard]] IMethodMalloc& GetMethodMalloc() const;
 		HRESULT GetPlaceHolderMethodRVA(OUT UINT* rva);
+		[[nodiscard]] std::size_t GetMethodDefsCount(ModuleID moduleId) const;
 
 		template<typename TToken, typename TEnclosingToken, typename TFindFunc>
 		HRESULT FindTypeWithNesting(
@@ -235,5 +241,6 @@ namespace LibProfiler
 		mdTypeDef _objectTypeDef;
 		mdMethodDef _objectCtorDef;
 		UINT _objectCtorRva;
+		std::unique_ptr<MethodBodyPatchStates> _methodBodyPatchStates;
 	};
 }

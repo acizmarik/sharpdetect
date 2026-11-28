@@ -1106,6 +1106,19 @@ namespace SharpDetect.E2ETests.Subject
             Volatile.Write(ref GenericAtomicFlag<int>.Value, 123);
         }
 
+        public static void Test_Field_GenericMethodInstantiations_Static_Write()
+        {
+            // The reference type instantiation shares code, each value type instantiation is compiled separately
+            WriteStaticInGenericMethod(new object());
+            WriteStaticInGenericMethod(1);
+            WriteStaticInGenericMethod(2L);
+        }
+
+        private static void WriteStaticInGenericMethod<T>(T value)
+        {
+            StaticFieldValueType.Test_Field_ValueType_Static = value!.GetHashCode();
+        }
+
         public static void Test_Array_I_Read()
         {
             ArrayElement.Test_Array_I = new nuint[1];

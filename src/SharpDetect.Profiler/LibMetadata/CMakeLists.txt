@@ -6,6 +6,7 @@ set(SOURCES
     "${PROFILER_LIB_DIR}/miniutf/miniutf.cpp"
     "${PROFILER_LIB_DIR}/miniutf/miniutf_collation.cpp"
     "AssemblyDef.cpp"
+    "MethodBodyPatchStates.cpp"
     "ModuleDef.cpp"
     "SignatureUtils.cpp"
     "TypeClassification.cpp"

@@ -19,6 +19,8 @@ HRESULT LibProfiler::ModuleDef::Initialize(const ModuleID moduleId)
 		return E_FAIL;
 	}
 
+	_methodBodyPatchStates = std::make_unique<MethodBodyPatchStates>(GetMethodDefsCount(moduleId));
+
 	hr = _corProfilerInfo.GetModuleMetaData(moduleId, ofRead | ofWrite, IID_IMetaDataEmit2, reinterpret_cast<IUnknown**>(&_metadataModuleEmit));
 	if (FAILED(hr))
 	{
@@ -53,6 +55,28 @@ HRESULT LibProfiler::ModuleDef::Initialize(const ModuleID moduleId)
 	_fullPath = LibProfiler::ToString(nameBuffer.get());
 	_name = GetFileNameFromPath(_fullPath);
 	return S_OK;
+}
+
+std::size_t LibProfiler::ModuleDef::GetMethodDefsCount(const ModuleID moduleId) const
+{
+	constexpr ULONG methodDefTable = mdtMethodDef >> 24;
+	ComPtr<IMetaDataTables> metadataTables;
+	ULONG rowSize;
+	ULONG rowsCount;
+	ULONG columnsCount;
+	ULONG keyColumn;
+	const char* tableName;
+	auto hr = GetMetadataImport().QueryInterface(IID_IMetaDataTables, reinterpret_cast<void**>(&metadataTables));
+	if (SUCCEEDED(hr))
+		hr = metadataTables->GetTableInfo(methodDefTable, &rowSize, &rowsCount, &columnsCount, &keyColumn, &tableName);
+
+	if (FAILED(hr))
+	{
+		LOG_F(WARNING, "Could not count method definitions of %" UINT_PTR_FORMAT ". Error: 0x%x.", moduleId, hr);
+		return 0;
+	}
+
+	return rowsCount;
 }
 
 std::string LibProfiler::ModuleDef::GetFileNameFromPath(const std::string& path)

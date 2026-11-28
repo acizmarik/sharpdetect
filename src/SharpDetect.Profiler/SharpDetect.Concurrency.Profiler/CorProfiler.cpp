@@ -472,7 +472,11 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
     const auto& injectedMethods = patchData.injectedMethods;
     const auto& fieldAccessIntrinsics = patchData.fieldAccessIntrinsics;
 
-    if (SUCCEEDED(LibProfiler::PatchMethodBody(
+    auto claim = moduleDef.GetMethodBodyPatchStates().TryClaim(mdMethodDef);
+    if (!claim)
+        return S_OK;
+
+    if (FAILED(LibProfiler::PatchMethodBody(
         *_corProfilerInfo,
         _client,
         GetCurrentThreadIdCached(),
@@ -486,15 +490,16 @@ HRESULT Profiler::CorProfiler::PatchMethodBody(const LibProfiler::ModuleDef& mod
         _configuration.enableStackTraceCollection,
         _configuration.stackTraceCollectionForFields)))
     {
-        _client.Send(LibIPC::Helpers::CreateMethodBodyRewriteMsg(
-            CreateMetadataMsg(),
-            moduleDef.GetModuleId(),
-            mdMethodDef));
-
-        return S_OK;
+        return E_FAIL;
     }
 
-    return E_FAIL;
+    claim->MarkPatched();
+    _client.Send(LibIPC::Helpers::CreateMethodBodyRewriteMsg(
+        CreateMetadataMsg(),
+        moduleDef.GetModuleId(),
+        mdMethodDef));
+
+    return S_OK;
 }
 
 static BOOL ReloadsArgumentsOnExit(const Profiler::MethodDescriptor& descriptor)
