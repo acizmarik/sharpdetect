@@ -136,6 +136,7 @@ public enum RecordedEventType : ushort
     AsyncStateMachineResume = 211,
     AsyncStateMachineSegmentComplete = 212,
     AsyncStateMachineComplete = 213,
+    RuntimeAsyncSuspend = 214,
 
     /* Value publication */
     ValuePublicationStore = 220,

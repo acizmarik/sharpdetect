@@ -10,6 +10,7 @@ public static class SynchronizationMethodDescriptors
             .Concat(TaskMethodDescriptors.GetAllMethods())
             .Concat(TaskCompositionMethodDescriptors.GetAllMethods())
             .Concat(AsyncMethodBuilderMethodDescriptors.GetAllMethods())
+            .Concat(RuntimeAsyncMethodDescriptors.GetAllMethods())
             .Concat(SemaphoreSlimMethodDescriptors.GetAllMethods())
             .Concat(WaitHandleMethodDescriptors.GetAllMethods())
             .Concat(SignalMethodDescriptors.GetAllMethods())

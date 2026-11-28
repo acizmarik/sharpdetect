@@ -610,6 +610,26 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_RuntimeAsync_WriteBeforeAwait_ReadAfterResume(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_RuntimeAsync_WriteBeforeAwait_ReadAfterResume", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_RuntimeAsync_WriteAfterFirstResume_ReadAfterSecondResume(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_RuntimeAsync_WriteAfterFirstResume_ReadAfterSecondResume", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_RuntimeAsync_WriteAfterResume_ReadAfterJoin(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_RuntimeAsync_WriteAfterResume_ReadAfterJoin", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task CanDetectDataRace_RuntimeAsync_ConcurrentResumes_WriteWriteRace(string sdk, string plugin)
+        => AssertDetectsDataRace("Test_DataRace_RuntimeAsync_ConcurrentResumes_WriteWriteRace", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead", sdk, plugin);
 

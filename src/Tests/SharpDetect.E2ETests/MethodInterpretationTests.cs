@@ -442,6 +442,96 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_RuntimeAsync_SuspendResume_ReportedOnReturnedTask(string sdk)
+        => RuntimeAsyncSuspendResumeReportedOnReturnedTask("Test_RuntimeAsync_SuspendResume", sdk);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public Task MethodInterpretation_RuntimeAsync_SuspendResumeWithAsyncDebugger_ReportedOnReturnedTask(string sdk)
+        => RuntimeAsyncSuspendResumeReportedOnReturnedTask("Test_RuntimeAsync_SuspendResume_WithAsyncDebugger", sdk);
+
+    private async Task RuntimeAsyncSuspendResumeReportedOnReturnedTask(string subjectArgs, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var suspensions = new List<ForkRequestArgs>();
+        var resumptions = new List<ForkStartArgs>();
+        var completedSegments = new List<ForkFinishArgs>();
+        var joins = new List<ForkJoinArgs>();
+        plugin.ForkRequested += args =>
+        {
+            if (args.Kind == ForkKind.AsyncResumption)
+                suspensions.Add(args);
+        };
+        plugin.ForkStarted += args =>
+        {
+            if (args.Kind == ForkKind.AsyncResumption)
+                resumptions.Add(args);
+        };
+        plugin.ForkFinished += args =>
+        {
+            if (args.Kind == ForkKind.AsyncResumption && args.FinishKind == ForkFinishKind.SegmentCompleted)
+                completedSegments.Add(args);
+        };
+        plugin.ForkJoined += joins.Add;
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Contains(suspensions, suspension =>
+            resumptions.Any(r => r.ChildId == suspension.ChildId && r.ProcessThreadId != suspension.ProcessThreadId) &&
+            completedSegments.Any(s => s.ChildId == suspension.ChildId) &&
+            joins.Any(j => j.ChildId == suspension.ChildId && j.ProcessThreadId == suspension.ProcessThreadId && j.IsSuccess));
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_RuntimeAsync_CallerContinuingOnCapturedContext_ReleasedBeforeHandOver(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_RuntimeAsync_CallerContinuesOnCapturedContext")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var resumptionEvents = new List<(bool IsResume, ProcessThreadId Thread, ProcessTrackedObjectId Task)>();
+        plugin.ForkRequested += args =>
+        {
+            if (args.Kind == ForkKind.AsyncResumption)
+                resumptionEvents.Add((false, args.ProcessThreadId, args.ChildId));
+        };
+        plugin.ForkStarted += args =>
+        {
+            if (args.Kind == ForkKind.AsyncResumption)
+                resumptionEvents.Add((true, args.ProcessThreadId, args.ChildId));
+        };
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var isReleasedBeforeHandOver = resumptionEvents
+            .Select((evt, index) => (evt, index))
+            .Where(e => e.evt.IsResume)
+            .Any(first => resumptionEvents
+                .Skip(first.index + 1)
+                .TakeWhile(e => !(e.IsResume && e.Task == first.evt.Task))
+                .Any(e => !e.IsResume && e.Task == first.evt.Task && e.Thread == first.evt.Thread) &&
+                resumptionEvents
+                    .Skip(first.index + 1)
+                    .Any(e => e.IsResume && e.Task == first.evt.Task && e.Thread != first.evt.Thread));
+        Assert.True(isReleasedBeforeHandOver, "The hand-over of the resumed frames to the captured context was not released.");
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_RuntimeAsync_AwaitedTaskReturningMethods_OnlyOrdinaryCallsReported(string sdk)
     {
         // Arrange

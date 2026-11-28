@@ -16,6 +16,7 @@ public abstract partial class PerThreadOrderingPluginBase
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.AsyncStateMachineResume, OnAsyncStateMachineResume);
         Bind<MethodExitRecordedEvent>(RecordedEventType.AsyncStateMachineSegmentComplete, OnAsyncStateMachineSegmentComplete);
         Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.AsyncStateMachineComplete, OnAsyncStateMachineComplete);
+        Bind<MethodEnterWithArgumentsRecordedEvent>(RecordedEventType.RuntimeAsyncSuspend, OnRuntimeAsyncSuspend);
     }
     
     private void OnAsyncStateMachineSuspend(RecordedEventMetadata metadata, MethodExitWithArgumentsRecordedEvent args)
@@ -23,6 +24,14 @@ public abstract partial class PerThreadOrderingPluginBase
         var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
         var raw = MemoryMarshal.Read<nuint>(args.ReturnValue);
         RaiseForkRequested(id, new ProcessTrackedObjectId(id.ProcessId, new TrackedObjectId(raw)), ForkKind.AsyncResumption);
+    }
+
+    private void OnRuntimeAsyncSuspend(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)
+    {
+        var id = new ProcessThreadId(metadata.Pid, metadata.Tid);
+        using var arguments = ParseArguments(metadata, args);
+        var taskId = new ProcessTrackedObjectId(id.ProcessId, arguments[0].Value.AsTrackedObject);
+        RaiseForkRequested(id, taskId, ForkKind.AsyncResumption);
     }
 
     private void OnAsyncStateMachineResume(RecordedEventMetadata metadata, MethodEnterWithArgumentsRecordedEvent args)

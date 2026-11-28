@@ -1049,8 +1049,29 @@ namespace SharpDetect.E2ETests.Subject
                     Test_DataRace_AsyncContinuation_ConcurrentResumes_WriteWriteRace();
                     break;
 #if NET11_0_OR_GREATER
+                case nameof(Test_RuntimeAsync_SuspendResume):
+                    Test_RuntimeAsync_SuspendResume();
+                    break;
+                case nameof(Test_RuntimeAsync_SuspendResume_WithAsyncDebugger):
+                    Test_RuntimeAsync_SuspendResume_WithAsyncDebugger();
+                    break;
+                case nameof(Test_RuntimeAsync_CallerContinuesOnCapturedContext):
+                    Test_RuntimeAsync_CallerContinuesOnCapturedContext();
+                    break;
                 case nameof(Test_RuntimeAsync_HookedTaskReturningMethods):
                     Test_RuntimeAsync_HookedTaskReturningMethods();
+                    break;
+                case nameof(Test_NoDataRace_RuntimeAsync_WriteBeforeAwait_ReadAfterResume):
+                    Test_NoDataRace_RuntimeAsync_WriteBeforeAwait_ReadAfterResume();
+                    break;
+                case nameof(Test_NoDataRace_RuntimeAsync_WriteAfterFirstResume_ReadAfterSecondResume):
+                    Test_NoDataRace_RuntimeAsync_WriteAfterFirstResume_ReadAfterSecondResume();
+                    break;
+                case nameof(Test_NoDataRace_RuntimeAsync_WriteAfterResume_ReadAfterJoin):
+                    Test_NoDataRace_RuntimeAsync_WriteAfterResume_ReadAfterJoin();
+                    break;
+                case nameof(Test_DataRace_RuntimeAsync_ConcurrentResumes_WriteWriteRace):
+                    Test_DataRace_RuntimeAsync_ConcurrentResumes_WriteWriteRace();
                     break;
                 case nameof(Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead):
                     Test_NoDataRace_SemaphoreSlimAsync_RuntimeAsyncAwaiters_ProtectedWriteRead();
