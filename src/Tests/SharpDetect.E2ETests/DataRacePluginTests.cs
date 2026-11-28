@@ -32,6 +32,8 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         new("DOTNET_PROCESSOR_COUNT", "1"),
         new("DOTNET_ThreadPool_ForceMaxWorkerThreads", "1")
     ];
+    private const string Net11ExceptionDispatchInLockOperationGap =
+        "Known gap (.NET 11): lock operations of user code running during exception dispatch out of a lock operation are filtered as runtime-internal";
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
@@ -553,6 +555,21 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockRelease(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockRelease", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.UpToNet10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockWait(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockWait", sdk, plugin);
+
+    [Theory(Skip = Net11ExceptionDispatchInLockOperationGap)]
+    [MemberData(nameof(SdkVersions.Net11AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    public Task NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockWait_Net11(string sdk, string plugin)
+        => AssertDoesNotDetectDataRace("Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockWait", sdk, plugin);
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.AllWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_TaskCompletionSource_WriteThenSetResult_ReadAfterAwait", sdk, plugin);
 
@@ -922,7 +939,7 @@ public class DataRacePluginTests(ITestOutputHelper testOutput)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_LockOnTypeObject_AcrossGarbageCollection", sdk, plugin);
 
     [Theory]
-    [MemberData(nameof(SdkVersions.Net10WithFastTrackOnly), MemberType = typeof(SdkVersions))]
+    [MemberData(nameof(SdkVersions.Net10AndAboveWithFastTrackOnly), MemberType = typeof(SdkVersions))]
     public Task NoDataRace_SynchronizedMethod_ProtectedWriteRead(string sdk, string plugin)
         => AssertDoesNotDetectDataRace("Test_NoDataRace_SynchronizedMethod_ProtectedWriteRead", sdk, plugin);
 

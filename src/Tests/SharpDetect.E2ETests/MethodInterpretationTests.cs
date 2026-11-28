@@ -64,6 +64,70 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
 
     [Theory]
     [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_ContendedEnterExit_AcquireReleaseBalancedPerLock(string sdk)
+    {
+        await LockAcquireReleaseBalancedPerLock("Test_MonitorMethods_ContendedEnterExit", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_Wait3_Reentrancy_AcquireReleaseBalancedPerLock(string sdk)
+    {
+        await LockAcquireReleaseBalancedPerLock("Test_MonitorMethods_Wait3_Reentrancy", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Lock_LockInSynchronizationContextWaitOfContendedLock_IsReported(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_LockMethods_LockInSynchronizationContextWaitOfContendedLock")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var pendingAttempts = new Dictionary<ProcessThreadId, Stack<ProcessTrackedObjectId>>();
+        var isAcquiredWhileAcquiringAnotherLock = false;
+        plugin.LockAcquireAttempted += args =>
+        {
+            if (!pendingAttempts.TryGetValue(args.ProcessThreadId, out var attempts))
+                pendingAttempts[args.ProcessThreadId] = attempts = new Stack<ProcessTrackedObjectId>();
+            attempts.Push(args.LockId);
+        };
+        plugin.LockAcquireReturned += args =>
+        {
+            if (!pendingAttempts.TryGetValue(args.ProcessThreadId, out var attempts) || !attempts.TryPop(out _))
+                return;
+            if (args.IsSuccess && attempts.TryPeek(out var outerLockId) && outerLockId != args.LockId)
+                isAcquiredWhileAcquiringAnotherLock = true;
+        };
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.True(
+            isAcquiredWhileAcquiringAnotherLock,
+            "The lock taken by the SynchronizationContext wait override during the contended acquisition was not reported.");
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_SynchronizedMethod(string sdk)
+    {
+        await MonitorEnterExit("Test_MonitorMethods_SynchronizedMethod", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net10AndAbove), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Monitor_SynchronizedMethodLoop_AcquireReleaseBalanced(string sdk)
+    {
+        await MonitorAcquireReleaseBalanced("Test_MonitorMethods_SynchronizedMethodLoop", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
     public async Task MethodInterpretation_Monitor_EnterExitLoop_AcquireReleaseBalanced(string sdk)
     {
         await MonitorAcquireReleaseBalanced("Test_MonitorMethods_EnterExitLoop", sdk);
@@ -151,6 +215,38 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
     public async Task MethodInterpretation_ReaderWriterLockSlim_ReleaseReportsNoMethodExit(string sdk)
     {
         await LockReleaseReportsNoMethodExit("Test_NoDataRace_ReaderWriterLockSlim_WriteThenRead", sdk);
+    }
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.All), MemberType = typeof(SdkVersions))]
+    public async Task MethodInterpretation_Thread_StartCallback_ReportsStartedThreadObject(string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject("Test_ThreadMethods_StartCallback1")
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var requestedThreads = new HashSet<ProcessTrackedObjectId>();
+        var startedThreads = new List<ProcessTrackedObjectId>();
+        plugin.ForkRequested += args =>
+        {
+            if (args.Kind == ForkKind.Thread)
+                requestedThreads.Add(args.ChildId);
+        };
+        plugin.ForkStarted += args =>
+        {
+            if (args.Kind == ForkKind.Thread)
+                startedThreads.Add(args.ChildId);
+        };
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        Assert.NotEmpty(startedThreads);
+        Assert.All(startedThreads, threadObjectId => Assert.Contains(threadObjectId, requestedThreads));
     }
 
     [Theory]
@@ -957,6 +1053,42 @@ public class MethodInterpretationTests(ITestOutputHelper testOutput)
         Assert.Empty(outcome.Gaps);
         Assert.NotEqual(0, releases);
         Assert.DoesNotContain(exits, exit => releaseMethods.Contains(exit));
+    }
+
+    private async Task LockAcquireReleaseBalancedPerLock(string subjectArgs, string sdk)
+    {
+        // Arrange
+        using var services = E2ETestBuilder
+            .ForSubject(subjectArgs)
+            .WithPlugin<TestPerThreadOrderingPlugin>()
+            .Build(sdk, testOutput);
+        var plugin = services.GetRequiredService<TestPerThreadOrderingPlugin>();
+        var analysisWorker = services.GetRequiredService<IAnalysisWorker>();
+        var heldCounts = new Dictionary<ProcessTrackedObjectId, int>();
+        var acquiredLocks = new HashSet<ProcessTrackedObjectId>();
+        plugin.LockAcquireReturned += args =>
+        {
+            if (!args.IsSuccess || args.IsShared)
+                return;
+
+            acquiredLocks.Add(args.LockId);
+            heldCounts[args.LockId] = heldCounts.GetValueOrDefault(args.LockId) + 1;
+        };
+        plugin.LockReleased += args =>
+        {
+            if (!args.IsShared)
+                heldCounts[args.LockId] = heldCounts.GetValueOrDefault(args.LockId) - 1;
+        };
+
+        // Execute
+        await analysisWorker.ExecuteAsync(CancellationToken.None);
+
+        // Assert
+        var acquiredLockCounts = heldCounts.Where(pair => acquiredLocks.Contains(pair.Key)).ToArray();
+        Assert.NotEmpty(acquiredLockCounts);
+        Assert.All(acquiredLockCounts, pair => Assert.True(
+            pair.Value == 0,
+            $"Lock {pair.Key.ObjectId.Value} has {pair.Value} unmatched acquisition(s) (negative = releases without acquisition)."));
     }
 
     private async Task MonitorEnterExit(string subjectArgs, string sdk)

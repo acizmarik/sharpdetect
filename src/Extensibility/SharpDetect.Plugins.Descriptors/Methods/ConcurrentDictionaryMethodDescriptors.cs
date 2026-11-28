@@ -18,27 +18,41 @@ public static class ConcurrentDictionaryMethodDescriptors
 
     private static readonly MethodDescriptor[] AllMethods =
     [
-        CreateStore("TryAdd", Sig.Boolean, TKey, TValue),
-        CreateStore("set_Item", Sig.Void, TKey, TValue),
-        CreateLoad("get_Item", RecordedEventType.ValuePublicationLoad, TKey),
-        CreateLoad("GetOrAdd", RecordedEventType.ValuePublicationMaybeStoreLoad, TKey, TValue),
-        CreateLoad("GetOrAdd", RecordedEventType.ValuePublicationMaybeStoreLoad, TKey, ValueFactory),
-        CreateLoadByRef("TryGetValue"),
-        CreateLoadByRef("TryRemove"),
-        CreateStore("TryUpdate", Sig.Boolean, TKey, TValue, TValue),
-        CreateLoad("AddOrUpdate", RecordedEventType.ValuePublicationStoreLoad, TKey, TValue, UpdateFactory),
-        CreateLoad("AddOrUpdate", RecordedEventType.ValuePublicationStoreLoad, TKey, ValueFactory, UpdateFactory),
+        .. CreateAll(DeclaringAssemblies.CollectionsConcurrent, RuntimeVersions.Net8To10),
+        .. CreateAll(DeclaringAssemblies.CoreLib, RuntimeVersions.Net11),
     ];
 
     public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;
 
+    private static IEnumerable<MethodDescriptor> CreateAll(string declaringAssemblyName, MethodVersionDescriptor version)
+    {
+        MethodDescriptorBuilder ConcurrentDictionary(string methodName)
+        {
+            return MethodDescriptor.ForInstanceMethod(ConcurrentDictionaryTypeName, methodName)
+                .InAssembly(declaringAssemblyName)
+                .OnRuntime(version)
+                .CaptureThis();
+        }
+
+        yield return CreateStore(ConcurrentDictionary("TryAdd"), Sig.Boolean, TKey, TValue);
+        yield return CreateStore(ConcurrentDictionary("set_Item"), Sig.Void, TKey, TValue);
+        yield return CreateLoad(ConcurrentDictionary("get_Item"), RecordedEventType.ValuePublicationLoad, TKey);
+        yield return CreateLoad(ConcurrentDictionary("GetOrAdd"), RecordedEventType.ValuePublicationMaybeStoreLoad, TKey, TValue);
+        yield return CreateLoad(ConcurrentDictionary("GetOrAdd"), RecordedEventType.ValuePublicationMaybeStoreLoad, TKey, ValueFactory);
+        yield return CreateLoadByRef(ConcurrentDictionary("TryGetValue"));
+        yield return CreateLoadByRef(ConcurrentDictionary("TryRemove"));
+        yield return CreateStore(ConcurrentDictionary("TryUpdate"), Sig.Boolean, TKey, TValue, TValue);
+        yield return CreateLoad(ConcurrentDictionary("AddOrUpdate"), RecordedEventType.ValuePublicationStoreLoad, TKey, TValue, UpdateFactory);
+        yield return CreateLoad(ConcurrentDictionary("AddOrUpdate"), RecordedEventType.ValuePublicationStoreLoad, TKey, ValueFactory, UpdateFactory);
+    }
+
     // (TKey key, TValue value, ...): the stored value is the second parameter.
     private static MethodDescriptor CreateStore(
-        string methodName,
+        MethodDescriptorBuilder method,
         ArgumentTypeDescriptor returnType,
         params ArgumentTypeDescriptor[] parameterTypes)
     {
-        return ConcurrentDictionary(methodName)
+        return method
             .Parameters(parameterTypes)
             .Returns(returnType)
             .CaptureParameter(1, Capture.Reference)
@@ -48,11 +62,11 @@ public static class ConcurrentDictionaryMethodDescriptors
 
     // The loaded value is the return value.
     private static MethodDescriptor CreateLoad(
-        string methodName,
+        MethodDescriptorBuilder method,
         RecordedEventType exitInterpretation,
         params ArgumentTypeDescriptor[] parameterTypes)
     {
-        return ConcurrentDictionary(methodName)
+        return method
             .Parameters(parameterTypes)
             .Returns(TValue)
             .CaptureReturnValue(Capture.Reference)
@@ -61,21 +75,14 @@ public static class ConcurrentDictionaryMethodDescriptors
             .Build();
     }
 
-    private static MethodDescriptor CreateLoadByRef(string methodName)
+    private static MethodDescriptor CreateLoadByRef(MethodDescriptorBuilder method)
     {
-        return ConcurrentDictionary(methodName)
+        return method
             .Parameters(TKey, Sig.ByRef(TValue))
             .Returns(Sig.Boolean)
             .CaptureParameter(1, Capture.OutReference)
             .OnEnter(RecordedEventType.ValuePublicationContainerEnter)
             .OnExit(RecordedEventType.ValuePublicationLoadByRef)
             .Build();
-    }
-
-    private static MethodDescriptorBuilder ConcurrentDictionary(string methodName)
-    {
-        return MethodDescriptor.ForInstanceMethod(ConcurrentDictionaryTypeName, methodName)
-            .InAssembly(DeclaringAssemblies.CollectionsConcurrent)
-            .CaptureThis();
     }
 }

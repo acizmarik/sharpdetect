@@ -56,6 +56,8 @@ public static class InterlockedIntrinsicDescriptors
             FieldAccessIntrinsicInterpretation.CompareExchange),
         CreateGenericOverload("Exchange", additionalParametersCount: 1, FieldAccessIntrinsicInterpretation.AtomicReadModifyWrite),
         CreateGenericOverload("CompareExchange", additionalParametersCount: 2, FieldAccessIntrinsicInterpretation.CompareExchange),
+        CreateGenericOverload("And", additionalParametersCount: 1, FieldAccessIntrinsicInterpretation.AtomicReadModifyWrite),
+        CreateGenericOverload("Or", additionalParametersCount: 1, FieldAccessIntrinsicInterpretation.AtomicReadModifyWrite),
     ];
 
     private static FieldAccessIntrinsicDescriptor[] CreateOverloads(

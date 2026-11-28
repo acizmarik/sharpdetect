@@ -459,6 +459,20 @@ public static partial class Program
 #endif
     }
 
+    public static void Test_Field_Atomic_GenericAndOfEnum()
+    {
+#if NET11_0_OR_GREATER
+        Interlocked.And(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Enum, AtomicFlagState.Published);
+#endif
+    }
+
+    public static void Test_Field_Atomic_GenericOrOfEnum()
+    {
+#if NET11_0_OR_GREATER
+        Interlocked.Or(ref StaticFieldValueType.Test_Field_Atomic_ValueType_Static_Enum, AtomicFlagState.Published);
+#endif
+    }
+
     public static void Test_Field_Atomic_CompareExchangeOfByte()
     {
 #if NET9_0_OR_GREATER

@@ -29,7 +29,14 @@ public static class ThreadMethodDescriptors
             .OnEnter(RecordedEventType.ThreadStartCore)
             .Build(),
         MethodDescriptor.ForInstanceMethod(ThreadTypeName, "StartCallback")
+            .OnRuntime(RuntimeVersions.Net8To10)
             .CaptureThis()
+            .OnEnter(RecordedEventType.ThreadStartCallback)
+            .Build(),
+        MethodDescriptor.ForStaticMethod(ThreadTypeName, "StartCallback")
+            .OnRuntime(RuntimeVersions.Net11)
+            .Parameters(Sig.Pointer(Sig.Class(ThreadTypeName)))
+            .CaptureParameter(0, Capture.DereferencedReference)
             .OnEnter(RecordedEventType.ThreadStartCallback)
             .Build(),
     ];

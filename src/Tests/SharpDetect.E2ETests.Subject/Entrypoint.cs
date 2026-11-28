@@ -91,6 +91,26 @@ namespace SharpDetect.E2ETests.Subject
                     Test_MonitorMethods_ExitIfLockTaken();
                     break;
 #endif
+                case nameof(Test_MonitorMethods_ContendedEnterExit):
+                    Test_MonitorMethods_ContendedEnterExit();
+                    break;
+                case nameof(Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockRelease):
+                    Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockRelease();
+                    break;
+                case nameof(Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockWait):
+                    Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockWait();
+                    break;
+#if NET9_0_OR_GREATER
+                case nameof(Test_LockMethods_LockInSynchronizationContextWaitOfContendedLock):
+                    Test_LockMethods_LockInSynchronizationContextWaitOfContendedLock();
+                    break;
+#endif
+                case nameof(Test_MonitorMethods_SynchronizedMethod):
+                    Test_MonitorMethods_SynchronizedMethod();
+                    break;
+                case nameof(Test_MonitorMethods_SynchronizedMethodLoop):
+                    Test_MonitorMethods_SynchronizedMethodLoop();
+                    break;
                 case nameof(Test_ThreadMethods_Join1):
                     Test_ThreadMethods_Join1();
                     break;
@@ -499,6 +519,12 @@ namespace SharpDetect.E2ETests.Subject
                     break;
                 case nameof(Test_Field_Atomic_CompareExchangeOfByte):
                     Test_Field_Atomic_CompareExchangeOfByte();
+                    break;
+                case nameof(Test_Field_Atomic_GenericAndOfEnum):
+                    Test_Field_Atomic_GenericAndOfEnum();
+                    break;
+                case nameof(Test_Field_Atomic_GenericOrOfEnum):
+                    Test_Field_Atomic_GenericOrOfEnum();
                     break;
                 case nameof(Test_Field_Atomic_ValueType_OnValueType_Instance_Increment):
                     Test_Field_Atomic_ValueType_OnValueType_Instance_Increment();

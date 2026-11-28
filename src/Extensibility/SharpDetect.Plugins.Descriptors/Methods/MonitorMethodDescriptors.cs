@@ -40,9 +40,9 @@ public static class MonitorMethodDescriptors
             .OnEnter(RecordedEventType.LockRelease)
             .Build(),
 
-        // .NET 10: common public API
+        // .NET 10-11: common public API
         Monitor("Enter", Sig.Object)
-            .OnRuntime(RuntimeVersions.Net10)
+            .OnRuntime(RuntimeVersions.Net10To11)
             .OnEnter(RecordedEventType.LockAcquire)
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
@@ -53,14 +53,14 @@ public static class MonitorMethodDescriptors
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
         Monitor("TryEnter", Sig.Object)
-            .OnRuntime(RuntimeVersions.Net10)
+            .OnRuntime(RuntimeVersions.Net10To11)
             .Returns(Sig.Boolean)
             .CaptureReturnValue(Capture.Boolean)
             .OnEnter(RecordedEventType.LockTryAcquire)
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
         Monitor("TryEnter", Sig.Object, Sig.Int32)
-            .OnRuntime(RuntimeVersions.Net10)
+            .OnRuntime(RuntimeVersions.Net10To11)
             .Returns(Sig.Boolean)
             .CaptureReturnValue(Capture.Boolean)
             .OnEnter(RecordedEventType.LockTryAcquire)
@@ -79,11 +79,23 @@ public static class MonitorMethodDescriptors
             .OnExit(RecordedEventType.LockAcquireResult)
             .Build(),
         Monitor("Exit", Sig.Object)
-            .OnRuntime(RuntimeVersions.Net10)
+            .OnRuntime(RuntimeVersions.Net10To11)
             .OnEnter(RecordedEventType.LockRelease)
             .Build(),
         Monitor("ExitIfLockTaken", Sig.Object, Sig.ByRef(Sig.Boolean))
             .OnRuntime(RuntimeVersions.Net10)
+            .CaptureParameter(1, Capture.DereferencedBoolean)
+            .OnEnter(RecordedEventType.LockRelease)
+            .Build(),
+
+        Monitor("SynchronizedMethodEnter", Sig.Object, Sig.ByRef(Sig.Boolean))
+            .OnRuntime(RuntimeVersions.Net11)
+            .CaptureParameter(1, Capture.OutBoolean)
+            .OnEnter(RecordedEventType.LockAcquire)
+            .OnExit(RecordedEventType.LockAcquireResult)
+            .Build(),
+        Monitor("SynchronizedMethodExit", Sig.Object, Sig.ByRef(Sig.Boolean))
+            .OnRuntime(RuntimeVersions.Net11)
             .CaptureParameter(1, Capture.DereferencedBoolean)
             .OnEnter(RecordedEventType.LockRelease)
             .Build(),

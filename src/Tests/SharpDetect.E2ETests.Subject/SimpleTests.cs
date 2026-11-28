@@ -4,6 +4,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using SharpDetect.E2ETests.Subject.Helpers;
 using SharpDetect.E2ETests.Subject.Helpers.Arrays;
 using SharpDetect.E2ETests.Subject.Helpers.DataRaces;
@@ -139,6 +140,132 @@ namespace SharpDetect.E2ETests.Subject
             MonitorSdk10InternalApiAccessor.ExitIfLockTaken(null!, lockObj, ref lockTaken);
         }
 #endif
+
+        public static void Test_MonitorMethods_ContendedEnterExit()
+        {
+            var obj = new object();
+            var isHeld = 0;
+            var mainThread = Thread.CurrentThread;
+            var owner = new Thread(() =>
+            {
+                lock (obj)
+                {
+                    Volatile.Write(ref isHeld, 1);
+                    SpinUntilBlocked(mainThread);
+                }
+            });
+            owner.Start();
+            var spinner = new SpinWait();
+            while (Volatile.Read(ref isHeld) == 0)
+                spinner.SpinOnce();
+            lock (obj) { }
+            owner.Join();
+        }
+
+#if NET9_0_OR_GREATER
+        private sealed class LockingWaitSynchronizationContext : SynchronizationContext
+        {
+            private readonly object _gate = new();
+
+            public LockingWaitSynchronizationContext()
+            {
+                SetWaitNotificationRequired();
+            }
+
+            public override int Wait(IntPtr[] waitHandles, bool waitAll, int millisecondsTimeout)
+            {
+                lock (_gate) { }
+                return base.Wait(waitHandles, waitAll, millisecondsTimeout);
+            }
+        }
+
+        public static void Test_LockMethods_LockInSynchronizationContextWaitOfContendedLock()
+        {
+            var contendedLock = new Lock();
+            var isContending = 0;
+            var contender = new Thread(() =>
+            {
+                SynchronizationContext.SetSynchronizationContext(new LockingWaitSynchronizationContext());
+                Volatile.Write(ref isContending, 1);
+                using (contendedLock.EnterScope()) { }
+            });
+
+            using (contendedLock.EnterScope())
+            {
+                contender.Start();
+                var spinner = new SpinWait();
+                while (Volatile.Read(ref isContending) == 0)
+                    spinner.SpinOnce();
+                SpinUntilBlocked(contender);
+            }
+
+            contender.Join();
+        }
+#endif
+
+        private static readonly object FirstChanceExceptionGate = new();
+
+        public static void Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockRelease()
+        {
+            LockInFirstChanceExceptionHandlerOf(() => Monitor.Exit(new object()));
+        }
+
+        public static void Test_NoDataRace_LockInFirstChanceExceptionHandlerOfFailingLockWait()
+        {
+            LockInFirstChanceExceptionHandlerOf(() => Monitor.Wait(new object(), 0));
+        }
+
+        private static void LockInFirstChanceExceptionHandlerOf(Action failingLockOperation)
+        {
+            EventHandler<FirstChanceExceptionEventArgs> handler = (_, args) =>
+            {
+                if (args.Exception is not SynchronizationLockException)
+                    return;
+
+                lock (FirstChanceExceptionGate)
+                    DataRace.Test_DataRace_ValueType_Static++;
+            };
+
+            AppDomain.CurrentDomain.FirstChanceException += handler;
+            try
+            {
+                RunConcurrently(
+                    () =>
+                    {
+                        lock (FirstChanceExceptionGate)
+                            DataRace.Test_DataRace_ValueType_Static++;
+                    },
+                    () =>
+                    {
+                        try
+                        {
+                            failingLockOperation();
+                        }
+                        catch (SynchronizationLockException)
+                        {
+                            // Expected: the lock is not held
+                        }
+                    });
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.FirstChanceException -= handler;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.Synchronized | MethodImplOptions.NoInlining)]
+        private static void SynchronizedStaticMethod() { }
+
+        public static void Test_MonitorMethods_SynchronizedMethod()
+        {
+            SynchronizedStaticMethod();
+        }
+
+        public static void Test_MonitorMethods_SynchronizedMethodLoop()
+        {
+            for (var i = 0; i < MonitorBalanceLoopIterations; i++)
+                SynchronizedStaticMethod();
+        }
 
         public static void Test_ShadowCallstack_MonitorPulse()
         {

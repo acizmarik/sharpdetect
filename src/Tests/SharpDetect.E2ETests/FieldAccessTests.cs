@@ -520,6 +520,24 @@ public class FieldAccessTests(ITestOutputHelper testOutput)
             (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
 
     [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_GenericAnd_OfEnum(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_GenericAndOfEnum",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
+    [MemberData(nameof(SdkVersions.Net11AndAbove), MemberType = typeof(SdkVersions))]
+    public Task AtomicStaticField_GenericOr_OfEnum(string sdk)
+        => FieldAccessSequence(
+            "Test_Field_Atomic_GenericOrOfEnum",
+            sdk,
+            (RecordedEventType.StaticFieldWrite, FieldAccessKind.Atomic),
+            (RecordedEventType.StaticFieldRead, FieldAccessKind.Atomic));
+
+    [Theory]
     [MemberData(nameof(SdkVersions.Net9AndAbove), MemberType = typeof(SdkVersions))]
     public Task AtomicStaticField_CompareExchange_OfByte(string sdk)
         => FieldAccessSequence(

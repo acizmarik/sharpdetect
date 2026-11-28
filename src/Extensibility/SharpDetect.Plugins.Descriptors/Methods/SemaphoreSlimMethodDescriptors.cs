@@ -31,9 +31,9 @@ public static class SemaphoreSlimMethodDescriptors
 
         // Internal API
         CreateWait("Wait", RuntimeVersions.Net8To9, Sig.Int32),
-        CreateWait("WaitCore", RuntimeVersions.Net10, Sig.Int64),
+        CreateWait("WaitCore", RuntimeVersions.Net10To11, Sig.Int64),
         CreateWaitAsync("WaitAsync", RuntimeVersions.Net8To9, Sig.Int32),
-        CreateWaitAsync("WaitAsyncCore", RuntimeVersions.Net10, Sig.Int64),
+        CreateWaitAsync("WaitAsyncCore", RuntimeVersions.Net10To11, Sig.Int64),
     ];
 
     public static IEnumerable<MethodDescriptor> GetAllMethods() => AllMethods;

@@ -32,7 +32,29 @@ public static class LockMethodDescriptors
 
         // Internal API
         Lock("Exit", Sig.ValueType(LockThreadIdTypeName))
+            .OnRuntime(RuntimeVersions.Net9To10)
             .OnEnter(RecordedEventType.LockRelease)
+            .Build(),
+        Lock("Exit", Sig.Int32)
+            .OnRuntime(RuntimeVersions.Net11)
+            .OnEnter(RecordedEventType.LockRelease)
+            .Build(),
+        Lock("Wait", Sig.Int32)
+            .OnRuntime(RuntimeVersions.Net11)
+            .Returns(Sig.Boolean)
+            .CaptureReturnValue(Capture.Boolean)
+            .OnEnter(RecordedEventType.MonitorWaitAttempt)
+            .OnExit(RecordedEventType.MonitorWaitResult)
+            .Build(),
+        Lock("Pulse")
+            .OnRuntime(RuntimeVersions.Net11)
+            .OnEnter(RecordedEventType.MonitorPulseOneAttempt)
+            .OnExit(RecordedEventType.MonitorPulseOneResult)
+            .Build(),
+        Lock("PulseAll")
+            .OnRuntime(RuntimeVersions.Net11)
+            .OnEnter(RecordedEventType.MonitorPulseAllAttempt)
+            .OnExit(RecordedEventType.MonitorPulseAllResult)
             .Build(),
     ];
 
@@ -41,7 +63,7 @@ public static class LockMethodDescriptors
     private static MethodDescriptorBuilder Lock(string methodName, params ArgumentTypeDescriptor[] parameterTypes)
     {
         return MethodDescriptor.ForInstanceMethod(LockTypeName, methodName)
-            .OnRuntime(RuntimeVersions.Net9To10)
+            .OnRuntime(RuntimeVersions.Net9To11)
             .Parameters(parameterTypes)
             .CaptureThis();
     }

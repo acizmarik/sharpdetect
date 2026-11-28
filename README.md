@@ -136,7 +136,7 @@ sharpdetect init \
 
 ### Prerequisites
 
-- .NET 10 SDK
+- .NET 11 SDK (and the .NET 8, 9 and 10 runtimes to run the end-to-end tests)
 - C++20 compiler with CMake
 - Platform-specific dependencies for [Native AOT deployment](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot)
 
@@ -153,7 +153,7 @@ dotnet cake.cs
 
 ## Platform Support
 
-SharpDetect supports analysis of programs targeting .NET 8, 9, and 10.
+SharpDetect supports analysis of programs targeting .NET 8, 9, 10, and 11.
 Supported operating systems are Windows and Linux (glibc 2.34 or newer). Supported architecture is x64.
 
 ## Acknowledgments

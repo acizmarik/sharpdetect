@@ -77,7 +77,7 @@ public static class WaitHandleMethodDescriptors
         // Internal API
         CreateWaitOneNoCheck(RuntimeVersions.Net8, Sig.Int32),
         CreateWaitOneNoCheck(
-            RuntimeVersions.Net9To10,
+            RuntimeVersions.Net9To11,
             Sig.Int32,
             Sig.Boolean,
             Sig.Object,

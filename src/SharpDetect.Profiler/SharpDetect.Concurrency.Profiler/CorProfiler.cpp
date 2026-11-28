@@ -155,8 +155,8 @@ HRESULT STDMETHODCALLTYPE Profiler::CorProfiler::Initialize(IUnknown* pICorProfi
     if (runtimeType == COR_PRF_RUNTIME_TYPE::COR_PRF_DESKTOP_CLR)
         return AbortAttach(".NET Framework is not supported.");
 
-    if (majorVersion < 8 || majorVersion > 10)
-        return AbortAttach("Unsupported .NET SDK. Supported version are only 8, 9 and 10.");
+    if (majorVersion < 8 || majorVersion > 11)
+        return AbortAttach("Unsupported .NET SDK. Supported version are only 8, 9, 10 and 11.");
 
     if (FAILED(InitializeProfilingFeatures()))
         return AbortAttach("Could not initialize requested profiling features.");
