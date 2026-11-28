@@ -22,8 +22,10 @@ internal sealed class PluginHostFactory
             plugin,
             _loggerFactory.CreateLogger<PassthroughPluginHost>());
 
-        return new ReorderingPluginHost(
+        var reordering = new ReorderingPluginHost(
             passthrough,
             _loggerFactory.CreateLogger<ReorderingPluginHost>());
+
+        return new NestedLockOperationFilterPluginHost(reordering);
     }
 }
